@@ -8,6 +8,7 @@ import { AuthModal } from './components/AuthModal';
 import { EmergencyTowModal } from './components/EmergencyTowModal';
 import { BookingModal } from './components/BookingModal';
 import { ServicesPage } from './components/ServicesPage';
+import { TireHotelPage } from './components/TireHotelPage';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
@@ -25,7 +26,8 @@ import {
   ArrowRight,
   Award,
   Clock,
-  Navigation
+  Navigation,
+  Users
 } from 'lucide-react';
 import waitingArea from 'figma:asset/7f3da97624c68ef159f5a1406820901e8a63dd7e.png';
 import exterior from 'figma:asset/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png';
@@ -55,7 +57,6 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [isFromServicesPage, setIsFromServicesPage] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -70,7 +71,13 @@ function HomePage() {
   
   const updatePageFromPath = useCallback(
     (path: string) => {
-      setCurrentPage(path === '/services' ? 'services' : 'home');
+      if (path === '/services') {
+        setCurrentPage('services');
+      } else if (path === '/tire-hotel') {
+        setCurrentPage('tire-hotel');
+      } else {
+        setCurrentPage('home');
+      }
     },
     [setCurrentPage]
   );
@@ -238,7 +245,6 @@ function HomePage() {
         open={bookingModalOpen}
         onOpenChange={setBookingModalOpen}
         preSelectedService={preSelectedService}
-        isFromServicesPage={isFromServicesPage}
       />
 
       {/* Unified Background Gradient Blobs - Continuous Web Across Entire Scroll */}
@@ -273,11 +279,19 @@ function HomePage() {
 
       <main id="main-content">
         {currentPage === 'services' ? (
-          <ServicesPage onBookingClick={(serviceName) => {
-            setPreSelectedService(serviceName);
-            setIsFromServicesPage(true);
-            setBookingModalOpen(true);
-          }} />
+          <ServicesPage
+            onBookingClick={(serviceId) => {
+              setPreSelectedService(serviceId ?? '');
+              setBookingModalOpen(true);
+            }}
+          />
+        ) : currentPage === 'tire-hotel' ? (
+          <TireHotelPage
+            onBookingClick={(serviceId) => {
+              setPreSelectedService(serviceId ?? '');
+              setBookingModalOpen(true);
+            }}
+          />
         ) : (
           <>
         {/* Hero Section */}
@@ -299,7 +313,6 @@ function HomePage() {
                     className="bg-accent hover:bg-accent/90 text-white h-12 px-8 rounded-full"
                     onClick={() => {
                       setPreSelectedService('');
-                      setIsFromServicesPage(false);
                       setBookingModalOpen(true);
                     }}
                   >
@@ -629,6 +642,9 @@ function HomePage() {
                       <div className="flex items-baseline justify-center gap-1 mb-3">
                         <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">500</span>
                         <span className="text-4xl font-bold text-accent">+</span>
+                      </div>
+                      <div className="flex gap-1 mb-2 justify-center" role="img" aria-label="500+ happy customers">
+                        <Users className="h-5 w-5 fill-primary text-primary drop-shadow-sm" />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {t('common.happyCustomers')}

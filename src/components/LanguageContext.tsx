@@ -236,7 +236,6 @@ const translations: Translations = {
   'ui.language.toggle': { fi: 'Vaihda kieltä', en: 'Toggle language' },
   'ui.language.switchToEn': { fi: 'Switch to English', en: 'Switch to English' },
   'ui.language.switchToFi': { fi: 'Vaihda suomeksi', en: 'Vaihda suomeksi' },
-  'nav.cart': { fi: 'Ostoskori', en: 'Shopping Cart' },
   'season.winter': { fi: 'Talvi', en: 'Winter' },
   'season.summer': { fi: 'Kesä', en: 'Summer' },
   'season.allSeason': { fi: 'Ympärivuotinen', en: 'All Season' },

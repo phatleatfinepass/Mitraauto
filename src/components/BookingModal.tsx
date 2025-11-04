@@ -13,10 +13,9 @@ interface BookingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preSelectedService?: string;
-  isFromServicesPage?: boolean;
 }
 
-export function BookingModal({ open, onOpenChange, preSelectedService, isFromServicesPage = false }: BookingModalProps) {
+export function BookingModal({ open, onOpenChange, preSelectedService }: BookingModalProps) {
   const { t } = useLanguage();
   
   // Current step
@@ -27,7 +26,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService, isFromSer
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
   
-  // Step 2 data - support both single and multiple services
+  // Step 2 data - always use multiple services with dropdown system
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [contactInfo, setContactInfo] = useState({
@@ -39,63 +38,20 @@ export function BookingModal({ open, onOpenChange, preSelectedService, isFromSer
 
   // Set pre-selected service when modal opens
   useEffect(() => {
-    if (open && preSelectedService && isFromServicesPage) {
-      // Map service name to service ID for Services page
-      const serviceNameToId: Record<string, string> = {
-        // Car Wash
-        'Ulkopesu': 'exterior-wash',
-        'Exterior Wash': 'exterior-wash',
-        'Täyspesu': 'full-wash',
-        'Full Wash': 'full-wash',
-        'Sisäpuhdistus': 'interior-cleaning',
-        'Interior Cleaning': 'interior-cleaning',
-        'Moottorin pesu': 'engine-wash',
-        'Engine Wash': 'engine-wash',
-        // Maintenance
-        'Pieni huolto': 'basic-service',
-        'Basic Service': 'basic-service',
-        'Iso huolto': 'large-service',
-        'Large Service': 'large-service',
-        'Ilmastoinnin huolto': 'ac-service',
-        'AC Service': 'ac-service',
-        'Jarruneste': 'brake-fluid',
-        'Brake Fluid': 'brake-fluid',
-        // Tire Work
-        'Rengasasennus': 'tire-mounting',
-        'Tire Mounting': 'tire-mounting',
-        'Renkaiden irrotus': 'tire-removal',
-        'Tire Removal': 'tire-removal',
-        'Rengastasapainotus': 'wheel-balancing',
-        'Wheel Balancing': 'wheel-balancing',
-        'Renkaan korjaus': 'tire-repair',
-        'Tire Repair': 'tire-repair',
-        'TPMS-huolto': 'tpms-service',
-        'TPMS Service': 'tpms-service',
-        'Pyörän suuntaus': 'wheel-alignment',
-        'Wheel Alignment': 'wheel-alignment',
-      };
-      const serviceId = serviceNameToId[preSelectedService];
-      if (serviceId) {
-        setSelectedServiceIds([serviceId]);
-      }
-    } else if (open && preSelectedService) {
-      // For non-Services page bookings, use the old mapping
-      const serviceNameToId: Record<string, string> = {
-        'Tire Change': 'tire-change',
-        'Rengasvaihto': 'tire-change',
-        'Tire Storage': 'tire-hotel',
-        'Rengashotelli': 'tire-hotel',
-        'Vehicle Inspection': 'inspection',
-        'Katsastus': 'inspection',
-        'Oil Change': 'oil-change',
-        'Öljynvaihto': 'oil-change',
-      };
-      const serviceId = serviceNameToId[preSelectedService];
-      if (serviceId) {
-        setSelectedServiceId(serviceId);
-      }
+    if (!open) {
+      return;
     }
-  }, [open, preSelectedService, isFromServicesPage]);
+
+    // Always use dropdown system with multiple services
+    if (preSelectedService) {
+      // If service ID is directly provided (from Services page)
+      setSelectedServiceIds([preSelectedService]);
+    } else {
+      // No pre-selected service - start fresh
+      setSelectedServiceIds([]);
+    }
+    setSelectedServiceId(null);
+  }, [open, preSelectedService]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -160,40 +116,33 @@ export function BookingModal({ open, onOpenChange, preSelectedService, isFromSer
 
   // Get selected service name(s) for success screen
   const getServiceName = () => {
-    if (isFromServicesPage && selectedServiceIds.length > 0) {
+    if (selectedServiceIds.length > 0) {
       // Multiple services selected
       return selectedServiceIds.map(id => {
         const serviceMap: Record<string, string> = {
           // Car Wash
-          'exterior-wash': 'Exterior Wash',
-          'full-wash': 'Full Wash',
-          'interior-cleaning': 'Interior Cleaning',
-          'engine-wash': 'Engine Wash',
+          'exterior-wash': 'Exterior washing + hard waxing',
+          'full-wash': 'Full wash inside and outside',
+          'interior-cleaning': 'Interior cleaning',
+          'engine-wash': 'Engine wash',
           // Maintenance
-          'basic-service': 'Basic Service',
-          'large-service': 'Large Service',
-          'ac-service': 'AC Service',
-          'brake-fluid': 'Brake Fluid',
+          'basic-service': 'Basic service',
+          'large-service': 'Large service',
+          'ac-service': 'Air conditioning service',
+          'brake-fluid': 'Brake fluid change',
           // Tire Work
-          'tire-mounting': 'Tire Mounting',
-          'tire-removal': 'Tire Removal',
-          'wheel-balancing': 'Wheel Balancing',
-          'tire-repair': 'Tire Repair',
-          'tpms-service': 'TPMS Service',
-          'wheel-alignment': 'Wheel Alignment',
+          'tire-mounting': 'Tire mounting',
+          'tire-removal': 'Tire removal',
+          'wheel-balancing': 'Wheel balancing',
+          'tire-repair': 'Tire repair',
+          'tpms-service': 'TPMS tire pressure sensor service',
+          'wheel-alignment': 'Wheel alignment',
         };
         return serviceMap[id] || 'Service';
       }).join(', ');
     }
     
-    // Single service (old flow)
-    const serviceMap: Record<string, string> = {
-      'tire-change': 'Tire Change',
-      'tire-hotel': 'Tire Storage',
-      'inspection': 'Vehicle Inspection',
-      'oil-change': 'Oil Change',
-    };
-    return selectedServiceId ? serviceMap[selectedServiceId] || 'Service' : 'Service';
+    return 'Service';
   };
 
   return (
@@ -263,7 +212,6 @@ export function BookingModal({ open, onOpenChange, preSelectedService, isFromSer
               timeSlot={selectedTimeSlot || ''}
               selectedServiceId={selectedServiceId}
               selectedServiceIds={selectedServiceIds}
-              isFromServicesPage={isFromServicesPage}
               onServiceChange={setSelectedServiceId}
               onServicesChange={setSelectedServiceIds}
               onBack={handleStep2Back}

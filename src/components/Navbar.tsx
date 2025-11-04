@@ -40,7 +40,7 @@ export function Navbar({
   };
 
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    if (onNavigate && (path === '/' || path === '/services')) {
+    if (onNavigate && (path === '/' || path === '/services' || path === '/tire-hotel')) {
       event.preventDefault();
       onNavigate(path);
       return true;

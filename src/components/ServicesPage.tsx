@@ -11,6 +11,7 @@ import carMaintenanceService from 'figma:asset/23fb0673ef5da715efe16a47361607b6c
 import tireService from 'figma:asset/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.png';
 
 interface Service {
+  id:string;
   name: string;
   price: string;
   note?: string;
@@ -23,7 +24,7 @@ interface ServiceCategoryData {
 }
 
 interface ServicesPageProps {
-  onBookingClick: (serviceName: string) => void;
+  onBookingClick: (serviceId: string | null) => void;
 }
 
 // Service hero carousel items
@@ -63,28 +64,31 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
       id: 'car-wash',
       title: t('serviceCategory.carWash'),
       services: [
-        { name: t('service.exteriorWash'), price: '95.00 €' },
-        { name: t('service.fullWash'), price: '150.00 €' },
-        { name: t('service.interiorCleaning'), price: '80.00 €' },
-        { name: t('service.engineWash'), price: '65.00 €' },
+        { id: 'exterior-wash', name: t('service.exteriorWash'), price: '95.00 €' },
+        { id: 'full-wash', name: t('service.fullWash'), price: '150.00 €' },
+        { id: 'interior-cleaning', name: t('service.interiorCleaning'), price: '80.00 €' },
+        { id: 'engine-wash', name: t('service.engineWash'), price: '65.00 €' },
       ],
     },
     {
       id: 'maintenance',
       title: t('serviceCategory.maintenance'),
       services: [
-        { 
+        {
+          id: 'basic-service',
           name: t('service.basicService'), 
           price: '250.00 €',
           note: t('service.basicServiceNote')
         },
-        { 
+        {
+          id: 'large-service',
           name: t('service.largeService'), 
           price: '450.00 €',
           note: t('service.largeServiceNote')
         },
-        { name: t('service.acService'), price: '120.00 €' },
-        { 
+        { id: 'ac-service', name: t('service.acService'), price: '120.00 €' },
+        {
+          id: 'brake-fluid',
           name: t('service.brakeFluid'), 
           price: '85.00 €',
           note: t('service.brakeFluidNote')
@@ -95,16 +99,18 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
       id: 'tire-work',
       title: t('serviceCategory.tireWork'),
       services: [
-        { 
+        {
+          id: 'tire-mounting',
           name: t('service.tireMounting'), 
           price: '60.00 €',
           note: t('service.tireMountingNote')
         },
-        { name: t('service.tireRemoval'), price: '40.00 €' },
-        { name: t('service.wheelBalancing'), price: '15.00 €' },
-        { name: t('service.tireRepair'), price: '25.00 €' },
-        { name: t('service.tpmsService'), price: '45.00 €' },
-        { 
+        { id: 'tire-removal', name: t('service.tireRemoval'), price: '40.00 €' },
+        { id: 'wheel-balancing', name: t('service.wheelBalancing'), price: '15.00 €' },
+        { id: 'tire-repair', name: t('service.tireRepair'), price: '25.00 €' },
+        { id: 'tpms-service', name: t('service.tpmsService'), price: '45.00 €' },
+        {
+          id: 'wheel-alignment',
           name: t('service.wheelAlignment'), 
           price: '95.00 €',
           note: t('service.wheelAlignmentNote')
@@ -142,9 +148,9 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
               <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl">
                 {t('servicesPage.subtitle')}
               </p>
-              <Button 
-                size="lg" 
-                onClick={() => onBookingClick('')}
+              <Button
+                size="lg"
+                onClick={() => onBookingClick(null)}
                 className="bg-accent hover:bg-accent/90 text-white rounded-full h-12 px-8 gap-2"
               >
                 <Calendar className="h-5 w-5" />
@@ -238,7 +244,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
                         <ServiceListItem
                           key={serviceIdx}
                           service={service}
-                          onBookClick={(serviceName) => onBookingClick(serviceName)}
+                          onBookClick={(serviceId) => onBookingClick(serviceId)}
                         />
                       ))}
                     </div>
@@ -259,7 +265,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
 // Service List Item Component
 interface ServiceListItemProps {
   service: Service;
-  onBookClick: (serviceName: string) => void;
+  onBookClick: (serviceId: string) => void;
 }
 
 function ServiceListItem({ service, onBookClick }: ServiceListItemProps) {
@@ -299,7 +305,7 @@ function ServiceListItem({ service, onBookClick }: ServiceListItemProps) {
             variant={isHovered ? 'default' : 'outline'}
             onClick={(e) => {
               e.stopPropagation();
-              onBookClick(service.name);
+              onBookClick(service.id);
             }}
             className="rounded-full gap-1 transition-all"
           >

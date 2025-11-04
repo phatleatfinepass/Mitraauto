@@ -122,32 +122,24 @@ export function BookingStep2({
   
   // Initialize category if service is pre-selected
   React.useEffect(() => {
-    if (isFromServicesPage && selectedServiceIds.length > 0 && !selectedCategory) {
+    if (selectedServiceIds.length > 0 && !selectedCategory) {
       const firstServiceId = selectedServiceIds[0];
       const category = serviceCategories.find(cat => 
         cat.services.some(s => s.id === firstServiceId)
       );
       if (category) {
         setSelectedCategory(category.id);
-        setCurrentServiceId(firstServiceId);
       }
     }
-  }, [selectedServiceIds, isFromServicesPage, selectedCategory]);
+  }, [selectedServiceIds, selectedCategory]);
 
   const validateAndContinue = () => {
     setError('');
 
-    // Validate based on flow type
-    if (isFromServicesPage) {
-      if (selectedServiceIds.length === 0) {
-        setError('Please select at least one service to continue');
-        return;
-      }
-    } else {
-      if (!selectedServiceId) {
-        setError('Please select a service to continue');
-        return;
-      }
+    // Always validate for multiple services (new default)
+    if (selectedServiceIds.length === 0) {
+      setError('Please select at least one service to continue');
+      return;
     }
 
     onContinue();
@@ -165,15 +157,16 @@ export function BookingStep2({
     // Add the service
     onServicesChange([...selectedServiceIds, currentServiceId]);
     
-    // Reset selections
-    setCurrentServiceId('');
+    // Reset both dropdowns to initial state
     setSelectedCategory('');
+    setCurrentServiceId('');
     setError('');
   };
   
   const handleRemoveService = (serviceId: string) => {
     if (!onServicesChange) return;
     onServicesChange(selectedServiceIds.filter(id => id !== serviceId));
+    setError('');
   };
   
   const getServiceDetails = (serviceId: string) => {
@@ -189,6 +182,8 @@ export function BookingStep2({
     return category?.services || [];
   };
 
+  const canContinue = selectedServiceIds.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Desktop: Two Column Layout */}
@@ -199,13 +194,104 @@ export function BookingStep2({
             <p className="text-sm text-muted-foreground mb-4">
               Choose the service you need for your vehicle
             </p>
-            <div id="service_list">
-              <ServiceCardList
-                services={mockServices}
-                selectedServiceId={selectedServiceId}
-                onSelectService={onServiceChange}
-                loading={false}
-              />
+            
+            <div className="space-y-5" id="services-page-multi-select">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Select category
+                  </label>
+                  <Select
+                    value={selectedCategory || undefined}
+                    onValueChange={(value) => {
+                      setSelectedCategory(value);
+                      setCurrentServiceId('');
+                      setError('');
+                    }}
+                  >
+                    <SelectTrigger aria-label="Select service category">
+                      <SelectValue placeholder="Choose category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {serviceCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Select service
+                  </label>
+                  <Select
+                    value={currentServiceId || undefined}
+                    onValueChange={(value) => {
+                      setCurrentServiceId(value);
+                      setError('');
+                    }}
+                    disabled={!selectedCategory}
+                  >
+                    <SelectTrigger aria-label="Select service" disabled={!selectedCategory}>
+                      <SelectValue placeholder="Choose a service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCategoryServices().map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          {service.name} · €{service.price.toFixed(2)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleAddService}
+                  disabled={!currentServiceId}
+                  variant="secondary"
+                  className="mt-6 sm:mt-auto sm:self-end"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add service
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Selected services</h4>
+                {selectedServiceIds.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedServiceIds.map((serviceId) => {
+                      const service = getServiceDetails(serviceId);
+                      if (!service) return null;
+                      return (
+                        <Badge
+                          key={serviceId}
+                          variant="secondary"
+                          className="flex items-center gap-2 py-1 pr-2"
+                        >
+                          <span className="text-xs font-medium">{service.name}</span>
+                          <span className="text-[10px] text-muted-foreground">€{service.price.toFixed(2)}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveService(serviceId)}
+                            className="rounded-full p-0.5 hover:bg-secondary-foreground/10 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            aria-label={`Remove ${service.name}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Added services will appear here.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -255,7 +341,7 @@ export function BookingStep2({
           id="cta_continue_step2"
           onClick={validateAndContinue}
           className="w-full sm:flex-1"
-          disabled={!selectedServiceId}
+          disabled={!canContinue}
         >
           {t('booking.continue')}
         </Button>
