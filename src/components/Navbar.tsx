@@ -20,9 +20,17 @@ interface NavbarProps {
   onSignupClick: () => void;
   onLogout: () => void;
   cartCount?: number;
+  onNavigate?: (path: string) => void;
 }
 
-export function Navbar({ isLoggedIn, onLoginClick, onSignupClick, onLogout, cartCount = 0 }: NavbarProps) {
+export function Navbar({
+  isLoggedIn,
+  onLoginClick,
+  onSignupClick,
+  onLogout,
+  cartCount = 0,
+  onNavigate,
+}: NavbarProps) {
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,6 +39,16 @@ export function Navbar({ isLoggedIn, onLoginClick, onSignupClick, onLogout, cart
     setLanguage(language === 'fi' ? 'en' : 'fi');
   };
 
+  const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (onNavigate && (path === '/' || path === '/services')) {
+      event.preventDefault();
+      onNavigate(path);
+      return true;
+    }
+
+    return false;
+  };
+  
   const navLinks = [
     { key: 'nav.home', href: '/' },
     { key: 'nav.services', href: '/services' },
@@ -45,10 +63,14 @@ export function Navbar({ isLoggedIn, onLoginClick, onSignupClick, onLogout, cart
       <div className="container mx-auto max-w-7xl px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2 transition-opacity hover:opacity-60">
-            <img 
-              src={logo} 
-              alt="Mitra Auto" 
+          <a
+            href="/"
+            className="flex items-center gap-2 transition-opacity hover:opacity-60"
+            onClick={(event) => handleLinkClick(event, '/')}
+          >
+            <img
+              src={logo}
+              alt="Mitra Auto"
               className="h-8 w-auto dark:brightness-0 dark:invert" 
             />
             <span className="text-lg font-semibold tracking-tight">Mitra Auto</span>
@@ -61,6 +83,7 @@ export function Navbar({ isLoggedIn, onLoginClick, onSignupClick, onLogout, cart
                 key={link.key}
                 href={link.href}
                 className="px-3 py-2 text-sm font-normal text-foreground/80 hover:text-foreground transition-colors"
+                onClick={(event) => handleLinkClick(event, link.href)}
               >
                 {t(link.key)}
               </a>
@@ -158,7 +181,10 @@ export function Navbar({ isLoggedIn, onLoginClick, onSignupClick, onLogout, cart
                         key={link.key}
                         href={link.href}
                         className="px-3 py-2 text-base rounded-lg hover:bg-secondary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={(event) => {
+                          handleLinkClick(event, link.href);
+                          setMobileMenuOpen(false);
+                        }}
                       >
                         {t(link.key)}
                       </a>
@@ -180,14 +206,20 @@ export function Navbar({ isLoggedIn, onLoginClick, onSignupClick, onLogout, cart
                       <a
                         href="/dashboard"
                         className="px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={(event) => {
+                          handleLinkClick(event, '/dashboard');
+                          setMobileMenuOpen(false);
+                        }}
                       >
                         {t('nav.dashboard')}
                       </a>
                       <a
                         href="/orders"
                         className="px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={(event) => {
+                          handleLinkClick(event, '/orders');
+                          setMobileMenuOpen(false);
+                        }}
                       >
                         {t('nav.orders')}
                       </a>

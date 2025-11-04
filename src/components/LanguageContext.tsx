@@ -32,8 +32,8 @@ const translations: Translations = {
   'nav.cart': { fi: 'Ostoskori', en: 'Cart' },
   
   // Hero
-  'hero.headline': { fi: 'Renkaat ja huolto — nopeasti ja luotettavasti', en: 'Tyres & service — fast and reliable' },
-  'hero.subheadline': { fi: 'Varaa aika verkossa minuuteissa.', en: 'Book online in minutes.' },
+  'hero.headline': { fi: 'Mitra Auto - Ammattitaitoiset palvelut', en: 'Mitra Auto - Professional Services' },
+  'hero.subheadline': { fi: 'Täyden palvelun korjaamo rengas-, huolto- ja korjauspalveluilla. Varaa aikasi verkossa.', en: 'Full-service garage with tire, maintenance and repair services. Book your appointment online.' },
   'hero.cta.primary': { fi: 'Varaa huolto', en: 'Book a Service' },
   'hero.cta.secondary': { fi: 'Selaa renkaita', en: 'Browse Tyres' },
   'hero.trust.paytrail': { fi: 'Paytrail-maksu', en: 'Paytrail Payment' },

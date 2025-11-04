@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowRight, Calendar } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ContactSection } from './ContactSection';
 
 interface Service {
   name: string;
@@ -206,25 +207,8 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
         </div>
       </section>
 
-      {/* Bottom Booking CTA */}
-      <section className="relative bg-accent text-white py-16 md:py-24">
-        <div className="container mx-auto max-w-4xl px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl tracking-tight mb-4">
-            {t('servicesPage.readyToBook')}
-          </h2>
-          <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            {t('servicesPage.readySubtitle')}
-          </p>
-          <Button 
-            size="lg" 
-            onClick={onBookingClick}
-            className="bg-white hover:bg-white/90 text-accent rounded-full h-12 px-8 gap-2"
-          >
-            <Calendar className="h-5 w-5" />
-            {t('servicesPage.bookService')}
-          </Button>
-        </div>
-      </section>
+      {/* Contact & Location Section */}
+      <ContactSection />
     </div>
   );
 }

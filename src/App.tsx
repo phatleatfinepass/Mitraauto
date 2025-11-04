@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
 import { Navbar } from './components/Navbar';
@@ -12,6 +12,7 @@ import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Wrench, 
   Scale, 
@@ -27,6 +28,22 @@ import {
   Navigation
 } from 'lucide-react';
 
+// Hero carousel images
+const heroImages = [
+  {
+    src: "figma:asset/4cb482b95f880bceb1d224189064b8f57ddc8d70.png",
+    alt: "Mitra Auto Waiting Area Interior"
+  },
+  {
+    src: "figma:asset/5a0da5872455763e4a6e80296c6c97173fdbd68f.png",
+    alt: "Mitra Auto Building Exterior"
+  },
+  {
+    src: "figma:asset/bb92247377df5edaf2acc2cedb218029b1ace423.png",
+    alt: "Mitra Auto Workshop Garage"
+  }
+];
+
 function HomePage() {
   const { t, language } = useLanguage();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -35,23 +52,53 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Hero carousel timer - changes image every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(timer);
+  }, []);
   
+  const updatePageFromPath = useCallback(
+    (path: string) => {
+      setCurrentPage(path === '/services' ? 'services' : 'home');
+    },
+    [setCurrentPage]
+  );
+
+  const navigate = useCallback(
+    (path: string) => {
+      if (window.location.pathname !== path) {
+        window.history.pushState({}, '', path);
+      }
+      updatePageFromPath(path);
+    },
+    [updatePageFromPath]
+  );
+
+  const handleInternalNavigation = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+      event.preventDefault();
+      navigate(path);
+    },
+    [navigate]
+  );
   // Simple client-side routing
   useEffect(() => {
     const handleNavigation = () => {
-      const path = window.location.pathname;
-      if (path === '/services') {
-        setCurrentPage('services');
-      } else {
-        setCurrentPage('home');
-      }
+      const path = window.location.pathname;      
+      updatePageFromPath(path);
     };
 
     handleNavigation();
     window.addEventListener('popstate', handleNavigation);
     
     return () => window.removeEventListener('popstate', handleNavigation);
-  }, []);
+  }, [updatePageFromPath]);
   
   // Debug emergency modal state
   React.useEffect(() => {
@@ -167,6 +214,7 @@ function HomePage() {
         onSignupClick={handleSignup}
         onLogout={handleLogout}
         cartCount={0}
+        onNavigate={navigate}
       />
 
       <AuthModal
@@ -279,12 +327,23 @@ function HomePage() {
               </div>
 
               <div className="relative">
-                <div className="aspect-[4/3] overflow-hidden rounded-3xl">
-                  <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1705747401901-28363172fe7e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBzaG93cm9vbXxlbnwxfHx8fDE3NjA5Mjk1Mjd8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Mitra Auto Premium Service"
-                    className="h-full w-full object-cover"
-                  />
+                <div className="aspect-[4/3] overflow-hidden rounded-3xl relative">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentImageIndex}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.35 }}
+                      className="absolute inset-0"
+                    >
+                      <ImageWithFallback
+                        src={heroImages[currentImageIndex].src}
+                        alt={heroImages[currentImageIndex].alt}
+                        className="h-full w-full object-cover"
+                      />
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
@@ -314,13 +373,17 @@ function HomePage() {
                   </div>
                   <h3 className="mb-3 text-xl font-semibold">{t(service.titleKey)}</h3>
                   <p className="mb-4 text-muted-foreground">{t(service.descKey)}</p>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="group/btn text-accent hover:text-accent/80" 
                     asChild
                   >
-                    <a href="/services" className="inline-flex items-center gap-1">
+                    <a
+                      href="/services"
+                      className="inline-flex items-center gap-1"
+                      onClick={(event) => handleInternalNavigation(event, '/services')}
+                    >
                       {t('services.cta')}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
                     </a>
