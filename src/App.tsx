@@ -27,19 +27,22 @@ import {
   Clock,
   Navigation
 } from 'lucide-react';
+import waitingArea from './assets/hero/hero-waiting-area.png';
+import exterior from './assets/hero/hero-exterior.png';
+import workshop from './assets/hero/hero-workshop.png';
 
 // Hero carousel images
 const heroImages = [
   {
-    src: "figma:asset/4cb482b95f880bceb1d224189064b8f57ddc8d70.png",
+    src: waitingArea,
     alt: "Mitra Auto Waiting Area Interior"
   },
   {
-    src: "figma:asset/5a0da5872455763e4a6e80296c6c97173fdbd68f.png",
+    src: exterior,
     alt: "Mitra Auto Building Exterior"
   },
   {
-    src: "figma:asset/bb92247377df5edaf2acc2cedb218029b1ace423.png",
+    src: workshop,
     alt: "Mitra Auto Workshop Garage"
   }
 ];
