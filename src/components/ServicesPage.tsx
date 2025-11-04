@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from './LanguageContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowRight, Calendar } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ContactSection } from './ContactSection';
+import { motion, AnimatePresence } from 'motion/react';
+import carWashService from 'figma:asset/cac46ce90efaaa69a5d5eac00cb56658fc7c8afa.png';
+import carMaintenanceService from 'figma:asset/23fb0673ef5da715efe16a47361607b6c4536093.png';
+import tireService from 'figma:asset/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.png';
 
 interface Service {
   name: string;
@@ -19,12 +23,40 @@ interface ServiceCategoryData {
 }
 
 interface ServicesPageProps {
-  onBookingClick: () => void;
+  onBookingClick: (serviceName: string) => void;
 }
+
+// Service hero carousel items
+const serviceHeroItems = [
+  {
+    src: carWashService,
+    alt: "Professional Car Wash Service"
+  },
+  {
+    src: carMaintenanceService,
+    alt: "Expert Car Maintenance"
+  },
+  {
+    src: tireService,
+    alt: "Premium Car Tire Services"
+  }
+];
 
 export function ServicesPage({ onBookingClick }: ServicesPageProps) {
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string>('car-wash');
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Auto-rotate carousel every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        (prevIndex + 1) % serviceHeroItems.length
+      );
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const serviceCategories: ServiceCategoryData[] = [
     {
@@ -112,7 +144,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
               </p>
               <Button 
                 size="lg" 
-                onClick={onBookingClick}
+                onClick={() => onBookingClick('')}
                 className="bg-accent hover:bg-accent/90 text-white rounded-full h-12 px-8 gap-2"
               >
                 <Calendar className="h-5 w-5" />
@@ -120,13 +152,24 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
               </Button>
             </div>
 
-            {/* Right Image Placeholder */}
+            {/* Right Hero Carousel - Service Images */}
             <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-xl">
-              <ImageWithFallback
-                src="https://images.unsplash.com/photo-1632823469583-6d0e3d425fcd?w=800&q=80"
-                alt="Car service workshop"
-                className="w-full h-full object-cover"
-              />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentImageIndex}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="absolute inset-0"
+                >
+                  <ImageWithFallback
+                    src={serviceHeroItems[currentImageIndex].src}
+                    alt={serviceHeroItems[currentImageIndex].alt}
+                    className="w-full h-full object-cover"
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -195,7 +238,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
                         <ServiceListItem
                           key={serviceIdx}
                           service={service}
-                          onBookClick={onBookingClick}
+                          onBookClick={(serviceName) => onBookingClick(serviceName)}
                         />
                       ))}
                     </div>
@@ -216,7 +259,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
 // Service List Item Component
 interface ServiceListItemProps {
   service: Service;
-  onBookClick: () => void;
+  onBookClick: (serviceName: string) => void;
 }
 
 function ServiceListItem({ service, onBookClick }: ServiceListItemProps) {
@@ -256,7 +299,7 @@ function ServiceListItem({ service, onBookClick }: ServiceListItemProps) {
             variant={isHovered ? 'default' : 'outline'}
             onClick={(e) => {
               e.stopPropagation();
-              onBookClick();
+              onBookClick(service.name);
             }}
             className="rounded-full gap-1 transition-all"
           >

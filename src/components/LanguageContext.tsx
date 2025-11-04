@@ -43,14 +43,14 @@ const translations: Translations = {
   // Services
   'services.title': { fi: 'Palvelumme', en: 'Our Services' },
   'services.subtitle': { fi: 'Ammattitaitoista palvelua kaikille autoilijoille', en: 'Professional service for all drivers' },
-  'services.tireChange.title': { fi: 'Renkaan vaihto', en: 'Tyre Change' },
-  'services.tireChange.desc': { fi: 'Nopea ja ammattimainen renkaan vaihto', en: 'Fast and professional tyre change' },
+  'services.carMaintenance.title': { fi: 'Autohuolto', en: 'Car Maintenance' },
+  'services.carMaintenance.desc': { fi: 'Huolto ja korjaus', en: 'Service and repairs' },
   'services.balancing.title': { fi: 'Tasapainotus', en: 'Balancing' },
-  'services.balancing.desc': { fi: 'Renkaiden tasapainotus tarkkuudella', en: 'Precise wheel balancing' },
+  'services.balancing.desc': { fi: 'Renkaiden tasapainotus', en: 'Wheel balancing' },
   'services.tireHotel.title': { fi: 'Rengashotelli', en: 'Tire Hotel' },
-  'services.tireHotel.desc': { fi: 'Turvallinen säilytys renkkaillesi', en: 'Safe storage for your tyres' },
+  'services.tireHotel.desc': { fi: 'Säilytys renkaille', en: 'Tire storage' },
   'services.inspection.title': { fi: 'Tarkastus', en: 'Inspection' },
-  'services.inspection.desc': { fi: 'Kattava auton tarkastus', en: 'Comprehensive vehicle inspection' },
+  'services.inspection.desc': { fi: 'Auton tarkastus', en: 'Vehicle inspection' },
   'services.cta': { fi: 'Varaa', en: 'Book' },
   
   // Services Page

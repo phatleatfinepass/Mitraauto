@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Plus, X } from 'lucide-react';
 import { ServiceCardList, Service } from './ServiceCard';
 import { BookingSummaryCard } from './BookingSummaryCard';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Badge } from './ui/badge';
 
 interface BookingStep2Props {
   licensePlate: string;
   date: Date;
   timeSlot: string;
   selectedServiceId: string | null;
+  selectedServiceIds?: string[];
+  isFromServicesPage?: boolean;
   onServiceChange: (serviceId: string) => void;
+  onServicesChange?: (serviceIds: string[]) => void;
   onBack: () => void;
   onEditStep1: () => void;
   onContinue: () => void;
@@ -49,29 +54,139 @@ const mockServices: Service[] = [
   },
 ];
 
+// Categorized services for Services Page flow
+interface ServiceCategory {
+  id: string;
+  name: string;
+  services: {
+    id: string;
+    name: string;
+    price: number;
+  }[];
+}
+
+const serviceCategories: ServiceCategory[] = [
+  {
+    id: 'car-wash',
+    name: 'Car Wash',
+    services: [
+      { id: 'exterior-wash', name: 'Exterior Wash', price: 95.00 },
+      { id: 'full-wash', name: 'Full Wash', price: 150.00 },
+      { id: 'interior-cleaning', name: 'Interior Cleaning', price: 80.00 },
+      { id: 'engine-wash', name: 'Engine Wash', price: 65.00 },
+    ],
+  },
+  {
+    id: 'maintenance',
+    name: 'Maintenance',
+    services: [
+      { id: 'basic-service', name: 'Basic Service', price: 250.00 },
+      { id: 'large-service', name: 'Large Service', price: 450.00 },
+      { id: 'ac-service', name: 'AC Service', price: 120.00 },
+      { id: 'brake-fluid', name: 'Brake Fluid', price: 85.00 },
+    ],
+  },
+  {
+    id: 'tire-work',
+    name: 'Tire Work',
+    services: [
+      { id: 'tire-mounting', name: 'Tire Mounting', price: 60.00 },
+      { id: 'tire-removal', name: 'Tire Removal', price: 40.00 },
+      { id: 'wheel-balancing', name: 'Wheel Balancing', price: 15.00 },
+      { id: 'tire-repair', name: 'Tire Repair', price: 25.00 },
+      { id: 'tpms-service', name: 'TPMS Service', price: 45.00 },
+      { id: 'wheel-alignment', name: 'Wheel Alignment', price: 95.00 },
+    ],
+  },
+];
+
 export function BookingStep2({
   licensePlate,
   date,
   timeSlot,
   selectedServiceId,
+  selectedServiceIds = [],
+  isFromServicesPage = false,
   onServiceChange,
+  onServicesChange,
   onBack,
   onEditStep1,
   onContinue,
   t,
 }: BookingStep2Props) {
   const [error, setError] = useState<string>('');
+  
+  // For dropdown UI (Services page flow)
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [currentServiceId, setCurrentServiceId] = useState<string>('');
+  
+  // Initialize category if service is pre-selected
+  React.useEffect(() => {
+    if (isFromServicesPage && selectedServiceIds.length > 0 && !selectedCategory) {
+      const firstServiceId = selectedServiceIds[0];
+      const category = serviceCategories.find(cat => 
+        cat.services.some(s => s.id === firstServiceId)
+      );
+      if (category) {
+        setSelectedCategory(category.id);
+        setCurrentServiceId(firstServiceId);
+      }
+    }
+  }, [selectedServiceIds, isFromServicesPage, selectedCategory]);
 
   const validateAndContinue = () => {
     setError('');
 
-    // Validate service
-    if (!selectedServiceId) {
-      setError('Please select a service to continue');
-      return;
+    // Validate based on flow type
+    if (isFromServicesPage) {
+      if (selectedServiceIds.length === 0) {
+        setError('Please select at least one service to continue');
+        return;
+      }
+    } else {
+      if (!selectedServiceId) {
+        setError('Please select a service to continue');
+        return;
+      }
     }
 
     onContinue();
+  };
+  
+  const handleAddService = () => {
+    if (!currentServiceId || !onServicesChange) return;
+    
+    // Check if service is already added
+    if (selectedServiceIds.includes(currentServiceId)) {
+      setError('This service is already added');
+      return;
+    }
+    
+    // Add the service
+    onServicesChange([...selectedServiceIds, currentServiceId]);
+    
+    // Reset selections
+    setCurrentServiceId('');
+    setSelectedCategory('');
+    setError('');
+  };
+  
+  const handleRemoveService = (serviceId: string) => {
+    if (!onServicesChange) return;
+    onServicesChange(selectedServiceIds.filter(id => id !== serviceId));
+  };
+  
+  const getServiceDetails = (serviceId: string) => {
+    for (const category of serviceCategories) {
+      const service = category.services.find(s => s.id === serviceId);
+      if (service) return service;
+    }
+    return null;
+  };
+  
+  const getCategoryServices = () => {
+    const category = serviceCategories.find(c => c.id === selectedCategory);
+    return category?.services || [];
   };
 
   return (

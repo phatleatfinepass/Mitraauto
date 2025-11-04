@@ -27,9 +27,9 @@ import {
   Clock,
   Navigation
 } from 'lucide-react';
-import waitingArea from './assets/hero/hero-waiting-area.png';
-import exterior from './assets/hero/hero-exterior.png';
-import workshop from './assets/hero/hero-workshop.png';
+import waitingArea from 'figma:asset/7f3da97624c68ef159f5a1406820901e8a63dd7e.png';
+import exterior from 'figma:asset/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png';
+import workshop from 'figma:asset/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png';
 
 // Hero carousel images
 const heroImages = [
@@ -54,6 +54,8 @@ function HomePage() {
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [preSelectedService, setPreSelectedService] = useState<string>('');
+  const [isFromServicesPage, setIsFromServicesPage] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -129,8 +131,8 @@ function HomePage() {
   const services = [
     {
       icon: Wrench,
-      titleKey: 'services.tireChange.title',
-      descKey: 'services.tireChange.desc',
+      titleKey: 'services.carMaintenance.title',
+      descKey: 'services.carMaintenance.desc',
     },
     {
       icon: Scale,
@@ -235,6 +237,8 @@ function HomePage() {
       <BookingModal
         open={bookingModalOpen}
         onOpenChange={setBookingModalOpen}
+        preSelectedService={preSelectedService}
+        isFromServicesPage={isFromServicesPage}
       />
 
       {/* Unified Background Gradient Blobs - Continuous Web Across Entire Scroll */}
@@ -269,7 +273,11 @@ function HomePage() {
 
       <main id="main-content">
         {currentPage === 'services' ? (
-          <ServicesPage onBookingClick={() => setBookingModalOpen(true)} />
+          <ServicesPage onBookingClick={(serviceName) => {
+            setPreSelectedService(serviceName);
+            setIsFromServicesPage(true);
+            setBookingModalOpen(true);
+          }} />
         ) : (
           <>
         {/* Hero Section */}
@@ -289,7 +297,11 @@ function HomePage() {
                   <Button 
                     size="lg" 
                     className="bg-accent hover:bg-accent/90 text-white h-12 px-8 rounded-full"
-                    onClick={() => setBookingModalOpen(true)}
+                    onClick={() => {
+                      setPreSelectedService('');
+                      setIsFromServicesPage(false);
+                      setBookingModalOpen(true);
+                    }}
                   >
                     {t('hero.cta.primary')}
                   </Button>
@@ -589,20 +601,39 @@ function HomePage() {
 
             {/* Overall Rating */}
             <div className="text-center">
-              <div className="mx-auto flex w-full flex-col items-center gap-6 rounded-2xl bg-secondary p-6 text-center transition-all hover:shadow-[0_0_35px_rgba(0,113,227,0.2)] hover:bg-secondary/80 sm:w-auto sm:flex-row sm:gap-8 sm:p-8 sm:text-left">
-                 <div className="text-center sm:text-left">
-                  <div className="text-5xl font-bold">4.9/5</div>
-                  <div className="mt-2 flex justify-center gap-1 sm:justify-start" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-accent text-accent" />
-                    ))}
+              <div className="mx-auto w-full sm:w-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+                  {/* Rating Card */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent/5 via-secondary to-secondary p-8 transition-all hover:shadow-[0_0_30px_rgba(231,76,60,0.15)] hover:scale-[1.02]">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-transform group-hover:scale-150" />
+                    <div className="relative z-10 text-center">
+                      <div className="flex items-baseline justify-center gap-2 mb-3">
+                        <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">4.9</span>
+                        <span className="text-2xl text-muted-foreground">/5</span>
+                      </div>
+                      <div className="flex gap-1 mb-2 justify-center" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className="h-5 w-5 fill-accent text-accent drop-shadow-sm" />
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {language === 'fi' ? 'Asiakasarvostelut' : 'Customer Rating'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="h-px w-full bg-border sm:h-16 sm:w-px" />
-                <div className="text-center sm:text-left">
-                  <div className="text-3xl font-bold">500+</div>
-                  <div className="text-sm text-muted-foreground">
-                    {t('common.happyCustomers')}
+
+                  {/* Happy Customers Card */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-secondary to-secondary p-8 transition-all hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] hover:scale-[1.02]">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-transform group-hover:scale-150" />
+                    <div className="relative z-10 text-center">
+                      <div className="flex items-baseline justify-center gap-1 mb-3">
+                        <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">500</span>
+                        <span className="text-4xl font-bold text-accent">+</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {t('common.happyCustomers')}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
