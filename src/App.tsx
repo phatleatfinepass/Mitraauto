@@ -3,6 +3,7 @@ import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { ContactSection } from './components/ContactSection';
 import { AuthModal } from './components/AuthModal';
 import { EmergencyTowModal } from './components/EmergencyTowModal';
 import { BookingModal } from './components/BookingModal';
@@ -519,6 +520,9 @@ function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Contact & Location Section */}
+        <ContactSection />
       </main>
 
       <Footer />

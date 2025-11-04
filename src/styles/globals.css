@@ -279,7 +279,7 @@ html {
   @media (max-width: 640px) {
     [data-slot="dialog-content"] {
       max-height: 95vh;
-      max-width: min(calc(100vw - 2rem), 640px);
+      max-width:min(calc(100vw - 2rem), 640px);
     }
   }
 }

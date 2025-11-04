@@ -207,6 +207,19 @@ const translations: Translations = {
   'common.happyCustomers': { fi: 'Tyytyväistä asiakasta', en: 'Happy Customers' },
   'auth.or': { fi: 'TAI', en: 'OR' },
   'auth.placeholder.email': { fi: 'nimi@esimerkki.fi', en: 'name@example.com' },
+  
+  // Contact Section
+  'contact.title': { fi: 'Löydä meidät & ota yhteyttä', en: 'Find Us & Get in Touch' },
+  'contact.heading': { fi: 'Yhteystiedot', en: 'Contact Information' },
+  'contact.subheading': { fi: 'Olemme täällä auttamassa — tavoita meidät koska tahansa.', en: 'We\'re here to help — reach us anytime.' },
+  'contact.address': { fi: 'Osoite', en: 'Address' },
+  'contact.phone': { fi: 'Puhelin', en: 'Phone' },
+  'contact.email': { fi: 'Sähköposti', en: 'Email' },
+  'contact.hours': { fi: 'Aukioloajat', en: 'Opening Hours' },
+  'contact.hoursValue': { fi: 'Ma–Pe: 08:00–18:00, La: 09:00–15:00', en: 'Mon–Fri: 08:00–18:00, Sat: 09:00–15:00' },
+  'contact.directionsButton': { fi: 'Hae reittiohjeet', en: 'Get Directions' },
+  'contact.contactButton': { fi: 'Ota yhteyttä', en: 'Contact Us' },
+  'contact.mapPlaceholder': { fi: 'Kartta palvelukeskuksestamme', en: 'Map of our service center' },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
