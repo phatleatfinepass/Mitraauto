@@ -33,7 +33,7 @@ export function Navbar({ isLoggedIn, onLoginClick, onSignupClick, onLogout, cart
 
   const navLinks = [
     { key: 'nav.home', href: '/' },
-    { key: 'nav.booking', href: '/booking' },
+    { key: 'nav.services', href: '/services' },
     { key: 'nav.catalog', href: '/catalog' },
     { key: 'nav.tireHotel', href: '/tire-hotel' },
     // Temporarily hidden - Used Cars

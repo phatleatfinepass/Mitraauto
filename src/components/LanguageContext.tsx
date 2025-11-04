@@ -18,7 +18,7 @@ interface LanguageContextType {
 const translations: Translations = {
   // Navigation
   'nav.home': { fi: 'Etusivu', en: 'Home' },
-  'nav.booking': { fi: 'Varaus', en: 'Booking' },
+  'nav.services': { fi: 'Palvelut', en: 'Services' },
   'nav.catalog': { fi: 'Katalogi', en: 'Catalog' },
   'nav.tireHotel': { fi: 'Rengashotelli', en: 'Tire Hotel' },
   'nav.usedCars': { fi: 'Käytetyt autot', en: 'Used Cars' },
@@ -52,6 +52,46 @@ const translations: Translations = {
   'services.inspection.title': { fi: 'Tarkastus', en: 'Inspection' },
   'services.inspection.desc': { fi: 'Kattava auton tarkastus', en: 'Comprehensive vehicle inspection' },
   'services.cta': { fi: 'Varaa', en: 'Book' },
+  
+  // Services Page
+  'servicesPage.title': { fi: 'Palvelumme', en: 'Our Services' },
+  'servicesPage.subtitle': { fi: 'Varaa mikä tahansa palvelu helposti — valitse aikasi ja saat välittömän vahvistuksen.', en: 'Book any service easily — choose your slot and get instant confirmation.' },
+  'servicesPage.bookNow': { fi: 'Varaa nyt', en: 'Book Now' },
+  'servicesPage.readyToBook': { fi: 'Valmis varaamaan?', en: 'Ready to Book?' },
+  'servicesPage.readySubtitle': { fi: 'Varaa palvelusi nyt — se vie vain 2 vaihetta.', en: 'Reserve your service now — it only takes 2 steps.' },
+  'servicesPage.bookService': { fi: 'Varaa palvelu', en: 'Book a Service' },
+  'servicesPage.selectCategory': { fi: 'Valitse kategoria', en: 'Select category' },
+  'servicesPage.from': { fi: 'alkaen', en: 'from' },
+  
+  // Service Categories
+  'serviceCategory.carWash': { fi: 'Auton pesu', en: 'Car Wash' },
+  'serviceCategory.maintenance': { fi: 'Huolto', en: 'Maintenance' },
+  'serviceCategory.tireWork': { fi: 'Rengastyöt', en: 'Tire Work' },
+  
+  // Car Wash Services
+  'service.exteriorWash': { fi: 'Ulkopesu + kovavaha', en: 'Exterior washing + hard waxing' },
+  'service.fullWash': { fi: 'Täyspesu sisältä ja ulkoa', en: 'Full wash inside and outside' },
+  'service.interiorCleaning': { fi: 'Sisäpuhdistus', en: 'Interior cleaning' },
+  'service.engineWash': { fi: 'Moottorinpesu', en: 'Engine wash' },
+  
+  // Maintenance Services
+  'service.basicService': { fi: 'Perushuolto', en: 'Basic service' },
+  'service.basicServiceNote': { fi: 'Sisältää varaosat', en: 'Including spare parts' },
+  'service.largeService': { fi: 'Iso huolto', en: 'Large service' },
+  'service.largeServiceNote': { fi: 'Sisältää varaosat', en: 'Including spare parts' },
+  'service.acService': { fi: 'Ilmastointihuolto', en: 'Air conditioning service' },
+  'service.brakeFluid': { fi: 'Jarrunestevaihdto', en: 'Brake fluid change' },
+  'service.brakeFluidNote': { fi: 'Sisältää jarrunesteen', en: 'Including brake fluid' },
+  
+  // Tire Work Services
+  'service.tireMounting': { fi: 'Renkaan asennus', en: 'Tire mounting' },
+  'service.tireMountingNote': { fi: 'Poistettujen renkaiden tasapainotus 5 EUR/kpl', en: 'Balancing of removed tires 5 EUR/pc' },
+  'service.tireRemoval': { fi: 'Renkaan irrotus', en: 'Tire removal' },
+  'service.wheelBalancing': { fi: 'Pyörän tasapainotus', en: 'Wheel balancing' },
+  'service.tireRepair': { fi: 'Rengaskorjaus', en: 'Tire repair' },
+  'service.tpmsService': { fi: 'TPMS-rengaspaineanturin huolto', en: 'TPMS tire pressure sensor service' },
+  'service.wheelAlignment': { fi: 'Pyörän kohdistus', en: 'Wheel alignment' },
+  'service.wheelAlignmentNote': { fi: 'Sisältää mittauksen ja säädön', en: 'Including measurement and adjustment' },
   
   // Catalog
   'catalog.title': { fi: 'Rengaskatalogi', en: 'Tyre Catalog' },
@@ -209,14 +249,14 @@ const translations: Translations = {
   'auth.placeholder.email': { fi: 'nimi@esimerkki.fi', en: 'name@example.com' },
   
   // Contact Section
-  'contact.title': { fi: 'Löydä meidät & ota yhteyttä', en: 'Find Us & Get in Touch' },
+  'contact.title': { fi: 'Ota yhteyttä', en: 'Get in Touch' },
   'contact.heading': { fi: 'Yhteystiedot', en: 'Contact Information' },
   'contact.subheading': { fi: 'Olemme täällä auttamassa — tavoita meidät koska tahansa.', en: 'We\'re here to help — reach us anytime.' },
   'contact.address': { fi: 'Osoite', en: 'Address' },
   'contact.phone': { fi: 'Puhelin', en: 'Phone' },
   'contact.email': { fi: 'Sähköposti', en: 'Email' },
   'contact.hours': { fi: 'Aukioloajat', en: 'Opening Hours' },
-  'contact.hoursValue': { fi: 'Ma–Pe: 08:00–18:00, La: 09:00–15:00', en: 'Mon–Fri: 08:00–18:00, Sat: 09:00–15:00' },
+  'contact.hoursValue': { fi: 'Ma–Pe: 9:00–18:00\nLa: 10:00–17:00\nSu: Suljettu', en: 'Mon–Fri: 9:00–18:00\nSat: 10:00–17:00\nSun: Closed' },
   'contact.directionsButton': { fi: 'Hae reittiohjeet', en: 'Get Directions' },
   'contact.contactButton': { fi: 'Ota yhteyttä', en: 'Contact Us' },
   'contact.mapPlaceholder': { fi: 'Kartta palvelukeskuksestamme', en: 'Map of our service center' },

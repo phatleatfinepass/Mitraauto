@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
 import { Navbar } from './components/Navbar';
@@ -7,6 +7,7 @@ import { ContactSection } from './components/ContactSection';
 import { AuthModal } from './components/AuthModal';
 import { EmergencyTowModal } from './components/EmergencyTowModal';
 import { BookingModal } from './components/BookingModal';
+import { ServicesPage } from './components/ServicesPage';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
@@ -33,6 +34,24 @@ function HomePage() {
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home');
+  
+  // Simple client-side routing
+  useEffect(() => {
+    const handleNavigation = () => {
+      const path = window.location.pathname;
+      if (path === '/services') {
+        setCurrentPage('services');
+      } else {
+        setCurrentPage('home');
+      }
+    };
+
+    handleNavigation();
+    window.addEventListener('popstate', handleNavigation);
+    
+    return () => window.removeEventListener('popstate', handleNavigation);
+  }, []);
   
   // Debug emergency modal state
   React.useEffect(() => {
@@ -198,6 +217,10 @@ function HomePage() {
       </div>
 
       <main id="main-content">
+        {currentPage === 'services' ? (
+          <ServicesPage onBookingClick={() => setBookingModalOpen(true)} />
+        ) : (
+          <>
         {/* Hero Section */}
         <section className="relative" aria-labelledby="hero-heading">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
@@ -297,7 +320,7 @@ function HomePage() {
                     className="group/btn text-accent hover:text-accent/80" 
                     asChild
                   >
-                    <a href="/booking" className="inline-flex items-center gap-1">
+                    <a href="/services" className="inline-flex items-center gap-1">
                       {t('services.cta')}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
                     </a>
@@ -391,10 +414,10 @@ function HomePage() {
                   className="bg-accent hover:bg-accent/90 text-white h-12 px-8 rounded-full"
                   asChild
                 >
-                  <a href="/booking" className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2" onClick={() => setBookingModalOpen(true)}>
                     <Calendar className="h-5 w-5" aria-hidden="true" />
                     {t('booking.cta.button')}
-                  </a>
+                  </span>
                 </Button>
               </div>
               
@@ -500,17 +523,17 @@ function HomePage() {
 
             {/* Overall Rating */}
             <div className="text-center">
-              <div className="inline-flex items-center gap-8 rounded-2xl bg-secondary p-8 transition-all hover:shadow-[0_0_35px_rgba(0,113,227,0.2)] hover:bg-secondary/80">
-                <div>
+              <div className="mx-auto flex w-full flex-col items-center gap-6 rounded-2xl bg-secondary p-6 text-center transition-all hover:shadow-[0_0_35px_rgba(0,113,227,0.2)] hover:bg-secondary/80 sm:w-auto sm:flex-row sm:gap-8 sm:p-8 sm:text-left">
+                 <div className="text-center sm:text-left">
                   <div className="text-5xl font-bold">4.9/5</div>
-                  <div className="mt-2 flex justify-center gap-1" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
+                  <div className="mt-2 flex justify-center gap-1 sm:justify-start" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="h-5 w-5 fill-accent text-accent" />
                     ))}
                   </div>
                 </div>
-                <div className="h-16 w-px bg-border" />
-                <div className="text-left">
+                <div className="h-px w-full bg-border sm:h-16 sm:w-px" />
+                <div className="text-center sm:text-left">
                   <div className="text-3xl font-bold">500+</div>
                   <div className="text-sm text-muted-foreground">
                     {t('common.happyCustomers')}
@@ -523,6 +546,8 @@ function HomePage() {
 
         {/* Contact & Location Section */}
         <ContactSection />
+          </>
+        )}
       </main>
 
       <Footer />

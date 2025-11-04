@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from './LanguageContext';
 import { Button } from './ui/button';
 import { MapPin, Phone, Mail, Clock, Navigation } from 'lucide-react';
+import MapContainer from '../imports/MapContainer';
+import { getShopStatus } from '../utils/openingHours';
 
 export function ContactSection() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [shopStatus, setShopStatus] = useState(getShopStatus());
+
+  // Update shop status every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShopStatus(getShopStatus());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Static contact information (doesn't change with language)
   const CONTACT_INFO = {
@@ -48,7 +60,7 @@ export function ContactSection() {
 
   return (
     <section 
-      className="py-16 md:py-24 lg:py-32 bg-white relative" 
+      className="py-16 md:py-24 lg:py-32 bg-background relative" 
       aria-labelledby="contact-heading"
     >
       <div className="container mx-auto max-w-7xl px-6 lg:px-8">
@@ -63,35 +75,35 @@ export function ContactSection() {
         </div>
 
         {/* Two Column Layout */}
-        <div className="grid gap-8 md:gap-12 lg:grid-cols-[60%_40%] items-start">
+         <div className="grid grid-cols-1 gap-8 md:gap-12 lg:grid-cols-[60%_40%] items-start">
           {/* Left Column - Map Placeholder */}
-          <div className="order-1">
-            <a 
+           <div className="order-1 w-full">
+            <a
               href={CONTACT_INFO.mapUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block relative aspect-square rounded-2xl bg-gray-100 overflow-hidden shadow-sm transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer group"
+              className="block w-full relative aspect-square rounded-2xl bg-gray-100 overflow-hidden shadow-sm transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer group"
               aria-label={`${t('contact.mapPlaceholder')} - ${CONTACT_INFO.address}`}
             >
-              {/* Map Placeholder Content */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
-                <div className="rounded-full bg-white p-6 shadow-md group-hover:shadow-lg transition-all group-hover:scale-110">
-                  <MapPin className="h-12 w-12 text-accent" aria-hidden="true" />
-                </div>
-                <p className="text-lg text-gray-600 text-center group-hover:text-gray-900 transition-colors">
-                  {t('contact.mapPlaceholder')}
-                </p>
+              {/* Map Background */}
+              <div className="absolute inset-0 w-full h-full">
+                <MapContainer />
+              </div>
+              
+              {/* Flashing Map Pin Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <MapPin className="h-12 w-12 text-[#D5001C] animate-pulse-slow" aria-hidden="true" />
               </div>
             </a>
           </div>
 
           {/* Right Column - Contact Information */}
-          <div className="order-2">
-            <div className="rounded-2xl bg-gray-50 p-8 shadow-sm">
+          <div className="order-2 w-full">
+            <div className="rounded-2xl bg-secondary p-8 shadow-sm w-full">
               <h3 className="mb-2 text-2xl font-bold">
                 {t('contact.heading')}
               </h3>
-              <p className="mb-8 text-gray-600">
+              <p className="mb-8 text-muted-foreground">
                 {t('contact.subheading')}
               </p>
 
@@ -104,12 +116,26 @@ export function ContactSection() {
                         <detail.icon className="h-5 w-5 text-accent" aria-hidden="true" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-500 mb-1">
+                        <div className="text-sm text-muted-foreground mb-1">
                           {detail.label}
                         </div>
-                        <div className={`font-medium text-gray-900 break-words ${detail.isClickable ? 'group-hover:text-accent transition-colors' : ''}`}>
-                          {detail.value}
-                        </div>
+                        {detail.icon === Clock ? (
+                          <>
+                            <div className={`flex items-center gap-2 mb-2 ${shopStatus.isOpen ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                              <span className={`inline-block w-2 h-2 rounded-full ${shopStatus.isOpen ? 'bg-green-600 dark:bg-green-500' : 'bg-red-600 dark:bg-red-500'} animate-pulse`}></span>
+                              <span className="text-sm font-medium">
+                                {shopStatus.message[language]}
+                              </span>
+                            </div>
+                            <div className="font-medium text-foreground whitespace-pre-line">
+                              {detail.value}
+                            </div>
+                          </>
+                        ) : (
+                          <div className={`font-medium text-foreground break-words ${detail.isClickable ? 'group-hover:text-accent transition-colors' : ''}`}>
+                            {detail.value}
+                          </div>
+                        )}
                       </div>
                     </>
                   );
@@ -121,7 +147,7 @@ export function ContactSection() {
                         href={detail.href}
                         target={detail.icon === MapPin ? "_blank" : undefined}
                         rel={detail.icon === MapPin ? "noopener noreferrer" : undefined}
-                        className="flex items-start gap-4 transition-all hover:bg-white rounded-lg p-3 -mx-3 cursor-pointer group"
+                        className="flex items-start gap-4 transition-all hover:bg-background rounded-lg p-3 -mx-3 cursor-pointer group"
                       >
                         {content}
                       </a>
@@ -131,7 +157,7 @@ export function ContactSection() {
                   return (
                     <div 
                       key={idx} 
-                      className="flex items-start gap-4 transition-all hover:bg-white rounded-lg p-3 -mx-3"
+                      className="flex items-start gap-4 transition-all hover:bg-background rounded-lg p-3 -mx-3"
                     >
                       {content}
                     </div>
