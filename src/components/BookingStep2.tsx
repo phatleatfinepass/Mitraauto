@@ -98,6 +98,15 @@ const serviceCategories: ServiceCategory[] = [
       { id: 'wheel-alignment', name: 'Wheel Alignment', price: 95.00 },
     ],
   },
+  {
+    id: 'tire-hotel',
+    name: 'Tire Hotel',
+    services: [
+      { id: 'tire-hotel-storage', name: 'Storage Plan', price: 50.0 },
+      { id: 'tire-hotel-seasonal-swap', name: 'Seasonal Swap', price: 45.0 },
+      { id: 'tire-hotel-hotel-package', name: 'Hotel Package', price: 90.0 },
+    ],
+  },
 ];
 
 export function BookingStep2({

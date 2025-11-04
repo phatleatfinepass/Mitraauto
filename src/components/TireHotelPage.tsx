@@ -30,6 +30,12 @@ interface TireHotelPageProps {
 export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   const { t, language } = useLanguage();
 
+  const tireHotelServiceIds = {
+    storage: 'tire-hotel-storage',
+    seasonalSwap: 'tire-hotel-seasonal-swap',
+    hotelPackage: 'tire-hotel-hotel-package',
+  } as const;
+
   // Benefits data
   const benefits = [
     {
@@ -76,6 +82,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   // Pricing plans
   const pricingPlans = [
     {
+      id: tireHotelServiceIds.storage,
       name: language === 'fi' ? 'Säilytys' : 'Storage',
       price: '50',
       period: language === 'fi' ? 'kausi' : 'season',
@@ -89,6 +96,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
       highlighted: false
     },
     {
+      id: tireHotelServiceIds.seasonalSwap,
       name: language === 'fi' ? 'Kausivaihtopaketti' : 'Seasonal Swap',
       price: '45',
       period: language === 'fi' ? 'vaihto' : 'swap',
@@ -102,6 +110,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
       highlighted: false
     },
     {
+      id: tireHotelServiceIds.hotelPackage,
       name: language === 'fi' ? 'Hotellipaketti' : 'Hotel Package',
       price: '90',
       period: language === 'fi' ? 'kausi' : 'season',
@@ -190,7 +199,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                onClick={() => onBookingClick('Tire Hotel')}
+                onClick={() => onBookingClick(tireHotelServiceIds.storage)}
                 className="bg-accent hover:bg-accent/90 text-white rounded-full h-14 px-10 gap-2 shadow-lg shadow-accent/30 hover:shadow-accent/50 transition-all"
               >
                 <Calendar className="h-5 w-5" />
@@ -378,11 +387,11 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
                     </div>
 
                     <Button
-                      onClick={() => onBookingClick(plan.name)}
+                      onClick={() => onBookingClick(plan.id)}
                       className={`w-full mb-8 rounded-full h-12 ${
                         plan.highlighted
                           ? 'bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/30'
-                          : 'bg-secondary hover:bg-secondary/80'
+                          : 'bg-foreground hover:bg-foreground/90 text-background'
                       }`}
                     >
                       {language === 'fi' ? 'Varaa nyt' : 'Book Now'}
@@ -468,7 +477,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
           
           <Button
             size="lg"
-            onClick={() => onBookingClick('Tire Hotel')}
+            onClick={() => onBookingClick(tireHotelServiceIds.storage)}
             className="bg-accent hover:bg-accent/90 text-white rounded-full h-14 px-12 gap-2 shadow-lg shadow-accent/30 hover:shadow-accent/50 transition-all text-lg"
           >
             <Calendar className="h-5 w-5" />

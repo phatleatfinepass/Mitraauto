@@ -137,6 +137,10 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
           'tire-repair': 'Tire repair',
           'tpms-service': 'TPMS tire pressure sensor service',
           'wheel-alignment': 'Wheel alignment',
+          // Tire Hotel
+          'tire-hotel-storage': 'Tire storage plan',
+          'tire-hotel-seasonal-swap': 'Seasonal swap package',
+          'tire-hotel-hotel-package': 'Tire hotel package',
         };
         return serviceMap[id] || 'Service';
       }).join(', ');

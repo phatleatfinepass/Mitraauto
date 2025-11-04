@@ -9,6 +9,7 @@ import { EmergencyTowModal } from './components/EmergencyTowModal';
 import { BookingModal } from './components/BookingModal';
 import { ServicesPage } from './components/ServicesPage';
 import { TireHotelPage } from './components/TireHotelPage';
+import { AboutPage } from './components/AboutPage';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
@@ -75,6 +76,8 @@ function HomePage() {
         setCurrentPage('services');
       } else if (path === '/tire-hotel') {
         setCurrentPage('tire-hotel');
+      } else if (path === '/about') {
+        setCurrentPage('about');
       } else {
         setCurrentPage('home');
       }
@@ -88,6 +91,8 @@ function HomePage() {
         window.history.pushState({}, '', path);
       }
       updatePageFromPath(path);
+      // Scroll to top when navigating to new page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     [updatePageFromPath]
   );
@@ -291,6 +296,11 @@ function HomePage() {
               setPreSelectedService(serviceId ?? '');
               setBookingModalOpen(true);
             }}
+          />
+        ) : currentPage === 'about' ? (
+          <AboutPage
+            onBookingClick={() => setBookingModalOpen(true)}
+            onNavigate={navigate}
           />
         ) : (
           <>
@@ -641,10 +651,10 @@ function HomePage() {
                     <div className="relative z-10 text-center">
                       <div className="flex items-baseline justify-center gap-1 mb-3">
                         <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">500</span>
-                        <span className="text-4xl font-bold text-accent">+</span>
+                        <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">+</span>
                       </div>
                       <div className="flex gap-1 mb-2 justify-center" role="img" aria-label="500+ happy customers">
-                        <Users className="h-5 w-5 fill-primary text-primary drop-shadow-sm" />
+                        <Users className="h-5 w-5 fill-[#FF6B35] text-[#FF6B35] drop-shadow-sm" />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {t('common.happyCustomers')}
@@ -663,7 +673,7 @@ function HomePage() {
         )}
       </main>
 
-      <Footer />
+      <Footer onNavigate={navigate} />
     </div>
   );
 }

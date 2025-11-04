@@ -156,7 +156,7 @@ const translations: Translations = {
   'footer.company': { fi: 'Yritys', en: 'Company' },
   'footer.legal': { fi: 'Oikeudelliset', en: 'Legal' },
   'footer.catalog': { fi: 'Katalogi', en: 'Catalog' },
-  'footer.tireChange': { fi: 'Renkaan vaihto', en: 'Tyre Change' },
+  'footer.tireChange': { fi: 'Rengastyöt', en: 'Tire Work' },
   'footer.tireHotel': { fi: 'Rengashotelli', en: 'Tire Hotel' },
   'footer.inspection': { fi: 'Tarkastus', en: 'Inspection' },
   'footer.about': { fi: 'Tietoa meistä', en: 'About Us' },
@@ -259,6 +259,48 @@ const translations: Translations = {
   'contact.directionsButton': { fi: 'Hae reittiohjeet', en: 'Get Directions' },
   'contact.contactButton': { fi: 'Ota yhteyttä', en: 'Contact Us' },
   'contact.mapPlaceholder': { fi: 'Kartta palvelukeskuksestamme', en: 'Map of our service center' },
+  
+  // About Page
+  'about.hero.headline': { fi: 'Tarkkuus ajaa meitä. Kuljettajat luottavat meihin.', en: 'Driven by Precision. Trusted by Drivers.' },
+  'about.hero.subtitle': { fi: 'Mitra Auto määrittelee autonhoidon uudelleen Helsingissä – yhdistämällä huippuluokan käsityötaidon ja kehittyneen teknologian.', en: 'Mitra Auto is redefining car care in Helsinki — combining high-end craftsmanship with advanced technology.' },
+  'about.hero.exploreServices': { fi: 'Tutustu palveluihimme', en: 'Explore Our Services' },
+  'about.hero.contactUs': { fi: 'Ota yhteyttä', en: 'Contact Us' },
+  
+  'about.story.title': { fi: 'Luottamuksen rakentaminen vuodesta 2023', en: 'Engineering Trust Since 2023' },
+  'about.story.body': { fi: 'Vuoden 2023 lopulla perustettu Mitra Auto Oy Hankasuontiellä 5 rakentuu kokeneiden mekaanikkojen ja älykkäiden palvelujärjestelmien perustalle. Erikoistuimme ajoneuvojen huoltoon ja korjaukseen, palvellen kaikkia merkittäviä tuotemerkkejä läpinäkyvyydellä ja tehokkuudella.', en: 'Founded in late 2023, Mitra Auto Oy at Hankasuontie 5 is built on a foundation of experienced mechanics and smart service systems. We specialise in vehicle maintenance and repair, servicing all major brands with transparency and efficiency.' },
+  
+  'about.values.title': { fi: 'Arvomme', en: 'Our Values' },
+  'about.values.precision.title': { fi: 'Tarkkuus', en: 'Precision' },
+  'about.values.precision.desc': { fi: 'Jokainen yksityiskohta on tärkeä.', en: 'Every detail matters.' },
+  'about.values.integrity.title': { fi: 'Rehellisyys', en: 'Integrity' },
+  'about.values.integrity.desc': { fi: 'Läpinäkyvä palvelu, oikeudenmukainen hinnoittelu.', en: 'Transparent service, fair pricing.' },
+  'about.values.innovation.title': { fi: 'Innovaatio', en: 'Innovation' },
+  'about.values.innovation.desc': { fi: 'Älykkäät järjestelmät, saumattomat kokemukset.', en: 'Smart systems, seamless experiences.' },
+  'about.values.care.title': { fi: 'Huolenpito', en: 'Care' },
+  'about.values.care.desc': { fi: 'Turvallisuutesi on prioriteettimme.', en: 'Your safety is our priority.' },
+  
+  'about.expertise.title': { fi: 'Osaamisemme', en: 'Our Expertise' },
+  'about.expertise.tireServices.title': { fi: 'Rengaspalvelut', en: 'Tire Services' },
+  'about.expertise.tireServices.desc': { fi: 'Asiantuntevaa rengashuoltoa ja -vaihtoa kaikille automerkeille.', en: 'Expert tire maintenance and replacement for all vehicle brands.' },
+  'about.expertise.rimSelection.title': { fi: 'Vannevalikoima', en: 'Rim Selection' },
+  'about.expertise.rimSelection.desc': { fi: 'Laaja valikoima premium-vanteita sopivaksi jokaiseen tyyliin.', en: 'Wide range of premium rims to match every style.' },
+  'about.expertise.maintenance.title': { fi: 'Autohuolto', en: 'Car Maintenance' },
+  'about.expertise.maintenance.desc': { fi: 'Täydellinen huolto ja diagnostiikka ammattilaisiltamme.', en: 'Complete servicing and diagnostics from our professionals.' },
+  'about.expertise.tireHotel.title': { fi: 'Rengashotelli', en: 'Tire Hotel' },
+  'about.expertise.tireHotel.desc': { fi: 'Turvallinen ja käytännöllinen rengassäilytys ympäri vuoden.', en: 'Safe and convenient tire storage year-round.' },
+  'about.expertise.viewAll': { fi: 'Näytä kaikki palvelut', en: 'View All Services' },
+  
+  'about.team.title': { fi: 'Tapaa tiimimme', en: 'Meet the Team' },
+  'about.team.quote': { fi: 'Uskomme oikein tekemiseen ensimmäisellä kerralla.', en: 'We believe in doing it right the first time.' },
+  
+  'about.partners.title': { fi: 'Luotettavat kumppanimme', en: 'In Trusted Partnership' },
+  'about.partners.subtitle': { fi: 'Integraatiot, jotka tehostavat palveluamme.', en: 'Integrations that power our service.' },
+  
+  'about.closing.quote': { fi: 'Emme vain huolla autoja – rakennamme kestäviä asiakassuhteita.', en: "We don't just service cars – we build lasting relationships." },
+  'about.closing.cta': { fi: 'Aloita tästä', en: 'Get Started' },
+  
+  'about.businessInfo.companyName': { fi: 'Mitra Auto Oy', en: 'Mitra Auto Oy' },
+  'about.businessInfo.businessId': { fi: 'Y-tunnus', en: 'Business ID' },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

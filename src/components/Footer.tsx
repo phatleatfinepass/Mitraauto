@@ -3,10 +3,63 @@ import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
 import logo from 'figma:asset/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png';
 
-export function Footer() {
+interface FooterProps {
+  onNavigate?: (path: string) => void;
+}
+
+interface FooterLink {
+  key: string;
+  href: string;
+  sectionId?: string;
+}
+
+interface FooterSection {
+  titleKey: string;
+  links: FooterLink[];
+}
+
+export function Footer({ onNavigate }: FooterProps) {
   const { language, setLanguage, t } = useLanguage();
 
-  const footerSections = [
+  const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string, sectionId?: string) => {
+    // Handle navigation to Services page with section scroll
+    if (href === '/services' && sectionId && onNavigate) {
+      event.preventDefault();
+      onNavigate('/services');
+      // Wait for page to render, then scroll to section
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      return;
+    }
+
+    // Handle navigation to Home page with section scroll
+    if (href === '/' && sectionId && onNavigate) {
+      event.preventDefault();
+      onNavigate('/');
+      // Wait for page to render, then scroll to section
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      return;
+    }
+
+    // Handle Tire Hotel navigation
+    if (href === '/tire-hotel' && onNavigate) {
+      event.preventDefault();
+      onNavigate('/tire-hotel');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+  };
+
+  const footerSections: FooterSection[] = [
     {
       titleKey: 'footer.shop',
       links: [
@@ -18,16 +71,15 @@ export function Footer() {
     {
       titleKey: 'footer.services',
       links: [
-        { key: 'footer.tireChange', href: '/services/tire-change' },
+        { key: 'footer.tireChange', href: '/services', sectionId: 'tire-work' },
         { key: 'footer.tireHotel', href: '/tire-hotel' },
-        { key: 'footer.inspection', href: '/services/inspection' },
       ],
     },
     {
       titleKey: 'footer.company',
       links: [
         { key: 'footer.about', href: '/about' },
-        { key: 'footer.contact', href: '/contact' },
+        { key: 'footer.contact', href: '/', sectionId: 'contact-heading' },
       ],
     },
     {
@@ -53,8 +105,8 @@ export function Footer() {
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {language === 'fi' 
-                  ? 'Premium renkaat ja huoltopalvelut Suomessa' 
-                  : 'Premium tyres and services in Finland'}
+                  ? 'Täyden palvelun korjaamo, joka tarjoaa rengas-, huolto- ja korjauspalveluita.' 
+                  : 'Full-service garage with tire, maintenance and repair services.'}
               </p>
             </div>
 
@@ -68,6 +120,7 @@ export function Footer() {
                       <a
                         href={link.href}
                         className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => handleLinkClick(e, link.href, link.sectionId)}
                       >
                         {t(link.key)}
                       </a>

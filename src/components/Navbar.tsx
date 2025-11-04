@@ -43,6 +43,8 @@ export function Navbar({
     if (onNavigate && (path === '/' || path === '/services' || path === '/tire-hotel')) {
       event.preventDefault();
       onNavigate(path);
+      // Scroll to top of page smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return true;
     }
 
