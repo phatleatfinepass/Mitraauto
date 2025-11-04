@@ -485,7 +485,7 @@
   @media (width <= 640px) {
     [data-slot="dialog-content"] {
       max-height: 95vh;
-      margin: auto 1rem;
+      max-width: min(calc(100vw - 2rem), 640px);
     }
   }
 
