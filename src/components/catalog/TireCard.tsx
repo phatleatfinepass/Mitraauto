@@ -30,6 +30,15 @@ interface TireCardProps {
 export function TireCard({ product }: TireCardProps) {
   const { language } = useLanguage();
 
+  const euFuel = product.eu_fuel ? product.eu_fuel.toString().trim().toUpperCase() : undefined;
+  const euWet = product.eu_wet ? product.eu_wet.toString().trim().toUpperCase() : undefined;
+  const parsedNoise =
+    typeof product.eu_noise === 'number'
+      ? product.eu_noise
+      : Number.parseFloat(String(product.eu_noise ?? '').replace(/[^0-9.,-]/g, '').replace(',', '.'));
+  const euNoise = Number.isFinite(parsedNoise) ? parsedNoise : undefined;
+  const hasEuLabel = Boolean(euFuel || euWet || euNoise !== undefined);
+
   const getSeasonIcon = (season?: string) => {
     if (!season) return null;
     switch (season.toLowerCase()) {
@@ -98,7 +107,7 @@ export function TireCard({ product }: TireCardProps) {
           )}
 
           {/* EU Label - Prominent Display */}
-          {(product.eu_fuel || product.eu_wet || product.eu_noise) && (
+          {hasEuLabel && (
             <div className="absolute bottom-4 left-4 right-4 z-10">
               <div className="bg-white/95 dark:bg-black/80 backdrop-blur-md rounded-xl p-3 border border-gray-200 dark:border-white/20 shadow-lg">
                 <div className="flex items-center justify-between gap-3">
@@ -111,22 +120,22 @@ export function TireCard({ product }: TireCardProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {product.eu_fuel && (
+                    {euFuel && (
                       <div className="flex flex-col items-center">
                         <span className="text-[10px] text-gray-500 dark:text-gray-400">{language === 'fi' ? 'Polttoaine' : 'Fuel'}</span>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{product.eu_fuel}</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{euFuel}</span>
                       </div>
                     )}
-                    {product.eu_wet && (
+                    {euWet && (
                       <div className="flex flex-col items-center">
                         <span className="text-[10px] text-gray-500 dark:text-gray-400">{language === 'fi' ? 'Märkäpito' : 'Wet'}</span>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{product.eu_wet}</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{euWet}</span>
                       </div>
                     )}
-                    {product.eu_noise && (
+                    {euNoise !== undefined && (
                       <div className="flex flex-col items-center">
                         <span className="text-[10px] text-gray-500 dark:text-gray-400">{language === 'fi' ? 'Melu' : 'Noise'}</span>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{product.eu_noise}dB</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{Math.round(euNoise)}dB</span>
                       </div>
                     )}
                   </div>

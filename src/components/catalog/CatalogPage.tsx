@@ -18,7 +18,7 @@ interface Product {
   brand: string;
   model: string;
   product_type: string;
-  best_price_eur: number;
+  best_price_eur?: number;
   best_image_url: string;
   in_stock: boolean;
   // Tire specific
@@ -42,6 +42,95 @@ interface Product {
 }
 
 const ITEMS_PER_PAGE = 12;
+
+const EU_RATING_VALUES = new Set(['A', 'B', 'C', 'D', 'E']);
+
+function getFallbackImage(brand?: string, model?: string) {
+  const label = encodeURIComponent(`${brand ?? 'Product'} ${model ?? ''}`.trim());
+  return `https://picsum.photos/seed/${label}/640/640`;
+}
+
+function normalizeEuRating(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const normalized = String(value).trim();
+  if (!normalized) return undefined;
+  const rating = normalized.charAt(0).toUpperCase();
+  return EU_RATING_VALUES.has(rating) ? rating : undefined;
+}
+
+function parseNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  const normalized = String(value)
+    .replace(/[^0-9.,-]/g, '')
+    .replace(',', '.');
+
+  if (!normalized || normalized === '-' || normalized === '.') {
+    return undefined;
+  }
+
+  const numeric = Number(normalized);
+
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function normalizeEuNoise(value: unknown): number | undefined {
+  const numeric = parseNumber(value);
+  return numeric === undefined ? undefined : numeric;
+}
+
+function mapTireRow(row: any, fallbackSize?: string): Product {
+  const euFuel = normalizeEuRating(
+    row.eu_fuel ?? row.eu_fuel_rating ?? row.eu_label_fuel ?? row.fuel_efficiency ?? row.fuel
+  );
+  const euWet = normalizeEuRating(
+    row.eu_wet ?? row.eu_wet_rating ?? row.eu_label_wet ?? row.wet_grip ?? row.wet
+  );
+  const euNoise = normalizeEuNoise(
+    row.eu_noise ?? row.eu_noise_level ?? row.eu_noise_db ?? row.noise ?? row.noise_level
+  );
+
+  return {
+    id: row.id,
+    brand: row.brand,
+    model: row.model,
+    size_text: row.size_text ?? fallbackSize ?? undefined,
+    eu_fuel: euFuel,
+    eu_wet: euWet,
+    eu_noise: euNoise,
+    season: row.season ?? undefined,
+    runflat: row.runflat ?? undefined,
+    xl: row.xl ?? undefined,
+    studded: row.studded ?? undefined,
+    best_price_eur: parseNumber(row.best_price_eur),
+    best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
+    in_stock: !!row.in_stock,
+    product_type: 'tire',
+  };
+}
+
+function mapRimRow(row: any): Product {
+  return {
+    id: row.id,
+    brand: row.brand,
+    model: row.model,
+    rim_width: parseNumber(row.rim_width),
+    rim_diameter: parseNumber(row.rim_diameter),
+    pcd: row.pcd ?? undefined,
+    et_offset: parseNumber(row.et_offset),
+    cb: parseNumber(row.cb),
+    color: row.color ?? undefined,
+    material: row.material ?? undefined,
+    bolts_included: row.bolts_included ?? undefined,
+    best_price_eur: parseNumber(row.best_price_eur),
+    best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
+    in_stock: !!row.in_stock,
+    product_type: 'rim',
+  };
+}
 
 // Demo data until products_search view is created
 const DEMO_TIRES: Product[] = [
@@ -181,23 +270,7 @@ export function CatalogPage() {
           });
           if (error) throw error;
 
-          const mapped = (data ?? []).map((row: any) => ({
-            id: row.id,
-            brand: row.brand,
-            model: row.model,
-            size_text: row.size_text ?? undefined,
-            eu_fuel: row.eu_fuel ?? undefined,
-            eu_wet: row.eu_wet ?? undefined,
-            eu_noise: row.eu_noise ?? undefined,
-            season: row.season ?? undefined,
-            runflat: row.runflat ?? undefined,
-            xl: row.xl ?? undefined,
-            studded: row.studded ?? undefined,
-            best_price_eur: row.best_price_eur ?? undefined,
-            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
-            in_stock: !!row.in_stock,
-            product_type: 'tire' as const,
-          }));
+          const mapped = (data ?? []).map((row: any) => mapTireRow(row));
 
           setProducts(mapped);
           setTotalCount(mapped.length);
@@ -207,23 +280,7 @@ export function CatalogPage() {
           const { data, error } = await tiresSearchUI(w, a, d);
           if (error) throw error;
 
-          const mapped = (data ?? []).map((row: any) => ({
-            id: row.id,
-            brand: row.brand,
-            model: row.model,
-            size_text: row.size_text ?? `${w}/${a} R${d}`,
-            eu_fuel: row.eu_fuel ?? undefined,
-            eu_wet: row.eu_wet ?? undefined,
-            eu_noise: row.eu_noise ?? undefined,
-            season: row.season ?? undefined,
-            runflat: row.runflat ?? undefined,
-            xl: row.xl ?? undefined,
-            studded: row.studded ?? undefined,
-            best_price_eur: row.best_price_eur ?? undefined,
-            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
-            in_stock: !!row.in_stock,
-            product_type: 'tire' as const,
-          }));
+          const mapped = (data ?? []).map((row: any) => mapTireRow(row, `${w}/${a} R${d}`));
 
           setProducts(mapped);
           setTotalCount(mapped.length);
@@ -249,22 +306,15 @@ export function CatalogPage() {
           const { data, error } = await rimsSearchUI(rw, rd, pcd);
           if (error) throw error;
 
-          const mapped = (data ?? []).map((row: any) => ({
-            id: row.id,
-            brand: row.brand,
-            model: row.model,
-            rim_width: Number(row.rim_width) || rw || undefined,
-            rim_diameter: Number(row.rim_diameter) || rd || undefined,
-            pcd: row.pcd || pcd || undefined,
-            et_offset: row.et_offset ?? undefined,
-            cb: row.cb ?? undefined,
-            color: row.color ?? undefined,
-            material: row.material ?? undefined,
-            best_price_eur: row.best_price_eur ?? undefined,
-            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
-            in_stock: !!row.in_stock,
-            product_type: 'rim' as const,
-          }));
+          const mapped = (data ?? []).map((row: any) => {
+            const rim = mapRimRow(row);
+            return {
+              ...rim,
+              rim_width: rim.rim_width ?? rw ?? undefined,
+              rim_diameter: rim.rim_diameter ?? rd ?? undefined,
+              pcd: rim.pcd ?? pcd ?? undefined,
+            };
+          });
 
           setProducts(mapped);
           setTotalCount(mapped.length);
@@ -278,22 +328,7 @@ export function CatalogPage() {
           });
           if (error) throw error;
 
-          const mapped = (data ?? []).map((row: any) => ({
-            id: row.id,
-            brand: row.brand,
-            model: row.model,
-            rim_width: Number(row.rim_width) || undefined,
-            rim_diameter: Number(row.rim_diameter) || undefined,
-            pcd: row.pcd || undefined,
-            et_offset: row.et_offset ?? undefined,
-            cb: row.cb ?? undefined,
-            color: row.color ?? undefined,
-            material: row.material ?? undefined,
-            best_price_eur: row.best_price_eur ?? undefined,
-            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
-            in_stock: !!row.in_stock,
-            product_type: 'rim' as const,
-          }));
+          const mapped = (data ?? []).map((row: any) => mapRimRow(row));
 
           setProducts(mapped);
           setTotalCount(mapped.length);
@@ -312,11 +347,6 @@ export function CatalogPage() {
       setLoading(false);
     }
   };
-
-  function getFallbackImage(brand?: string, model?: string) {
-    const label = encodeURIComponent(`${brand ?? 'Product'} ${model ?? ''}`.trim());
-    return `https://picsum.photos/seed/${label}/640/640`;
-  }
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
@@ -544,20 +574,22 @@ export function CatalogPage() {
               transition={{ duration: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             >
-              {products.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  {mode === 'tires' ? (
-                    <TireCard product={product} />
-                  ) : (
-                    <RimCard product={product} />
-                  )}
-                </motion.div>
-              ))}
+              {products
+                .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                .map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    {mode === 'tires' ? (
+                      <TireCard product={product} />
+                    ) : (
+                      <RimCard product={product} />
+                    )}
+                  </motion.div>
+                ))}
             </motion.div>
           </AnimatePresence>
         )}
