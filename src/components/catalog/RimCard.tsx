@@ -19,7 +19,7 @@ interface RimCardProps {
     cb?: number;
     color?: string;
     material?: string;
-    best_price_eur: number;
+    best_price_eur?: number;
     best_image_url: string;
     in_stock: boolean;
   };
@@ -162,7 +162,7 @@ export function RimCard({ product }: RimCardProps) {
             <div className="flex items-baseline justify-between">
               <div>
                 <span className="text-3xl text-white">
-                  €{product.best_price_eur.toFixed(2)}
+                  €{(product.best_price_eur || 0).toFixed(2)}
                 </span>
                 <span className="text-[#B0B8C4] text-sm ml-2">
                   {language === 'fi' ? '/kpl' : '/each'}
@@ -171,8 +171,8 @@ export function RimCard({ product }: RimCardProps) {
             </div>
 
             <Button
-              className="w-full bg-[#0B6BFF] hover:bg-[#0B6BFF]/80 text-white
-                shadow-[0_0_20px_rgba(11,107,255,0.3)] hover:shadow-[0_0_30px_rgba(11,107,255,0.5)]
+              className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white
+                shadow-[0_0_20px_rgba(255,107,53,0.3)] hover:shadow-[0_0_30px_rgba(255,107,53,0.5)]
                 transition-all duration-300"
               disabled={!product.in_stock}
             >

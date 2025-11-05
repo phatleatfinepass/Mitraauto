@@ -14,6 +14,14 @@ import { useLanguage } from './LanguageContext';
 import { useTheme } from './ThemeContext';
 import logo from 'figma:asset/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png';
 
+const INTERNAL_NAV_PATHS = new Set([
+  '/',
+  '/services',
+  '/tire-hotel',
+  '/catalog',
+  '/about',
+]);
+
 interface NavbarProps {
   isLoggedIn: boolean;
   onLoginClick: () => void;
@@ -40,7 +48,7 @@ export function Navbar({
   };
 
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    if (onNavigate && (path === '/' || path === '/services' || path === '/tire-hotel')) {
+    if (onNavigate && INTERNAL_NAV_PATHS.has(path)) {
       event.preventDefault();
       onNavigate(path);
       // Scroll to top of page smoothly
