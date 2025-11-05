@@ -96,12 +96,6 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
               placeholder="ABC-123"
             />
           </div>
-          <p className={`text-sm text-center ${secondaryTextClass}`}>
-            {language === 'fi' 
-              ? 'Haku käynnistyy automaattisesti 6 merkin jälkeen tai Enter-näppäimellä'
-              : 'Search starts automatically after 6 characters or press Enter'
-            }
-          </p>
         </div>
       )}
 

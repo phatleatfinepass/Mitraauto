@@ -98,12 +98,6 @@ export function TireFilters({ onFilterChange, onSearch, searchMode }: TireFilter
               placeholder="ABC-123"
             />
           </div>
-          <p className={`text-sm text-center ${secondaryTextClass}`}>
-            {language === 'fi' 
-              ? 'Toiminto tulee saataville pian'
-              : 'Function will be available soon'
-            }
-          </p>
         </div>
       )}
 
