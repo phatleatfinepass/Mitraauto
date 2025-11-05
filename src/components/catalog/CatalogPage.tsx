@@ -43,19 +43,179 @@ interface Product {
 
 const ITEMS_PER_PAGE = 12;
 
-const EU_RATING_VALUES = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
-
 function getFallbackImage(brand?: string, model?: string) {
   const label = encodeURIComponent(`${brand ?? 'Product'} ${model ?? ''}`.trim());
   return `https://picsum.photos/seed/${label}/640/640`;
 }
 
+function safeParseJson(value: unknown): unknown {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return value;
+    }
+
+    const isLikelyJson =
+      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+      (trimmed.startsWith('"') && trimmed.endsWith('"'));
+
+    if (isLikelyJson) {
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return value;
+}
+
+function getFirstMeaningfulValue(...values: unknown[]): unknown {
+  for (const rawValue of values) {
+    if (rawValue === null || rawValue === undefined) {
+      continue;
+    }
+
+    const parsed = safeParseJson(rawValue);
+
+    if (typeof parsed === 'string') {
+      const trimmed = parsed.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      const normalized = trimmed.toLowerCase();
+      if (normalized === 'n/a' || normalized === 'na' || normalized === 'none' || normalized === '-') {
+        continue;
+      }
+
+      return trimmed;
+    }
+
+    return parsed;
+  }
+
+  return undefined;
+}
+
+function normalizeKey(key: string) {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function extractLabelValue(source: unknown, keys: string[]): unknown {
+  if (source === null || source === undefined) {
+    return undefined;
+  }
+
+  const parsedSource = safeParseJson(source);
+
+  if (Array.isArray(parsedSource)) {
+    for (const entry of parsedSource) {
+      const result = extractLabelValue(entry, keys);
+      if (result !== undefined) {
+        return result;
+      }
+    }
+    return undefined;
+  }
+
+  if (typeof parsedSource !== 'object') {
+    return undefined;
+  }
+
+  const record = parsedSource as Record<string, unknown>;
+  const normalizedTargets = keys.map(normalizeKey);
+
+  for (const [entryKey, entryValue] of Object.entries(record)) {
+    const normalizedEntryKey = normalizeKey(entryKey);
+    if (normalizedTargets.includes(normalizedEntryKey)) {
+      const parsedEntryValue = safeParseJson(entryValue);
+      if (parsedEntryValue !== undefined && parsedEntryValue !== null) {
+        return parsedEntryValue;
+      }
+    }
+  }
+
+  const nestedContainers = [
+    'ratings',
+    'values',
+    'labels',
+    'metrics',
+    'details',
+    'data',
+    'info',
+    'classes',
+    'grades',
+    'levels',
+    'attributes',
+  ];
+
+  for (const containerKey of nestedContainers) {
+    if (containerKey in record) {
+      const nestedResult = extractLabelValue(record[containerKey], keys);
+      if (nestedResult !== undefined) {
+        return nestedResult;
+      }
+    }
+  }
+
+  for (const [entryKey, entryValue] of Object.entries(record)) {
+    const normalizedEntryKey = normalizeKey(entryKey);
+    if (normalizedTargets.some((target) => normalizedEntryKey.includes(target))) {
+      const nestedResult = extractLabelValue(entryValue, keys);
+      if (nestedResult !== undefined) {
+        return nestedResult;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function normalizeEuRating(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined;
-  const normalized = String(value).trim();
-  if (!normalized) return undefined;
-  const rating = normalized.charAt(0).toUpperCase();
-  return EU_RATING_VALUES.has(rating) ? rating : undefined;
+  
+  const parsedValue = safeParseJson(value);
+
+  if (Array.isArray(parsedValue)) {
+    for (const entry of parsedValue) {
+      const normalized = normalizeEuRating(entry);
+      if (normalized) {
+        return normalized;
+      }
+    }
+    return undefined;
+  }
+
+  if (typeof parsedValue === 'object') {
+    const record = parsedValue as Record<string, unknown>;
+    const candidateKeys = ['grade', 'rating', 'value', 'class', 'letter', 'score'];
+
+    for (const key of candidateKeys) {
+      if (key in record) {
+        const normalized = normalizeEuRating(record[key]);
+        if (normalized) {
+          return normalized;
+        }
+      }
+    }
+
+    for (const nestedValue of Object.values(record)) {
+      const normalized = normalizeEuRating(nestedValue);
+      if (normalized) {
+        return normalized;
+      }
+    }
+
+    return undefined;
+  }
+
+  const normalized = String(parsedValue).toUpperCase();
+  const match = normalized.match(/[A-G]/);
+
+  return match ? match[0] : undefined;
 }
 
 function parseNumber(value: unknown): number | undefined {
@@ -78,19 +238,150 @@ function parseNumber(value: unknown): number | undefined {
 }
 
 function normalizeEuNoise(value: unknown): number | undefined {
-  const numeric = parseNumber(value);
-  return numeric === undefined ? undefined : numeric;
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const parsedValue = safeParseJson(value);
+
+  if (Array.isArray(parsedValue)) {
+    for (const entry of parsedValue) {
+      const numeric = normalizeEuNoise(entry);
+      if (numeric !== undefined) {
+        return numeric;
+      }
+    }
+    return undefined;
+  }
+
+  if (parsedValue && typeof parsedValue === 'object') {
+    const maybeRecord = parsedValue as Record<string, unknown>;
+    const candidateKeys = ['db', 'decibel', 'value', 'noise', 'level', 'amount', 'external', 'number'];
+    for (const key of candidateKeys) {
+      if (key in maybeRecord) {
+        const numeric = normalizeEuNoise(maybeRecord[key]);
+        if (numeric !== undefined) {
+          return numeric;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  const numeric = parseNumber(parsedValue);
+  if (numeric === undefined) {
+    return undefined;
+  }
+
+  return Number.isFinite(numeric) ? numeric : undefined;
 }
 
 function mapTireRow(row: any, fallbackSize?: string): Product {
+  const euLabel = safeParseJson(
+    getFirstMeaningfulValue(
+      row.eu_label,
+      row.eu_label_data,
+      row.eu_label_json,
+      row.eu_label_details,
+      row.eu_label_info,
+      row.eu_label_values,
+      row.energy_label,
+      row.energy_label_data,
+      row.energy_label_json,
+      row.energy_label_details,
+      row.tire_label,
+      row.tire_label_data,
+      row.label_data,
+      row.label_json,
+      row.eu_ratings
+    )
+  );
+
   const euFuel = normalizeEuRating(
-    row.eu_fuel ?? row.eu_fuel_rating ?? row.eu_label_fuel ?? row.fuel_efficiency ?? row.fuel
+    getFirstMeaningfulValue(
+      row.eu_fuel,
+      row.eu_fuel_rating,
+      row.eu_fuel_grade,
+      row.eu_label_fuel,
+      row.eu_label_fuel_rating,
+      row.eu_label_fuel_grade,
+      row.fuel_efficiency,
+      row.fuel_efficiency_rating,
+      row.fuel_efficiency_grade,
+      row.fuel_grade,
+      row.fuel_rating,
+      row.fuel_class,
+      row.rolling_resistance,
+      row.rolling_resistance_grade,
+      extractLabelValue(euLabel, [
+        'fuel',
+        'fuel_efficiency',
+        'fuelefficiency',
+        'rolling_resistance',
+        'rollingresistance',
+        'energy',
+        'energy_efficiency',
+        'energyefficiency',
+        'energy_class',
+        'energyclass',
+        'efficiency',
+        'efficiency_class',
+        'efficiencyclass',
+      ])
+    )
   );
   const euWet = normalizeEuRating(
-    row.eu_wet ?? row.eu_wet_rating ?? row.eu_label_wet ?? row.wet_grip ?? row.wet
+    getFirstMeaningfulValue(
+      row.eu_wet,
+      row.eu_wet_rating,
+      row.eu_wet_grade,
+      row.eu_label_wet,
+      row.eu_label_wet_rating,
+      row.eu_label_wet_grade,
+      row.wet_grip,
+      row.wet_grip_rating,
+      row.wet_grip_grade,
+      row.grip,
+      row.grip_rating,
+      extractLabelValue(euLabel, [
+        'wet',
+        'wet_grip',
+        'wetgrip',
+        'grip',
+        'rain',
+        'braking',
+      ])
+    )
   );
   const euNoise = normalizeEuNoise(
-    row.eu_noise ?? row.eu_noise_level ?? row.eu_noise_db ?? row.noise ?? row.noise_level
+    getFirstMeaningfulValue(
+      row.eu_noise,
+      row.eu_noise_level,
+      row.eu_noise_db,
+      row.eu_label_noise,
+      row.eu_label_noise_db,
+      row.eu_label_noise_value,
+      row.noise,
+      row.noise_level,
+      row.noise_db,
+      row.external_noise,
+      row.external_noise_db,
+      row.sound_level,
+      extractLabelValue(euLabel, [
+        'noise',
+        'noise_level',
+        'noiselevel',
+        'noise_db',
+        'noisedb',
+        'external_noise',
+        'externalnoise',
+        'sound',
+        'sound_level',
+        'soundlevel',
+        'db',
+        'decibel',
+      ])
+    )
   );
 
   return {
