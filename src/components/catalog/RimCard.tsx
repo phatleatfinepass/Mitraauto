@@ -103,39 +103,39 @@ export function RimCard({ product }: RimCardProps) {
         <div className="p-6 space-y-4">
           {/* Brand & Model */}
           <div>
-            <h3 className="text-white mb-1">{product.brand}</h3>
-            <p className="text-[#B0B8C4] text-sm">{product.model}</p>
+            <h3 className="text-gray-900 dark:text-white mb-1">{product.brand}</h3>
+            <p className="text-gray-600 dark:text-[#B0B8C4] text-sm">{product.model}</p>
           </div>
 
           {/* Size Specification */}
           {getSizeText() && (
-            <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-              <span className="text-white text-sm">{getSizeText()}</span>
+            <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+              <span className="text-gray-900 dark:text-white text-sm">{getSizeText()}</span>
             </div>
           )}
 
           {/* Specifications Grid */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             {product.material && (
-              <div className="px-2 py-1.5 rounded-lg bg-white/5">
-                <span className="text-[#B0B8C4]">
+              <div className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
+                <span className="text-gray-600 dark:text-[#B0B8C4]">
                   {language === 'fi' ? 'Materiaali' : 'Material'}:
                 </span>
-                <span className="text-white ml-1">{getMaterialLabel(product.material)}</span>
+                <span className="text-gray-900 dark:text-white ml-1">{getMaterialLabel(product.material)}</span>
               </div>
             )}
             {product.color && (
-              <div className="px-2 py-1.5 rounded-lg bg-white/5">
-                <span className="text-[#B0B8C4]">
+              <div className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
+                <span className="text-gray-600 dark:text-[#B0B8C4]">
                   {language === 'fi' ? 'Väri' : 'Color'}:
                 </span>
-                <span className="text-white ml-1 capitalize">{product.color}</span>
+                <span className="text-gray-900 dark:text-white ml-1 capitalize">{product.color}</span>
               </div>
             )}
             {product.cb && (
-              <div className="px-2 py-1.5 rounded-lg bg-white/5">
-                <span className="text-[#B0B8C4]">CB:</span>
-                <span className="text-white ml-1">{product.cb}mm</span>
+              <div className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
+                <span className="text-gray-600 dark:text-[#B0B8C4]">CB:</span>
+                <span className="text-gray-900 dark:text-white ml-1">{product.cb}mm</span>
               </div>
             )}
           </div>
@@ -147,8 +147,8 @@ export function RimCard({ product }: RimCardProps) {
                 variant="outline"
                 className={`
                   ${product.material.toLowerCase() === 'alloy'
-                    ? 'bg-[#0B6BFF]/10 border-[#0B6BFF]/30 text-[#0B6BFF]'
-                    : 'bg-white/5 border-white/20 text-white'
+                    ? 'bg-blue-50 dark:bg-[#0B6BFF]/10 border-blue-200 dark:border-[#0B6BFF]/30 text-blue-700 dark:text-[#0B6BFF]'
+                    : 'bg-gray-100 dark:bg-white/5 border-gray-300 dark:border-white/20 text-gray-700 dark:text-white'
                   } text-xs
                 `}
               >
@@ -158,13 +158,13 @@ export function RimCard({ product }: RimCardProps) {
           )}
 
           {/* Price & Add to Cart */}
-          <div className="pt-4 border-t border-white/10 space-y-3">
+          <div className="pt-4 border-t border-gray-200 dark:border-white/10 space-y-3">
             <div className="flex items-baseline justify-between">
               <div>
-                <span className="text-3xl text-white">
+                <span className="text-3xl text-gray-900 dark:text-white">
                   €{(product.best_price_eur || 0).toFixed(2)}
                 </span>
-                <span className="text-[#B0B8C4] text-sm ml-2">
+                <span className="text-gray-600 dark:text-[#B0B8C4] text-sm ml-2">
                   {language === 'fi' ? '/kpl' : '/each'}
                 </span>
               </div>

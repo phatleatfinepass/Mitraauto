@@ -8,7 +8,7 @@ import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { Button } from '../ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { getSupabaseClient } from '../../utils/supabase/client';
+import { tiresSearchUI, rimsSearchUI } from '../../utils/rpc';
 
 type CatalogMode = 'tires' | 'rims';
 type SearchMode = 'license' | 'vehicle' | 'manual';
@@ -145,7 +145,6 @@ export function CatalogPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<any>({});
 
-  const supabase = getSupabaseClient();
 
   // Only fetch when search is explicitly triggered
   const handleSearch = () => {
@@ -163,86 +162,148 @@ export function CatalogPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // Try to fetch from Supabase, fall back to demo data
-      const { data, error, count } = await supabase
-        .from('products_search')
-        .select('*', { count: 'exact' })
-        .range(0, 0);
+      if (mode === 'tires') {
+        const wStr = String(filters.width ?? '').trim();
+        const aStr = String(filters.aspectRatio ?? '').trim();
+        const dStr = String(filters.diameter ?? '').trim();
 
-      // If table doesn't exist, use demo data
-      if (error && error.code === '42703') {
-        console.log('Using demo data - products_search view not found');
-        const demoData = mode === 'tires' ? DEMO_TIRES : DEMO_RIMS;
-        setProducts(demoData);
-        setTotalCount(demoData.length);
+        const w = wStr && wStr !== 'all' ? parseInt(wStr, 10) : null;
+        const a = aStr && aStr !== 'all' ? parseInt(aStr, 10) : null;
+        const d = dStr && dStr !== 'all' ? parseInt(dStr, 10) : null;
+
+        // If any of the filters are missing -> browse with the provided subset
+        if (w === null || a === null || d === null) {
+          console.debug('[TIRES] Browse query (subset allowed)', { w, a, d });
+          const supabase = (await import('../../utils/supabase/client')).getSupabaseClient();
+          const { data, error } = await supabase.rpc('tires_browse_ui', {
+            p_width: w, p_aspect: a, p_diameter: d,
+            p_limit: 48, p_offset: 0,
+          });
+          if (error) throw error;
+
+          const mapped = (data ?? []).map((row: any) => ({
+            id: row.id,
+            brand: row.brand,
+            model: row.model,
+            size_text: row.size_text ?? undefined,
+            eu_fuel: row.eu_fuel ?? undefined,
+            eu_wet: row.eu_wet ?? undefined,
+            eu_noise: row.eu_noise ?? undefined,
+            season: row.season ?? undefined,
+            runflat: row.runflat ?? undefined,
+            xl: row.xl ?? undefined,
+            studded: row.studded ?? undefined,
+            best_price_eur: row.best_price_eur ?? undefined,
+            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
+            in_stock: !!row.in_stock,
+            product_type: 'tire' as const,
+          }));
+
+          setProducts(mapped);
+          setTotalCount(mapped.length);
+        } else {
+          // All three provided -> exact mode
+          console.debug('[TIRES] Exact query', { w, a, d });
+          const { data, error } = await tiresSearchUI(w, a, d);
+          if (error) throw error;
+
+          const mapped = (data ?? []).map((row: any) => ({
+            id: row.id,
+            brand: row.brand,
+            model: row.model,
+            size_text: row.size_text ?? `${w}/${a} R${d}`,
+            eu_fuel: row.eu_fuel ?? undefined,
+            eu_wet: row.eu_wet ?? undefined,
+            eu_noise: row.eu_noise ?? undefined,
+            season: row.season ?? undefined,
+            runflat: row.runflat ?? undefined,
+            xl: row.xl ?? undefined,
+            studded: row.studded ?? undefined,
+            best_price_eur: row.best_price_eur ?? undefined,
+            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
+            in_stock: !!row.in_stock,
+            product_type: 'tire' as const,
+          }));
+
+          setProducts(mapped);
+          setTotalCount(mapped.length);
+        }
       } else {
-        // Table exists, fetch real data with filters
-        let query = supabase
-          .from('products_search')
-          .select('*', { count: 'exact' });
+        // RIMS (exact or browse)
 
-        // Apply filters
-        if (filters.inStockOnly) {
-          query = query.eq('in_stock', true);
+        const rwStr = String(filters.rimWidth ?? '').trim();
+        const rdStr = String(filters.rimDiameter ?? '').trim();
+
+        // Normalize values
+        const rw = rwStr && rwStr !== 'all' ? parseFloat(rwStr.replace(',', '.')) : null;
+        const rd = rdStr && rdStr !== 'all' ? parseInt(rdStr.replace(/[^0-9]/g, ''), 10) : null;
+
+        const rawPCD = (filters.pcd && filters.pcd !== 'all') ? String(filters.pcd) : '';
+        const pcd = rawPCD
+          ? rawPCD.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '')
+          : null;
+
+        // If we have both width and diameter -> exact RPC
+        if (rw !== null && rd !== null) {
+          console.debug('[RIMS] Exact query', { rw, rd, pcd });
+          const { data, error } = await rimsSearchUI(rw, rd, pcd);
+          if (error) throw error;
+
+          const mapped = (data ?? []).map((row: any) => ({
+            id: row.id,
+            brand: row.brand,
+            model: row.model,
+            rim_width: Number(row.rim_width) || rw || undefined,
+            rim_diameter: Number(row.rim_diameter) || rd || undefined,
+            pcd: row.pcd || pcd || undefined,
+            et_offset: row.et_offset ?? undefined,
+            cb: row.cb ?? undefined,
+            color: row.color ?? undefined,
+            material: row.material ?? undefined,
+            best_price_eur: row.best_price_eur ?? undefined,
+            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
+            in_stock: !!row.in_stock,
+            product_type: 'rim' as const,
+          }));
+
+          setProducts(mapped);
+          setTotalCount(mapped.length);
+        } else {
+          // Otherwise -> browse RPC (supports any subset, including all-null)
+          console.debug('[RIMS] Browse query', { rw, rd, pcd });
+          const supabase = (await import('../../utils/supabase/client')).getSupabaseClient();
+          const { data, error } = await supabase.rpc('rims_browse_ui', {
+            p_width: rw, p_diameter: rd, p_pcd: pcd,
+            p_limit: 48, p_offset: 0,
+          });
+          if (error) throw error;
+
+          const mapped = (data ?? []).map((row: any) => ({
+            id: row.id,
+            brand: row.brand,
+            model: row.model,
+            rim_width: Number(row.rim_width) || undefined,
+            rim_diameter: Number(row.rim_diameter) || undefined,
+            pcd: row.pcd || undefined,
+            et_offset: row.et_offset ?? undefined,
+            cb: row.cb ?? undefined,
+            color: row.color ?? undefined,
+            material: row.material ?? undefined,
+            best_price_eur: row.best_price_eur ?? undefined,
+            best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
+            in_stock: !!row.in_stock,
+            product_type: 'rim' as const,
+          }));
+
+          setProducts(mapped);
+          setTotalCount(mapped.length);
         }
-
-        if (filters.brand && filters.brand.length > 0) {
-          query = query.in('brand', filters.brand);
-        }
-
-        // Tire-specific filters
-        if (mode === 'tires') {
-          if (filters.width && filters.width !== 'all') query = query.eq('width', filters.width);
-          if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', filters.aspectRatio);
-          if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter', filters.diameter);
-          if (filters.season && filters.season !== 'all') query = query.eq('season', filters.season);
-          if (filters.runflat) query = query.eq('runflat', true);
-          if (filters.xl) query = query.eq('xl', true);
-          if (filters.studded) query = query.eq('studded', true);
-          if (filters.search) {
-            query = query.or(`brand.ilike.%${filters.search}%,model.ilike.%${filters.search}%`);
-          }
-        }
-
-        // Rim-specific filters
-        if (mode === 'rims') {
-          if (filters.rimDiameter && filters.rimDiameter !== 'all') query = query.eq('rim_diameter', filters.rimDiameter);
-          if (filters.rimWidth && filters.rimWidth !== 'all') query = query.eq('rim_width', filters.rimWidth);
-          if (filters.pcd && filters.pcd !== 'all') query = query.eq('pcd', filters.pcd);
-          if (filters.etOffset) query = query.eq('et_offset', filters.etOffset);
-          if (filters.cb) query = query.eq('cb', filters.cb);
-          if (filters.color && filters.color !== 'all') query = query.eq('color', filters.color);
-          if (filters.material && filters.material !== 'all') query = query.eq('material', filters.material);
-          if (filters.boltsIncluded !== undefined) query = query.eq('bolts_included', filters.boltsIncluded);
-        }
-
-        // Sorting
-        if (filters.sortBy === 'price_asc') {
-          query = query.order('best_price_eur', { ascending: true });
-        } else if (filters.sortBy === 'price_desc') {
-          query = query.order('best_price_eur', { ascending: false });
-        } else if (filters.sortBy === 'brand_asc') {
-          query = query.order('brand', { ascending: true });
-        } else if (mode === 'tires' && filters.sortBy === 'wet_grip') {
-          query = query.order('eu_wet', { ascending: true });
-        } else if (mode === 'tires' && filters.sortBy === 'noise') {
-          query = query.order('eu_noise', { ascending: true });
-        }
-
-        // Pagination
-        const from = (currentPage - 1) * ITEMS_PER_PAGE;
-        const to = from + ITEMS_PER_PAGE - 1;
-        query = query.range(from, to);
-
-        const { data: realData, error: realError, count: realCount } = await query;
-
-        if (realError) throw realError;
-
-        setProducts(realData || []);
-        setTotalCount(realCount || 0);
       }
-    } catch (error) {
-      console.error('Error fetching products:', error);
+
+      setHasSearched(true);
+      setCurrentPage(1);
+    } catch (e) {
+      console.error('Error fetching products:', e);
       // Fallback to demo data on any error
       const demoData = mode === 'tires' ? DEMO_TIRES : DEMO_RIMS;
       setProducts(demoData);
@@ -251,6 +312,11 @@ export function CatalogPage() {
       setLoading(false);
     }
   };
+
+  function getFallbackImage(brand?: string, model?: string) {
+    const label = encodeURIComponent(`${brand ?? 'Product'} ${model ?? ''}`.trim());
+    return `https://picsum.photos/seed/${label}/640/640`;
+  }
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
@@ -524,10 +590,10 @@ export function CatalogPage() {
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
               variant="outline"
-              className={`disabled:opacity-30 ${
+              className={`disabled:opacity-30 flex items-center justify-center ${
                 theme === 'dark'
-                  ? 'border-white/10 bg-white/5 hover:bg-white/10'
-                  : 'border-gray-300 bg-gray-100 hover:bg-gray-200'
+                  ? 'border-white/10 bg-white/5 hover:bg-white/10 text-white'
+                  : 'border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-900'
               }`}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -552,11 +618,12 @@ export function CatalogPage() {
                     onClick={() => setCurrentPage(pageNum)}
                     className={`
                       w-10 h-10 rounded-lg transition-all duration-200
+                      flex items-center justify-center
                       ${currentPage === pageNum
                         ? 'bg-[#FF6B35] text-white shadow-[0_0_24px_rgba(255,107,53,0.25)]'
                         : theme === 'dark'
-                          ? 'bg-white/5 text-[#B0B8C4] hover:bg-white/10'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-white/5 text-[#B0B8C4] hover:bg-white/10 hover:text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                       }
                     `}
                   >
@@ -570,10 +637,10 @@ export function CatalogPage() {
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
               variant="outline"
-              className={`disabled:opacity-30 ${
+              className={`disabled:opacity-30 flex items-center justify-center ${
                 theme === 'dark'
-                  ? 'border-white/10 bg-white/5 hover:bg-white/10'
-                  : 'border-gray-300 bg-gray-100 hover:bg-gray-200'
+                  ? 'border-white/10 bg-white/5 hover:bg-white/10 text-white'
+                  : 'border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-900'
               }`}
             >
               <ChevronRight className="w-5 h-5" />
