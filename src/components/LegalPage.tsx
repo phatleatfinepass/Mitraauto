@@ -1,16 +1,60 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from './LanguageContext';
+import { useTheme } from './ThemeContext';
 import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { FileText, Download } from 'lucide-react';
 import { motion } from 'motion/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5 } from './legal/PrivacyPolicyVersions';
+import { TermsV1, TermsV2, TermsV3, TermsV4, TermsV5 } from './legal/TermsVersions';
 
 interface LegalPageProps {
   initialSection?: 'privacy' | 'terms';
 }
 
+interface PrivacyVersion {
+  version: string;
+  date: string;
+  dateKey: string;
+  descriptionKey: string;
+}
+
+const privacyVersions: PrivacyVersion[] = [
+  { 
+    version: 'v1.0', 
+    date: '2023-12-01',
+    dateKey: 'legal.timeline.v1.date',
+    descriptionKey: 'legal.timeline.v1.description'
+  },
+  { 
+    version: 'v2.0', 
+    date: '2025-03-10',
+    dateKey: 'legal.timeline.v2.date',
+    descriptionKey: 'legal.timeline.v2.description'
+  },
+  { 
+    version: 'v3.0', 
+    date: '2025-06-20',
+    dateKey: 'legal.timeline.v3.date',
+    descriptionKey: 'legal.timeline.v3.description'
+  },
+  { 
+    version: 'v4.0', 
+    date: '2025-09-15',
+    dateKey: 'legal.timeline.v4.date',
+    descriptionKey: 'legal.timeline.v4.description'
+  },
+  { 
+    version: 'v5.0', 
+    date: '2025-11-05',
+    dateKey: 'legal.timeline.v5.date',
+    descriptionKey: 'legal.timeline.v5.description'
+  },
+];
+
 export function LegalPage({ initialSection }: LegalPageProps) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const [selectedVersion, setSelectedVersion] = useState<number>(4); // Default to latest version (v5.0)
 
   useEffect(() => {
     if (initialSection) {
@@ -23,34 +67,164 @@ export function LegalPage({ initialSection }: LegalPageProps) {
     }
   }, [initialSection]);
 
+  const handleVersionSelect = (index: number) => {
+    setSelectedVersion(index);
+    // Smooth scroll to privacy section on version change
+    setTimeout(() => {
+      const element = document.getElementById('privacy');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
+  const handlePreviousVersion = () => {
+    if (selectedVersion > 0) {
+      handleVersionSelect(selectedVersion - 1);
+    }
+  };
+
+  const handleNextVersion = () => {
+    if (selectedVersion < privacyVersions.length - 1) {
+      handleVersionSelect(selectedVersion + 1);
+    }
+  };
+
+  // Render the appropriate Privacy Policy version
+  const renderPrivacyVersion = () => {
+    switch (selectedVersion) {
+      case 0:
+        return <PrivacyPolicyV1 t={t} />;
+      case 1:
+        return <PrivacyPolicyV2 t={t} />;
+      case 2:
+        return <PrivacyPolicyV3 t={t} />;
+      case 3:
+        return <PrivacyPolicyV4 t={t} />;
+      case 4:
+      default:
+        return <PrivacyPolicyV5 t={t} />;
+    }
+  };
+
+  // Render the appropriate Terms version
+  const renderTermsVersion = () => {
+    switch (selectedVersion) {
+      case 0:
+        return <TermsV1 t={t} />;
+      case 1:
+        return <TermsV2 t={t} />;
+      case 2:
+        return <TermsV3 t={t} />;
+      case 3:
+        return <TermsV4 t={t} />;
+      case 4:
+      default:
+        return <TermsV5 t={t} />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0B0D10] to-[#151A22]">
-      {/* Navigation Bar */}
-      <div className="sticky top-0 z-40 bg-[#0B0D10]/80 backdrop-blur-xl border-b border-white/10">
-        <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-          <nav className="flex items-center justify-center gap-8 py-4">
-            <a
-              href="#privacy"
-              className="text-sm font-medium text-white/70 hover:text-[#0B6BFF] transition-colors"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('privacy')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              {t('legal.nav.privacy')}
-            </a>
-            <span className="text-white/30">|</span>
-            <a
-              href="#terms"
-              className="text-sm font-medium text-white/70 hover:text-[#0B6BFF] transition-colors"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('terms')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              {t('legal.nav.terms')}
-            </a>
-          </nav>
+    <div className="min-h-screen bg-background">
+      {/* Chronicle Timeline Navigation */}
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
+        <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-6 sm:py-8">
+          {/* Document History Title */}
+          <h3 className="text-center text-xs sm:text-sm uppercase tracking-widest text-muted-foreground/60 mb-6 sm:mb-8">
+            Document History
+          </h3>
+          
+          {/* Timeline with Navigation */}
+          <div className="relative mb-6 sm:mb-8 max-w-3xl mx-auto px-4 sm:px-8">
+            <div className="flex items-center gap-4">
+              {/* Left Chevron */}
+              <button
+                onClick={handlePreviousVersion}
+                disabled={selectedVersion === 0}
+                className={`
+                  flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full 
+                  flex items-center justify-center transition-all duration-300
+                  ${selectedVersion === 0
+                    ? 'bg-muted/50 text-muted-foreground/30 cursor-not-allowed'
+                    : 'bg-[#FF6B35]/10 text-[#FF6B35] hover:bg-[#FF6B35]/20 hover:scale-110 active:scale-95'
+                  }
+                `}
+                aria-label="Previous version"
+              >
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              {/* Base Timeline Line */}
+              <div className="flex-1 relative h-px bg-border">
+                {/* Progress Line */}
+                <div 
+                  className="absolute top-0 left-0 h-full bg-[#FF6B35]/30 transition-all duration-700 ease-in-out"
+                  style={{ 
+                    width: `${(selectedVersion / (privacyVersions.length - 1)) * 100}%` 
+                  }}
+                />
+                
+                {/* Timeline Markers */}
+                <div className="absolute inset-0 flex justify-between items-start">
+                  {privacyVersions.map((version, index) => (
+                    <button
+                      key={version.date}
+                      onClick={() => handleVersionSelect(index)}
+                      className="group relative flex flex-col items-center min-w-0 flex-1"
+                    >
+                      {/* Vertical Marker */}
+                      <div 
+                        className={`
+                          w-px transition-all duration-300
+                          ${selectedVersion === index 
+                            ? 'h-4 bg-[#FF6B35]' 
+                            : selectedVersion > index
+                              ? 'h-2.5 bg-[#FF6B35]/40 group-hover:h-4 group-hover:bg-[#FF6B35]/60'
+                              : 'h-2.5 bg-border/60 group-hover:h-4 group-hover:bg-[#FF6B35]/30'
+                          }
+                        `}
+                      />
+                      
+                      {/* Date Label - Always Visible */}
+                      <span 
+                        className={`
+                          mt-2 text-[10px] sm:text-xs transition-all duration-300 text-center px-1
+                          ${selectedVersion === index 
+                            ? 'text-[#FF6B35]' 
+                            : 'text-muted-foreground/70 group-hover:text-muted-foreground'
+                          }
+                        `}
+                        style={{ 
+                          wordBreak: 'break-word',
+                          lineHeight: '1.2'
+                        }}
+                      >
+                        {t(version.dateKey)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Chevron */}
+              <button
+                onClick={handleNextVersion}
+                disabled={selectedVersion === privacyVersions.length - 1}
+                className={`
+                  flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full 
+                  flex items-center justify-center transition-all duration-300
+                  ${selectedVersion === privacyVersions.length - 1
+                    ? 'bg-muted/50 text-muted-foreground/30 cursor-not-allowed'
+                    : 'bg-[#FF6B35]/10 text-[#FF6B35] hover:bg-[#FF6B35]/20 hover:scale-110 active:scale-95'
+                  }
+                `}
+                aria-label="Next version"
+              >
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -64,146 +238,45 @@ export function LegalPage({ initialSection }: LegalPageProps) {
             transition={{ duration: 0.6 }}
           >
             <div className="mb-12">
-              <h1 className="text-4xl lg:text-5xl text-white tracking-tight mb-4">
-                {t('legal.privacy.title')}
-              </h1>
-              <div className="h-1 w-20 bg-[#0B6BFF] rounded-full mb-6" />
-              <p className="text-lg text-white/60">
+              <div className="flex items-center gap-3 mb-4">
+                <h1 className="text-4xl lg:text-5xl tracking-tight">
+                  {t('legal.privacy.title')}
+                </h1>
+                <motion.span
+                  key={selectedVersion}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
+                >
+                  {privacyVersions[selectedVersion].version}
+                </motion.span>
+              </div>
+              <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
+              <p className="text-lg text-muted-foreground mb-4">
                 {t('legal.privacy.subtitle')}
               </p>
+              <motion.div
+                key={selectedVersion}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-sm text-muted-foreground space-y-1"
+              >
+                <p><strong>{t('legal.privacy.effective')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
+                <p><strong>{t('legal.privacy.lastUpdated')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
+                <p className="mt-3 text-xs italic text-[#FF6B35]">
+                  {t(privacyVersions[selectedVersion].descriptionKey)}
+                </p>
+              </motion.div>
             </div>
 
-            <Card className="bg-white/5 border-white/10 rounded-2xl p-8 lg:p-12 backdrop-blur-sm">
-              <div className="space-y-8 text-white/80">
-                {/* 1. Data Controller */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.controller.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.controller.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.privacy.controller.company')}:</strong> Mitra Auto Oy</li>
-                    <li><strong>{t('legal.privacy.controller.businessId')}:</strong> 3408833-8</li>
-                    <li><strong>{t('legal.privacy.controller.address')}:</strong> Hankasuontie 5, 00390 Helsinki</li>
-                    <li><strong>{t('legal.privacy.controller.email')}:</strong> <a href="mailto:info.mitra.auto@gmail.com" className="text-[#0B6BFF] hover:underline">info.mitra.auto@gmail.com</a></li>
-                    <li><strong>{t('legal.privacy.controller.phone')}:</strong> <a href="tel:+358407777163" className="text-[#0B6BFF] hover:underline">+358 40 777 7163</a></li>
-                  </ul>
-                </div>
-
-                {/* 2. What Data We Collect */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.dataCollected.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.dataCollected.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.privacy.dataCollected.item1')}</li>
-                    <li>{t('legal.privacy.dataCollected.item2')}</li>
-                    <li>{t('legal.privacy.dataCollected.item3')}</li>
-                    <li>{t('legal.privacy.dataCollected.item4')}</li>
-                    <li>{t('legal.privacy.dataCollected.item5')}</li>
-                    <li>{t('legal.privacy.dataCollected.item6')}</li>
-                  </ul>
-                </div>
-
-                {/* 3. Legal Basis */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.legalBasis.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.legalBasis.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.privacy.legalBasis.contract')}:</strong> {t('legal.privacy.legalBasis.contractDesc')}</li>
-                    <li><strong>{t('legal.privacy.legalBasis.consent')}:</strong> {t('legal.privacy.legalBasis.consentDesc')}</li>
-                    <li><strong>{t('legal.privacy.legalBasis.legitimate')}:</strong> {t('legal.privacy.legalBasis.legitimateDesc')}</li>
-                  </ul>
-                </div>
-
-                {/* 4. How We Use Data */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.dataUse.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.dataUse.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.privacy.dataUse.item1')}</li>
-                    <li>{t('legal.privacy.dataUse.item2')}</li>
-                    <li>{t('legal.privacy.dataUse.item3')}</li>
-                    <li>{t('legal.privacy.dataUse.item4')}</li>
-                    <li>{t('legal.privacy.dataUse.item5')}</li>
-                  </ul>
-                </div>
-
-                {/* 5. Disclosure & Sharing */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.sharing.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.sharing.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.privacy.sharing.item1')}</li>
-                    <li>{t('legal.privacy.sharing.item2')}</li>
-                  </ul>
-                  <p className="mt-3 font-semibold">{t('legal.privacy.sharing.noSell')}</p>
-                </div>
-
-                {/* 6. International Transfers */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.transfers.title')}</h2>
-                  <p>{t('legal.privacy.transfers.desc')}</p>
-                </div>
-
-                {/* 7. Data Retention */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.retention.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.retention.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.privacy.retention.item1')}</li>
-                    <li>{t('legal.privacy.retention.item2')}</li>
-                  </ul>
-                </div>
-
-                {/* 8. Your Rights */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.rights.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.rights.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.privacy.rights.access')}:</strong> {t('legal.privacy.rights.accessDesc')}</li>
-                    <li><strong>{t('legal.privacy.rights.correction')}:</strong> {t('legal.privacy.rights.correctionDesc')}</li>
-                    <li><strong>{t('legal.privacy.rights.erasure')}:</strong> {t('legal.privacy.rights.erasureDesc')}</li>
-                    <li><strong>{t('legal.privacy.rights.restriction')}:</strong> {t('legal.privacy.rights.restrictionDesc')}</li>
-                    <li><strong>{t('legal.privacy.rights.portability')}:</strong> {t('legal.privacy.rights.portabilityDesc')}</li>
-                    <li><strong>{t('legal.privacy.rights.object')}:</strong> {t('legal.privacy.rights.objectDesc')}</li>
-                  </ul>
-                  <p className="mt-3">{t('legal.privacy.rights.contact')}</p>
-                </div>
-
-                {/* 9. Automated Decisions */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.automated.title')}</h2>
-                  <p>{t('legal.privacy.automated.desc')}</p>
-                </div>
-
-                {/* 10. Cookies & Tracking */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.cookies.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.cookies.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.privacy.cookies.essential')}:</strong> {t('legal.privacy.cookies.essentialDesc')}</li>
-                    <li><strong>{t('legal.privacy.cookies.analytics')}:</strong> {t('legal.privacy.cookies.analyticsDesc')}</li>
-                    <li><strong>{t('legal.privacy.cookies.marketing')}:</strong> {t('legal.privacy.cookies.marketingDesc')}</li>
-                  </ul>
-                </div>
-
-                {/* 11. Changes to Policy */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.privacy.changes.title')}</h2>
-                  <p className="mb-3">{t('legal.privacy.changes.desc')}</p>
-                  <p className="font-semibold">{t('legal.privacy.changes.effective')}: {t('legal.privacy.changes.date')}</p>
-                </div>
-              </div>
-
-              {/* Download Button */}
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <Button
-                  variant="outline"
-                  className="border-[#0B6BFF]/30 text-[#0B6BFF] hover:bg-[#0B6BFF]/10"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {t('legal.downloadPdf')}
-                </Button>
-              </div>
-            </Card>
+            <motion.div
+              key={selectedVersion}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              {renderPrivacyVersion()}
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -218,144 +291,45 @@ export function LegalPage({ initialSection }: LegalPageProps) {
             transition={{ duration: 0.6 }}
           >
             <div className="mb-12">
-              <h1 className="text-4xl lg:text-5xl text-white tracking-tight mb-4">
-                {t('legal.terms.title')}
-              </h1>
-              <div className="h-1 w-20 bg-[#0B6BFF] rounded-full mb-6" />
-              <p className="text-lg text-white/60">
+              <div className="flex items-center gap-3 mb-4">
+                <h1 className="text-4xl lg:text-5xl tracking-tight">
+                  {t('legal.terms.title')}
+                </h1>
+                <motion.span
+                  key={selectedVersion}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
+                >
+                  {privacyVersions[selectedVersion].version}
+                </motion.span>
+              </div>
+              <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
+              <p className="text-lg text-muted-foreground mb-4">
                 {t('legal.terms.subtitle')}
               </p>
+              <motion.div
+                key={selectedVersion}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-sm text-muted-foreground space-y-1"
+              >
+                <p><strong>{t('legal.terms.effective')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
+                <p><strong>{t('legal.terms.lastUpdated')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
+                <p className="mt-3 text-xs italic text-[#FF6B35]">
+                  {t(privacyVersions[selectedVersion].descriptionKey)}
+                </p>
+              </motion.div>
             </div>
 
-            <Card className="bg-white/5 border-white/10 rounded-2xl p-8 lg:p-12 backdrop-blur-sm">
-              <div className="space-y-8 text-white/80">
-                {/* 1. Definitions */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.definitions.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.definitions.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.terms.definitions.customer')}:</strong> {t('legal.terms.definitions.customerDesc')}</li>
-                    <li><strong>{t('legal.terms.definitions.vehicle')}:</strong> {t('legal.terms.definitions.vehicleDesc')}</li>
-                    <li><strong>{t('legal.terms.definitions.service')}:</strong> {t('legal.terms.definitions.serviceDesc')}</li>
-                    <li><strong>{t('legal.terms.definitions.product')}:</strong> {t('legal.terms.definitions.productDesc')}</li>
-                    <li><strong>{t('legal.terms.definitions.booking')}:</strong> {t('legal.terms.definitions.bookingDesc')}</li>
-                    <li><strong>{t('legal.terms.definitions.serviceHistory')}:</strong> {t('legal.terms.definitions.serviceHistoryDesc')}</li>
-                  </ul>
-                </div>
-
-                {/* 2. Scope of Services */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.scope.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.scope.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.terms.scope.item1')}</li>
-                    <li>{t('legal.terms.scope.item2')}</li>
-                    <li>{t('legal.terms.scope.item3')}</li>
-                    <li>{t('legal.terms.scope.item4')}</li>
-                  </ul>
-                </div>
-
-                {/* 3. Customer Obligations */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.obligations.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.obligations.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.terms.obligations.item1')}</li>
-                    <li>{t('legal.terms.obligations.item2')}</li>
-                    <li>{t('legal.terms.obligations.item3')}</li>
-                    <li>{t('legal.terms.obligations.item4')}</li>
-                  </ul>
-                </div>
-
-                {/* 4. Bookings & Cancellation */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.bookings.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.bookings.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.terms.bookings.process')}:</strong> {t('legal.terms.bookings.processDesc')}</li>
-                    <li><strong>{t('legal.terms.bookings.cancellation')}:</strong> {t('legal.terms.bookings.cancellationDesc')}</li>
-                    <li><strong>{t('legal.terms.bookings.rescheduling')}:</strong> {t('legal.terms.bookings.reschedulingDesc')}</li>
-                    <li><strong>{t('legal.terms.bookings.noShow')}:</strong> {t('legal.terms.bookings.noShowDesc')}</li>
-                  </ul>
-                </div>
-
-                {/* 5. Price & Payment */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.payment.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.payment.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.terms.payment.item1')}</li>
-                    <li>{t('legal.terms.payment.item2')}</li>
-                    <li>{t('legal.terms.payment.item3')}</li>
-                    <li>{t('legal.terms.payment.item4')}</li>
-                  </ul>
-                </div>
-
-                {/* 6. Delivery & Stock */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.delivery.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.delivery.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li>{t('legal.terms.delivery.item1')}</li>
-                    <li>{t('legal.terms.delivery.item2')}</li>
-                    <li>{t('legal.terms.delivery.item3')}</li>
-                  </ul>
-                </div>
-
-                {/* 7. Use of Vehicle Data */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.vehicleData.title')}</h2>
-                  <p>{t('legal.terms.vehicleData.desc')}</p>
-                </div>
-
-                {/* 8. Warranty & Liability */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.warranty.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.warranty.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.terms.warranty.service')}:</strong> {t('legal.terms.warranty.serviceDesc')}</li>
-                    <li><strong>{t('legal.terms.warranty.products')}:</strong> {t('legal.terms.warranty.productsDesc')}</li>
-                    <li><strong>{t('legal.terms.warranty.limitation')}:</strong> {t('legal.terms.warranty.limitationDesc')}</li>
-                    <li><strong>{t('legal.terms.warranty.indirect')}:</strong> {t('legal.terms.warranty.indirectDesc')}</li>
-                  </ul>
-                </div>
-
-                {/* 9. Intellectual Property */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.ip.title')}</h2>
-                  <p>{t('legal.terms.ip.desc')}</p>
-                </div>
-
-                {/* 10. Governing Law */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.law.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.law.intro')}</p>
-                  <ul className="space-y-2 ml-6 list-disc">
-                    <li><strong>{t('legal.terms.law.governing')}:</strong> {t('legal.terms.law.governingDesc')}</li>
-                    <li><strong>{t('legal.terms.law.disputes')}:</strong> {t('legal.terms.law.disputesDesc')}</li>
-                    <li><strong>{t('legal.terms.law.consumer')}:</strong> {t('legal.terms.law.consumerDesc')}</li>
-                  </ul>
-                </div>
-
-                {/* 11. Amendment */}
-                <div>
-                  <h2 className="text-2xl text-white mb-4">{t('legal.terms.amendment.title')}</h2>
-                  <p className="mb-3">{t('legal.terms.amendment.desc')}</p>
-                  <p className="font-semibold">{t('legal.terms.amendment.effective')}: {t('legal.terms.amendment.date')}</p>
-                </div>
-              </div>
-
-              {/* Download Button */}
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <Button
-                  variant="outline"
-                  className="border-[#0B6BFF]/30 text-[#0B6BFF] hover:bg-[#0B6BFF]/10"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {t('legal.downloadPdf')}
-                </Button>
-              </div>
-            </Card>
+            <motion.div
+              key={selectedVersion}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              {renderTermsVersion()}
+            </motion.div>
           </motion.div>
         </div>
       </section>

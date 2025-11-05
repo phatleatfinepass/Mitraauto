@@ -65,6 +65,14 @@ export function Footer({ onNavigate }: FooterProps) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    
+    // Handle Legal pages navigation
+    if (onNavigate && (href === '/legal/privacy' || href === '/legal/terms')) {
+      event.preventDefault();
+      onNavigate(href);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
   };
 
   const footerSections: FooterSection[] = [

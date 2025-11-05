@@ -79,8 +79,12 @@ function HomePage() {
         setCurrentPage('tire-hotel');
       } else if (path === '/about') {
         setCurrentPage('about');
-      } else if (path === '/privacy' || path === '/terms' || path === '/legal') {
-        setCurrentPage(path.substring(1)); // Remove leading slash
+      } else if (path === '/privacy' || path === '/legal/privacy') {
+        setCurrentPage('privacy');
+      } else if (path === '/terms' || path === '/legal/terms') {
+        setCurrentPage('terms');
+      } else if (path === '/legal') {
+        setCurrentPage('legal');
       } else {
         setCurrentPage('home');
       }
