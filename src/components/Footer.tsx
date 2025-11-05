@@ -49,6 +49,14 @@ export function Footer({ onNavigate }: FooterProps) {
       }, 100);
       return;
     }
+    
+    // Handle About page navigation
+    if (href === '/about' && onNavigate) {
+      event.preventDefault();
+      onNavigate('/about');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     // Handle Tire Hotel navigation
     if (href === '/tire-hotel' && onNavigate) {
