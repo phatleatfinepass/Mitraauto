@@ -43,7 +43,7 @@ interface Product {
 
 const ITEMS_PER_PAGE = 12;
 
-const EU_RATING_VALUES = new Set(['A', 'B', 'C', 'D', 'E']);
+const EU_RATING_VALUES = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
 
 function getFallbackImage(brand?: string, model?: string) {
   const label = encodeURIComponent(`${brand ?? 'Product'} ${model ?? ''}`.trim());
@@ -334,9 +334,7 @@ export function CatalogPage() {
           setTotalCount(mapped.length);
         }
       }
-
-      setHasSearched(true);
-      setCurrentPage(1);
+      
     } catch (e) {
       console.error('Error fetching products:', e);
       // Fallback to demo data on any error
