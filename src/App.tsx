@@ -11,6 +11,7 @@ import { ServicesPage } from './components/ServicesPage';
 import { TireHotelPage } from './components/TireHotelPage';
 import { AboutPage } from './components/AboutPage';
 import { LegalPage } from './components/LegalPage';
+import { CatalogPage } from './components/catalog/CatalogPage';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
@@ -85,6 +86,8 @@ function HomePage() {
         setCurrentPage('terms');
       } else if (path === '/legal') {
         setCurrentPage('legal');
+      } else if (path === '/catalog' || path === '/shop') {
+        setCurrentPage('catalog');
       } else {
         setCurrentPage('home');
       }
@@ -309,6 +312,8 @@ function HomePage() {
             onBookingClick={() => setBookingModalOpen(true)}
             onNavigate={navigate}
           />
+        ) : currentPage === 'catalog' ? (
+          <CatalogPage />
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (

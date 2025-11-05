@@ -251,6 +251,13 @@ html {
   @apply bg-accent text-white rounded-lg shadow-lg;
 }
 
+/* Glassmorphic panel for catalog */
+.glassmorphic-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
 /* Reduced motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
   *,
