@@ -178,10 +178,10 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
             {currentStep === 'step1' 
               ? t('booking.step1.description')
               : currentStep === 'step2'
-              ? 'Choose the service you need'
+              ? (language === 'fi' ? 'Valitse tarvitsemasi palvelu' : 'Choose the service you need')
               : currentStep === 'step3'
-              ? 'Enter your contact information'
-              : t('booking.success.subtitle')
+              ? (language === 'fi' ? 'Syötä yhteystietosi' : 'Enter your contact information')
+              : (language === 'fi' ? 'Varauksesi on vahvistettu' : 'Your booking has been confirmed')
             }
           </DialogDescription>
         </DialogHeader>

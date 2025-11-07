@@ -30,10 +30,9 @@ interface TireCardProps {
     in_stock: boolean;
   };
   index?: number;
-  onClick?: () => void;
 }
 
-export function TireCard({ product, index = 0, onClick }: TireCardProps) {
+export function TireCard({ product, index = 0 }: TireCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
 
@@ -100,8 +99,7 @@ export function TireCard({ product, index = 0, onClick }: TireCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       whileHover={{ y: -4 }}
-      onClick={onClick}
-      className="group relative h-full cursor-pointer"
+      className="group relative h-full"
     >
       <div className={`relative rounded-[24px] size-full transition-all duration-500 ${theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-gray-50'} ${theme === 'dark' ? 'group-hover:shadow-[0_8px_32px_rgba(255,107,53,0.15)]' : 'group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'}`}>
         <div className="size-full">
