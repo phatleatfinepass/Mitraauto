@@ -1,11 +1,9 @@
 import React from 'react';
 import { useLanguage } from '../LanguageContext';
+import { useTheme } from '../ThemeContext';
 import { motion } from 'motion/react';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { ShoppingCart, PackageX, Eye } from 'lucide-react';
-import { StockBadge } from './StockBadge';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
+import svgPaths from '../../imports/svg-a1qm6qb0np';
+import mockupRimImage from 'figma:asset/a7d07b92f4849dcd91f999211a4f6982cfd3f72f.png';
 
 interface RimCardProps {
   product: {
@@ -23,25 +21,33 @@ interface RimCardProps {
     best_image_url: string;
     in_stock: boolean;
   };
+  index?: number;
+  onClick?: () => void;
 }
 
-export function RimCard({ product }: RimCardProps) {
+export function RimCard({ product, index = 0, onClick }: RimCardProps) {
   const { language } = useLanguage();
+  const { theme } = useTheme();
 
-  const getSizeText = () => {
-    if (product.rim_width && product.rim_diameter) {
-      let text = `${product.rim_width}×${product.rim_diameter}"`;
-      if (product.et_offset) text += ` ET${product.et_offset}`;
-      if (product.pcd) text += ` ${product.pcd}`;
-      return text;
-    }
-    return null;
+  // Calculate 4-piece price
+  const fourPiecePrice = (product.best_price_eur || 0) * 4;
+
+  // Format size parts
+  const getSizeParts = () => {
+    const parts = [];
+    if (product.rim_width) parts.push(product.rim_width.toString());
+    if (product.rim_diameter) parts.push(`${product.rim_diameter}"`);
+    if (product.et_offset) parts.push(`ET${product.et_offset}`);
+    if (product.pcd) parts.push(product.pcd);
+    return parts;
   };
+
+  const sizeParts = getSizeParts();
 
   const getMaterialLabel = (material?: string) => {
     if (!material) return '';
     const labels = {
-      alloy: language === 'fi' ? 'Alumiini' : 'Alloy',
+      alloy: language === 'fi' ? 'Alumiini' : 'Aluminum',
       steel: language === 'fi' ? 'Teräs' : 'Steel',
     };
     return labels[material.toLowerCase() as keyof typeof labels] || material;
@@ -49,155 +55,214 @@ export function RimCard({ product }: RimCardProps) {
 
   return (
     <motion.div
-      whileHover={{ y: -8, scale: 1.02 }}
-      transition={{ duration: 0.3 }}
-      className="group relative h-full"
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.4 }}
+      onClick={onClick}
+      className="group relative h-full cursor-pointer"
     >
-      <div
-        className="
-          h-full rounded-2xl border border-white/10 
-          bg-gradient-to-b from-white/5 to-white/[0.02]
-          backdrop-blur-xl overflow-hidden
-          transition-all duration-300
-          hover:border-[#0B6BFF]/50
-          hover:shadow-[0_0_24px_rgba(11,107,255,0.25)]
-        "
-      >
-        {/* Image Container */}
-        <div className="relative aspect-[1/0.9] bg-gradient-to-br from-[#1A1F2E] to-[#0B0D10] p-6 flex items-center justify-center overflow-hidden">
-          <motion.div
-            whileHover={{ rotate: 15 }}
-            transition={{ duration: 0.5 }}
-            className="w-full h-full"
-          >
-            <ImageWithFallback
-              src={product.best_image_url}
-              alt={`${product.brand} ${product.model}`}
-              className="w-full h-full object-contain transition-all duration-500 
-                group-hover:brightness-125 group-hover:drop-shadow-[0_0_30px_rgba(11,107,255,0.3)]"
-            />
-          </motion.div>
-          
-          {/* Stock Badge Overlay */}
-          <div className="absolute top-3 right-3">
-            <StockBadge inStock={product.in_stock} />
-          </div>
-
-          {/* Quick View Button */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileHover={{ opacity: 1 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          >
-            <Button
-              size="sm"
-              className="bg-white/10 hover:bg-white/20 text-white border border-white/20"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              {language === 'fi' ? 'Pikakatselu' : 'Quick View'}
-            </Button>
-          </motion.div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          {/* Brand & Model */}
-          <div>
-            <h3 className="text-gray-900 dark:text-white mb-1">{product.brand}</h3>
-            <p className="text-gray-600 dark:text-[#B0B8C4] text-sm">{product.model}</p>
-          </div>
-
-          {/* Size Specification */}
-          {getSizeText() && (
-            <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10">
-              <span className="text-gray-900 dark:text-white text-sm">{getSizeText()}</span>
-            </div>
-          )}
-
-          {/* Specifications Grid */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            {product.material && (
-              <div className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
-                <span className="text-gray-600 dark:text-[#B0B8C4]">
-                  {language === 'fi' ? 'Materiaali' : 'Material'}:
-                </span>
-                <span className="text-gray-900 dark:text-white ml-1">{getMaterialLabel(product.material)}</span>
+      <div className={`relative rounded-[24px] size-full transition-all duration-500 ${theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-gray-50'} ${theme === 'dark' ? 'group-hover:shadow-[0_8px_32px_rgba(11,107,255,0.15)]' : 'group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'}`}>
+        <div className="size-full">
+          <div className="box-border content-stretch flex flex-col gap-[24px] items-start overflow-clip p-[24px] relative size-full">
+            
+            {/* Top Section: Brand, Model, Size */}
+            <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+              {/* Brand */}
+              <div className="content-stretch flex items-start relative shrink-0 w-full">
+                <p className={`basis-0 font-semibold grow leading-[normal] min-h-px min-w-px not-italic relative shrink-0 text-[24px] tracking-[-0.7125px] ${
+                  theme === 'dark' ? 'text-white' : 'text-[#101828]'
+                }`}>
+                  {product.brand}
+                </p>
               </div>
-            )}
-            {product.color && (
-              <div className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
-                <span className="text-gray-600 dark:text-[#B0B8C4]">
-                  {language === 'fi' ? 'Väri' : 'Color'}:
-                </span>
-                <span className="text-gray-900 dark:text-white ml-1 capitalize">{product.color}</span>
-              </div>
-            )}
-            {product.cb && (
-              <div className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
-                <span className="text-gray-600 dark:text-[#B0B8C4]">CB:</span>
-                <span className="text-gray-900 dark:text-white ml-1">{product.cb}mm</span>
-              </div>
-            )}
-          </div>
 
-          {/* Material Badge */}
-          {product.material && (
-            <div className="flex gap-2">
-              <Badge
-                variant="outline"
-                className={`
-                  ${product.material.toLowerCase() === 'alloy'
-                    ? 'bg-blue-50 dark:bg-[#0B6BFF]/10 border-blue-200 dark:border-[#0B6BFF]/30 text-blue-700 dark:text-[#0B6BFF]'
-                    : 'bg-gray-100 dark:bg-white/5 border-gray-300 dark:border-white/20 text-gray-700 dark:text-white'
-                  } text-xs
-                `}
-              >
-                {getMaterialLabel(product.material)}
-              </Badge>
-            </div>
-          )}
+              {/* Model */}
+              <div className="content-stretch flex gap-[10px] items-center relative shrink-0 w-full">
+                <p className={`font-normal leading-[20px] not-italic relative shrink-0 text-[14px] text-nowrap tracking-[-0.1784px] whitespace-pre ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-[#4a5565]'
+                }`}>
+                  {product.model}
+                </p>
+              </div>
 
-          {/* Price & Add to Cart */}
-          <div className="pt-4 border-t border-gray-200 dark:border-white/10 space-y-3">
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-3xl text-gray-900 dark:text-white">
-                  €{(product.best_price_eur || 0).toFixed(2)}
-                </span>
-                <span className="text-gray-600 dark:text-[#B0B8C4] text-sm ml-2">
-                  {language === 'fi' ? '/kpl' : '/each'}
-                </span>
+              {/* Size and CB */}
+              <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+                {/* Size */}
+                <div className="content-stretch flex font-normal items-center leading-[20px] not-italic relative rounded-[16px] shrink-0 text-[14px] text-nowrap tracking-[-0.1504px] whitespace-pre">
+                  {sizeParts.map((part, idx) => (
+                    <React.Fragment key={idx}>
+                      {idx > 0 && idx < sizeParts.length && (
+                        <p className={`relative shrink-0 mx-[4px] ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>
+                          {idx === 1 ? '×' : ' '}
+                        </p>
+                      )}
+                      <p className={`relative shrink-0 ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>{part}</p>
+                    </React.Fragment>
+                  ))}
+                </div>
+
+                {/* CB Badge */}
+                {product.cb && (
+                  <div className="box-border content-stretch flex flex-col gap-[16px] items-start px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-all duration-300 group-hover:scale-105">
+                    <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[8px] ${
+                      theme === 'dark' ? 'border-[#0B6BFF]/30' : 'border-[#bedbff]'
+                    }`} />
+                    <div className="content-stretch flex gap-[10px] items-center justify-center relative shrink-0">
+                      <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
+                        theme === 'dark' ? 'text-[#60A5FA]' : 'text-[#1447e6]'
+                      }`}>
+                        CB: {product.cb}<span className="lowercase">mm</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            <Button
-              className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white
-                shadow-[0_0_20px_rgba(255,107,53,0.3)] hover:shadow-[0_0_30px_rgba(255,107,53,0.5)]
-                transition-all duration-300"
-              disabled={!product.in_stock}
-            >
-              {product.in_stock ? (
-                <>
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  {language === 'fi' ? 'Lisää ostoskoriin' : 'Add to Cart'}
-                </>
-              ) : (
-                <>
-                  <PackageX className="w-4 h-4 mr-2" />
-                  {language === 'fi' ? 'Ei varastossa' : 'Out of Stock'}
-                </>
-              )}
-            </Button>
+            {/* Image and Bottom Section */}
+            <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+              {/* Image */}
+              <div className="bg-white h-[193px] relative rounded-[16px] shrink-0 w-full">
+                <div className="overflow-clip relative rounded-[inherit] size-full">
+                  <div className="absolute left-[calc(50%+0.5px)] size-[193px] top-1/2 translate-x-[-50%] translate-y-[-50%] transition-transform duration-700 group-hover:scale-110">
+                    <img 
+                      alt={`${product.brand} ${product.model}`}
+                      className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" 
+                      src={mockupRimImage} 
+                    />
+                  </div>
+                </div>
+                <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[16px] ${
+                  theme === 'dark' ? 'border-[rgba(229,231,235,0.1)]' : 'border-[rgba(229,231,235,0.5)]'
+                }`} />
+              </div>
+
+              {/* Price Container */}
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0 w-full">
+                <div className="basis-0 grow min-h-px min-w-px relative rounded-[16px] shrink-0 transition-all duration-300 group-hover:scale-[1.02]">
+                  <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[16px] ${
+                    theme === 'dark' ? 'border-[#FF6B35]/30' : 'border-[#ffd6a7]'
+                  }`} />
+                  <div className="size-full">
+                    <div className="box-border content-stretch flex gap-[16px] items-start p-[12px] relative w-full">
+                      {/* Price */}
+                      <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
+                        {/* Euro Icon */}
+                        <div className="relative shrink-0 size-[16px]">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+                            <path d={svgPaths.p4b3b540} stroke={theme === 'dark' ? '#FF6B35' : '#FF6B35'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
+                          </svg>
+                        </div>
+                        
+                        {/* Value */}
+                        <div className="h-[26px] relative shrink-0">
+                          <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border content-stretch flex flex-col gap-[10px] h-[26px] items-center justify-center relative">
+                            <p className={`font-medium leading-[28px] not-italic relative shrink-0 text-[18px] text-center text-nowrap tracking-[-0.4395px] whitespace-pre ${
+                              theme === 'dark' ? 'text-white' : 'text-[#101828]'
+                            }`}>
+                              {(product.best_price_eur || 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* 4PCS Label */}
+                        <div className="basis-0 grow min-h-px min-w-px relative shrink-0">
+                          <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border content-stretch flex gap-[10px] items-center justify-end relative w-full">
+                            <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
+                              theme === 'dark' ? 'text-[#B0B8C4]' : 'text-[#6a7282]'
+                            }`}>
+                              {fourPiecePrice.toFixed(2)} €/4PCS
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom: Badges and Button */}
+              <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full">
+                {/* Material & Color Badges */}
+                <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full transition-all duration-300 group-hover:scale-105">
+                  {/* Color Badge - Always rendered, opacity 0 if no color */}
+                  <div className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-opacity ${
+                    theme === 'dark' ? 'bg-[rgba(250,250,250,0.05)]' : 'bg-[rgba(250,250,250,0.2)]'
+                  } ${!product.color ? 'opacity-0' : 'opacity-100'}`}>
+                    <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[8px] ${
+                      theme === 'dark' ? 'border-[rgba(106,114,130,0.2)]' : 'border-[rgba(106,114,130,0.3)]'
+                    }`} />
+                    <div className="capitalize content-stretch flex font-normal gap-[2px] items-center justify-center leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] whitespace-pre">
+                      <p className={`relative shrink-0 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-[#99a1af]'}`}>
+                        {language === 'fi' ? 'Väri' : 'Color'}:
+                      </p>
+                      <p className={`relative shrink-0 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-[#99a1af]'}`}>
+                        {product.color || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Material Badge - Always rendered, opacity 0 if no material */}
+                  <div className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-opacity ${
+                    theme === 'dark' ? 'bg-[rgba(250,250,250,0.05)]' : 'bg-[rgba(250,250,250,0.2)]'
+                  } ${!product.material ? 'opacity-0' : 'opacity-100'}`}>
+                    <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[8px] ${
+                      theme === 'dark' ? 'border-[rgba(106,114,130,0.2)]' : 'border-[rgba(106,114,130,0.3)]'
+                    }`} />
+                    <div className="capitalize content-stretch flex font-normal gap-[2px] items-center justify-center leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] whitespace-pre">
+                      <p className={`relative shrink-0 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-[#99a1af]'}`}>
+                        {language === 'fi' ? 'Materiaali' : 'Material'}:
+                      </p>
+                      <p className={`relative shrink-0 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-[#99a1af]'}`}>
+                        {getMaterialLabel(product.material) || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add Button */}
+                <button
+                  disabled={!product.in_stock}
+                  className="bg-[#ff6b35] box-border content-stretch flex gap-[14px] h-[40px] items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] hover:shadow-[0px_6px_16px_0px_rgba(255,107,53,0.35)] shrink-0 w-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group/button hover:bg-[#ff6b35]/90"
+                >
+                  {/* Shopping Cart Icon */}
+                  <div className="relative shrink-0 size-[16px] transition-transform duration-300 group-hover/button:rotate-12">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+                      <g clipPath="url(#clip0_201_4500)">
+                        <path d={svgPaths.p22b32180} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
+                        <path d={svgPaths.pceec000} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
+                        <path d={svgPaths.p35e3f800} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
+                      </g>
+                      <defs>
+                        <clipPath id="clip0_201_4500">
+                          <rect fill="white" height="16" width="16" />
+                        </clipPath>
+                      </defs>
+                    </svg>
+                  </div>
+                  
+                  {/* Button Text */}
+                  <div className="h-[20px] relative shrink-0">
+                    <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border h-[20px] relative">
+                      <p className="absolute font-semibold leading-[20px] left-0 not-italic text-[14px] text-nowrap text-white top-[0.5px] tracking-[-0.2904px] whitespace-pre">
+                        {product.in_stock 
+                          ? (language === 'fi' ? 'Lisää' : 'Add')
+                          : (language === 'fi' ? 'Loppu' : 'Sold Out')
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Hover Glow Effect */}
-        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-[#0B6BFF]/10 to-transparent" />
-        </div>
-
-        {/* Reflective Edge Effect */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        {/* Border */}
+        <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[24px] transition-all duration-500 ${
+          theme === 'dark' 
+            ? 'border-[rgba(229,231,235,0.1)] group-hover:border-[#0B6BFF]/50' 
+            : 'border-[rgba(229,231,235,0.8)] group-hover:border-[#0B6BFF]/30'
+        }`} />
       </div>
     </motion.div>
   );

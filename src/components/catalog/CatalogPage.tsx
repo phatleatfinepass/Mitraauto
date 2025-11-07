@@ -212,10 +212,33 @@ function normalizeEuRating(value: unknown): string | undefined {
     return undefined;
   }
 
-  const normalized = String(parsedValue).toUpperCase();
-  const match = normalized.match(/[A-G]/);
+  const trimmed = String(parsedValue).trim();
+  if (!trimmed) {
+    return undefined;
+  }
 
-  return match ? match[0] : undefined;
+  const normalized = trimmed.toUpperCase();
+
+  const numericMatch = normalized.match(/(?:^|[^0-9])([1-7])(?:[^0-9]|$)/);
+  if (numericMatch) {
+    const numericValue = Number.parseInt(numericMatch[1], 10);
+    if (Number.isFinite(numericValue) && numericValue >= 1 && numericValue <= 7) {
+      const euGrades = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+      return euGrades[numericValue - 1];
+    }
+  }
+
+  const explicitLetterMatch = normalized.match(/\b([A-G])\b/);
+  if (explicitLetterMatch) {
+    return explicitLetterMatch[1];
+  }
+
+  const trailingLetterMatch = normalized.match(/([A-G])(?![A-Z])/);
+  if (trailingLetterMatch) {
+    return trailingLetterMatch[1];
+  }
+
+  return undefined;
 }
 
 function parseNumber(value: unknown): number | undefined {
@@ -524,6 +547,7 @@ export function CatalogPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<any>({});
+  const productsGridRef = React.useRef<HTMLDivElement>(null);
 
 
   // Only fetch when search is explicitly triggered
@@ -641,6 +665,19 @@ export function CatalogPage() {
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
+  };
+
+  const scrollToProducts = () => {
+    if (productsGridRef.current) {
+      const offset = 100; // Offset for sticky header
+      const elementPosition = productsGridRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
   };
 
   return (
@@ -815,7 +852,7 @@ export function CatalogPage() {
 
         {/* Results Count */}
         {hasSearched && (
-          <div className="flex items-center justify-between mb-6">
+          <div ref={productsGridRef} className="flex items-center justify-between mb-6">
             <p className={theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}>
               {language === 'fi'
                 ? `${totalCount} tuotetta löydetty`
@@ -873,9 +910,9 @@ export function CatalogPage() {
                     transition={{ delay: index * 0.05 }}
                   >
                     {mode === 'tires' ? (
-                      <TireCard product={product} />
+                      <TireCard product={product} index={index} />
                     ) : (
-                      <RimCard product={product} />
+                      <RimCard product={product} index={index} />
                     )}
                   </motion.div>
                 ))}
@@ -908,7 +945,10 @@ export function CatalogPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-4 mt-12">
             <Button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => {
+                setCurrentPage(prev => Math.max(1, prev - 1));
+                scrollToProducts();
+              }}
               disabled={currentPage === 1}
               variant="outline"
               className={`disabled:opacity-30 flex items-center justify-center ${
@@ -936,7 +976,10 @@ export function CatalogPage() {
                 return (
                   <button
                     key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
+                    onClick={() => {
+                      setCurrentPage(pageNum);
+                      scrollToProducts();
+                    }}
                     className={`
                       w-10 h-10 rounded-lg transition-all duration-200
                       flex items-center justify-center
@@ -955,7 +998,10 @@ export function CatalogPage() {
             </div>
 
             <Button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onClick={() => {
+                setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                scrollToProducts();
+              }}
               disabled={currentPage === totalPages}
               variant="outline"
               className={`disabled:opacity-30 flex items-center justify-center ${
