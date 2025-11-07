@@ -29,6 +29,7 @@ interface NavbarProps {
   onLogout: () => void;
   cartCount?: number;
   onNavigate?: (path: string) => void;
+  onCartClick?: () => void;
 }
 
 export function Navbar({
@@ -38,6 +39,7 @@ export function Navbar({
   onLogout,
   cartCount = 0,
   onNavigate,
+  onCartClick,
 }: NavbarProps) {
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -127,6 +129,7 @@ export function Navbar({
 
             {/* Cart */}
             <button 
+              onClick={onCartClick}
               className="relative hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground/60 hover:text-foreground hover:bg-secondary transition-all"
               aria-label={t('nav.cart')}
             >
@@ -199,6 +202,25 @@ export function Navbar({
                         {t(link.key)}
                       </a>
                     ))}
+                    
+                    {/* Mobile Cart Button */}
+                    <button
+                      onClick={() => {
+                        onCartClick?.();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center justify-between px-3 py-2 text-base rounded-lg hover:bg-secondary transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <ShoppingCart className="h-5 w-5" />
+                        {t('nav.cart')}
+                      </span>
+                      {cartCount > 0 && (
+                        <Badge className="h-5 min-w-5 rounded-full bg-accent border-0 p-0 px-1.5 flex items-center justify-center text-xs">
+                          {cartCount}
+                        </Badge>
+                      )}
+                    </button>
                   </nav>
 
                   {/* Mobile Auth */}

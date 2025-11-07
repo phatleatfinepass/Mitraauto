@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
+import { useCart } from '../CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { TireFilters } from './TireFilters';
 import { RimFilters } from './RimFilters';
@@ -13,11 +14,11 @@ import { tiresSearchUI, rimsSearchUI } from '../../utils/rpc';
 type CatalogMode = 'tires' | 'rims';
 type SearchMode = 'license' | 'vehicle' | 'manual';
 
-interface Product {
+export interface CatalogProduct {
   id: string;
   brand: string;
   model: string;
-  product_type: string;
+  product_type: 'tire' | 'rim';
   best_price_eur?: number;
   best_image_url: string;
   in_stock: boolean;
@@ -39,6 +40,10 @@ interface Product {
   color?: string;
   material?: string;
   bolts_included?: boolean;
+}
+
+interface CatalogPageProps {
+  onProductSelect?: (product: CatalogProduct) => void;
 }
 
 const ITEMS_PER_PAGE = 12;
@@ -299,7 +304,7 @@ function normalizeEuNoise(value: unknown): number | undefined {
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
-function mapTireRow(row: any, fallbackSize?: string): Product {
+function mapTireRow(row: any, fallbackSize?: string): CatalogProduct {
   const euLabel = safeParseJson(
     getFirstMeaningfulValue(
       row.eu_label,
@@ -426,7 +431,7 @@ function mapTireRow(row: any, fallbackSize?: string): Product {
   };
 }
 
-function mapRimRow(row: any): Product {
+function mapRimRow(row: any): CatalogProduct {
   return {
     id: row.id,
     brand: row.brand,
@@ -447,7 +452,7 @@ function mapRimRow(row: any): Product {
 }
 
 // Demo data until products_search view is created
-const DEMO_TIRES: Product[] = [
+const DEMO_TIRES: CatalogProduct[] = [
   {
     id: '1',
     brand: 'Nokian',
@@ -501,7 +506,7 @@ const DEMO_TIRES: Product[] = [
   },
 ];
 
-const DEMO_RIMS: Product[] = [
+const DEMO_RIMS: CatalogProduct[] = [
   {
     id: '4',
     brand: 'BBS',
@@ -536,18 +541,100 @@ const DEMO_RIMS: Product[] = [
   },
 ];
 
-export function CatalogPage() {
+export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const { addToCart } = useCart();
   const [mode, setMode] = useState<CatalogMode>('tires');
   const [searchMode, setSearchMode] = useState<SearchMode>('manual');
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<any>({});
+  const [isRestoringState, setIsRestoringState] = useState(false);
   const productsGridRef = React.useRef<HTMLDivElement>(null);
+  
+  const handleProductClick = useCallback(
+    (product: CatalogProduct) => {
+      // Save catalog state before navigation
+      const catalogState = {
+        mode,
+        searchMode,
+        filters,
+        currentPage,
+        hasSearched,
+      };
+      sessionStorage.setItem('catalog_state', JSON.stringify(catalogState));
+      sessionStorage.setItem('catalog_scroll_position', window.scrollY.toString());
+      sessionStorage.setItem('catalog_scroll_timestamp', Date.now().toString());
+      
+      onProductSelect?.(product);
+    },
+    [onProductSelect, mode, searchMode, filters, currentPage, hasSearched]
+  );
+
+  const handleAddToCart = useCallback(
+    (product: CatalogProduct, e: React.MouseEvent) => {
+      e.stopPropagation();
+      // Add 4 pieces (set of 4) by default for tires/rims
+      addToCart(product, 4);
+    },
+    [addToCart]
+  );
+
+  // Restore catalog state when returning from product detail
+  useEffect(() => {
+    const savedState = sessionStorage.getItem('catalog_state');
+    const savedTimestamp = sessionStorage.getItem('catalog_scroll_timestamp');
+    
+    if (savedState && savedTimestamp) {
+      try {
+        // Only restore if timestamp is recent (within 5 minutes)
+        const timeDiff = Date.now() - parseInt(savedTimestamp, 10);
+        if (timeDiff < 300000) { // 5 minutes
+          const state = JSON.parse(savedState);
+          setIsRestoringState(true);
+          
+          // Restore all catalog state
+          setMode(state.mode);
+          setSearchMode(state.searchMode);
+          setFilters(state.filters);
+          setCurrentPage(state.currentPage);
+          setHasSearched(state.hasSearched);
+        } else {
+          // Clear old data
+          sessionStorage.removeItem('catalog_state');
+          sessionStorage.removeItem('catalog_scroll_position');
+          sessionStorage.removeItem('catalog_scroll_timestamp');
+        }
+      } catch (error) {
+        console.error('Failed to restore catalog state:', error);
+        sessionStorage.removeItem('catalog_state');
+      }
+    }
+  }, []);
+
+  // Restore scroll position after products are loaded
+  useEffect(() => {
+    if (isRestoringState && products.length > 0 && !loading) {
+      const savedPosition = sessionStorage.getItem('catalog_scroll_position');
+      if (savedPosition) {
+        requestAnimationFrame(() => {
+          window.scrollTo({
+            top: parseInt(savedPosition, 10),
+            behavior: 'instant'
+          });
+          // Clear the stored data after restoring
+          sessionStorage.removeItem('catalog_scroll_position');
+          sessionStorage.removeItem('catalog_scroll_timestamp');
+          sessionStorage.removeItem('catalog_state');
+          setIsRestoringState(false);
+        });
+      }
+    }
+  }, [isRestoringState, products, loading]);
 
 
   // Only fetch when search is explicitly triggered
@@ -557,8 +644,16 @@ export function CatalogPage() {
     fetchProducts();
   };
 
+  // Trigger fetch when state is restored
   useEffect(() => {
-    if (hasSearched) {
+    if (isRestoringState && hasSearched) {
+      fetchProducts();
+    }
+  }, [isRestoringState]);
+
+  // Normal pagination
+  useEffect(() => {
+    if (hasSearched && !isRestoringState) {
       fetchProducts();
     }
   }, [currentPage]);
@@ -910,9 +1005,19 @@ export function CatalogPage() {
                     transition={{ delay: index * 0.05 }}
                   >
                     {mode === 'tires' ? (
-                      <TireCard product={product} index={index} />
+                      <TireCard
+                        product={product}
+                        index={index}
+                        onClick={onProductSelect ? () => handleProductClick(product) : undefined}
+                        onAddToCart={(e) => handleAddToCart(product, e)}
+                      />
                     ) : (
-                      <RimCard product={product} index={index} />
+                      <RimCard
+                        product={product}
+                        index={index}
+                        onClick={onProductSelect ? () => handleProductClick(product) : undefined}
+                        onAddToCart={(e) => handleAddToCart(product, e)}
+                      />
                     )}
                   </motion.div>
                 ))}

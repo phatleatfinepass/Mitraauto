@@ -30,9 +30,11 @@ interface TireCardProps {
     in_stock: boolean;
   };
   index?: number;
+  onClick?: () => void;
+  onAddToCart?: (e: React.MouseEvent) => void;
 }
 
-export function TireCard({ product, index = 0 }: TireCardProps) {
+export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
 
@@ -93,13 +95,36 @@ export function TireCard({ product, index = 0 }: TireCardProps) {
   // Calculate 4-piece price
   const fourPiecePrice = (product.best_price_eur || 0) * 4;
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
+  const interactiveProps = onClick
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick: (event: React.MouseEvent<HTMLDivElement>) => {
+          event.preventDefault();
+          onClick();
+        },
+        onKeyDown: handleKeyDown,
+      }
+    : {};
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       whileHover={{ y: -4 }}
-      className="group relative h-full"
+      className={`group relative h-full ${
+        onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#FF6B35]' : ''
+      }`}
+      {...interactiveProps}
     >
       <div className={`relative rounded-[24px] size-full transition-all duration-500 ${theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-gray-50'} ${theme === 'dark' ? 'group-hover:shadow-[0_8px_32px_rgba(255,107,53,0.15)]' : 'group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'}`}>
         <div className="size-full">
@@ -506,6 +531,10 @@ export function TireCard({ product, index = 0 }: TireCardProps) {
                 <button
                   disabled={!product.in_stock}
                   className="bg-[#ff6b35] hover:bg-[#ff6b35]/90 box-border content-stretch flex gap-[14px] h-[40px] items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] shrink-0 w-full text-white transition-all duration-300 hover:shadow-[0px_6px_20px_0px_rgba(255,107,53,0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onAddToCart?.(event);
+                  }}
                 >
                   {product.in_stock ? (
                     <>

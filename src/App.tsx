@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
+import { CartProvider, useCart } from './components/CartContext';
+import { CartDrawer } from './components/CartDrawer';
+import { CheckoutPage } from './components/CheckoutPage';
+import { OrderSuccessPage } from './components/OrderSuccessPage';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ContactSection } from './components/ContactSection';
@@ -12,11 +16,14 @@ import { TireHotelPage } from './components/TireHotelPage';
 import { AboutPage } from './components/AboutPage';
 import { LegalPage } from './components/LegalPage';
 import { CatalogPage } from './components/catalog/CatalogPage';
+import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
+import type { CatalogProduct } from './components/catalog/CatalogPage';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { 
   Wrench, 
   Scale, 
@@ -52,15 +59,152 @@ const heroImages = [
   }
 ];
 
+type ParsedTireSize = {
+  width?: number;
+  aspect?: number;
+  construction?: string;
+  diameter?: number;
+  loadIndex?: number;
+  speedRating?: string;
+};
+
+const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
+
+function parseTireSize(sizeText?: string): ParsedTireSize {
+  if (!sizeText) {
+    return {};
+  }
+
+  const normalized = sizeText.toUpperCase().trim();
+  const pattern = /(?<width>\d{3})\s*\/\s*(?<aspect>\d{2})\s*(?<construction>Z?R)?\s*(?<diameter>\d{2})(?:\s*(?<load>\d{2,3})\s*(?<speed>[A-Z]))?/;
+  const match = normalized.match(pattern);
+
+  if (!match || !match.groups) {
+    return {};
+  }
+
+  const { width, aspect, construction, diameter, load, speed } = match.groups as Record<string, string | undefined>;
+
+  return {
+    width: width ? Number.parseInt(width, 10) : undefined,
+    aspect: aspect ? Number.parseInt(aspect, 10) : undefined,
+    construction: construction ?? 'R',
+    diameter: diameter ? Number.parseInt(diameter, 10) : undefined,
+    loadIndex: load ? Number.parseInt(load, 10) : undefined,
+    speedRating: speed ?? undefined,
+  };
+}
+
+// Generate mock product images (1-7 images per product for demo)
+function generateProductImages(productId: string, baseImageUrl: string, productType: 'tire' | 'rim'): string[] {
+  // Use product ID to deterministically generate 1-7 images
+  const hash = productId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const imageCount = (hash % 7) + 1; // 1-7 images
+  
+  // Mock image URLs representing different angles/views
+  // In production, these would come from the CMS/database
+  const tireImageTemplates = [
+    baseImageUrl, // Main/primary image
+    'https://images.unsplash.com/photo-1625402302260-34722fef9a01?w=800&h=800&fit=crop', // Side view
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=800&fit=crop', // Tread pattern
+    'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=800&h=800&fit=crop', // Detail shot
+    'https://images.unsplash.com/photo-1581858868540-92c8e8b9f983?w=800&h=800&fit=crop', // Profile view
+    'https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800&h=800&fit=crop', // Label/EU rating
+    'https://images.unsplash.com/photo-1621939514649-280e2e4e85ca?w=800&h=800&fit=crop', // 3/4 angle
+  ];
+  
+  const rimImageTemplates = [
+    baseImageUrl, // Main/primary image
+    'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=800&h=800&fit=crop', // Front view
+    'https://images.unsplash.com/photo-1614162536357-5d6b3c2e6b4f?w=800&h=800&fit=crop', // Side profile
+    'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=800&h=800&fit=crop', // Detail/spoke
+    'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&h=800&fit=crop', // Angle view
+    'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=800&fit=crop', // Close-up
+    'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&h=800&fit=crop', // Mounted view
+  ];
+  
+  const templates = productType === 'tire' ? tireImageTemplates : rimImageTemplates;
+  return templates.slice(0, imageCount);
+}
+
+function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
+  if (product.product_type === 'tire') {
+    const parsedSize = parseTireSize(product.size_text);
+    const rawSeason = typeof product.season === 'string' ? product.season.toLowerCase() : undefined;
+    const normalizedSeason: DetailTireProduct['season'] = rawSeason && VALID_TIRE_SEASONS.has(rawSeason as DetailTireProduct['season'])
+      ? (rawSeason as DetailTireProduct['season'])
+      : 'all_season';
+
+    return {
+      type: 'tire',
+      id: product.id,
+      brand: product.brand,
+      model: product.model,
+      tire_width: parsedSize.width ?? 0,
+      aspect_ratio: parsedSize.aspect ?? 0,
+      construction: parsedSize.construction ?? 'R',
+      rim_diameter: parsedSize.diameter ?? 0,
+      load_index: parsedSize.loadIndex,
+      speed_rating: parsedSize.speedRating,
+      season: normalizedSeason,
+      extra_load: product.xl ?? undefined,
+      runflat: product.runflat ?? undefined,
+      studded: product.studded ?? undefined,
+      fuel_efficiency: product.eu_fuel ? String(product.eu_fuel) : undefined,
+      wet_grip: product.eu_wet ? String(product.eu_wet) : undefined,
+      noise_level: typeof product.eu_noise === 'number' ? product.eu_noise : undefined,
+      noise_class: undefined,
+      ev_ready: rawSeason === 'all_season' ? true : undefined,
+      three_pmsf: normalizedSeason === 'winter' ? true : undefined,
+      best_price_eur: product.best_price_eur,
+      best_image_url: product.best_image_url,
+      images: generateProductImages(product.id, product.best_image_url, 'tire'),
+      description: undefined,
+      in_stock: product.in_stock,
+      stock_quantity: product.in_stock ? 8 : 0,
+      supplier_name: 'Mitra Auto',
+      delivery_days: product.in_stock ? '1-3 business days' : undefined,
+      weight: undefined,
+    };
+  }
+
+  return {
+    type: 'rim',
+    id: product.id,
+    brand: product.brand,
+    model: product.model,
+    rim_width: product.rim_width,
+    rim_diameter: product.rim_diameter,
+    pcd: product.pcd,
+    et_offset: product.et_offset,
+    cb: product.cb,
+    color: product.color,
+    material: product.material,
+    finish: undefined,
+    weight: undefined,
+    best_price_eur: product.best_price_eur,
+    best_image_url: product.best_image_url,
+    images: generateProductImages(product.id, product.best_image_url, 'rim'),
+    description: undefined,
+    in_stock: product.in_stock,
+    stock_quantity: product.in_stock ? 4 : 0,
+    supplier_name: 'Mitra Auto',
+    delivery_days: product.in_stock ? '2-5 business days' : undefined,
+    compatible_vehicles: [],
+  };
+}
+
 function HomePage() {
   const { t, language } = useLanguage();
+  const { addToCart, totalItems, setIsCartOpen } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'order-success'>('home');
+  const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Hero carousel timer - changes image every 30 seconds
@@ -73,38 +217,68 @@ function HomePage() {
   }, []);
   
   const updatePageFromPath = useCallback(
-    (path: string) => {
+    (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
       if (path === '/services') {
         setCurrentPage('services');
+        setSelectedProduct(null);
       } else if (path === '/tire-hotel') {
         setCurrentPage('tire-hotel');
+        setSelectedProduct(null);
       } else if (path === '/about') {
         setCurrentPage('about');
+        setSelectedProduct(null);
       } else if (path === '/privacy' || path === '/legal/privacy') {
         setCurrentPage('privacy');
+        setSelectedProduct(null);
       } else if (path === '/terms' || path === '/legal/terms') {
         setCurrentPage('terms');
+        setSelectedProduct(null);
       } else if (path === '/legal') {
         setCurrentPage('legal');
+        setSelectedProduct(null);
       } else if (path === '/catalog' || path === '/shop') {
         setCurrentPage('catalog');
+        setSelectedProduct(null);
+      } else if (path.startsWith('/catalog/')) {
+        setCurrentPage('catalog-detail');
+        if (state?.selectedProduct) {
+          setSelectedProduct(state.selectedProduct);
+        }
       } else {
         setCurrentPage('home');
+        setSelectedProduct(null);
       }
     },
-    [setCurrentPage]
+    [setCurrentPage, setSelectedProduct]
   );
 
   const navigate = useCallback(
-    (path: string) => {
+    (path: string, options?: { state?: { selectedProduct?: ProductDetail | null }; skipScroll?: boolean }) => {
+      const historyState = options?.state ?? {};
+
       if (window.location.pathname !== path) {
-        window.history.pushState({}, '', path);
+        window.history.pushState(historyState, '', path);
+      } else if (options?.state) {
+        window.history.replaceState(historyState, '', path);
       }
-      updatePageFromPath(path);
-      // Scroll to top when navigating to new page
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      updatePageFromPath(path, historyState);
+      // Scroll to top when navigating to new page (unless skipScroll is true)
+      if (!options?.skipScroll) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     },
     [updatePageFromPath]
+  );
+
+  const handleProductSelect = useCallback(
+    (product: CatalogProduct) => {
+      const detail = mapCatalogProductToDetail(product);
+      setSelectedProduct(detail);
+      const detailPath = `/catalog/${product.product_type}/${product.id}`;
+      navigate(detailPath, { state: { selectedProduct: detail } });
+    },
+    [navigate, setSelectedProduct]
   );
 
   const handleInternalNavigation = useCallback(
@@ -116,15 +290,17 @@ function HomePage() {
   );
   // Simple client-side routing
   useEffect(() => {
-    const handleNavigation = () => {
-      const path = window.location.pathname;      
-      updatePageFromPath(path);
+    const handleNavigation = (event?: PopStateEvent) => {
+      const path = window.location.pathname;
+      const state = (event?.state as { selectedProduct?: ProductDetail | null }) ?? window.history.state;
+      updatePageFromPath(path, state);
     };
 
     handleNavigation();
-    window.addEventListener('popstate', handleNavigation);
-    
-    return () => window.removeEventListener('popstate', handleNavigation);
+    const listener = (event: PopStateEvent) => handleNavigation(event);
+    window.addEventListener('popstate', listener);
+
+    return () => window.removeEventListener('popstate', listener);
   }, [updatePageFromPath]);
   
   // Debug emergency modal state
@@ -240,9 +416,12 @@ function HomePage() {
         onLoginClick={handleLogin}
         onSignupClick={handleSignup}
         onLogout={handleLogout}
-        cartCount={0}
+        cartCount={totalItems}
         onNavigate={navigate}
+        onCartClick={() => setIsCartOpen(true)}
       />
+
+      <CartDrawer onCheckout={() => setCurrentPage('checkout')} />
 
       <AuthModal
         open={authModalOpen}
@@ -313,7 +492,35 @@ function HomePage() {
             onNavigate={navigate}
           />
         ) : currentPage === 'catalog' ? (
-          <CatalogPage />
+          <CatalogPage onProductSelect={handleProductSelect} />
+        ) : currentPage === 'catalog-detail' ? (
+          selectedProduct ? (
+            <ProductDetailPage 
+              product={selectedProduct}
+              onAddToCart={(product, quantity) => {
+                addToCart(product, quantity);
+                toast.success(
+                  language === 'fi' 
+                    ? `${quantity} × ${product.brand} ${product.model} lisätty ostoskoriin`
+                    : `${quantity} × ${product.brand} ${product.model} added to cart`
+                );
+              }}
+            />
+          ) : (
+            <CatalogPage onProductSelect={handleProductSelect} />
+          )
+        ) : currentPage === 'checkout' ? (
+          <CheckoutPage 
+            onBack={() => setIsCartOpen(true)}
+            onComplete={() => setCurrentPage('order-success')}
+          />
+        ) : currentPage === 'order-success' ? (
+          <OrderSuccessPage
+            onContinueShopping={() => {
+              setCurrentPage('catalog');
+              navigate('/catalog');
+            }}
+          />
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (
@@ -700,7 +907,9 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <HomePage />
+        <CartProvider>
+          <HomePage />
+        </CartProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

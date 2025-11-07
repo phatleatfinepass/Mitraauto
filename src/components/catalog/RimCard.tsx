@@ -22,9 +22,11 @@ interface RimCardProps {
     in_stock: boolean;
   };
   index?: number;
+  onClick?: () => void;
+  onAddToCart?: (e: React.MouseEvent) => void;
 }
 
-export function RimCard({ product, index = 0 }: RimCardProps) {
+export function RimCard({ product, index = 0, onClick, onAddToCart }: RimCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
 
@@ -52,11 +54,34 @@ export function RimCard({ product, index = 0 }: RimCardProps) {
     return labels[material.toLowerCase() as keyof typeof labels] || material;
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
+  const interactiveProps = onClick
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick: (event: React.MouseEvent<HTMLDivElement>) => {
+          event.preventDefault();
+          onClick();
+        },
+        onKeyDown: handleKeyDown,
+      }
+    : {};
+
   return (
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ duration: 0.4 }}
-      className="group relative h-full"
+      className={`group relative h-full ${
+        onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0B6BFF]' : ''
+      }`}
+      {...interactiveProps}
     >
       <div className={`relative rounded-[24px] size-full transition-all duration-500 ${theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-gray-50'} ${theme === 'dark' ? 'group-hover:shadow-[0_8px_32px_rgba(11,107,255,0.15)]' : 'group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'}`}>
         <div className="size-full">
@@ -221,6 +246,10 @@ export function RimCard({ product, index = 0 }: RimCardProps) {
                 <button
                   disabled={!product.in_stock}
                   className="bg-[#ff6b35] box-border content-stretch flex gap-[14px] h-[40px] items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] hover:shadow-[0px_6px_16px_0px_rgba(255,107,53,0.35)] shrink-0 w-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group/button hover:bg-[#ff6b35]/90"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onAddToCart?.(event);
+                  }}
                 >
                   {/* Shopping Cart Icon */}
                   <div className="relative shrink-0 size-[16px] transition-transform duration-300 group-hover/button:rotate-12">
