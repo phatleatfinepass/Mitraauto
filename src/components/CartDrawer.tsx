@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCart } from './CartContext';
 import { useTheme } from './ThemeContext';
 import { useLanguage } from './LanguageContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { X, Plus, Minus, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,9 +23,10 @@ interface CartDrawerProps {
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
-  const { items, removeFromCart, updateQuantity, totalItems, totalPrice, isCartOpen, setIsCartOpen } = useCart();
+  const { items, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice, isCartOpen, setIsCartOpen } = useCart();
   const { theme } = useTheme();
   const { language } = useLanguage();
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   const t = (key: string) => {
     const translations: Record<string, { fi: string; en: string }> = {
@@ -29,6 +40,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
       items: { fi: 'tuotetta', en: 'items' },
       remove: { fi: 'Poista', en: 'Remove' },
       perPcs: { fi: 'kpl', en: 'pcs' },
+      clearCart: { fi: 'Tyhjennä ostoskori', en: 'Clear cart' },
+      clearCartTitle: { fi: 'Tyhjennä ostoskori?', en: 'Clear cart?' },
+      clearCartDesc: { fi: 'Haluatko varmasti poistaa kaikki tuotteet ostoskorista? Tätä toimintoa ei voi perua.', en: 'Are you sure you want to remove all items from your cart? This action cannot be undone.' },
+      cancel: { fi: 'Peruuta', en: 'Cancel' },
+      clearConfirm: { fi: 'Tyhjennä', en: 'Clear' },
     };
     return translations[key]?.[language] || key;
   };
@@ -37,9 +53,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
     <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
       <SheetContent 
         side="right" 
-        className={`w-full sm:max-w-md p-0 ${
+        className={`w-full sm:max-w-md p-0 h-full ${
           theme === 'dark' ? 'bg-[#11141A] border-white/10' : 'bg-white border-[#E2E8F0]'
         }`}
+        style={{
+          maxHeight: '100dvh', // Use dynamic viewport height for iOS Safari
+        }}
       >
         <SheetHeader className={`px-6 py-5 border-b ${
           theme === 'dark' ? 'border-white/10' : 'border-[#E2E8F0]'
@@ -56,7 +75,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
         </SheetHeader>
 
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[calc(100vh-80px)] px-6">
+          <div 
+            className="flex flex-col items-center justify-center px-6"
+            style={{ height: 'calc(100dvh - 80px)' }}
+          >
             <div className={`size-20 rounded-full flex items-center justify-center mb-4 ${
               theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'
             }`}>
@@ -82,7 +104,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col h-[calc(100vh-80px)]">
+          <div 
+            className="flex flex-col"
+            style={{ height: 'calc(100dvh - 80px)' }}
+          >
+            {/* Continue Shopping Link - Encourages adding more items */}
+            <div className={`px-6 py-3 border-b ${
+              theme === 'dark' ? 'border-white/5' : 'border-gray-100'
+            }`}>
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className={`text-xs transition-colors ${
+                  theme === 'dark'
+                    ? 'text-gray-400 hover:text-[#FF6B00]'
+                    : 'text-gray-500 hover:text-[#FF6B00]'
+                }`}
+              >
+                ← {t('continueShopping')}
+              </button>
+            </div>
+
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <AnimatePresence mode="popLayout">
@@ -181,13 +222,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                           </div>
                         </div>
 
-                        {/* Remove Button */}
+                        {/* Remove Button - Subtle styling to reduce cart abandonment */}
                         <button
                           onClick={() => removeFromCart(item.id)}
-                          className={`flex items-center gap-1 text-xs mt-2 transition-colors ${
+                          className={`flex items-center gap-1 text-xs mt-2 transition-colors opacity-50 hover:opacity-100 ${
                             theme === 'dark'
-                              ? 'text-gray-400 hover:text-red-400'
-                              : 'text-[#64748B] hover:text-red-600'
+                              ? 'text-gray-500 hover:text-red-400'
+                              : 'text-gray-400 hover:text-red-600'
                           }`}
                         >
                           <Trash2 className="size-3" />
@@ -235,9 +276,65 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                 {t('checkout')}
                 <ArrowRight className="size-5 ml-2" />
               </Button>
+
+              {/* Subtle Clear Cart Link - Intentionally understated to reduce abandonment */}
+              <div className="mt-3 text-center">
+                <button
+                  onClick={() => setShowClearDialog(true)}
+                  className={`text-xs transition-colors opacity-40 hover:opacity-60 ${
+                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                  }`}
+                >
+                  {t('clearCart')}
+                </button>
+              </div>
             </div>
           </div>
         )}
+
+        {/* Clear Cart Confirmation Dialog */}
+        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+          <AlertDialogContent className={
+            theme === 'dark' 
+              ? 'bg-[#1C1C1E] border-white/10' 
+              : 'bg-white border-gray-200'
+          }>
+            <AlertDialogHeader>
+              <AlertDialogTitle className={
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }>
+                {t('clearCartTitle')}
+              </AlertDialogTitle>
+              <AlertDialogDescription className={
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }>
+                {t('clearCartDesc')}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className={
+                theme === 'dark'
+                  ? 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+              }>
+                {t('cancel')}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  clearCart();
+                  setShowClearDialog(false);
+                }}
+                className={
+                  theme === 'dark'
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }
+              >
+                {t('clearConfirm')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

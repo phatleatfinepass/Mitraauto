@@ -476,6 +476,14 @@
     font-family: -apple-system, BlinkMacSystemFont, SF Pro Display, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
 
+  html {
+    height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
   h1 {
     letter-spacing: -.03em;
     font-weight: 700;
@@ -1403,10 +1411,6 @@
 
   .h-\[700px\] {
     height: 700px;
-  }
-
-  .h-\[calc\(100vh-80px\)\] {
-    height: calc(100vh - 80px);
   }
 
   .h-\[var\(--radix-select-trigger-height\)\] {
@@ -2414,6 +2418,10 @@
 
   .border-destructive {
     border-color: var(--destructive);
+  }
+
+  .border-gray-100 {
+    border-color: var(--color-gray-100);
   }
 
   .border-gray-200 {
@@ -4355,6 +4363,10 @@
     opacity: .3;
   }
 
+  .opacity-40 {
+    opacity: .4;
+  }
+
   .opacity-50 {
     opacity: .5;
   }
@@ -5301,6 +5313,12 @@
   }
 
   @media (hover: hover) {
+    .hover\:bg-red-700:hover {
+      background-color: var(--color-red-700);
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:bg-secondary:hover {
       background-color: var(--secondary);
     }
@@ -5411,6 +5429,12 @@
   @media (hover: hover) {
     .hover\:text-\[\#0F172A\]:hover {
       color: #0f172a;
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:text-\[\#FF6B00\]:hover {
+      color: #ff6b00;
     }
   }
 
@@ -5787,6 +5811,10 @@
 
   .disabled\:cursor-not-allowed:disabled {
     cursor: not-allowed;
+  }
+
+  .disabled\:opacity-20:disabled {
+    opacity: .2;
   }
 
   .disabled\:opacity-30:disabled {
@@ -6926,6 +6954,12 @@
   }
 
   @media (width >= 64rem) {
+    .lg\:py-20 {
+      padding-block: calc(var(--spacing) * 20);
+    }
+  }
+
+  @media (width >= 64rem) {
     .lg\:py-32 {
       padding-block: calc(var(--spacing) * 32);
     }
@@ -7520,6 +7554,36 @@ html {
 
 .animate-pulse-slow {
   animation: 2s cubic-bezier(.4, 0, .6, 1) infinite pulse-slow;
+}
+
+@supports (height: 100dvh) {
+  .h-screen-safe {
+    height: 100dvh;
+  }
+}
+
+@supports not (height: 100dvh) {
+  .h-screen-safe {
+    height: -webkit-fill-available;
+  }
+}
+
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
 }
 
 @property --tw-translate-x {

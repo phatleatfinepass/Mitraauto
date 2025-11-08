@@ -247,6 +247,16 @@ const translations: Translations = {
   'auth.or': { fi: 'TAI', en: 'OR' },
   'auth.placeholder.email': { fi: 'nimi@esimerkki.fi', en: 'name@example.com' },
   
+  // Trust Signals (Landing Page)
+  'trustSignals.expertService': { fi: 'Ammattilaisten palvelu', en: 'Expert Service' },
+  'trustSignals.expertServiceDesc': { fi: 'Sertifioidut asentajat ja modernit työkalut', en: 'Certified technicians and modern equipment' },
+  'trustSignals.qualityProducts': { fi: 'Laatutuotteet', en: 'Quality Products' },
+  'trustSignals.qualityProductsDesc': { fi: 'Tunnetut tuotemerkit ja takuu', en: 'Trusted brands and warranty' },
+  'trustSignals.fastService': { fi: 'Nopea huolto', en: 'Fast Service' },
+  'trustSignals.fastServiceDesc': { fi: 'Tehokas palvelu ja nopea läpimenoaika', en: 'Efficient service and quick turnaround' },
+  'trustSignals.customerFirst': { fi: 'Asiakas edellä', en: 'Customer First' },
+  'trustSignals.customerFirstDesc': { fi: 'Yli 500 tyytyväistä asiakasta', en: 'Over 500 satisfied customers' },
+  
   // Contact Section
   'contact.title': { fi: 'Ota yhteyttä', en: 'Get in Touch' },
   'contact.heading': { fi: 'Yhteystiedot', en: 'Contact Information' },

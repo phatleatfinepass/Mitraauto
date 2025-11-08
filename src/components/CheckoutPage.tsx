@@ -82,6 +82,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       perPcs: { fi: 'kpl', en: 'pcs' },
       freeShipping: { fi: 'Ilmainen toimitus', en: 'Free Shipping' },
       secureCheckout: { fi: 'Turvallinen maksu', en: 'Secure Checkout' },
+      cancelOrder: { fi: 'Peruuta tilaus', en: 'Cancel order' },
     };
     return translations[key]?.[language] || key;
   };
@@ -410,6 +411,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 <Lock className="size-5 mr-2" />
                 {isProcessing ? t('processing') : t('placeOrder')}
               </Button>
+
+              {/* Subtle Cancel Link - Mobile */}
+              <div className="mt-3 text-center lg:hidden">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  disabled={isProcessing}
+                  className={`text-xs transition-colors opacity-40 hover:opacity-60 disabled:opacity-20 ${
+                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                  }`}
+                >
+                  {t('cancelOrder')}
+                </button>
+              </div>
             </form>
           </div>
 
@@ -514,6 +529,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
               }`}>
                 {t('secureCheckout')}
               </p>
+
+              {/* Subtle Cancel Link - Desktop */}
+              <div className="mt-2 text-center">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  disabled={isProcessing}
+                  className={`text-xs transition-colors opacity-40 hover:opacity-60 disabled:opacity-20 ${
+                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                  }`}
+                >
+                  {t('cancelOrder')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

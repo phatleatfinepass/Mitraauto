@@ -892,6 +892,65 @@ function HomePage() {
           </div>
         </section>
 
+        {/* Trust Signals Section */}
+        <section className="py-16 lg:py-20 relative bg-secondary/30" aria-label="Why choose Mitra Auto">
+          <div className="container mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {/* Expert Service */}
+              <div className="flex flex-col items-center text-center group">
+                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                  <Award className="size-6 text-accent" aria-hidden="true" />
+                </div>
+                <h3 className="text-base mb-2">
+                  {t('trustSignals.expertService')}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('trustSignals.expertServiceDesc')}
+                </p>
+              </div>
+
+              {/* Quality Products */}
+              <div className="flex flex-col items-center text-center group">
+                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                  <Shield className="size-6 text-accent" aria-hidden="true" />
+                </div>
+                <h3 className="text-base mb-2">
+                  {t('trustSignals.qualityProducts')}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('trustSignals.qualityProductsDesc')}
+                </p>
+              </div>
+
+              {/* Fast Service */}
+              <div className="flex flex-col items-center text-center group">
+                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                  <Clock className="size-6 text-accent" aria-hidden="true" />
+                </div>
+                <h3 className="text-base mb-2">
+                  {t('trustSignals.fastService')}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('trustSignals.fastServiceDesc')}
+                </p>
+              </div>
+
+              {/* Customer First */}
+              <div className="flex flex-col items-center text-center group">
+                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                  <Users className="size-6 text-accent" aria-hidden="true" />
+                </div>
+                <h3 className="text-base mb-2">
+                  {t('trustSignals.customerFirst')}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('trustSignals.customerFirstDesc')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Contact & Location Section */}
         <ContactSection />
           </>

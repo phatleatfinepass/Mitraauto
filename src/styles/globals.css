@@ -127,6 +127,18 @@
     @apply bg-background text-foreground antialiased;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
+
+  /* iOS Safari viewport height fix */
+  html {
+    height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: 100vh;
+    /* Fallback for browsers that don't support dvh */
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
+  }
 }
 
 /**
@@ -351,5 +363,39 @@ html {
   
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, Opera */
+  }
+}
+
+/* iOS Safari Safe Area Support */
+@supports (height: 100dvh) {
+  .h-screen-safe {
+    height: 100dvh;
+  }
+}
+
+/* iOS viewport units fallback */
+@supports not (height: 100dvh) {
+  .h-screen-safe {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* Safe area insets for notch and home indicator */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
   }
 }
