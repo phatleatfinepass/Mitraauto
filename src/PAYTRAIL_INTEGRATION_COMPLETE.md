@@ -126,7 +126,7 @@ Fatal Error:
 
 ### Endpoint
 ```
-POST https://rcmmbwdebnmicrweoiyz.functions.supabase.co/payments_create_paytrail
+POST https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1/payments_create_paytrail
 ```
 
 ### Request Example
@@ -147,8 +147,8 @@ POST https://rcmmbwdebnmicrweoiyz.functions.supabase.co/payments_create_paytrail
     "firstName": "John",
     "lastName": "Doe"
   },
-  "return_url": "https://mitra-auto.fi/checkout/success",
-  "cancel_url": "https://mitra-auto.fi/checkout/cancel",
+  "return_url": "https://www.mitra-auto.fi/checkout/success",
+  "cancel_url": "https://www.mitra-auto.fi/checkout/cancel",
   "metadata": {
     "source": "web_checkout",
     "language": "fi"

@@ -11,8 +11,12 @@ import { Checkbox } from './ui/checkbox';
 import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Building, Home, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { createPaytrailPayment, getReturnUrlBase } from '../lib/paytrailClient';
+import { createPaytrailPayment } from '../lib/paytrailClient';
 import { PaytrailCreateItem } from '../lib/paytrailContract';
+import {
+  CHECKOUT_CANCEL_URL,
+  CHECKOUT_SUCCESS_URL,
+} from './appConfig';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -139,12 +143,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           description,
         };
       });
-
-      // Get return URLs
-      const baseUrl = getReturnUrlBase();
-      const returnUrl = `${baseUrl}/checkout/success`;
-      const cancelUrl = `${baseUrl}/checkout/cancel`;
-
+      
       // Call Paytrail API
       const response = await createPaytrailPayment({
         items: paytrailItems,
@@ -154,8 +153,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           firstName: formData.firstName || null,
           lastName: formData.lastName || null,
         },
-        return_url: returnUrl,
-        cancel_url: cancelUrl,
+        return_url: CHECKOUT_SUCCESS_URL,
+        cancel_url: CHECKOUT_CANCEL_URL,
         metadata: {
           source: 'web_checkout',
           language,

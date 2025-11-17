@@ -14,7 +14,7 @@ URL: https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1/payments_create_paytr
 ## What's Been Fixed
 
 ✅ **URL Format Corrected**
-- Changed from: `https://rcmmbwdebnmicrweoiyz.functions.supabase.co/payments_create_paytrail`
+- Changed from: `https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1/payments_create_paytrail`
 - Changed to: `https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1/payments_create_paytrail`
 
 ✅ **Better Error Logging**

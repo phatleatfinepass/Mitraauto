@@ -7,6 +7,18 @@
 // Figma Make / Codex can treat it as the single source of truth when
 // generating/wiring frontend code. HTTP implementation can live elsewhere.
 
+const normalizeEnvUrl = (value?: string | null): string | undefined => {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  const lower = trimmed.toLowerCase();
+  if (lower === 'false' || lower === 'undefined' || lower === 'null') {
+    return undefined;
+  }
+
+  return trimmed;
+};
+
 export const PAYTRAIL_FUNCTIONS_BASE = (() => {
   // Prefer build-time env (Vite, etc.) when available
   try {
@@ -15,19 +27,22 @@ export const PAYTRAIL_FUNCTIONS_BASE = (() => {
       | { VITE_PAYTRAIL_FUNCTIONS_BASE?: string }
       | undefined;
 
-    if (maybeEnv?.VITE_PAYTRAIL_FUNCTIONS_BASE) {
-      return maybeEnv.VITE_PAYTRAIL_FUNCTIONS_BASE;
+    const envUrl = normalizeEnvUrl(maybeEnv?.VITE_PAYTRAIL_FUNCTIONS_BASE);
+    if (envUrl) {
+      return envUrl;
     }
   } catch {
     // ignore if import.meta is not available
   }
 
   // Fallback to Node-style env for SSR/tests/tools that inject process.env
-  if (
-    typeof process !== 'undefined' &&
-    process.env?.NEXT_PUBLIC_PAYTRAIL_FUNCTIONS_BASE
-  ) {
-    return process.env.NEXT_PUBLIC_PAYTRAIL_FUNCTIONS_BASE;
+  if (typeof process !== 'undefined') {
+    const envUrl = normalizeEnvUrl(
+      process.env?.NEXT_PUBLIC_PAYTRAIL_FUNCTIONS_BASE
+    );
+    if (envUrl) {
+      return envUrl;
+    }
   }
 
   // Final hardcoded default
@@ -95,13 +110,13 @@ export interface PaytrailCreateRequest {
 
   /**
    * URL to redirect to on success (what Paytrail will use).
-   * Example: "https://mitra-auto.fi/checkout/success"
+   * Example: "https://www.mitra-auto.fi/checkout/success"
    */
   return_url?: string;
 
   /**
    * URL to redirect to on cancel/failure.
-   * Example: "https://mitra-auto.fi/checkout/cancel"
+   * Example: "https://www.mitra-auto.fi/checkout/cancel"
    */
   cancel_url?: string;
 

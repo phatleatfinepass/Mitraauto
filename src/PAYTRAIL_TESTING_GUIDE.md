@@ -4,7 +4,7 @@
 
 ### Prerequisites
 - Frontend running on localhost or deployed
-- Paytrail backend deployed at `https://rcmmbwdebnmicrweoiyz.functions.supabase.co`
+- Paytrail backend deployed at `https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1`
 - Environment variables configured (if needed)
 
 ---

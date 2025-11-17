@@ -51,7 +51,7 @@
                   ▼
     ┌─────────────────────────────────────────────────────────┐
     │      POST /payments_create_paytrail                     │
-    │      https://rcmmbwdebnmicrweoiyz.functions.supabase.co │
+    │      https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1 │
     │                                                          │
     │  Request:                                               │
     │  {                                                      │

@@ -63,8 +63,8 @@ this request shape:
       "description": "Test Tire"
     }
   ],
-  "return_url": "https://mitra-auto.fi/checkout/success",
-  "cancel_url": "https://mitra-auto.fi/checkout/cancel",
+  "return_url": "https://www.mitra-auto.fi/checkout/success",
+  "cancel_url": "https://www.mitra-auto.fi/checkout/cancel",
   "metadata": {
     "source": "web_checkout",
     "test_label": "optional free-form metadata"
@@ -87,8 +87,8 @@ Field notes:
 	•	return_url / cancel_url
 	•	Where Paytrail should send the user back after payment completed/canceled.
 	•	Typically:
-	•	https://mitra-auto.fi/checkout/success
-	•	https://mitra-auto.fi/checkout/cancel
+	•	https://www.mitra-auto.fi/checkout/success
+	•	https://www.mitra-auto.fi/checkout/cancel
 	•	metadata
 	•	Free-form JSON passed through into logs or DB; safe to omit.
 

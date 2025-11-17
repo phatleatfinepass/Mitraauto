@@ -20,6 +20,48 @@ interface EmergencyTowModalProps {
 
 type Step = 'choose' | 'gps' | 'manual';
 
+const DEFAULT_BACKEND_URL = 'https://rcmmbwdebnmicrweoiyz.supabase.co';
+
+const normalizeBackendUrl = (value?: string | null): string | undefined => {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  const lowered = trimmed.toLowerCase();
+  if (['false', 'undefined', 'null'].includes(lowered)) {
+    return undefined;
+  }
+
+  return trimmed.replace(/\/$/, '');
+};
+
+const resolveBackendBaseUrl = (): string => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const viteEnv = (import.meta as any).env as { VITE_BACKEND_URL?: string } | undefined;
+    const normalized = normalizeBackendUrl(viteEnv?.VITE_BACKEND_URL);
+    if (normalized) {
+      return normalized;
+    }
+  } catch {
+    // ignore when import.meta isn't available (e.g. SSR tools)
+  }
+
+  if (typeof process !== 'undefined') {
+    const normalized = normalizeBackendUrl(
+      process.env?.VITE_BACKEND_URL || process.env?.NEXT_PUBLIC_BACKEND_URL
+    );
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return DEFAULT_BACKEND_URL;
+};
+
+const BACKEND_BASE_URL = resolveBackendBaseUrl();
+
+const EMERGENCY_TOW_ENDPOINT = `${BACKEND_BASE_URL}/functions/v1/emergency_tow_request`;
+
 export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps) {
   const { t } = useLanguage();
   const [step, setStep] = useState<Step>('choose');
@@ -117,7 +159,7 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
 
     try {
       // Production-ready API call
-      const response = await fetch('/api/emergency-tow', {
+      const response = await fetch(EMERGENCY_TOW_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

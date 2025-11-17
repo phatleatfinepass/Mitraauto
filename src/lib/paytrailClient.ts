@@ -11,6 +11,10 @@ import {
   PaytrailCreateResponsePayload,
   PaytrailCreateErrorPayload,
 } from './paytrailContract';
+import {
+  CHECKOUT_CANCEL_URL,
+  CHECKOUT_SUCCESS_URL,
+} from '../components/appConfig';
 
 const NETWORK_ERROR_RESPONSE: PaytrailCreateErrorPayload = {
   ok: false,
@@ -29,9 +33,15 @@ const NETWORK_ERROR_RESPONSE: PaytrailCreateErrorPayload = {
 export async function createPaytrailPayment(
   request: PaytrailCreateRequest
 ): Promise<PaytrailCreateResponsePayload> {
-  console.log('🔵 Calling Paytrail API:', PAYTRAIL_CREATE_URL);
-  console.log('📤 Request payload:', request);
+  const resolvedRequest: PaytrailCreateRequest = {
+    ...request,
+    return_url: request.return_url ?? CHECKOUT_SUCCESS_URL,
+    cancel_url: request.cancel_url ?? CHECKOUT_CANCEL_URL,
+  };
   
+  console.log('🔵 Calling Paytrail API:', PAYTRAIL_CREATE_URL);
+  console.log('📤 Request payload:', resolvedRequest);
+
   try {
     const response = await fetch(PAYTRAIL_CREATE_URL, {
       method: 'POST',
@@ -125,32 +135,4 @@ function isPaytrailPayload(
     'ok' in payload &&
     typeof (payload as { ok: unknown }).ok === 'boolean'
   );
-}
-
-/**
- * Helper to get the current origin for constructing return URLs.
- * Falls back to localhost in development if window is not available.
- */
-export function getReturnUrlBase(): string {
-  // Browser: use the current window origin
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin;
-  }
-
-  // Vite / build-time env (optional, safe no-op outside Vite)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const maybeEnv = (import.meta as any).env as
-      | { VITE_APP_URL?: string }
-      | undefined;
-
-    if (maybeEnv?.VITE_APP_URL) {
-      return maybeEnv.VITE_APP_URL;
-    }
-  } catch {
-    // ignore if import.meta is not available
-  }
-
-  // Final fallback for SSR/tests
-  return 'http://localhost:3000';
 }
