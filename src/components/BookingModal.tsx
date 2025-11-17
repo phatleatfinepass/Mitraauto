@@ -16,7 +16,7 @@ interface BookingModalProps {
 }
 
 export function BookingModal({ open, onOpenChange, preSelectedService }: BookingModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   // Current step
   const [currentStep, setCurrentStep] = useState<BookingStep>('step1');

@@ -11,6 +11,8 @@ import { Checkbox } from './ui/checkbox';
 import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Building, Home, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { createPaytrailPayment, getReturnUrlBase } from '../lib/paytrailClient';
+import { PaytrailCreateItem } from '../lib/paytrailContract';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -74,7 +76,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       shipping: { fi: 'Toimitus', en: 'Shipping' },
       vat: { fi: 'ALV 25.5%', en: 'VAT 25.5%' },
       total: { fi: 'Yhteensä', en: 'Total' },
-      placeOrder: { fi: 'Vahvista tilaus', en: 'Place Order' },
+      placeOrder: { fi: 'Siirry maksamaan', en: 'Proceed to Payment' },
       processing: { fi: 'Käsitellään...', en: 'Processing...' },
       acceptTerms: { fi: 'Hyväksyn käyttöehdot ja tietosuojakäytännön', en: 'I accept the terms and conditions and privacy policy' },
       required: { fi: 'pakollinen', en: 'required' },
@@ -83,6 +85,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       freeShipping: { fi: 'Ilmainen toimitus', en: 'Free Shipping' },
       secureCheckout: { fi: 'Turvallinen maksu', en: 'Secure Checkout' },
       cancelOrder: { fi: 'Peruuta tilaus', en: 'Cancel order' },
+      paymentError: { fi: 'Maksun luonti epäonnistui', en: 'Payment creation failed' },
+      redirectingToPayment: { fi: 'Ohjataan maksupalveluun...', en: 'Redirecting to payment service...' },
     };
     return translations[key]?.[language] || key;
   };
@@ -99,19 +103,100 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       return;
     }
 
+    if (items.length === 0) {
+      toast.error(
+        language === 'fi'
+          ? 'Ostoskori on tyhjä'
+          : 'Cart is empty'
+      );
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Simulate order processing
-    setTimeout(() => {
-      clearCart();
-      onComplete();
-      toast.success(
+    try {
+      // Convert cart items to Paytrail format
+      const paytrailItems: PaytrailCreateItem[] = items.map((item) => {
+        const unitPriceEur = item.price;
+        const unitPriceCents = Math.round(unitPriceEur * 100);
+        
+        // Generate product code from product data
+        const productCode = item.product.article_nr || 
+                           item.product.ean || 
+                           item.product.id || 
+                           'UNKNOWN';
+        
+        // Generate description
+        const description = `${item.product.brand || ''} ${item.product.model || ''}`.trim() || 
+                          item.product.name || 
+                          'Product';
+
+        return {
+          unitPrice: unitPriceCents,
+          units: item.quantity,
+          productCode: String(productCode),
+          vatPercentage: 25.5, // Finnish VAT rate as per legal docs
+          description,
+        };
+      });
+
+      // Get return URLs
+      const baseUrl = getReturnUrlBase();
+      const returnUrl = `${baseUrl}/checkout/success`;
+      const cancelUrl = `${baseUrl}/checkout/cancel`;
+
+      // Call Paytrail API
+      const response = await createPaytrailPayment({
+        items: paytrailItems,
+        customer: {
+          email: formData.email || null,
+          phone: formData.phone || null,
+          firstName: formData.firstName || null,
+          lastName: formData.lastName || null,
+        },
+        return_url: returnUrl,
+        cancel_url: cancelUrl,
+        metadata: {
+          source: 'web_checkout',
+          language,
+          shipping_address: formData.shippingAddress,
+          shipping_city: formData.shippingCity,
+          shipping_postal_code: formData.shippingPostalCode,
+          order_notes: formData.orderNotes || null,
+        },
+      });
+
+      if (response.ok) {
+        // Success - store order ID and redirect to Paytrail
+        sessionStorage.setItem('mitra_last_order_id', response.order_id);
+        
+        toast.success(t('redirectingToPayment'));
+        
+        // Redirect to Paytrail payment page
+        setTimeout(() => {
+          window.location.href = response.redirect_url;
+        }, 500);
+      } else {
+        // Error response from backend
+        console.error('Payment creation error:', response);
+        
+        toast.error(
+          `${t('paymentError')}: ${response.message || 'Unknown error'}`
+        );
+        
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      console.error('Payment creation exception:', error);
+      
+      toast.error(
         language === 'fi'
-          ? 'Tilaus vahvistettu! Saat tilausvahvistuksen sähköpostiisi.'
-          : 'Order confirmed! You will receive a confirmation email.'
+          ? 'Yhteysvirhe maksupalveluun. Yritä uudelleen.'
+          : 'Connection error to payment service. Please try again.'
       );
+      
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {

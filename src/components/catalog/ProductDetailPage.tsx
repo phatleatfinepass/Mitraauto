@@ -1365,7 +1365,7 @@ export function ProductDetailPage({
             
             <div>
               <div className={`rounded-xl overflow-hidden border ${
-                theme === 'dark' ? 'border-white/10' : 'border-[#E2E8F0]'
+                theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-[#E2E8F0] bg-white'
               }`}>
                 <table className="w-full">
                   <tbody>
@@ -1383,12 +1383,12 @@ export function ProductDetailPage({
                           { label: t('fuelEfficiency'), value: product.fuel_efficiency?.toUpperCase() },
                           { label: t('wetGrip'), value: product.wet_grip?.toUpperCase() },
                           { label: t('noise'), value: product.noise_level ? `${product.noise_level} dB` : null },
-                        ].map((row, idx) => row.value && (
+                        ].filter(row => row.value).map((row, idx, arr) => (
                           <tr 
                             key={idx}
-                            className={idx % 2 === 0 
-                              ? (theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-white')
-                              : (theme === 'dark' ? 'bg-white/5' : 'bg-[#F9FAFB]')
+                            className={idx < arr.length - 1 
+                              ? (theme === 'dark' ? 'border-b border-white/10' : 'border-b border-[#E2E8F0]')
+                              : ''
                             }
                           >
                             <td className={`py-3 px-4 text-sm ${
@@ -1415,12 +1415,12 @@ export function ProductDetailPage({
                           { label: t('material'), value: product.material ? getMaterialLabel(product.material) : null },
                           { label: t('finish'), value: product.finish },
                           { label: t('weight'), value: product.weight ? `${product.weight} kg` : null },
-                        ].map((row, idx) => row.value && (
+                        ].filter(row => row.value).map((row, idx, arr) => (
                           <tr 
                             key={idx}
-                            className={idx % 2 === 0 
-                              ? (theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-white')
-                              : (theme === 'dark' ? 'bg-white/5' : 'bg-[#F9FAFB]')
+                            className={idx < arr.length - 1 
+                              ? (theme === 'dark' ? 'border-b border-white/10' : 'border-b border-[#E2E8F0]')
+                              : ''
                             }
                           >
                             <td className={`py-3 px-4 text-sm ${

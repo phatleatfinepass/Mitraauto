@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from './LanguageContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ArrowRight, Calendar } from 'lucide-react';
+import { ArrowRight, Calendar, Award, Settings, CheckCircle2, Users } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ContactSection } from './ContactSection';
 import { motion, AnimatePresence } from 'motion/react';
@@ -251,6 +251,65 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
                   </Card>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Signals Section */}
+      <section className="py-16 lg:py-20 bg-secondary/30" aria-label="Why choose Mitra Auto services">
+        <div className="container mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Certified Technicians */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <Award className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.certifiedTechs')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.certifiedTechsDesc')}
+              </p>
+            </div>
+
+            {/* Modern Equipment */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <Settings className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.modernEquipment')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.modernEquipmentDesc')}
+              </p>
+            </div>
+
+            {/* Genuine Parts */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <CheckCircle2 className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.genuineParts')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.genuinePartsDesc')}
+              </p>
+            </div>
+
+            {/* Satisfaction Guarantee */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <Users className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.satisfaction')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.satisfactionDesc')}
+              </p>
             </div>
           </div>
         </div>

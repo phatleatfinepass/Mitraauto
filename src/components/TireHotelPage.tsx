@@ -19,7 +19,8 @@ import {
   Sparkles,
   Package,
   ArrowRight,
-  Check
+  Check,
+  Sun
 } from 'lucide-react';
 import facilityImage from 'figma:asset/7a4460f78adaeb7811f555061adc7a3eb129dbf1.png';
 
@@ -39,7 +40,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   // Benefits data
   const benefits = [
     {
-      icon: Thermometer,
+      icon: Sun,
       title: language === 'fi' ? 'Sisäsäilytys' : 'Indoor storage',
       description: language === 'fi' ? 'Renkaat säilytetään sisätiloissa, poissa UV-valosta ja ankarista sääolosuhteista' : 'Tires stored indoor, away from UV light and harsh weather condition'
     },
@@ -161,68 +162,8 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-orange-950 text-white py-20 md:py-32">
-        {/* Background overlay image */}
-        <div className="absolute inset-0 opacity-20">
-          <ImageWithFallback
-            src="https://images.unsplash.com/photo-1591684391843-a16d792a9720?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdGFja2VkJTIwdGlyZXMlMjBzdG9yYWdlfGVufDF8fHx8MTc2MjI0MTk5N3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-            alt="Tire storage background"
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-950/90 via-gray-900/95 to-gray-900/90" />
-        
-        {/* Animated gradient blobs */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
-
-        <div className="container mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <Badge className="mb-6 bg-accent/20 text-orange-300 border-accent/30 hover:bg-accent/30">
-              <Warehouse className="mr-2 h-4 w-4" />
-              {language === 'fi' ? 'Premium-säilytyspalvelu' : 'Premium Storage Service'}
-            </Badge>
-            
-            <h1 className="text-5xl md:text-6xl lg:text-7xl tracking-tight mb-6">
-              {t('nav.tireHotel')}
-            </h1>
-            
-            <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-2xl mx-auto">
-              {language === 'fi' 
-                ? 'Säilytä renkaasi turvallisesti, kausi toisensa jälkeen.'
-                : 'Store your tires safely, season after season.'}
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                onClick={() => onBookingClick(tireHotelServiceIds.storage)}
-                className="bg-accent hover:bg-accent/90 text-white rounded-full h-14 px-10 gap-2 shadow-lg shadow-accent/30 hover:shadow-accent/50 transition-all"
-              >
-                <Calendar className="h-5 w-5" />
-                {language === 'fi' ? 'Varaa säilytys' : 'Book Storage'}
-              </Button>
-              
-              <Button
-                size="lg"
-                variant="outline"
-                className="rounded-full h-14 px-10 border-white/20 text-white hover:bg-white/10 bg-[rgb(110,110,115)]"
-                onClick={() => {
-                  document.getElementById('what-is-tire-hotel')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                {language === 'fi' ? 'Lue lisää' : 'Learn More'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* What Is Tire Hotel Section */}
-      <section id="what-is-tire-hotel" className="py-20 md:py-32 bg-gradient-to-b from-background to-secondary/20">
+      <section id="what-is-tire-hotel" className="pt-24 pb-20 md:pt-32 md:pb-32 bg-gradient-to-b from-background to-secondary/20">
         <div className="container mx-auto max-w-7xl px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Image */}
@@ -268,6 +209,29 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
                   : 'Our Tire Hotel is a climate-controlled storage service where your tires stay protected, tracked, and ready for the next season. Professionals ensure your tires remain in optimal condition year-round.'}
               </p>
 
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <Button
+                  size="lg"
+                  onClick={() => onBookingClick(tireHotelServiceIds.storage)}
+                  className="bg-accent hover:bg-accent/90 text-white rounded-full h-14 px-10 gap-2 shadow-lg shadow-accent/30 hover:shadow-accent/50 transition-all"
+                >
+                  <Calendar className="h-5 w-5" />
+                  {language === 'fi' ? 'Varaa säilytys' : 'Book Storage'}
+                </Button>
+                
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="rounded-full h-14 px-10"
+                  onClick={() => {
+                    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  {language === 'fi' ? 'Lue lisää' : 'Learn More'}
+                </Button>
+              </div>
+
               {/* Benefits grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {benefits.map((benefit, index) => (
@@ -290,7 +254,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 md:py-32 bg-background">
+      <section id="how-it-works" className="py-20 md:py-32 bg-background">
         <div className="container mx-auto max-w-7xl px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl tracking-tight mb-4">
@@ -444,45 +408,62 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
         </div>
       </section>
 
-      {/* Bottom Booking CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-orange-950 to-gray-900 text-white py-20 md:py-24">
-        {/* Car silhouette overlay */}
-        <div className="absolute inset-0 opacity-5">
-          <ImageWithFallback
-            src="https://images.unsplash.com/photo-1720095326582-272eed78fa40?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcmVtaXVtJTIwZ2FyYWdlJTIwaW50ZXJpb3J8ZW58MXx8fHwxNzYyMjQxOTk4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-            alt="Premium garage"
-            className="w-full h-full object-cover"
-          />
-        </div>
+      {/* Trust Signals Section */}
+      <section className="py-16 lg:py-20 bg-secondary/30" aria-label="Why choose our Tire Hotel">
+        <div className="container mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Secure Storage */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <Lock className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.secureStorage')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.secureStorageDesc')}
+              </p>
+            </div>
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-orange-950/95 via-gray-900/90 to-orange-950/95" />
-        
-        {/* Animated blobs */}
-        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
+            {/* UV Protection */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <Sun className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.uvProtection')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.uvProtectionDesc')}
+              </p>
+            </div>
 
-        <div className="container mx-auto max-w-4xl px-6 lg:px-8 relative z-10 text-center">
-          <Sparkles className="h-12 w-12 mx-auto mb-6 text-orange-400" />
-          
-          <h2 className="text-4xl md:text-5xl tracking-tight mb-4">
-            {language === 'fi' ? 'Valmis säilyttämään renkaasi?' : 'Ready to Store Your Tires?'}
-          </h2>
-          
-          <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
-            {language === 'fi'
-              ? 'Varaa paikkasi rengashotellista jo tänään. Nopea, turvallinen ja vaivaton.'
-              : 'Reserve your spot in our Tire Hotel today. Fast, secure, and hassle-free.'}
-          </p>
-          
-          <Button
-            size="lg"
-            onClick={() => onBookingClick(tireHotelServiceIds.storage)}
-            className="bg-accent hover:bg-accent/90 text-white rounded-full h-14 px-12 gap-2 shadow-lg shadow-accent/30 hover:shadow-accent/50 transition-all text-lg"
-          >
-            <Calendar className="h-5 w-5" />
-            {language === 'fi' ? 'Varaa nyt' : 'Book Now'}
-          </Button>
+            {/* Easy Seasonal Swap */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <RefreshCw className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.easySwap')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.easySwapDesc')}
+              </p>
+            </div>
+
+            {/* Convenient Service */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
+                <Package className="size-6 text-accent" aria-hidden="true" />
+              </div>
+              <h3 className="text-base mb-2">
+                {t('trustSignals.convenientService')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('trustSignals.convenientServiceDesc')}
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 

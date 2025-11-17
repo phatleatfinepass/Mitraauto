@@ -5,6 +5,9 @@ import { CartProvider, useCart } from './components/CartContext';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutPage } from './components/CheckoutPage';
 import { OrderSuccessPage } from './components/OrderSuccessPage';
+import { CheckoutSuccessPage } from './components/CheckoutSuccessPage';
+import { CheckoutCancelPage } from './components/CheckoutCancelPage';
+import { CheckoutErrorPage } from './components/CheckoutErrorPage';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ContactSection } from './components/ContactSection';
@@ -203,7 +206,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'order-success'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'order-success' | 'checkout-success' | 'checkout-cancel' | 'checkout-error'>('home');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -244,6 +247,18 @@ function HomePage() {
         if (state?.selectedProduct) {
           setSelectedProduct(state.selectedProduct);
         }
+      } else if (path === '/checkout/success') {
+        setCurrentPage('checkout-success');
+        setSelectedProduct(null);
+      } else if (path === '/checkout/cancel') {
+        setCurrentPage('checkout-cancel');
+        setSelectedProduct(null);
+      } else if (path === '/checkout/error') {
+        setCurrentPage('checkout-error');
+        setSelectedProduct(null);
+      } else if (path === '/checkout') {
+        setCurrentPage('checkout');
+        setSelectedProduct(null);
       } else {
         setCurrentPage('home');
         setSelectedProduct(null);
@@ -421,7 +436,10 @@ function HomePage() {
         onCartClick={() => setIsCartOpen(true)}
       />
 
-      <CartDrawer onCheckout={() => setCurrentPage('checkout')} />
+      <CartDrawer onCheckout={() => {
+        setCurrentPage('checkout');
+        navigate('/checkout');
+      }} />
 
       <AuthModal
         open={authModalOpen}
@@ -513,6 +531,32 @@ function HomePage() {
           <CheckoutPage 
             onBack={() => setIsCartOpen(true)}
             onComplete={() => setCurrentPage('order-success')}
+          />
+        ) : currentPage === 'checkout-success' ? (
+          <CheckoutSuccessPage
+            onReturnHome={() => {
+              setCurrentPage('home');
+              navigate('/');
+            }}
+          />
+        ) : currentPage === 'checkout-cancel' ? (
+          <CheckoutCancelPage
+            onReturnToCart={() => setIsCartOpen(true)}
+            onReturnHome={() => {
+              setCurrentPage('home');
+              navigate('/');
+            }}
+          />
+        ) : currentPage === 'checkout-error' ? (
+          <CheckoutErrorPage
+            onRetryCheckout={() => {
+              setCurrentPage('checkout');
+              navigate('/checkout');
+            }}
+            onReturnHome={() => {
+              setCurrentPage('home');
+              navigate('/');
+            }}
           />
         ) : currentPage === 'order-success' ? (
           <OrderSuccessPage

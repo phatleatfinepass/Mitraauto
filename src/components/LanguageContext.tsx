@@ -257,6 +257,26 @@ const translations: Translations = {
   'trustSignals.customerFirst': { fi: 'Asiakas edellä', en: 'Customer First' },
   'trustSignals.customerFirstDesc': { fi: 'Yli 500 tyytyväistä asiakasta', en: 'Over 500 satisfied customers' },
   
+  // Trust Signals (Services Page)
+  'trustSignals.certifiedTechs': { fi: 'Sertifioidut asentajat', en: 'Certified Technicians' },
+  'trustSignals.certifiedTechsDesc': { fi: 'Ammattitaitoiset ja koulutetut mekaanikkot', en: 'Skilled and trained mechanics' },
+  'trustSignals.modernEquipment': { fi: 'Modernit työkalut', en: 'Modern Equipment' },
+  'trustSignals.modernEquipmentDesc': { fi: 'Uusimmat diagnostiikka- ja korjauslaitteet', en: 'Latest diagnostic and repair tools' },
+  'trustSignals.genuineParts': { fi: 'Aidot varaosat', en: 'Genuine Parts' },
+  'trustSignals.genuinePartsDesc': { fi: 'Laadukkaita varaosia luotetuista lähteistä', en: 'Quality parts from trusted sources' },
+  'trustSignals.satisfaction': { fi: 'Tyytyväisyystakuu', en: 'Satisfaction Guarantee' },
+  'trustSignals.satisfactionDesc': { fi: '100% tyytyväisyystakuu kaikissa palveluissa', en: '100% satisfaction guarantee on all services' },
+  
+  // Trust Signals (Tire Hotel Page)
+  'trustSignals.secureStorage': { fi: 'Turvallinen säilytys', en: 'Secure Storage' },
+  'trustSignals.secureStorageDesc': { fi: 'Valvottu tila kattavalla vakuutusturvalla', en: 'Monitored facility with full insurance' },
+  'trustSignals.uvProtection': { fi: 'UV-suojaus', en: 'UV Protection' },
+  'trustSignals.uvProtectionDesc': { fi: 'Sisäsäilytys suojaa UV-valolta ja säältä', en: 'Indoor storage protects from UV light and weather' },
+  'trustSignals.easySwap': { fi: 'Helppo kausivaihtto', en: 'Easy Seasonal Swap' },
+  'trustSignals.easySwapDesc': { fi: 'Varaa asennus verkossa milloin tahansa', en: 'Book installation online anytime' },
+  'trustSignals.convenientService': { fi: 'Kätevä palvelu', en: 'Convenient Service' },
+  'trustSignals.convenientServiceDesc': { fi: 'Ei tarvetta säilyttää renkaita kotona', en: 'No need to store tires at home' },
+  
   // Contact Section
   'contact.title': { fi: 'Ota yhteyttä', en: 'Get in Touch' },
   'contact.heading': { fi: 'Yhteystiedot', en: 'Contact Information' },
