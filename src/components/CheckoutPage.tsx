@@ -180,9 +180,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         // Error response from backend
         console.error('Payment creation error:', response);
         
-        toast.error(
-          `${t('paymentError')}: ${response.message || 'Unknown error'}`
-        );
+        // Show specific error message based on error type
+        let errorMessage = response.message || 'Unknown error';
+        
+        if (response.error === 'endpoint_not_found') {
+          errorMessage = language === 'fi'
+            ? 'Maksupalvelu ei ole käytettävissä. Ota yhteyttä asiakaspalveluun.'
+            : 'Payment service is not available. Please contact customer support.';
+        }
+        
+        toast.error(`${t('paymentError')}: ${errorMessage}`);
         
         setIsProcessing(false);
       }
