@@ -7,9 +7,32 @@
 // Figma Make / Codex can treat it as the single source of truth when
 // generating/wiring frontend code. HTTP implementation can live elsewhere.
 
-export const PAYTRAIL_FUNCTIONS_BASE =
-  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_PAYTRAIL_FUNCTIONS_BASE) ??
-  "https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1";
+export const PAYTRAIL_FUNCTIONS_BASE = (() => {
+  // Prefer build-time env (Vite, etc.) when available
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const maybeEnv = (import.meta as any).env as
+      | { VITE_PAYTRAIL_FUNCTIONS_BASE?: string }
+      | undefined;
+
+    if (maybeEnv?.VITE_PAYTRAIL_FUNCTIONS_BASE) {
+      return maybeEnv.VITE_PAYTRAIL_FUNCTIONS_BASE;
+    }
+  } catch {
+    // ignore if import.meta is not available
+  }
+
+  // Fallback to Node-style env for SSR/tests/tools that inject process.env
+  if (
+    typeof process !== 'undefined' &&
+    process.env?.NEXT_PUBLIC_PAYTRAIL_FUNCTIONS_BASE
+  ) {
+    return process.env.NEXT_PUBLIC_PAYTRAIL_FUNCTIONS_BASE;
+  }
+
+  // Final hardcoded default
+  return 'https://rcmmbwdebnmicrweoiyz.supabase.co/functions/v1';
+})();
 
 export const PAYTRAIL_CREATE_PATH = "/payments_create_paytrail";
 

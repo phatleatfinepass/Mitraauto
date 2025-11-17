@@ -132,9 +132,25 @@ function isPaytrailPayload(
  * Falls back to localhost in development if window is not available.
  */
 export function getReturnUrlBase(): string {
-  if (typeof window !== 'undefined') {
+  // Browser: use the current window origin
+  if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin;
   }
-  // Fallback for SSR or testing
-  return (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_APP_URL) ?? 'http://localhost:3000';
+
+  // Vite / build-time env (optional, safe no-op outside Vite)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const maybeEnv = (import.meta as any).env as
+      | { VITE_APP_URL?: string }
+      | undefined;
+
+    if (maybeEnv?.VITE_APP_URL) {
+      return maybeEnv.VITE_APP_URL;
+    }
+  } catch {
+    // ignore if import.meta is not available
+  }
+
+  // Final fallback for SSR/tests
+  return 'http://localhost:3000';
 }
