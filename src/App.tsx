@@ -6,7 +6,6 @@ import { CartDrawer } from './components/CartDrawer';
 import { CheckoutPage } from './components/CheckoutPage';
 import { CheckoutSuccessPage } from './components/CheckoutSuccessPage';
 import { CheckoutCancelPage } from './components/CheckoutCancelPage';
-import { OrderSuccessPage } from './components/OrderSuccessPage';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ContactSection } from './components/ContactSection';
@@ -205,7 +204,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'order-success'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel'>('home');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -523,7 +522,7 @@ function HomePage() {
         ) : currentPage === 'checkout' ? (
           <CheckoutPage 
             onBack={() => setIsCartOpen(true)}
-            onComplete={() => setCurrentPage('order-success')}
+            onComplete={() => navigate('/checkout/success')}
           />
         ) : currentPage === 'checkout-success' ? (
           <CheckoutSuccessPage
@@ -536,13 +535,6 @@ function HomePage() {
             onNavigateToCheckout={() => {
               setCurrentPage('checkout');
               navigate('/checkout');
-            }}
-          />
-        ) : currentPage === 'order-success' ? (
-          <OrderSuccessPage
-            onContinueShopping={() => {
-              setCurrentPage('catalog');
-              navigate('/catalog');
             }}
           />
         ) : currentPage === 'privacy' ? (

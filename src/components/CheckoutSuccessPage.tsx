@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from './ThemeContext';
 import { useLanguage } from './LanguageContext';
 import { useCart } from './CartContext';
@@ -9,6 +9,7 @@ import { Alert } from './ui/alert';
 import { CheckCircle2, Package, User, Mail, Phone, ArrowRight, FileText, AlertTriangle } from 'lucide-react';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { toast } from 'sonner';
+import { parseCheckoutReference } from '../utils/paytrail';
 
 interface CheckoutSuccessPageProps {
   onNavigateHome: () => void;
@@ -18,6 +19,7 @@ interface CheckoutSuccessPageProps {
 interface Order {
   id: string;
   paytrail_status: string;
+  status?: string;
   cart_snapshot?: any;
   customer_email?: string;
   customer_phone?: string;
@@ -39,6 +41,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [paytrailParams, setPaytrailParams] = useState<Record<string, string>>({});
+  const hasClearedCartRef = useRef(false);
 
   const t = (key: string) => {
     const translations: Record<string, { fi: string; en: string }> = {
@@ -108,75 +111,197 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
         // Read Paytrail query parameters
         const params = new URLSearchParams(window.location.search);
         const paramsObj = Object.fromEntries(params.entries());
-        setPaytrailParams(paramsObj);
-
-        console.log('Paytrail success params:', paramsObj);
-
         const checkoutStatus = params.get('checkout-status');
         const checkoutReference = params.get('checkout-reference');
         const checkoutTransactionId = params.get('checkout-transaction-id');
+        const checkoutStamp = params.get('checkout-stamp');
         const checkoutAmount = params.get('checkout-amount');
 
-        // Extract order_id from checkout-reference
-        let orderId: string | null = null;
-        if (checkoutReference && checkoutReference.startsWith('ORDER-')) {
-          orderId = checkoutReference.replace('ORDER-', '');
-        } else if (checkoutReference) {
-          // Fallback: sometimes it might already be just the id
-          orderId = checkoutReference;
-        }
+        console.log('=== CHECKOUT SUCCESS DEBUG ===');
+        console.log('Full URL params:', paramsObj);
+        console.log('checkout-reference:', checkoutReference);
+        console.log('checkout-transaction-id:', checkoutTransactionId);
+        console.log('checkout-stamp:', checkoutStamp);
+        console.log('checkout-status:', checkoutStatus);
 
-        if (!orderId) {
-          console.error('Failed to extract orderId from checkout-reference:', checkoutReference);
-          setError(t('orderNotFound'));
-          setLoading(false);
-          return;
-        }
-
-        console.log('Extracted orderId:', orderId);
-
-        // Fetch order from Supabase
         const supabase = getSupabaseClient();
-        const { data: orderData, error: orderError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('id', orderId)
-          .maybeSingle();
+        let finalOrder: Order | null = null;
+        let lookupMethod = 'none';
 
-        console.log('Loaded order:', orderData);
+        // STRATEGY 1: Query by paytrail_transaction_id (most reliable)
+        if (checkoutTransactionId && !finalOrder) {
+          console.log('Attempting lookup by transaction ID:', checkoutTransactionId);
+          const { data: orderByTxn, error: txnError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('paytrail_transaction_id', checkoutTransactionId)
+            .maybeSingle();
 
-        if (orderError) {
-          console.error('Error fetching order:', orderError);
-          setError(t('errorLoadingOrder'));
-          setLoading(false);
-          return;
+          if (txnError) {
+            console.error('Error querying by transaction ID:', txnError);
+            // Check if this is an auth/permission error
+            if (txnError.code === 'PGRST301' || txnError.message?.includes('JWT') || txnError.message?.includes('permission')) {
+              console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
+              console.error('This means the orders table has Row Level Security enabled but no policy for anonymous reads');
+              setError('Database permission error. Please contact support.');
+              setLoading(false);
+              return;
+            }
+          } else if (orderByTxn) {
+            console.log('✅ Found order by transaction ID:', orderByTxn.id);
+            finalOrder = orderByTxn;
+            lookupMethod = 'transaction_id';
+          } else {
+            console.warn('No order found by transaction ID');
+          }
         }
 
-        if (!orderData) {
+        // STRATEGY 2: Query by paytrail_stamp (backup)
+        if (checkoutStamp && !finalOrder) {
+          console.log('Attempting lookup by stamp:', checkoutStamp);
+          const { data: orderByStamp, error: stampError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('paytrail_stamp', checkoutStamp)
+            .maybeSingle();
+
+          if (stampError) {
+            console.error('Error querying by stamp:', stampError);
+            // Check if this is an auth/permission error
+            if (stampError.code === 'PGRST301' || stampError.message?.includes('JWT') || stampError.message?.includes('permission')) {
+              console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
+              setError('Database permission error. Please contact support.');
+              setLoading(false);
+              return;
+            }
+          } else if (orderByStamp) {
+            console.log('✅ Found order by stamp:', orderByStamp.id);
+            finalOrder = orderByStamp;
+            lookupMethod = 'stamp';
+          } else {
+            console.warn('No order found by stamp');
+          }
+        }
+
+        // STRATEGY 3: Query by ID from checkout-reference (fallback)
+        if (checkoutReference && !finalOrder) {
+          const parsedReference = parseCheckoutReference(checkoutReference);
+          const orderId = parsedReference.normalizedOrderId;
+
+          console.log('Parsed reference:', {
+            raw: parsedReference.rawReference,
+            withoutPrefix: parsedReference.referenceWithoutPrefix,
+            normalized: parsedReference.normalizedOrderId,
+            isUuid: parsedReference.isLikelyUuid
+          });
+
+          if (orderId) {
+            console.log('Attempting lookup by order ID:', orderId);
+            const { data: orderById, error: idError } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('id', orderId)
+              .maybeSingle();
+
+            if (idError) {
+              console.error('Error querying by ID:', idError);
+              // Check if this is an auth/permission error
+              if (idError.code === 'PGRST301' || idError.message?.includes('JWT') || idError.message?.includes('permission')) {
+                console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
+                setError('Database permission error. Please contact support.');
+                setLoading(false);
+                return;
+              }
+            } else if (orderById) {
+              console.log('✅ Found order by ID:', orderById.id);
+              finalOrder = orderById;
+              lookupMethod = 'order_id';
+            } else {
+              console.warn('No order found by ID');
+            }
+          }
+
+          // STRATEGY 4: Fallback to paytrail_reference (numeric)
+          if (!finalOrder && parsedReference.referenceWithoutPrefix && !parsedReference.isLikelyUuid) {
+            console.log('Attempting lookup by paytrail_reference:', parsedReference.referenceWithoutPrefix);
+            const { data: orderByRef, error: refError } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('paytrail_reference', parsedReference.referenceWithoutPrefix)
+              .maybeSingle();
+
+            if (refError) {
+              console.error('Error querying by paytrail_reference:', refError);
+              // Check if this is an auth/permission error
+              if (refError.code === 'PGRST301' || refError.message?.includes('JWT') || refError.message?.includes('permission')) {
+                console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
+                setError('Database permission error. Please contact support.');
+                setLoading(false);
+                return;
+              }
+            } else if (orderByRef) {
+              console.log('✅ Found order by paytrail_reference:', orderByRef.id);
+              finalOrder = orderByRef;
+              lookupMethod = 'paytrail_reference';
+            } else {
+              console.warn('No order found by paytrail_reference');
+            }
+          }
+        }
+
+        // Log recent orders for debugging
+        if (!finalOrder) {
+          console.log('Order not found by any method. Fetching recent orders for debugging...');
+          const { data: recentOrders, error: recentError } = await supabase
+            .from('orders')
+            .select('id, paytrail_transaction_id, paytrail_stamp, paytrail_reference, created_at, status, paytrail_status')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+          if (!recentError && recentOrders) {
+            console.log('Recent orders (last 10):', recentOrders);
+          }
+        }
+
+        console.log('Final lookup result:', {
+          found: !!finalOrder,
+          method: lookupMethod,
+          orderId: finalOrder?.id
+        });
+
+        setPaytrailParams({
+          ...paramsObj,
+          lookupMethod,
+          foundOrderId: finalOrder?.id ?? '',
+        });
+
+        if (!finalOrder) {
+          console.error('❌ ORDER NOT FOUND - All lookup strategies failed');
           setError(t('orderNotFound'));
           setLoading(false);
           return;
         }
 
-        setOrder(orderData);
+        setOrder(finalOrder);
 
         // Determine if payment is successful based on DB fields (source of truth)
-        const isPaid = 
-          orderData.status === 'paid' || 
-          orderData.paytrail_status === 'paid';
+        const isPaid =
+          finalOrder.status === 'paid' ||
+          finalOrder.paytrail_status === 'paid';
 
         console.log('Payment status check:', {
           checkoutStatus,
-          orderStatus: orderData.status,
-          paytrailStatus: orderData.paytrail_status,
+          orderStatus: finalOrder.status,
+          paytrailStatus: finalOrder.paytrail_status,
           isPaid
         });
 
         // Clear cart if payment is confirmed
-        if (isPaid) {
+        if (isPaid && !hasClearedCartRef.current) {
           console.log('Payment confirmed, clearing cart');
           clearCart();
-          
+          hasClearedCartRef.current = true;
+
           toast.success(
             language === 'fi'
               ? 'Tilaus vahvistettu!'
@@ -195,7 +320,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
     };
 
     fetchOrder();
-  }, [language]);
+  }, [language, clearCart]);
 
   // Loading state
   if (loading) {

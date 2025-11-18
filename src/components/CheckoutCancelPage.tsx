@@ -7,6 +7,7 @@ import { Card } from './ui/card';
 import { Separator } from './ui/separator';
 import { AlertCircle, ShoppingCart, Info, ArrowLeft, Home } from 'lucide-react';
 import { getSupabaseClient } from '../utils/supabase/client';
+import { parseCheckoutReference } from '../utils/paytrail';
 
 interface CheckoutCancelPageProps {
   onNavigateHome: () => void;
@@ -82,31 +83,70 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
         const checkoutReference = params.get('checkout-reference');
         const checkoutStatus = params.get('checkout-status');
         const checkoutTransactionId = params.get('checkout-transaction-id');
+        const checkoutStamp = params.get('checkout-stamp');
 
-        // Extract order_id from checkout-reference if available
-        let orderId: string | null = null;
-        if (checkoutReference && checkoutReference.startsWith('ORDER-')) {
-          orderId = checkoutReference.replace('ORDER-', '');
-        } else if (checkoutReference) {
-          // Fallback: sometimes it might already be just the id
-          orderId = checkoutReference;
-        }
+        console.log('=== CHECKOUT CANCEL DEBUG ===');
+        console.log('checkout-reference:', checkoutReference);
+        console.log('checkout-transaction-id:', checkoutTransactionId);
+        console.log('checkout-stamp:', checkoutStamp);
 
-        console.log('Extracted orderId from cancel:', orderId);
+        const supabase = getSupabaseClient();
+        let foundOrder = null;
 
-        // Try to fetch order info if we have an ID
-        if (orderId) {
-          const supabase = getSupabaseClient();
-          const { data: orderData, error: orderError } = await supabase
+        // Try multiple lookup strategies (same as success page)
+        
+        // Strategy 1: By transaction ID
+        if (checkoutTransactionId && !foundOrder) {
+          const { data } = await supabase
             .from('orders')
             .select('*')
-            .eq('id', orderId)
+            .eq('paytrail_transaction_id', checkoutTransactionId)
             .maybeSingle();
-
-          if (!orderError && orderData) {
-            console.log('Loaded order for cancel page:', orderData);
-            setOrder(orderData);
+          
+          if (data) {
+            console.log('Found order by transaction ID');
+            foundOrder = data;
           }
+        }
+
+        // Strategy 2: By stamp
+        if (checkoutStamp && !foundOrder) {
+          const { data } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('paytrail_stamp', checkoutStamp)
+            .maybeSingle();
+          
+          if (data) {
+            console.log('Found order by stamp');
+            foundOrder = data;
+          }
+        }
+
+        // Strategy 3: By reference-derived ID
+        if (checkoutReference && !foundOrder) {
+          const parsedReference = parseCheckoutReference(checkoutReference);
+          const orderId = parsedReference.normalizedOrderId;
+
+          if (orderId) {
+            const { data } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('id', orderId)
+              .maybeSingle();
+            
+            if (data) {
+              console.log('Found order by ID from reference');
+              foundOrder = data;
+            }
+          }
+        }
+
+        if (foundOrder) {
+          console.log('Loaded order for cancel page:', foundOrder.id);
+          setOrder(foundOrder);
+        } else {
+          console.warn('Could not find order on cancel page (non-critical)');
         }
 
         // IMPORTANT: Cart is NOT cleared on cancel page
