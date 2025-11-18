@@ -11,6 +11,7 @@ import { Checkbox } from './ui/checkbox';
 import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Building, Home, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { getSupabaseClient } from '../utils/supabase/client';
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -90,6 +91,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // STRICT VALIDATION - Check cart is not empty
+    if (!items || items.length === 0) {
+      toast.error(
+        language === 'fi'
+          ? 'Ostoskori on tyhjä'
+          : 'Cart is empty'
+      );
+      return;
+    }
+
+    // Validate terms acceptance
     if (!formData.acceptTerms) {
       toast.error(
         language === 'fi' 
@@ -99,19 +111,174 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       return;
     }
 
+    // Validate required fields - Contact Information
+    if (!formData.firstName || !formData.lastName) {
+      toast.error(
+        language === 'fi'
+          ? 'Täytä etu- ja sukunimi'
+          : 'Please fill in first and last name'
+      );
+      return;
+    }
+
+    // Validate email contains @
+    if (!formData.email || !formData.email.includes('@')) {
+      toast.error(
+        language === 'fi'
+          ? 'Anna kelvollinen sähköpostiosoite'
+          : 'Please enter a valid email address'
+      );
+      return;
+    }
+
+    // Validate phone
+    if (!formData.phone) {
+      toast.error(
+        language === 'fi'
+          ? 'Anna puhelinnumero'
+          : 'Please enter phone number'
+      );
+      return;
+    }
+
+    // Validate shipping address
+    if (!formData.shippingAddress) {
+      toast.error(
+        language === 'fi'
+          ? 'Anna toimitusosoite'
+          : 'Please enter shipping address'
+      );
+      return;
+    }
+
+    // Validate city
+    if (!formData.shippingCity) {
+      toast.error(
+        language === 'fi'
+          ? 'Anna kaupunki'
+          : 'Please enter city'
+      );
+      return;
+    }
+
+    // Validate postal code
+    if (!formData.shippingPostalCode) {
+      toast.error(
+        language === 'fi'
+          ? 'Anna postinumero'
+          : 'Please enter postal code'
+      );
+      return;
+    }
+
+    // Validate country
+    if (!formData.shippingCountry) {
+      toast.error(
+        language === 'fi'
+          ? 'Anna maa'
+          : 'Please enter country'
+      );
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Simulate order processing
-    setTimeout(() => {
-      clearCart();
-      onComplete();
-      toast.success(
-        language === 'fi'
-          ? 'Tilaus vahvistettu! Saat tilausvahvistuksen sähköpostiisi.'
-          : 'Order confirmed! You will receive a confirmation email.'
+    try {
+      // Build items array in correct Paytrail format
+      const paytrailItems = items.map(item => {
+        const unitPriceCents = Math.round(item.price * 100);
+        const productName = `${item.product.brand || 'Product'} ${item.product.model || ''}`.trim();
+        const sku = item.product.id || item.id;
+        
+        return {
+          qty: item.quantity,
+          client_unit_price_cents: unitPriceCents,
+          sku: sku,
+          name: productName,
+          vatPercentage: 24
+        };
+      });
+
+      // Build payload for Paytrail payment
+      const payload = {
+        items: paytrailItems,
+        currency: 'EUR',
+        customer: {
+          email: formData.email,
+          phone: formData.phone,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+        },
+        return_url: 'https://mitra-auto.fi/checkout/result',
+        idempotency_key: crypto.randomUUID()
+      };
+
+      // Debug log
+      console.log('Submitting Paytrail payload:', payload);
+
+      // Call Supabase Edge Function to create Paytrail payment
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.functions.invoke(
+        'payments_create_paytrail',
+        {
+          method: 'POST',
+          body: payload,
+        }
       );
+
+      // Debug log
+      console.log('Paytrail response:', data, error);
+
+      // Check for Supabase function error
+      if (error) {
+        console.error('Payment creation error:', error);
+        setIsProcessing(false);
+        toast.error(
+          language === 'fi'
+            ? 'Maksun aloitus epäonnistui. Yritä uudelleen.'
+            : 'We couldn\'t start the payment. Please try again.'
+        );
+        return;
+      }
+
+      // Check for backend error response
+      if (data && data.error) {
+        console.error('Backend error:', data);
+        setIsProcessing(false);
+        toast.error(
+          language === 'fi'
+            ? `Virhe: ${data.message || 'Maksun aloitus epäonnistui'}`
+            : `Error: ${data.message || 'Payment creation failed'}`
+        );
+        return;
+      }
+
+      // Check for redirect_url
+      if (!data || !data.redirect_url) {
+        console.error('Invalid payment response - no redirect_url:', data);
+        setIsProcessing(false);
+        toast.error(
+          language === 'fi'
+            ? 'Virheellinen vastaus palvelimelta'
+            : 'Invalid response from server'
+        );
+        return;
+      }
+
+      // Success - redirect to Paytrail
+      console.log('Payment initiated successfully, redirecting to:', data.redirect_url);
+      window.location.href = data.redirect_url;
+
+    } catch (error) {
+      console.error('Checkout error:', error);
       setIsProcessing(false);
-    }, 2000);
+      
+      toast.error(
+        language === 'fi'
+          ? 'Maksun aloitus epäonnistui. Yritä uudelleen.'
+          : 'We couldn\'t start the payment. Please try again.'
+      );
+    }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {

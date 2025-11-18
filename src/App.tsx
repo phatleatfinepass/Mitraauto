@@ -4,6 +4,8 @@ import { ThemeProvider } from './components/ThemeContext';
 import { CartProvider, useCart } from './components/CartContext';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutPage } from './components/CheckoutPage';
+import { CheckoutSuccessPage } from './components/CheckoutSuccessPage';
+import { CheckoutCancelPage } from './components/CheckoutCancelPage';
 import { OrderSuccessPage } from './components/OrderSuccessPage';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -203,7 +205,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'order-success'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'order-success'>('home');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -244,6 +246,15 @@ function HomePage() {
         if (state?.selectedProduct) {
           setSelectedProduct(state.selectedProduct);
         }
+      } else if (path === '/checkout/success') {
+        setCurrentPage('checkout-success');
+        setSelectedProduct(null);
+      } else if (path === '/checkout/cancel') {
+        setCurrentPage('checkout-cancel');
+        setSelectedProduct(null);
+      } else if (path === '/checkout') {
+        setCurrentPage('checkout');
+        setSelectedProduct(null);
       } else {
         setCurrentPage('home');
         setSelectedProduct(null);
@@ -513,6 +524,19 @@ function HomePage() {
           <CheckoutPage 
             onBack={() => setIsCartOpen(true)}
             onComplete={() => setCurrentPage('order-success')}
+          />
+        ) : currentPage === 'checkout-success' ? (
+          <CheckoutSuccessPage
+            onNavigateHome={() => navigate('/')}
+            onNavigateToOrders={() => navigate('/')}
+          />
+        ) : currentPage === 'checkout-cancel' ? (
+          <CheckoutCancelPage
+            onNavigateHome={() => navigate('/')}
+            onNavigateToCheckout={() => {
+              setCurrentPage('checkout');
+              navigate('/checkout');
+            }}
           />
         ) : currentPage === 'order-success' ? (
           <OrderSuccessPage
