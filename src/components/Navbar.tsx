@@ -20,6 +20,7 @@ const INTERNAL_NAV_PATHS = new Set([
   '/tire-hotel',
   '/catalog',
   '/about',
+  '/admin/schedule',
 ]);
 
 interface NavbarProps {
@@ -151,10 +152,17 @@ export function Navbar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
-                    <a href="/dashboard">{t('nav.dashboard')}</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="/orders">{t('nav.orders')}</a>
+                    <a 
+                      href="/admin/schedule" 
+                      onClick={(e) => {
+                        if (onNavigate) {
+                          e.preventDefault();
+                          onNavigate('/admin/schedule');
+                        }
+                      }}
+                    >
+                      {t('nav.dashboard')}
+                    </a>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onLogout}>

@@ -269,6 +269,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                 onClick={() => {
                   setIsCartOpen(false);
                   onCheckout();
+                  // Scroll to top when navigating to checkout
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white h-12 transition-transform hover:scale-[1.02]"
                 style={{ boxShadow: '0 2px 12px rgba(255, 107, 0, 0.25)' }}

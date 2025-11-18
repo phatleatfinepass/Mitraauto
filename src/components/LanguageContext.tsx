@@ -195,6 +195,18 @@ const translations: Translations = {
   'auth.reset.success': { fi: 'Tarkista sähköpostisi', en: 'Check your email' },
   'auth.reset.backToLogin': { fi: 'Takaisin kirjautumiseen', en: 'Back to login' },
   
+  // Auth Errors
+  'auth.error.invalidCredentials': { fi: 'Virheellinen sähköposti tai salasana', en: 'Invalid email or password' },
+  'auth.error.emailNotFound': { fi: 'Sähköpostiosoitetta ei löydy', en: 'Email not found' },
+  'auth.error.invalidEmail': { fi: 'Virheellinen sähköpostiosoite', en: 'Invalid email address' },
+  'auth.error.weakPassword': { fi: 'Salasana on liian heikko', en: 'Password is too weak' },
+  'auth.error.emailInUse': { fi: 'Sähköposti on jo käytössä', en: 'Email already in use' },
+  'auth.error.tooManyAttempts': { fi: 'Liian monta yritystä. Yritä myöhemmin uudelleen.', en: 'Too many attempts. Please try again later.' },
+  'auth.error.networkError': { fi: 'Verkkovirhe. Tarkista yhteytesi.', en: 'Network error. Check your connection.' },
+  'auth.error.serverError': { fi: 'Palvelinvirhe. Yritä myöhemmin uudelleen.', en: 'Server error. Please try again later.' },
+  'auth.error.unexpected': { fi: 'Odottamaton virhe. Yritä uudelleen.', en: 'An unexpected error occurred. Please try again.' },
+  'auth.or': { fi: 'tai', en: 'or' },
+  
   // Emergency Roadside Rescue 24/7
   'emergency.cta': { fi: 'Hätäapu 24/7', en: 'Rescue 24/7' },
   'emergency.title': { fi: 'Hätäapu 24/7', en: 'Rescue 24/7' },

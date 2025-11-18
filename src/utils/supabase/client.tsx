@@ -8,7 +8,16 @@ export function getSupabaseClient() {
   if (!supabaseClient) {
     supabaseClient = createClient(
       `https://${projectId}.supabase.co`,
-      publicAnonKey
+      publicAnonKey,
+      {
+        auth: {
+          persistSession: true,
+          storageKey: 'mitra-auto-auth',
+          storage: window.localStorage,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      }
     );
   }
   return supabaseClient;

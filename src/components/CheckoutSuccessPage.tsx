@@ -5,68 +5,9 @@ import { useCart } from './CartContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Separator } from './ui/separator';
-import { Alert } from './ui/alert';
-import { CheckCircle2, Package, User, Mail, Phone, ArrowRight, FileText, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, ArrowRight, AlertTriangle, Package, CreditCard, Calendar } from 'lucide-react';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { toast } from 'sonner';
-
-const DATABASE_PERMISSION_ERROR_MESSAGE = 'Database permission error. Please contact support.';
-
-const isOrderNotFoundError = (error: unknown) => {
-  if (!error) {
-    return false;
-  }
-
-  const maybeError = error as { code?: string; message?: string };
-  if (maybeError.code === 'P0002') {
-    return true;
-  }
-
-  if (maybeError.message && maybeError.message.includes('order_not_found')) {
-    return true;
-  }
-
-  return error instanceof Error && error.message === 'order_not_found';
-};
-
-const fetchOrderForCheckoutResult = async (params: URLSearchParams): Promise<Order> => {
-  const supabase = getSupabaseClient();
-
-  const txId = params.get('checkout-transaction-id') ?? null;
-  const stamp = params.get('checkout-stamp') ?? null;
-  const ref = params.get('checkout-reference') ?? null;
-
-  let orderId: string | null = null;
-  if (ref && ref.startsWith('ORDER-')) {
-    orderId = ref.substring('ORDER-'.length);
-  }
-
-  console.log('=== CHECKOUT SUCCESS DEBUG ===');
-  console.log('Full URL params:', Object.fromEntries(params.entries()));
-  console.log('Using RPC get_order_for_checkout_result with:', {
-    txId,
-    stamp,
-    orderId,
-  });
-
-  const { data, error } = await supabase.rpc('get_order_for_checkout_result', {
-    p_checkout_stamp: stamp,
-    p_transaction_id: txId,
-    p_order_id: orderId,
-  });
-
-  if (error) {
-    console.error('❌ RPC error in get_order_for_checkout_result:', error);
-    throw error;
-  }
-
-  if (!data) {
-    console.error('❌ RPC returned no data');
-    throw new Error('order_not_found');
-  }
-
-  return data as Order;
-};
 
 interface CheckoutSuccessPageProps {
   onNavigateHome: () => void;
@@ -77,14 +18,56 @@ interface Order {
   id: string;
   paytrail_status: string;
   status?: string;
-  cart_snapshot?: any;
-  customer_email?: string;
-  customer_phone?: string;
-  customer_first_name?: string;
-  customer_last_name?: string;
-  grand_total_cents?: number;
   created_at?: string;
+  paytrail_transaction_id?: string;
+  paytrail_stamp?: string;
+  paytrail_reference?: string;
 }
+
+interface CheckoutInfo {
+  checkoutStatus: string | null;
+  transactionId: string | null;
+  stamp: string | null;
+  account: string | null;
+  amountCents: number | null;
+  totalEuros: string | null;
+  reference: string | null;
+  orderId: string | null;
+  provider: string | null;
+  signature: string | null;
+  rawParams: Record<string, string>;
+}
+
+const parseCheckoutParams = (search: string): CheckoutInfo => {
+  const params = new URLSearchParams(search);
+  const reference = params.get('checkout-reference');
+  const amountStr = params.get('checkout-amount');
+  const parsedAmount = amountStr ? parseInt(amountStr, 10) : null;
+  const amountCents =
+    typeof parsedAmount === 'number' && Number.isFinite(parsedAmount)
+      ? parsedAmount
+      : null;
+  const totalEuros = amountCents != null ? (amountCents / 100).toFixed(2) : null;
+
+  const orderId =
+    reference && reference.startsWith('ORDER-')
+      ? reference.substring('ORDER-'.length)
+      : null;
+
+  return {
+    checkoutStatus: params.get('checkout-status'),
+    transactionId: params.get('checkout-transaction-id'),
+    stamp: params.get('checkout-stamp'),
+    account: params.get('checkout-account'),
+    amountCents,
+    totalEuros,
+    reference,
+    orderId,
+    provider: params.get('checkout-provider'),
+    signature: params.get('signature'),
+    rawParams: Object.fromEntries(params.entries()),
+  };
+};
 
 export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   onNavigateHome,
@@ -93,138 +76,101 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   const { theme } = useTheme();
   const { language } = useLanguage();
   const { clearCart } = useCart();
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [checkoutInfo, setCheckoutInfo] = useState<CheckoutInfo | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
-  const [paytrailParams, setPaytrailParams] = useState<Record<string, string>>({});
+  const [loadingOrder, setLoadingOrder] = useState(false);
   const hasClearedCartRef = useRef(false);
 
-  const t = (key: string) => {
-    const translations: Record<string, { fi: string; en: string }> = {
-      // Hero section
-      paymentSuccessful: { fi: 'Maksu onnistui', en: 'Payment successful' },
-      thankYouMessage: { 
-        fi: 'Kiitos tilauksestasi! Olemme vastaanottaneet maksusi.', 
-        en: 'Thank you for your order! Your payment was received.' 
-      },
-      
-      // Loading & errors
-      loadingOrder: { fi: 'Noudetaan tilaustasi…', en: 'Loading your order…' },
-      orderNotFound: { fi: 'Emme löytäneet tilausta', en: 'Order not found' },
-      errorLoadingOrder: { fi: 'Virhe tilauksen lataamisessa', en: 'Error loading order' },
-      
-      // Order summary
-      orderSummary: { fi: 'Tilausyhteenveto', en: 'Order Summary' },
-      orderNumber: { fi: 'Tilausnumero', en: 'Order Number' },
-      paymentStatus: { fi: 'Maksun tila', en: 'Payment Status' },
-      paid: { fi: 'Maksettu', en: 'Paid' },
-      pending: { fi: 'Odottaa', en: 'Pending' },
-      
-      // Items
-      items: { fi: 'Tuotteet', en: 'Items' },
-      quantity: { fi: 'Määrä', en: 'Quantity' },
-      unitPrice: { fi: 'Yksikköhinta', en: 'Unit Price' },
-      total: { fi: 'Yhteensä', en: 'Total' },
-      
-      // Totals
-      subtotal: { fi: 'Välisumma', en: 'Subtotal' },
-      vat: { fi: 'ALV 24%', en: 'VAT 24%' },
-      grandTotal: { fi: 'Kokonaissumma', en: 'Grand Total' },
-      
-      // Customer details
-      customerDetails: { fi: 'Asiakastiedot', en: 'Customer Details' },
-      name: { fi: 'Nimi', en: 'Name' },
-      email: { fi: 'Sähköposti', en: 'Email' },
-      phone: { fi: 'Puhelin', en: 'Phone' },
-      
-      // Next steps
-      nextSteps: { fi: 'Seuraavat vaiheet', en: 'Next Steps' },
-      emailConfirmation: { 
-        fi: 'Saat tilausvahvistuksen sähköpostitse.', 
-        en: 'You will receive an order confirmation by email.' 
-      },
-      scheduleInstallation: { 
-        fi: 'Voit varata asennusajan seuraavassa vaiheessa.', 
-        en: 'You can schedule installation in the next step.' 
-      },
-      
-      // Actions
-      backToHome: { fi: 'Takaisin etusivulle', en: 'Back to Home' },
-      viewOrder: { fi: 'Näytä tilaus', en: 'View Order' },
-      
-      // Warning
-      paymentNotConfirmed: {
-        fi: 'Maksun tilausta ei voitu vahvistaa. Ota yhteyttä asiakaspalveluun.',
-        en: 'Payment status could not be confirmed. Please contact customer service.'
-      },
-    };
-    return translations[key]?.[language] || key;
+  const translations: Record<string, { fi: string; en: string }> = {
+    loading: { fi: 'Ladataan...', en: 'Loading...' },
+    paymentSuccessful: { fi: 'Kiitos tilauksestasi!', en: 'Order confirmed' },
+    thankYouMessage: {
+      fi: 'Maksusi vastaanotettiin onnistuneesti.',
+      en: 'Your payment was received successfully.',
+    },
+    orderId: { fi: 'Tilausnumero', en: 'Order Number' },
+    provider: { fi: 'Maksupalvelu', en: 'Payment Provider' },
+    total: { fi: 'Yhteensä', en: 'Total' },
+    transactionId: { fi: 'Maksutapahtuman tunnus', en: 'Transaction ID' },
+    paymentStatus: { fi: 'Maksun tila', en: 'Payment Status' },
+    orderDate: { fi: 'Tilauspäivä', en: 'Order Date' },
+    paid: { fi: 'Maksettu', en: 'Paid' },
+    backToHome: { fi: 'Takaisin etusivulle', en: 'Back to home' },
+    unverifiedTitle: {
+      fi: 'Emme voineet vahvistaa tilaustasi',
+      en: 'We could not verify your order',
+    },
+    unverifiedMessage: {
+      fi: 'Tilauksen tietoja ei löytynyt Paytrailin palauttamista parametreista. Otathan yhteyttä asiakaspalveluun.',
+      en: 'We could not read the necessary Paytrail parameters. Please contact support.',
+    },
   };
 
+  const t = (key: string) => translations[key]?.[language] || key;
+
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    const info = parseCheckoutParams(window.location.search);
+    console.log('=== CHECKOUT SUCCESS DEBUG ===');
+    console.log('Paytrail redirect params:', info.rawParams);
+    setCheckoutInfo(info);
+    
+    // Fetch order details immediately
+    if (info.orderId) {
+      fetchOrderDetails(info.orderId, info.transactionId);
+    }
+  }, []);
 
-        const params = new URLSearchParams(window.location.search);
-        const paramsObj = Object.fromEntries(params.entries());
-        const checkoutStatus = params.get('checkout-status');
-        const checkoutAmount = params.get('checkout-amount');
-        const finalOrder = await fetchOrderForCheckoutResult(params);
+  const isSuccessfulPayment =
+    checkoutInfo?.checkoutStatus === 'ok' &&
+    Boolean(checkoutInfo?.orderId) &&
+    checkoutInfo?.totalEuros != null;
 
-        setPaytrailParams({
-          ...paramsObj,
-          lookupMethod: 'rpc_get_order_for_checkout_result',
-          foundOrderId: finalOrder.id,
-        });
+  useEffect(() => {
+    if (isSuccessfulPayment && !hasClearedCartRef.current) {
+      clearCart();
+      hasClearedCartRef.current = true;
+    }
+  }, [isSuccessfulPayment, clearCart]);
 
-        setOrder(finalOrder);
+  // Fetch order details
+  const fetchOrderDetails = async (orderId: string, transactionId: string | null) => {
+    if (order) return; // Already loaded
+    
+    setLoadingOrder(true);
+    try {
+      const supabase = getSupabaseClient();
+      
+      // Try to fetch by order ID first
+      let { data: orderData, error } = await supabase
+        .from('orders')
+        .select('id, paytrail_status, status, created_at, paytrail_transaction_id, paytrail_stamp, paytrail_reference')
+        .eq('id', orderId)
+        .maybeSingle();
 
-        const isPaid =
-          finalOrder.status === 'paid' ||
-          finalOrder.paytrail_status === 'paid';
-
-        console.log('Payment status check:', {
-          checkoutStatus,
-          checkoutAmount,
-          orderStatus: finalOrder.status,
-          paytrailStatus: finalOrder.paytrail_status,
-          isPaid,
-        });
-
-        if (isPaid && !hasClearedCartRef.current) {
-          console.log('Payment confirmed, clearing cart');
-          clearCart();
-          hasClearedCartRef.current = true;
-
-          toast.success(
-            language === 'fi'
-              ? 'Tilaus vahvistettu!'
-              : 'Order confirmed!'
-          );
-        } else {
-          console.warn('Payment not confirmed, cart not cleared');
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching checkout result order:', err);
-        if (isOrderNotFoundError(err)) {
-          setError(t('orderNotFound'));
-        } else {
-          setError(DATABASE_PERMISSION_ERROR_MESSAGE);
-        }
-        setLoading(false);
+      // If not found by ID, try by transaction ID
+      if (!orderData && transactionId) {
+        const result = await supabase
+          .from('orders')
+          .select('id, paytrail_status, status, created_at, paytrail_transaction_id, paytrail_stamp, paytrail_reference')
+          .eq('paytrail_transaction_id', transactionId)
+          .maybeSingle();
+        orderData = result.data;
+        error = result.error;
       }
-    };
 
-    fetchOrder();
-  }, [language, clearCart]);
+      if (error) {
+        console.error('Error fetching order:', error);
+      } else if (orderData) {
+        setOrder(orderData);
+      }
+    } catch (err) {
+      console.error('Error fetching order:', err);
+    } finally {
+      setLoadingOrder(false);
+    }
+  };
 
-  // Loading state
-  if (loading) {
+  if (!checkoutInfo) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
         theme === 'dark' ? 'bg-[#11141A]' : 'bg-gray-50'
@@ -232,257 +178,184 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35] mx-auto mb-4" />
           <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-            {t('loadingOrder')}
+            {t('loading')}
           </p>
         </div>
       </div>
     );
   }
 
-  // Error state
-  if (error || !order) {
+  if (!isSuccessfulPayment) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${
+      <div className={`min-h-screen flex items-center justify-center px-4 ${
         theme === 'dark' ? 'bg-[#11141A]' : 'bg-gray-50'
       }`}>
-        <div className="max-w-md mx-auto px-4 text-center">
-          <div className={`text-6xl mb-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}>
-            ⚠️
+        <Card className={`max-w-xl w-full p-8 text-center ${
+          theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex justify-center mb-4">
+            <AlertTriangle className="text-orange-500 w-12 h-12" />
           </div>
-          <h1 className={`text-2xl mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {error || t('orderNotFound')}
+          <h1 className={`text-2xl font-semibold mb-2 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          }`}>
+            {t('unverifiedTitle')}
           </h1>
+          <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
+            {t('unverifiedMessage')}
+          </p>
           <Button
             onClick={onNavigateHome}
-            className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
+            className="mt-6 bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
           >
             {t('backToHome')}
           </Button>
-        </div>
+        </Card>
       </div>
     );
   }
 
-  // Parse cart snapshot
-  const cartSnapshot = order.cart_snapshot || {};
-  const items = cartSnapshot.items || [];
-  
-  // Determine payment status (source of truth from DB)
-  const isPaid = order.status === 'paid' || order.paytrail_status === 'paid';
-  
-  // Show warning if payment not confirmed
-  const paymentNotConfirmed = !isPaid;
+  // Helper to capitalize first letter
+  const capitalizeFirstLetter = (str: string) => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#11141A]' : 'bg-gray-50'} py-12 px-4`}>
-      <div className="max-w-3xl mx-auto">
-        {/* Hero Section */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4">
-            <CheckCircle2 className="w-12 h-12 text-green-600" />
-          </div>
-          <h1 className={`text-4xl mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t('paymentSuccessful')}
-          </h1>
-          <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            {t('thankYouMessage')}
-          </p>
-        </div>
-
-        {/* Warning if payment not confirmed */}
-        {paymentNotConfirmed && (
-          <Alert className="mb-6 border-orange-500 bg-orange-50 dark:bg-orange-950/20">
-            <AlertTriangle className="text-orange-600" />
-            <div className="text-sm text-orange-800 dark:text-orange-200">
-              {t('paymentNotConfirmed')}
-            </div>
-          </Alert>
-        )}
-
-        {/* Order Summary Card */}
-        <Card className={`p-6 mb-6 ${
+      <div className="max-w-2xl mx-auto">
+        <Card className={`p-8 ${
           theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'
         }`}>
-          <div className="flex items-center gap-2 mb-6">
-            <Package className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
-            <h2 className={`text-xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t('orderSummary')}
-            </h2>
-          </div>
-
-          {/* Order Number & Status */}
-          <div className="grid sm:grid-cols-2 gap-4 mb-6">
-            <div>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {t('orderNumber')}
-              </p>
-              <p className={`font-mono text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {order.id.slice(0, 8).toUpperCase()}
-              </p>
-            </div>
-            <div>
-              <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {t('paymentStatus')}
-              </p>
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                isPaid
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {isPaid ? t('paid') : t('pending')}
-              </span>
+          {/* Centered Success Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100">
+              <CheckCircle2 className="w-16 h-16 text-green-600" />
             </div>
           </div>
 
-          <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} />
+          {/* Centered Title and Message */}
+          <div className="text-center mb-8">
+            <h1 className={`text-3xl font-semibold mb-3 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              {t('paymentSuccessful')}
+            </h1>
+            <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
+              {t('thankYouMessage')}
+            </p>
+          </div>
 
-          {/* Items List */}
-          {items.length > 0 && (
-            <div className="mt-6">
-              <h3 className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {t('items')}
-              </h3>
-              <div className="space-y-3">
-                {items.map((item: any, index: number) => (
-                  <div key={index} className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {item.name || `${item.brand || ''} ${item.model || ''}`.trim()}
-                      </p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {item.qty || item.quantity} × €{((item.client_unit_price_cents || item.unit_price || 0) / 100).toFixed(2)}
-                      </p>
-                    </div>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      €{(((item.client_unit_price_cents || item.unit_price || 0) / 100) * (item.qty || item.quantity || 1)).toFixed(2)}
-                    </p>
+          {/* Order Details */}
+          {loadingOrder ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6B35] mx-auto mb-2" />
+              <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                {t('loading')}
+              </p>
+            </div>
+          ) : (
+            <div className={`rounded-lg p-6 mb-6 space-y-4 ${
+              theme === 'dark' ? 'bg-[#252525]' : 'bg-gray-50'
+            }`}>
+              {/* Order ID */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span className={`flex items-center gap-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <Package className="w-4 h-4" />
+                  {t('orderId')}
+                </span>
+                <span className={`font-mono text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {checkoutInfo.orderId}
+                </span>
+              </div>
+
+              <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} />
+
+              {/* Transaction ID */}
+              {checkoutInfo.transactionId && (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span className={`flex items-center gap-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <CreditCard className="w-4 h-4" />
+                      {t('transactionId')}
+                    </span>
+                    <span className={`font-mono text-xs break-all ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {checkoutInfo.transactionId}
+                    </span>
                   </div>
-                ))}
+                  <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} />
+                </>
+              )}
+
+              {/* Payment Status */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                  {t('paymentStatus')}
+                </span>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-700 w-fit">
+                  {t('paid')}
+                </span>
+              </div>
+
+              <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} />
+
+              {/* Provider */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                  {t('provider')}
+                </span>
+                <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                  {checkoutInfo.provider ? capitalizeFirstLetter(checkoutInfo.provider) : 'Paytrail'}
+                </span>
+              </div>
+
+              <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} />
+
+              {/* Order Date */}
+              {order?.created_at && (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span className={`flex items-center gap-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <Calendar className="w-4 h-4" />
+                      {t('orderDate')}
+                    </span>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
+                      {new Date(order.created_at).toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} />
+                </>
+              )}
+
+              {/* Total */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2">
+                <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t('total')}
+                </span>
+                <span className="text-2xl font-semibold text-[#FF6B35]">
+                  €{checkoutInfo.totalEuros}
+                </span>
               </div>
             </div>
           )}
 
-          <Separator className={`my-6 ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`} />
-
-          {/* Totals */}
-          <div className="space-y-2">
-            {cartSnapshot.subtotal && (
-              <div className="flex justify-between text-sm">
-                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                  {t('subtotal')}
-                </span>
-                <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                  €{(cartSnapshot.subtotal / 100).toFixed(2)}
-                </span>
-              </div>
-            )}
-            {cartSnapshot.vat_amount && (
-              <div className="flex justify-between text-sm">
-                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                  {t('vat')}
-                </span>
-                <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                  €{(cartSnapshot.vat_amount / 100).toFixed(2)}
-                </span>
-              </div>
-            )}
-            <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} />
-            <div className="flex justify-between items-center pt-2">
-              <span className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('grandTotal')}
-              </span>
-              <span className="text-2xl text-[#FF6B35]">
-                €{((order.grand_total_cents || 0) / 100).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </Card>
-
-        {/* Customer Details Card */}
-        {(order.customer_first_name || order.customer_email || order.customer_phone) && (
-          <Card className={`p-6 mb-6 ${
-            theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'
-          }`}>
-            <div className="flex items-center gap-2 mb-4">
-              <User className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
-              <h2 className={`text-xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('customerDetails')}
-              </h2>
-            </div>
-
-            <div className="space-y-3">
-              {(order.customer_first_name || order.customer_last_name) && (
-                <div className="flex items-center gap-3">
-                  <User className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
-                  <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                    {order.customer_first_name} {order.customer_last_name}
-                  </span>
-                </div>
-              )}
-              {order.customer_email && (
-                <div className="flex items-center gap-3">
-                  <Mail className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
-                  <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                    {order.customer_email}
-                  </span>
-                </div>
-              )}
-              {order.customer_phone && (
-                <div className="flex items-center gap-3">
-                  <Phone className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
-                  <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                    {order.customer_phone}
-                  </span>
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* Next Steps Card */}
-        <Card className={`p-6 mb-8 ${
-          theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'
-        }`}>
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
-            <h2 className={`text-xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t('nextSteps')}
-            </h2>
-          </div>
-
-          <div className="space-y-2">
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              ✓ {t('emailConfirmation')}
-            </p>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              ✓ {t('scheduleInstallation')}
-            </p>
-          </div>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Button
-            onClick={onNavigateHome}
-            className="flex-1 bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12"
-          >
-            {t('backToHome')}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-          {onNavigateToOrders && (
+          {/* Action Button */}
+          <div className="flex flex-col gap-3">
             <Button
-              onClick={onNavigateToOrders}
-              variant="outline"
-              className={`flex-1 h-12 ${
-                theme === 'dark'
-                  ? 'border-white/10 text-white hover:bg-white/5'
-                  : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-              }`}
+              onClick={onNavigateHome}
+              className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12"
             >
-              {t('viewOrder')}
+              {t('backToHome')}
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-          )}
-        </div>
+          </div>
+        </Card>
       </div>
     </div>
   );

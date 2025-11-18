@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
+import { getSupabaseClient } from '../utils/supabase/client';
 
 interface BookingStep3Props {
   licensePlate: string;
@@ -71,10 +72,39 @@ export function BookingStep3({
 
     setLoading(true);
     try {
-      // [BOOKING ACTION] Create booking: /api/bookings/create
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Save booking to Supabase
+      const supabase = getSupabaseClient();
+      
+      // Format date as YYYY-MM-DD
+      const bookingDate = date.toISOString().split('T')[0];
+      
+      // Create booking record
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([
+          {
+            license_plate: licensePlate.toUpperCase(),
+            booking_date: bookingDate,
+            booking_time: timeSlot,
+            service_name: serviceName,
+            customer_name: contactInfo.name,
+            customer_phone: contactInfo.phone,
+            customer_email: contactInfo.email || null,
+            notes: contactInfo.notes || null,
+            status: 'confirmed',
+          }
+        ])
+        .select();
+
+      if (error) {
+        console.error('Error creating booking:', error);
+        throw error;
+      }
+
+      console.log('Booking created successfully:', data);
       onConfirm();
     } catch (err) {
+      console.error('Booking error:', err);
       setError('Unable to complete booking. Please try again.');
     } finally {
       setLoading(false);

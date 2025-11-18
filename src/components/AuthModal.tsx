@@ -5,6 +5,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { useLanguage } from './LanguageContext';
+import { getSupabaseClient } from '../utils/supabase/client';
+import { Alert, AlertDescription } from './ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 type AuthView = 'login' | 'signup' | 'reset';
 
@@ -12,7 +15,7 @@ interface AuthModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultView?: AuthView;
-  onSuccess?: () => void;
+  onSuccess?: (isAdmin?: boolean) => void;
 }
 
 export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess }: AuthModalProps) {
@@ -20,22 +23,80 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
   const [view, setView] = useState<AuthView>(defaultView);
   const [loading, setLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   // Form states
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({ name: '', email: '', password: '', acceptTerms: false });
   const [resetEmail, setResetEmail] = useState('');
 
+  const getLoginErrorMessage = (error: any): string => {
+    // Map Supabase errors to user-friendly localized messages
+    const errorMessage = error?.message?.toLowerCase() || '';
+    
+    // Invalid credentials (wrong password or email not found)
+    if (errorMessage.includes('invalid login credentials') || 
+        errorMessage.includes('invalid credentials') ||
+        errorMessage.includes('email not confirmed')) {
+      return t('auth.error.invalidCredentials');
+    }
+    
+    // Email not found
+    if (errorMessage.includes('user not found')) {
+      return t('auth.error.emailNotFound');
+    }
+    
+    // Too many attempts
+    if (errorMessage.includes('too many') || errorMessage.includes('rate limit')) {
+      return t('auth.error.tooManyAttempts');
+    }
+    
+    // Network error
+    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      return t('auth.error.networkError');
+    }
+    
+    // Invalid email format
+    if (errorMessage.includes('invalid email')) {
+      return t('auth.error.invalidEmail');
+    }
+    
+    // Default to unexpected error with original message in console
+    console.error('Login error details:', error);
+    return t('auth.error.unexpected');
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // [AUTH ACTION] /auth/login
-    // Simulate API call
-    setTimeout(() => {
+    setError('');
+
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email: loginData.email,
+        password: loginData.password,
+      });
+
+      if (loginError) {
+        setError(getLoginErrorMessage(loginError));
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Check if user is admin
+        const isAdmin = data.user.email === 'admin@mitra-auto.fi';
+        
+        setLoading(false);
+        onOpenChange(false);
+        onSuccess?.(isAdmin);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(t('auth.error.unexpected'));
       setLoading(false);
-      onSuccess?.();
-      onOpenChange(false);
-    }, 1000);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -70,6 +131,7 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
   React.useEffect(() => {
     setView(defaultView);
     setResetSuccess(false);
+    setError(''); // Clear errors when modal opens or view changes
   }, [defaultView, open]);
 
   return (
@@ -98,7 +160,10 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   type="email"
                   placeholder={t('auth.placeholder.email')}
                   value={loginData.email}
-                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                  onChange={(e) => {
+                    setLoginData({ ...loginData, email: e.target.value });
+                    if (error) setError(''); // Clear error when user starts typing
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
@@ -109,11 +174,22 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   id="login-password"
                   type="password"
                   value={loginData.password}
-                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  onChange={(e) => {
+                    setLoginData({ ...loginData, password: e.target.value });
+                    if (error) setError(''); // Clear error when user starts typing
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
               </div>
+              
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? t('ui.loading') : t('auth.login.submit')}
               </Button>
