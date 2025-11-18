@@ -9,7 +9,64 @@ import { Alert } from './ui/alert';
 import { CheckCircle2, Package, User, Mail, Phone, ArrowRight, FileText, AlertTriangle } from 'lucide-react';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { toast } from 'sonner';
-import { parseCheckoutReference } from '../utils/paytrail';
+
+const DATABASE_PERMISSION_ERROR_MESSAGE = 'Database permission error. Please contact support.';
+
+const isOrderNotFoundError = (error: unknown) => {
+  if (!error) {
+    return false;
+  }
+
+  const maybeError = error as { code?: string; message?: string };
+  if (maybeError.code === 'P0002') {
+    return true;
+  }
+
+  if (maybeError.message && maybeError.message.includes('order_not_found')) {
+    return true;
+  }
+
+  return error instanceof Error && error.message === 'order_not_found';
+};
+
+const fetchOrderForCheckoutResult = async (params: URLSearchParams): Promise<Order> => {
+  const supabase = getSupabaseClient();
+
+  const txId = params.get('checkout-transaction-id') ?? null;
+  const stamp = params.get('checkout-stamp') ?? null;
+  const ref = params.get('checkout-reference') ?? null;
+
+  let orderId: string | null = null;
+  if (ref && ref.startsWith('ORDER-')) {
+    orderId = ref.substring('ORDER-'.length);
+  }
+
+  console.log('=== CHECKOUT SUCCESS DEBUG ===');
+  console.log('Full URL params:', Object.fromEntries(params.entries()));
+  console.log('Using RPC get_order_for_checkout_result with:', {
+    txId,
+    stamp,
+    orderId,
+  });
+
+  const { data, error } = await supabase.rpc('get_order_for_checkout_result', {
+    p_checkout_stamp: stamp,
+    p_transaction_id: txId,
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    console.error('❌ RPC error in get_order_for_checkout_result:', error);
+    throw error;
+  }
+
+  if (!data) {
+    console.error('❌ RPC returned no data');
+    throw new Error('order_not_found');
+  }
+
+  return data as Order;
+};
 
 interface CheckoutSuccessPageProps {
   onNavigateHome: () => void;
@@ -108,195 +165,35 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        // Read Paytrail query parameters
+        setLoading(true);
+        setError(null);
+
         const params = new URLSearchParams(window.location.search);
         const paramsObj = Object.fromEntries(params.entries());
         const checkoutStatus = params.get('checkout-status');
-        const checkoutReference = params.get('checkout-reference');
-        const checkoutTransactionId = params.get('checkout-transaction-id');
-        const checkoutStamp = params.get('checkout-stamp');
         const checkoutAmount = params.get('checkout-amount');
-
-        console.log('=== CHECKOUT SUCCESS DEBUG ===');
-        console.log('Full URL params:', paramsObj);
-        console.log('checkout-reference:', checkoutReference);
-        console.log('checkout-transaction-id:', checkoutTransactionId);
-        console.log('checkout-stamp:', checkoutStamp);
-        console.log('checkout-status:', checkoutStatus);
-
-        const supabase = getSupabaseClient();
-        let finalOrder: Order | null = null;
-        let lookupMethod = 'none';
-
-        // STRATEGY 1: Query by paytrail_transaction_id (most reliable)
-        if (checkoutTransactionId && !finalOrder) {
-          console.log('Attempting lookup by transaction ID:', checkoutTransactionId);
-          const { data: orderByTxn, error: txnError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('paytrail_transaction_id', checkoutTransactionId)
-            .maybeSingle();
-
-          if (txnError) {
-            console.error('Error querying by transaction ID:', txnError);
-            // Check if this is an auth/permission error
-            if (txnError.code === 'PGRST301' || txnError.message?.includes('JWT') || txnError.message?.includes('permission')) {
-              console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
-              console.error('This means the orders table has Row Level Security enabled but no policy for anonymous reads');
-              setError('Database permission error. Please contact support.');
-              setLoading(false);
-              return;
-            }
-          } else if (orderByTxn) {
-            console.log('✅ Found order by transaction ID:', orderByTxn.id);
-            finalOrder = orderByTxn;
-            lookupMethod = 'transaction_id';
-          } else {
-            console.warn('No order found by transaction ID');
-          }
-        }
-
-        // STRATEGY 2: Query by paytrail_stamp (backup)
-        if (checkoutStamp && !finalOrder) {
-          console.log('Attempting lookup by stamp:', checkoutStamp);
-          const { data: orderByStamp, error: stampError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('paytrail_stamp', checkoutStamp)
-            .maybeSingle();
-
-          if (stampError) {
-            console.error('Error querying by stamp:', stampError);
-            // Check if this is an auth/permission error
-            if (stampError.code === 'PGRST301' || stampError.message?.includes('JWT') || stampError.message?.includes('permission')) {
-              console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
-              setError('Database permission error. Please contact support.');
-              setLoading(false);
-              return;
-            }
-          } else if (orderByStamp) {
-            console.log('✅ Found order by stamp:', orderByStamp.id);
-            finalOrder = orderByStamp;
-            lookupMethod = 'stamp';
-          } else {
-            console.warn('No order found by stamp');
-          }
-        }
-
-        // STRATEGY 3: Query by ID from checkout-reference (fallback)
-        if (checkoutReference && !finalOrder) {
-          const parsedReference = parseCheckoutReference(checkoutReference);
-          const orderId = parsedReference.normalizedOrderId;
-
-          console.log('Parsed reference:', {
-            raw: parsedReference.rawReference,
-            withoutPrefix: parsedReference.referenceWithoutPrefix,
-            normalized: parsedReference.normalizedOrderId,
-            isUuid: parsedReference.isLikelyUuid
-          });
-
-          if (orderId) {
-            console.log('Attempting lookup by order ID:', orderId);
-            const { data: orderById, error: idError } = await supabase
-              .from('orders')
-              .select('*')
-              .eq('id', orderId)
-              .maybeSingle();
-
-            if (idError) {
-              console.error('Error querying by ID:', idError);
-              // Check if this is an auth/permission error
-              if (idError.code === 'PGRST301' || idError.message?.includes('JWT') || idError.message?.includes('permission')) {
-                console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
-                setError('Database permission error. Please contact support.');
-                setLoading(false);
-                return;
-              }
-            } else if (orderById) {
-              console.log('✅ Found order by ID:', orderById.id);
-              finalOrder = orderById;
-              lookupMethod = 'order_id';
-            } else {
-              console.warn('No order found by ID');
-            }
-          }
-
-          // STRATEGY 4: Fallback to paytrail_reference (numeric)
-          if (!finalOrder && parsedReference.referenceWithoutPrefix && !parsedReference.isLikelyUuid) {
-            console.log('Attempting lookup by paytrail_reference:', parsedReference.referenceWithoutPrefix);
-            const { data: orderByRef, error: refError } = await supabase
-              .from('orders')
-              .select('*')
-              .eq('paytrail_reference', parsedReference.referenceWithoutPrefix)
-              .maybeSingle();
-
-            if (refError) {
-              console.error('Error querying by paytrail_reference:', refError);
-              // Check if this is an auth/permission error
-              if (refError.code === 'PGRST301' || refError.message?.includes('JWT') || refError.message?.includes('permission')) {
-                console.error('⚠️ SUPABASE AUTH/PERMISSION ERROR - RLS policy may be blocking access');
-                setError('Database permission error. Please contact support.');
-                setLoading(false);
-                return;
-              }
-            } else if (orderByRef) {
-              console.log('✅ Found order by paytrail_reference:', orderByRef.id);
-              finalOrder = orderByRef;
-              lookupMethod = 'paytrail_reference';
-            } else {
-              console.warn('No order found by paytrail_reference');
-            }
-          }
-        }
-
-        // Log recent orders for debugging
-        if (!finalOrder) {
-          console.log('Order not found by any method. Fetching recent orders for debugging...');
-          const { data: recentOrders, error: recentError } = await supabase
-            .from('orders')
-            .select('id, paytrail_transaction_id, paytrail_stamp, paytrail_reference, created_at, status, paytrail_status')
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-          if (!recentError && recentOrders) {
-            console.log('Recent orders (last 10):', recentOrders);
-          }
-        }
-
-        console.log('Final lookup result:', {
-          found: !!finalOrder,
-          method: lookupMethod,
-          orderId: finalOrder?.id
-        });
+        const finalOrder = await fetchOrderForCheckoutResult(params);
 
         setPaytrailParams({
           ...paramsObj,
-          lookupMethod,
-          foundOrderId: finalOrder?.id ?? '',
+          lookupMethod: 'rpc_get_order_for_checkout_result',
+          foundOrderId: finalOrder.id,
         });
-
-        if (!finalOrder) {
-          console.error('❌ ORDER NOT FOUND - All lookup strategies failed');
-          setError(t('orderNotFound'));
-          setLoading(false);
-          return;
-        }
 
         setOrder(finalOrder);
 
-        // Determine if payment is successful based on DB fields (source of truth)
         const isPaid =
           finalOrder.status === 'paid' ||
           finalOrder.paytrail_status === 'paid';
 
         console.log('Payment status check:', {
           checkoutStatus,
+          checkoutAmount,
           orderStatus: finalOrder.status,
           paytrailStatus: finalOrder.paytrail_status,
-          isPaid
+          isPaid,
         });
 
-        // Clear cart if payment is confirmed
         if (isPaid && !hasClearedCartRef.current) {
           console.log('Payment confirmed, clearing cart');
           clearCart();
@@ -313,8 +210,12 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
 
         setLoading(false);
       } catch (err) {
-        console.error('Error in fetchOrder:', err);
-        setError(t('errorLoadingOrder'));
+        console.error('Error fetching checkout result order:', err);
+        if (isOrderNotFoundError(err)) {
+          setError(t('orderNotFound'));
+        } else {
+          setError(DATABASE_PERMISSION_ERROR_MESSAGE);
+        }
         setLoading(false);
       }
     };
