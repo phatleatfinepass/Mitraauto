@@ -258,8 +258,8 @@ function AdminAuthGuard({ onNeedLogin, onNotAuthorized }: AdminAuthGuardProps) {
     );
   }
 
-  // Logged in and password is valid - show schedule page
-  return <AdminSchedulePage onLogout={logout} />;
+  // Logged in and password is valid - show CMS page
+  return <CmsBetaPage onLogout={logout} />;
 }
 
 function HomePage() {
@@ -271,7 +271,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms'>('home');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -311,11 +311,10 @@ function HomePage() {
         setCurrentPage('about');
         setSelectedProduct(null);
       } else if (path === '/admin/schedule') {
-        setCurrentPage('admin-schedule');
+        setCurrentPage('cms');
         setSelectedProduct(null);
-      } else if (path === '/cms') {
-        // v0.1 Beta: Direct CMS access without auth
-        setCurrentPage('cms-beta');
+      } else if (path === '/cms' || path.startsWith('/cms/')) {
+        setCurrentPage('cms');
         setSelectedProduct(null);
       } else if (path === '/privacy' || path === '/legal/privacy') {
         setCurrentPage('privacy');
@@ -665,18 +664,11 @@ function HomePage() {
             onNeedLogin={handleAdminNeedLogin}
             onNotAuthorized={handleAdminNotAuthorized}
           />
-        ) : currentPage === 'cms-beta' ? (
-          <>
-            {/* v0.1 Beta Banner */}
-            <div className="bg-amber-500 text-white py-3 px-4 text-center">
-              <div className="container mx-auto max-w-7xl">
-                <p className="text-sm font-medium">
-                  🚧 v0.1 Beta - CMS Preview Mode (Authentication will be added in future versions)
-                </p>
-              </div>
-            </div>
-            <CmsBetaPagePage />
-          </>
+        ) : currentPage === 'cms' ? (
+          <AdminAuthGuard 
+            onNeedLogin={handleAdminNeedLogin}
+            onNotAuthorized={handleAdminNotAuthorized}
+          />
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (
