@@ -666,15 +666,15 @@ function HomePage() {
             }}
           />
         ) : currentPage === 'admin-schedule' ? (
-          <AdminAuthGuard 
-            onNeedLogin={handleAdminNeedLogin}
-            onNotAuthorized={handleAdminNotAuthorized}
-          />
+          <CmsBetaPage onLogout={async () => {
+            await handleLogout();
+            navigate('/');
+          }} />
         ) : currentPage === 'cms' ? (
-          <AdminAuthGuard 
-            onNeedLogin={handleAdminNeedLogin}
-            onNotAuthorized={handleAdminNotAuthorized}
-          />
+          <CmsBetaPage onLogout={async () => {
+            await handleLogout();
+            navigate('/');
+          }} />
         ) : currentPage === 'admin-login' ? (
           <AdminLoginPage
             onLogin={login}

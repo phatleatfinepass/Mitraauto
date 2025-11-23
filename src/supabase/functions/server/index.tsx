@@ -49,7 +49,13 @@ app.post("/make-server-bdaaf773/signup", async (c) => {
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
-      user_metadata: { name },
+      user_metadata: { 
+        name,
+        full_name: name,
+        username: email.split('@')[0],
+        avatar_url: "",
+        website: ""
+      },
       email_confirm: true, // Auto-confirm
     });
 
@@ -57,7 +63,9 @@ app.post("/make-server-bdaaf773/signup", async (c) => {
       console.error("Supabase Create User Error:", error);
       // Check for common "Database error" which usually implies a broken Trigger on auth.users
       if (error.message.includes("Database error")) {
-        return c.json({ error: "Database error: Likely a broken Postgres Trigger on 'auth.users'. Check your Supabase Database Triggers." }, 500);
+        return c.json({ 
+          error: "CRITICAL DATABASE ERROR: A Postgres Trigger on the 'auth.users' table is crashing. This often happens when a Supabase Starter Kit expects a 'public.profiles' table that doesn't exist. Please go to Supabase Dashboard -> Database -> Triggers and DISABLE the trigger on 'users'." 
+        }, 500);
       }
       return c.json({ error: error.message }, 400);
     }

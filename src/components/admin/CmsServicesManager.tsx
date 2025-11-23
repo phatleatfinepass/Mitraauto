@@ -13,18 +13,20 @@ import { useTheme } from '../ThemeContext';
 
 interface CmsService {
   id: string;
-  name: string;
-  category?: string;
-  price?: number | null;
-  is_active?: boolean | null;
-  description?: string | null;
+  name_fi: string;
+  name_en: string;
+  category?: string; // Derived from group
+  price_eur: number | null;
+  is_active: boolean;
+  note_fi?: string | null;
+  note_en?: string | null;
 }
 
 const fallbackServices: CmsService[] = [
-  { id: 'tire-change', name: 'Tire Change', category: 'Tire Work', price: 49.9, is_active: true },
-  { id: 'tire-storage', name: 'Tire Storage', category: 'Tire Hotel', price: 99, is_active: true },
-  { id: 'inspection', name: 'Vehicle Inspection', category: 'Maintenance', price: 89, is_active: true },
-  { id: 'oil-change', name: 'Oil Change', category: 'Maintenance', price: 69, is_active: true },
+  { id: 'tire-change', name_fi: 'Renkaiden vaihto', name_en: 'Tire Change', category: 'Tire Work', price_eur: 49.9, is_active: true },
+  { id: 'tire-storage', name_fi: 'Rengashotelli', name_en: 'Tire Storage', category: 'Tire Hotel', price_eur: 99, is_active: true },
+  { id: 'inspection', name_fi: 'Määräaikaishuolto', name_en: 'Vehicle Inspection', category: 'Maintenance', price_eur: 89, is_active: true },
+  { id: 'oil-change', name_fi: 'Öljynvaihto', name_en: 'Oil Change', category: 'Maintenance', price_eur: 69, is_active: true },
 ];
 
 export function CmsServicesManager() {
@@ -40,15 +42,39 @@ export function CmsServicesManager() {
 
     try {
       const supabase = getSupabaseClient();
+      
+      // Join services with service_groups to get category name
       const { data, error: fetchError } = await supabase
         .from('services')
-        .select('id, name, category, price, is_active, description')
-        .order('name');
+        .select(`
+          id, 
+          name_fi, 
+          name_en, 
+          price_eur, 
+          is_active, 
+          note_fi, 
+          note_en,
+          group:service_groups (
+            name_fi,
+            name_en
+          )
+        `)
+        .order('name_fi');
 
       if (fetchError) throw fetchError;
 
       if (data && data.length > 0) {
-        setServices(data);
+        const formattedData: CmsService[] = data.map((item: any) => ({
+          id: item.id,
+          name_fi: item.name_fi,
+          name_en: item.name_en,
+          category: language === 'fi' ? item.group?.name_fi : item.group?.name_en,
+          price_eur: item.price_eur,
+          is_active: item.is_active,
+          note_fi: item.note_fi,
+          note_en: item.note_en,
+        }));
+        setServices(formattedData);
       } else {
         setServices(fallbackServices);
         setError(
@@ -72,7 +98,7 @@ export function CmsServicesManager() {
 
   useEffect(() => {
     loadServices();
-  }, []);
+  }, [language]);
 
   return (
     <Card className={theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : ''}>
@@ -126,7 +152,7 @@ export function CmsServicesManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{language === 'fi' ? 'Palvelu' : 'Service'}</TableHead>
+                  <TableHead>{language === 'fi' ? 'Palvelu (FI / EN)' : 'Service (FI / EN)'}</TableHead>
                   <TableHead className="hidden sm:table-cell">
                     {language === 'fi' ? 'Kategoria' : 'Category'}
                   </TableHead>
@@ -140,11 +166,14 @@ export function CmsServicesManager() {
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {service.name}
+                          {language === 'fi' ? service.name_fi : service.name_en}
                         </span>
-                        {service.description && (
-                          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {service.description}
+                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                          {language === 'fi' ? service.name_en : service.name_fi}
+                        </span>
+                        {(service.note_fi || service.note_en) && (
+                          <span className={`text-xs italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {language === 'fi' ? service.note_fi : service.note_en}
                           </span>
                         )}
                       </div>
@@ -158,7 +187,7 @@ export function CmsServicesManager() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {service.price != null ? `${service.price.toFixed(2)} €` : language === 'fi' ? 'N/A' : 'N/A'}
+                      {service.price_eur != null ? `${service.price_eur.toFixed(2)} €` : language === 'fi' ? 'N/A' : 'N/A'}
                     </TableCell>
                     <TableCell>
                       {service.is_active === false ? (

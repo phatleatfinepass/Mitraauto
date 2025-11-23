@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import { getSupabaseClient } from '../../utils/supabase/client';
 import { formatDateForSupabase } from '../../utils/date';
@@ -268,7 +269,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
   // Unblock a slot
   const handleUnblockSlot = async (time: string) => {
-    const dateStr = formatDateForSupabase(selectedDate);
     const supabase = getSupabaseClient();
 
     try {
@@ -293,6 +293,42 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       console.error('Error unblocking slot:', error);
       setActionError(t('scheduleWriteError'));
       toast.error(t('errorUnblocking'));
+    }
+  };
+
+  // Delete a booking
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (!confirm(language === 'fi' ? 'Haluatko varmasti poistaa tämän varauksen?' : 'Are you sure you want to delete this booking?')) {
+      return;
+    }
+
+    const supabase = getSupabaseClient();
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      toast.success(language === 'fi' ? 'Varaus poistettu' : 'Booking deleted');
+      
+      // Refresh data
+      fetchScheduleData(selectedDate);
+      
+      // Update selected slot if drawer is open
+      if (selectedSlot) {
+        const updatedBookings = selectedSlot.bookings.filter(b => b.id !== bookingId);
+        setSelectedSlot({
+          ...selectedSlot,
+          bookings: updatedBookings
+        });
+        // If no bookings left and not blocked, maybe close drawer? 
+        // Keeping it open is fine.
+      }
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      toast.error(language === 'fi' ? 'Virhe varauksen poistamisessa' : 'Error deleting booking');
     }
   };
 
@@ -576,9 +612,19 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
                         <span className={`font-mono font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {booking.license_plate}
                         </span>
-                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {booking.booking_time}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {booking.booking_time}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-red-100 hover:text-red-600"
+                            onClick={() => handleDeleteBooking(booking.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                       <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
                         {t('createdAt')}: {new Date(booking.created_at).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}

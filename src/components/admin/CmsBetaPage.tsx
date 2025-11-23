@@ -64,7 +64,7 @@ export function CmsBetaPage({ onLogout }: CmsBetaPageProps) {
           >
             <div className="font-semibold">Admin Access</div>
             <p className="mt-1">
-              You're logged in as admin@mitra-auto.fi with full CMS permissions.
+              You have full CMS permissions.
             </p>
           </div>
         </div>
