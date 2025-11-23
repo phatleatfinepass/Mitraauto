@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js@2';
 import { projectId, publicAnonKey } from './info';
 
 // Singleton Supabase client to avoid multiple instances
-let supabaseClient: ReturnType<typeof createClient> | null = null;
+let supabaseClient: SupabaseClient | null = null;
 
-export function getSupabaseClient() {
+export function getSupabaseClient(): SupabaseClient {
   if (!supabaseClient) {
     supabaseClient = createClient(
       `https://${projectId}.supabase.co`,

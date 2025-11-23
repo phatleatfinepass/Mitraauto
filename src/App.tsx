@@ -20,6 +20,7 @@ import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import type { CatalogProduct } from './components/catalog/CatalogPage';
 import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
+import { CmsBetaPage } from './components/admin/CmsBetaPage';
 import { AdminAuthProvider, useAdminAuth } from './components/admin/AdminAuthContext';
 import { AdminLoginPage } from './components/admin/AdminLoginPage';
 import { AdminPasswordChangePage } from './components/admin/AdminPasswordChangePage';
@@ -674,7 +675,7 @@ function HomePage() {
                 </p>
               </div>
             </div>
-            <AdminSchedulePage />
+            <CmsBetaPagePage />
           </>
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />

@@ -8,6 +8,7 @@ import { Calendar } from '../ui/calendar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../ui/sheet';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -18,6 +19,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { getSupabaseClient } from '../../utils/supabase/client';
+import { formatDateForSupabase } from '../../utils/date';
 import { toast } from 'sonner';
 
 interface Booking {
@@ -63,6 +65,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const t = (key: string) => {
     const translations: Record<string, { fi: string; en: string }> = {
@@ -94,6 +98,18 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       errorBlocking: { fi: 'Virhe eston luomisessa', en: 'Error blocking slot' },
       errorUnblocking: { fi: 'Virhe eston poistamisessa', en: 'Error unblocking slot' },
       selectDate: { fi: 'Valitse päivä', en: 'Select Date' },
+      scheduleLoadError: {
+        fi: 'Aikataulun hallinta ei toimi ilman Supabase-tauluja ja oikeuksia.',
+        en: 'Schedule controls need Supabase tables and permissions to work.',
+      },
+      scheduleWriteError: {
+        fi: 'Estojen tallennus epäonnistui. Tarkista kirjautuminen ja RLS-säännöt.',
+        en: 'Failed to save changes. Check authentication and RLS policies.',
+      },
+      checkSupabase: {
+        fi: 'Varmista, että bookings- ja blocked_slots-taulut ovat olemassa ja CMS-käyttäjällä on kirjoitusoikeudet.',
+        en: 'Ensure bookings and blocked_slots tables exist and the CMS user has write access.',
+      },
     };
     return translations[key]?.[language] || key;
   };
@@ -121,9 +137,12 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   // Fetch bookings and blocked slots
   const fetchScheduleData = async (date: Date) => {
     setLoading(true);
+    setDataError(null);
     try {
       const supabase = getSupabaseClient();
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = formatDateForSupabase(date);
+
+      console.log('[CMS] Fetching bookings for date:', dateStr);
 
       // Fetch bookings
       const { data: bookingsData, error: bookingsError } = await supabase
@@ -131,7 +150,19 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         .select('*')
         .eq('booking_date', dateStr);
 
-      if (bookingsError) throw bookingsError;
+      if (bookingsError) {
+        console.error('[CMS] Bookings fetch error:', bookingsError);
+        // If table doesn't exist, create empty array
+        if (bookingsError.message.includes('does not exist')) {
+          console.warn('[CMS] Bookings table does not exist. Please run setup SQL.');
+          setBookings([]);
+        } else {
+          throw bookingsError;
+        }
+      } else {
+        console.log('[CMS] Fetched bookings:', bookingsData);
+        setBookings(bookingsData || []);
+      }
 
       // Fetch blocked slots
       const { data: blockedData, error: blockedError } = await supabase
@@ -139,10 +170,19 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         .select('*')
         .eq('date', dateStr);
 
-      if (blockedError) throw blockedError;
-
-      setBookings(bookingsData || []);
-      setBlockedSlots(blockedData || []);
+      if (blockedError) {
+        console.error('[CMS] Blocked slots fetch error:', blockedError);
+        // If table doesn't exist, create empty array
+        if (blockedError.message.includes('does not exist')) {
+          console.warn('[CMS] Blocked slots table does not exist. Please run setup SQL.');
+          setBlockedSlots([]);
+        } else {
+          throw blockedError;
+        }
+      } else {
+        console.log('[CMS] Fetched blocked slots:', blockedData);
+        setBlockedSlots(blockedData || []);
+      }
 
       // Build time slots
       const slots = generateTimeSlots(date);
@@ -163,10 +203,17 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         };
       });
 
+      console.log('[CMS] Time slots built:', timeSlotsData.filter(s => s.bookings.length > 0).length, 'with bookings');
       setTimeSlots(timeSlotsData);
     } catch (error) {
-      console.error('Error fetching schedule data:', error);
+      console.error('[CMS] Error fetching schedule data:', error);
+      setDataError(`${t('scheduleLoadError')} ${t('checkSupabase')}`);
       toast.error(language === 'fi' ? 'Virhe tietojen lataamisessa' : 'Error loading data');
+      // Set empty data so UI doesn't break
+      setBookings([]);
+      setBlockedSlots([]);
+      const slots = generateTimeSlots(date);
+      setTimeSlots(slots.map(time => ({ time, bookings: [], isBlocked: false })));
     } finally {
       setLoading(false);
     }
@@ -178,7 +225,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
   // Block a single slot
   const handleBlockSlot = async (time: string, untilEndOfDay: boolean = false) => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = formatDateForSupabase(selectedDate);
     const supabase = getSupabaseClient();
 
     try {
@@ -210,16 +257,18 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       toast.success(t('blockSuccessful'));
       setBlockReason('');
       setIsDrawerOpen(false);
+      setActionError(null);
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error blocking slot:', error);
+      setActionError(t('scheduleWriteError'));
       toast.error(t('errorBlocking'));
     }
   };
 
   // Unblock a slot
   const handleUnblockSlot = async (time: string) => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = formatDateForSupabase(selectedDate);
     const supabase = getSupabaseClient();
 
     try {
@@ -238,9 +287,11 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
       toast.success(t('unblockSuccessful'));
       setIsDrawerOpen(false);
+      setActionError(null);
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error unblocking slot:', error);
+      setActionError(t('scheduleWriteError'));
       toast.error(t('errorUnblocking'));
     }
   };
@@ -328,6 +379,20 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       </div>
 
       <div className="max-w-[1800px] mx-auto p-6">
+        {(dataError || actionError) && (
+          <Alert
+            variant="destructive"
+            className={`mb-4 ${theme === 'dark' ? 'bg-red-950/30 border-red-900/60 text-red-100' : ''}`}
+          >
+            <AlertTitle className={theme === 'dark' ? 'text-red-100' : ''}>
+              <AlertCircle className="w-4 h-4 inline mr-2" />
+              {dataError ? t('scheduleLoadError') : t('scheduleWriteError')}
+            </AlertTitle>
+            <AlertDescription className={theme === 'dark' ? 'text-red-100/80' : 'text-red-700'}>
+              {dataError || actionError}
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="grid grid-cols-[320px_1fr] gap-6">
           {/* Left Sidebar */}
           <div className="space-y-4">

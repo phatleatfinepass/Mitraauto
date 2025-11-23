@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from './LanguageContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ArrowRight, Calendar, Award, Settings, CheckCircle2, Users } from 'lucide-react';
+import { ArrowRight, Calendar, Award, Settings, CheckCircle2, Users, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ContactSection } from './ContactSection';
 import { motion, AnimatePresence } from 'motion/react';
+import { getSupabaseClient } from '../utils/supabase/client';
 import carWashService from 'figma:asset/cac46ce90efaaa69a5d5eac00cb56658fc7c8afa.png';
 import carMaintenanceService from 'figma:asset/23fb0673ef5da715efe16a47361607b6c4536093.png';
 import tireService from 'figma:asset/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.png';
@@ -44,9 +45,100 @@ const serviceHeroItems = [
 ];
 
 export function ServicesPage({ onBookingClick }: ServicesPageProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string>('car-wash');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategoryData[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
+  // Fetch services from CMS
+  useEffect(() => {
+    async function fetchServicesFromCMS() {
+      try {
+        setIsLoadingServices(true);
+        setServicesError(null);
+        console.log('[ServicesPage] Fetching services from CMS...');
+
+        const supabase = getSupabaseClient();
+
+        // Fetch service groups with their services
+        const { data: groups, error: groupsError } = await supabase
+          .from('service_groups')
+          .select(`
+            id,
+            name_fi,
+            name_en,
+            display_order,
+            is_active,
+            services (
+              id,
+              name_fi,
+              name_en,
+              price_eur,
+              note_fi,
+              note_en,
+              display_order,
+              is_active
+            )
+          `)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (groupsError) {
+          console.error('[ServicesPage] Error fetching service groups:', groupsError);
+          
+          // If table doesn't exist (PGRST205), use fallback data
+          if (groupsError.code === 'PGRST205') {
+            console.warn('[ServicesPage] Tables not found, using fallback hardcoded data');
+            console.warn('[ServicesPage] Run /SERVICES_CMS_SETUP.sql to enable CMS control');
+            setServiceCategories(getFallbackServices());
+            setIsLoadingServices(false);
+            return;
+          }
+          
+          throw groupsError;
+        }
+
+        console.log('[ServicesPage] Fetched service groups:', groups);
+
+        // Transform database data to component format
+        const transformedCategories: ServiceCategoryData[] = (groups || []).map((group: any) => {
+          // Filter and sort active services
+          const activeServices = (group.services || [])
+            .filter((service: any) => service.is_active)
+            .sort((a: any, b: any) => a.display_order - b.display_order);
+
+          return {
+            id: group.id,
+            title: language === 'fi' ? group.name_fi : group.name_en,
+            services: activeServices.map((service: any) => ({
+              id: service.id,
+              name: language === 'fi' ? service.name_fi : service.name_en,
+              price: `${service.price_eur.toFixed(2)} €`,
+              note: language === 'fi' ? service.note_fi : service.note_en,
+            })),
+          };
+        });
+
+        console.log('[ServicesPage] Transformed categories:', transformedCategories);
+
+        setServiceCategories(transformedCategories);
+
+        // Set first active category as default
+        if (transformedCategories.length > 0) {
+          setActiveCategory(transformedCategories[0].id);
+        }
+      } catch (error) {
+        console.error('[ServicesPage] Failed to fetch services:', error);
+        setServicesError(error instanceof Error ? error.message : 'Failed to load services');
+      } finally {
+        setIsLoadingServices(false);
+      }
+    }
+
+    fetchServicesFromCMS();
+  }, [language]);
 
   // Auto-rotate carousel every 30 seconds
   useEffect(() => {
@@ -58,66 +150,6 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
 
     return () => clearInterval(interval);
   }, []);
-
-  const serviceCategories: ServiceCategoryData[] = [
-    {
-      id: 'car-wash',
-      title: t('serviceCategory.carWash'),
-      services: [
-        { id: 'exterior-wash', name: t('service.exteriorWash'), price: '95.00 €' },
-        { id: 'full-wash', name: t('service.fullWash'), price: '150.00 €' },
-        { id: 'interior-cleaning', name: t('service.interiorCleaning'), price: '80.00 €' },
-        { id: 'engine-wash', name: t('service.engineWash'), price: '65.00 €' },
-      ],
-    },
-    {
-      id: 'maintenance',
-      title: t('serviceCategory.maintenance'),
-      services: [
-        {
-          id: 'basic-service',
-          name: t('service.basicService'), 
-          price: '250.00 €',
-          note: t('service.basicServiceNote')
-        },
-        {
-          id: 'large-service',
-          name: t('service.largeService'), 
-          price: '450.00 €',
-          note: t('service.largeServiceNote')
-        },
-        { id: 'ac-service', name: t('service.acService'), price: '120.00 €' },
-        {
-          id: 'brake-fluid',
-          name: t('service.brakeFluid'), 
-          price: '85.00 €',
-          note: t('service.brakeFluidNote')
-        },
-      ],
-    },
-    {
-      id: 'tire-work',
-      title: t('serviceCategory.tireWork'),
-      services: [
-        {
-          id: 'tire-mounting',
-          name: t('service.tireMounting'), 
-          price: '60.00 €',
-          note: t('service.tireMountingNote')
-        },
-        { id: 'tire-removal', name: t('service.tireRemoval'), price: '40.00 €' },
-        { id: 'wheel-balancing', name: t('service.wheelBalancing'), price: '15.00 €' },
-        { id: 'tire-repair', name: t('service.tireRepair'), price: '25.00 €' },
-        { id: 'tpms-service', name: t('service.tpmsService'), price: '45.00 €' },
-        {
-          id: 'wheel-alignment',
-          name: t('service.wheelAlignment'), 
-          price: '95.00 €',
-          note: t('service.wheelAlignmentNote')
-        },
-      ],
-    },
-  ];
 
   const scrollToCategory = (categoryId: string) => {
     setActiveCategory(categoryId);
@@ -223,7 +255,41 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
 
             {/* Service Categories */}
             <div className="space-y-16">
-              {serviceCategories.map((category, categoryIdx) => (
+              {/* Loading State */}
+              {isLoadingServices && (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                  <p className="text-muted-foreground">
+                    {language === 'fi' ? 'Ladataan palveluita...' : 'Loading services...'}
+                  </p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {!isLoadingServices && servicesError && (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <div className="text-destructive text-center">
+                    <p className="font-medium mb-2">
+                      {language === 'fi' ? 'Palveluiden lataaminen epäonnistui' : 'Failed to load services'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{servicesError}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!isLoadingServices && !servicesError && serviceCategories.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <p className="text-muted-foreground text-center">
+                    {language === 'fi' 
+                      ? 'Ei palveluita saatavilla tällä hetkellä.' 
+                      : 'No services available at the moment.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Service Categories List */}
+              {!isLoadingServices && !servicesError && serviceCategories.map((category, categoryIdx) => (
                 <div
                   key={category.id}
                   id={category.id}
@@ -239,15 +305,23 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
 
                   {/* Service List */}
                   <Card className={categoryIdx % 2 === 0 ? 'bg-background' : 'bg-secondary/30'}>
-                    <div className="divide-y divide-border">
-                      {category.services.map((service, serviceIdx) => (
-                        <ServiceListItem
-                          key={serviceIdx}
-                          service={service}
-                          onBookClick={(serviceId) => onBookingClick(serviceId)}
-                        />
-                      ))}
-                    </div>
+                    {category.services.length > 0 ? (
+                      <div className="divide-y divide-border">
+                        {category.services.map((service, serviceIdx) => (
+                          <ServiceListItem
+                            key={serviceIdx}
+                            service={service}
+                            onBookClick={(serviceId) => onBookingClick(serviceId)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-6 py-8 text-center text-muted-foreground">
+                        {language === 'fi' 
+                          ? 'Ei palveluita tässä kategoriassa.' 
+                          : 'No services in this category.'}
+                      </div>
+                    )}
                   </Card>
                 </div>
               ))}
@@ -375,4 +449,67 @@ function ServiceListItem({ service, onBookClick }: ServiceListItemProps) {
       </div>
     </div>
   );
+}
+
+// Fallback services data
+function getFallbackServices(): ServiceCategoryData[] {
+  return [
+    {
+      id: 'car-wash',
+      title: 'Car Wash / Autopesu',
+      services: [
+        { id: 'exterior-wash', name: 'Exterior Wash / Ulkopesu', price: '95.00 €' },
+        { id: 'full-wash', name: 'Full Wash / Täyspesu', price: '150.00 €' },
+        { id: 'interior-cleaning', name: 'Interior Cleaning / Sisäpuhdistus', price: '80.00 €' },
+        { id: 'engine-wash', name: 'Engine Wash / Moottoripesu', price: '65.00 €' },
+      ],
+    },
+    {
+      id: 'maintenance',
+      title: 'Maintenance / Huolto',
+      services: [
+        {
+          id: 'basic-service',
+          name: 'Basic Service / Pienhuolto', 
+          price: '250.00 €',
+          note: 'Includes oil change and basic maintenance / Sisältää öljynvaihdon ja perushuollon'
+        },
+        {
+          id: 'large-service',
+          name: 'Large Service / Suurhuolto', 
+          price: '450.00 €',
+          note: 'Comprehensive service including inspection / Kattava huolto sisältäen tarkastuksen'
+        },
+        { id: 'ac-service', name: 'A/C Service / Ilmastoinnin huolto', price: '120.00 €' },
+        {
+          id: 'brake-fluid',
+          name: 'Brake Fluid / Jarruneste', 
+          price: '85.00 €',
+          note: 'Includes brake fluid replacement / Sisältää jarrunesteen vaihdon'
+        },
+      ],
+    },
+    {
+      id: 'tire-work',
+      title: 'Tire Work / Rengastyöt',
+      services: [
+        {
+          id: 'tire-mounting',
+          name: 'Tire Mounting / Renkaan asennus', 
+          price: '60.00 €',
+          note: '4 tires'
+        },
+        { id: 'tire-removal', name: 'Tire Removal / Renkaan irrotus', price: '40.00 €' },
+        { id: 'wheel-balancing', name: 'Wheel Balancing / Pyöränbalanssi', price: '15.00 €' },
+        { id: 'tire-repair', name: 'Tire Repair / Renkaan korjaus', price: '25.00 €' },
+        { id: 'tpms-service', name: 'TPMS Service / TPMS-huolto', price: '45.00 €' },
+        {
+          id: 'wheel-alignment',
+          name: 'Wheel Alignment / Pyöränsuuntaus', 
+          price: '95.00 €',
+          note: 'Geometry adjustment / Geometrian säätö'
+        },
+      ],
+    },
+  ];
 }

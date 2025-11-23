@@ -1118,6 +1118,10 @@
     display: none;
   }
 
+  .inline {
+    display: inline;
+  }
+
   .inline-block {
     display: inline-block;
   }
@@ -2550,6 +2554,16 @@
     }
   }
 
+  .border-red-900\/60 {
+    border-color: color-mix(in srgb, oklch(.396 .141 25.723) 60%, transparent);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-red-900\/60 {
+      border-color: color-mix(in oklab, var(--color-red-900) 60%, transparent);
+    }
+  }
+
   .border-transparent {
     border-color: #0000;
   }
@@ -3109,6 +3123,16 @@
   @supports (color: color-mix(in lab, red, red)) {
     .bg-red-950\/20 {
       background-color: color-mix(in oklab, var(--color-red-950) 20%, transparent);
+    }
+  }
+
+  .bg-red-950\/30 {
+    background-color: color-mix(in srgb, oklch(.258 .092 26.042) 30%, transparent);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-red-950\/30 {
+      background-color: color-mix(in oklab, var(--color-red-950) 30%, transparent);
     }
   }
 
@@ -4228,6 +4252,20 @@
 
   .text-purple-700 {
     color: var(--color-purple-700);
+  }
+
+  .text-red-100 {
+    color: var(--color-red-100);
+  }
+
+  .text-red-100\/80 {
+    color: color-mix(in srgb, oklch(.936 .032 17.717) 80%, transparent);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-red-100\/80 {
+      color: color-mix(in oklab, var(--color-red-100) 80%, transparent);
+    }
   }
 
   .text-red-300 {

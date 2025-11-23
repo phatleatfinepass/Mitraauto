@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 import { getSupabaseClient } from '../utils/supabase/client';
+import { formatDateForSupabase } from '../utils/date';
 
 interface BookingStep3Props {
   licensePlate: string;
@@ -75,36 +76,46 @@ export function BookingStep3({
       // Save booking to Supabase
       const supabase = getSupabaseClient();
       
-      // Format date as YYYY-MM-DD
-      const bookingDate = date.toISOString().split('T')[0];
+      // Format date as YYYY-MM-DD in local time to avoid timezone drift
+      const bookingDate = formatDateForSupabase(date);
+      
+      const bookingData = {
+        license_plate: licensePlate.toUpperCase(),
+        booking_date: bookingDate,
+        booking_time: timeSlot,
+        service_name: serviceName,
+        customer_name: contactInfo.name,
+        customer_phone: contactInfo.phone,
+        customer_email: contactInfo.email || null,
+        notes: contactInfo.notes || null,
+        status: 'confirmed',
+      };
+
+      console.log('[BOOKING] Creating booking with data:', bookingData);
       
       // Create booking record
       const { data, error } = await supabase
         .from('bookings')
-        .insert([
-          {
-            license_plate: licensePlate.toUpperCase(),
-            booking_date: bookingDate,
-            booking_time: timeSlot,
-            service_name: serviceName,
-            customer_name: contactInfo.name,
-            customer_phone: contactInfo.phone,
-            customer_email: contactInfo.email || null,
-            notes: contactInfo.notes || null,
-            status: 'confirmed',
-          }
-        ])
+        .insert([bookingData])
         .select();
 
       if (error) {
-        console.error('Error creating booking:', error);
+        console.error('[BOOKING] Error creating booking:', error);
+        console.error('[BOOKING] Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
         throw error;
       }
 
-      console.log('Booking created successfully:', data);
+      console.log('[BOOKING] ✅ Booking created successfully:', data);
+      console.log('[BOOKING] Booking ID:', data?.[0]?.id);
+      console.log('[BOOKING] Check CMS for date:', bookingDate, 'time:', timeSlot);
       onConfirm();
     } catch (err) {
-      console.error('Booking error:', err);
+      console.error('[BOOKING] ❌ Booking error:', err);
       setError('Unable to complete booking. Please try again.');
     } finally {
       setLoading(false);
