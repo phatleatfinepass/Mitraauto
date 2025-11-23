@@ -264,6 +264,7 @@ function AdminAuthGuard({ onNeedLogin, onNotAuthorized }: AdminAuthGuardProps) {
 
 function HomePage() {
   const { t, language } = useLanguage();
+  const { user, login } = useAdminAuth();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -271,24 +272,28 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms' | 'admin-login'>('home');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Check auth state on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      const { getSupabaseClient } = await import('./utils/supabase/client');
-      const supabase = getSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
+    if (user) {
+      setIsLoggedIn(true);
+    } else {
+      const checkAuth = async () => {
+        const { getSupabaseClient } = await import('./utils/supabase/client');
+        const supabase = getSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setIsLoggedIn(true);
+        }
+      };
       
-      if (session?.user) {
-        setIsLoggedIn(true);
-      }
-    };
-    
-    checkAuth();
-  }, []);
+      checkAuth();
+    }
+  }, [user]);
 
   // Hero carousel timer - changes image every 30 seconds
   useEffect(() => {
@@ -312,6 +317,9 @@ function HomePage() {
         setSelectedProduct(null);
       } else if (path === '/admin/schedule') {
         setCurrentPage('cms');
+        setSelectedProduct(null);
+      } else if (path === '/admin/login') {
+        setCurrentPage('admin-login');
         setSelectedProduct(null);
       } else if (path === '/cms' || path.startsWith('/cms/')) {
         setCurrentPage('cms');
@@ -443,10 +451,8 @@ function HomePage() {
 
   const handleAdminNeedLogin = () => {
     // User tried to access admin but not logged in
-    setCurrentPage('home');
-    window.history.pushState({}, '', '/');
-    setAuthView('login');
-    setAuthModalOpen(true);
+    setCurrentPage('admin-login');
+    window.history.pushState({}, '', '/admin/login');
   };
 
   const handleAdminNotAuthorized = () => {
@@ -668,6 +674,14 @@ function HomePage() {
           <AdminAuthGuard 
             onNeedLogin={handleAdminNeedLogin}
             onNotAuthorized={handleAdminNotAuthorized}
+          />
+        ) : currentPage === 'admin-login' ? (
+          <AdminLoginPage
+            onLogin={login}
+            onLoginSuccess={() => {
+              setCurrentPage('cms');
+              window.history.pushState({}, '', '/cms');
+            }}
           />
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />

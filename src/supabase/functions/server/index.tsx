@@ -1,6 +1,7 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
@@ -22,6 +23,50 @@ app.use(
 // Health check endpoint
 app.get("/make-server-bdaaf773/health", (c) => {
   return c.json({ status: "ok" });
+});
+
+// Sign Up Endpoint
+app.post("/make-server-bdaaf773/signup", async (c) => {
+  try {
+    const { email, password, name } = await c.req.json();
+
+    if (!email || !password) {
+      return c.json({ error: "Email and password are required" }, 400);
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    // Diagnostic: Check if we can list users (verifies Admin privileges)
+    const { error: listError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+    if (listError) {
+      console.error("Admin Client Verification Failed:", listError);
+      return c.json({ error: "Server Configuration Error: Cannot access admin Auth API. Check SUPABASE_SERVICE_ROLE_KEY." }, 500);
+    }
+
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: { name },
+      email_confirm: true, // Auto-confirm
+    });
+
+    if (error) {
+      console.error("Supabase Create User Error:", error);
+      // Check for common "Database error" which usually implies a broken Trigger on auth.users
+      if (error.message.includes("Database error")) {
+        return c.json({ error: "Database error: Likely a broken Postgres Trigger on 'auth.users'. Check your Supabase Database Triggers." }, 500);
+      }
+      return c.json({ error: error.message }, 400);
+    }
+
+    return c.json(data);
+  } catch (err: any) {
+    console.error("Signup Error:", err);
+    return c.json({ error: err.message || "Internal Server Error" }, 500);
+  }
 });
 
 Deno.serve(app.fetch);

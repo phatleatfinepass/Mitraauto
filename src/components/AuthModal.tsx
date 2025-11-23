@@ -6,6 +6,7 @@ import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { useLanguage } from './LanguageContext';
 import { getSupabaseClient } from '../utils/supabase/client';
+import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle } from 'lucide-react';
 
@@ -103,13 +104,55 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
     e.preventDefault();
     if (!signupData.acceptTerms) return;
     setLoading(true);
-    // [AUTH ACTION] /auth/signup
-    // Simulate API call
-    setTimeout(() => {
+    setError('');
+
+    try {
+      // Call backend signup endpoint
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-bdaaf773/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify({
+          email: signupData.email,
+          password: signupData.password,
+          name: signupData.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Signup error:', data);
+        setError(data.error || t('auth.error.unexpected'));
+        setLoading(false);
+        return;
+      }
+
+      // Automatically login after successful signup
+      const supabase = getSupabaseClient();
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: signupData.email,
+        password: signupData.password,
+      });
+
+      if (loginError) {
+        console.error('Auto-login error:', loginError);
+        // Even if auto-login fails, signup was successful, so we can ask user to login manually
+        setView('login');
+        setError(t('auth.signup.successLoginRequired')); 
+      } else {
+        const isAdmin = loginData.user?.email === 'admin@mitra-auto.fi';
+        onSuccess?.(isAdmin || false);
+        onOpenChange(false);
+      }
+    } catch (err) {
+      console.error('Signup exception:', err);
+      setError(t('auth.error.networkError'));
+    } finally {
       setLoading(false);
-      onSuccess?.();
-      onOpenChange(false);
-    }, 1000);
+    }
   };
 
   const handleReset = async (e: React.FormEvent) => {
