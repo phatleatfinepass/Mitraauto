@@ -8,7 +8,6 @@ import { Calendar } from '../ui/calendar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../ui/sheet';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -17,7 +16,6 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
-  Trash2,
 } from 'lucide-react';
 import { getSupabaseClient } from '../../utils/supabase/client';
 import { formatDateForSupabase } from '../../utils/date';
@@ -66,8 +64,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
-  const [dataError, setDataError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   const t = (key: string) => {
     const translations: Record<string, { fi: string; en: string }> = {
@@ -99,18 +95,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       errorBlocking: { fi: 'Virhe eston luomisessa', en: 'Error blocking slot' },
       errorUnblocking: { fi: 'Virhe eston poistamisessa', en: 'Error unblocking slot' },
       selectDate: { fi: 'Valitse päivä', en: 'Select Date' },
-      scheduleLoadError: {
-        fi: 'Aikataulun hallinta ei toimi ilman Supabase-tauluja ja oikeuksia.',
-        en: 'Schedule controls need Supabase tables and permissions to work.',
-      },
-      scheduleWriteError: {
-        fi: 'Estojen tallennus epäonnistui. Tarkista kirjautuminen ja RLS-säännöt.',
-        en: 'Failed to save changes. Check authentication and RLS policies.',
-      },
-      checkSupabase: {
-        fi: 'Varmista, että bookings- ja blocked_slots-taulut ovat olemassa ja CMS-käyttäjällä on kirjoitusoikeudet.',
-        en: 'Ensure bookings and blocked_slots tables exist and the CMS user has write access.',
-      },
     };
     return translations[key]?.[language] || key;
   };
@@ -138,7 +122,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   // Fetch bookings and blocked slots
   const fetchScheduleData = async (date: Date) => {
     setLoading(true);
-    setDataError(null);
     try {
       const supabase = getSupabaseClient();
       const dateStr = formatDateForSupabase(date);
@@ -208,7 +191,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       setTimeSlots(timeSlotsData);
     } catch (error) {
       console.error('[CMS] Error fetching schedule data:', error);
-      setDataError(`${t('scheduleLoadError')} ${t('checkSupabase')}`);
       toast.error(language === 'fi' ? 'Virhe tietojen lataamisessa' : 'Error loading data');
       // Set empty data so UI doesn't break
       setBookings([]);
@@ -258,17 +240,16 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       toast.success(t('blockSuccessful'));
       setBlockReason('');
       setIsDrawerOpen(false);
-      setActionError(null);
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error blocking slot:', error);
-      setActionError(t('scheduleWriteError'));
       toast.error(t('errorBlocking'));
     }
   };
 
   // Unblock a slot
   const handleUnblockSlot = async (time: string) => {
+    const dateStr = formatDateForSupabase(selectedDate);
     const supabase = getSupabaseClient();
 
     try {
@@ -287,48 +268,10 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
       toast.success(t('unblockSuccessful'));
       setIsDrawerOpen(false);
-      setActionError(null);
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error unblocking slot:', error);
-      setActionError(t('scheduleWriteError'));
       toast.error(t('errorUnblocking'));
-    }
-  };
-
-  // Delete a booking
-  const handleDeleteBooking = async (bookingId: string) => {
-    if (!confirm(language === 'fi' ? 'Haluatko varmasti poistaa tämän varauksen?' : 'Are you sure you want to delete this booking?')) {
-      return;
-    }
-
-    const supabase = getSupabaseClient();
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .delete()
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
-      toast.success(language === 'fi' ? 'Varaus poistettu' : 'Booking deleted');
-      
-      // Refresh data
-      fetchScheduleData(selectedDate);
-      
-      // Update selected slot if drawer is open
-      if (selectedSlot) {
-        const updatedBookings = selectedSlot.bookings.filter(b => b.id !== bookingId);
-        setSelectedSlot({
-          ...selectedSlot,
-          bookings: updatedBookings
-        });
-        // If no bookings left and not blocked, maybe close drawer? 
-        // Keeping it open is fine.
-      }
-    } catch (error) {
-      console.error('Error deleting booking:', error);
-      toast.error(language === 'fi' ? 'Virhe varauksen poistamisessa' : 'Error deleting booking');
     }
   };
 
@@ -415,20 +358,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       </div>
 
       <div className="max-w-[1800px] mx-auto p-6">
-        {(dataError || actionError) && (
-          <Alert
-            variant="destructive"
-            className={`mb-4 ${theme === 'dark' ? 'bg-red-950/30 border-red-900/60 text-red-100' : ''}`}
-          >
-            <AlertTitle className={theme === 'dark' ? 'text-red-100' : ''}>
-              <AlertCircle className="w-4 h-4 inline mr-2" />
-              {dataError ? t('scheduleLoadError') : t('scheduleWriteError')}
-            </AlertTitle>
-            <AlertDescription className={theme === 'dark' ? 'text-red-100/80' : 'text-red-700'}>
-              {dataError || actionError}
-            </AlertDescription>
-          </Alert>
-        )}
         <div className="grid grid-cols-[320px_1fr] gap-6">
           {/* Left Sidebar */}
           <div className="space-y-4">
@@ -612,19 +541,9 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
                         <span className={`font-mono font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {booking.license_plate}
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {booking.booking_time}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-red-100 hover:text-red-600"
-                            onClick={() => handleDeleteBooking(booking.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {booking.booking_time}
+                        </span>
                       </div>
                       <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
                         {t('createdAt')}: {new Date(booking.created_at).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}

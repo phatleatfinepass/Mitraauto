@@ -562,9 +562,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 />
                 <Label 
                   htmlFor="acceptTerms" 
-                  className={`cursor-pointer text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}`}
+                  className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}`}
                 >
-                  {t('acceptTerms')} <span className="text-red-500">*</span>
+                  {language === 'fi' ? 'Hyväksyn ' : 'I accept the '} 
+                  <a 
+                    href="/legal" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`underline hover:no-underline ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {language === 'fi' ? 'Käyttöehdot ja Tietosuojaselosteen' : 'Terms & Conditions and Privacy Policy'}
+                  </a>
+                  {' '}<span className="text-red-500">*</span>
                 </Label>
               </div>
 

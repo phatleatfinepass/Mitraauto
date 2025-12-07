@@ -333,6 +333,61 @@ export function LegalPage({ initialSection }: LegalPageProps) {
           </motion.div>
         </div>
       </section>
+
+      {/* Paytrail Payment Service Provider Section */}
+      <section id="paytrail" className="py-24 lg:py-32 scroll-mt-16 bg-muted/30">
+        <div className="container mx-auto max-w-4xl px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="mb-12">
+              <h1 className="text-4xl lg:text-5xl tracking-tight mb-4">
+                {t('legal.paytrail.title')}
+              </h1>
+              <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
+              <p className="text-lg text-muted-foreground mb-4">
+                {t('legal.paytrail.subtitle')}
+              </p>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p><strong>{t('legal.paytrail.effective')}:</strong> {t('legal.paytrail.effectiveDate')}</p>
+                <p><strong>{t('legal.paytrail.lastUpdated')}:</strong> {t('legal.paytrail.effectiveDate')}</p>
+              </div>
+            </div>
+
+            <Card className="border rounded-2xl p-8 lg:p-12">
+              <div className="space-y-6 text-muted-foreground">
+                <p className="text-base leading-relaxed">
+                  {t('legal.paytrail.intro')}
+                </p>
+                
+                <div className="mt-6 pt-6 border-t border-border space-y-2">
+                  <p className="font-medium text-foreground text-lg">{t('legal.paytrail.company')}</p>
+                  <p><strong>{t('legal.paytrail.businessId')}:</strong> {t('legal.paytrail.businessIdValue')}</p>
+                  <p>{t('legal.paytrail.address1')}</p>
+                  <p>{t('legal.paytrail.address2')}</p>
+                  <p>{t('legal.paytrail.address3')}</p>
+                  <p className="mt-4">
+                    <a 
+                      href={t('legal.paytrail.website')}
+                      className="text-[#FF6B35] hover:underline inline-flex items-center gap-1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {t('legal.paytrail.website')}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }

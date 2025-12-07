@@ -20,7 +20,6 @@ import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import type { CatalogProduct } from './components/catalog/CatalogPage';
 import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
-import { CmsBetaPage } from './components/admin/CmsBetaPage';
 import { AdminAuthProvider, useAdminAuth } from './components/admin/AdminAuthContext';
 import { AdminLoginPage } from './components/admin/AdminLoginPage';
 import { AdminPasswordChangePage } from './components/admin/AdminPasswordChangePage';
@@ -258,13 +257,12 @@ function AdminAuthGuard({ onNeedLogin, onNotAuthorized }: AdminAuthGuardProps) {
     );
   }
 
-  // Logged in and password is valid - show CMS page
-  return <CmsBetaPage onLogout={logout} />;
+  // Logged in and password is valid - show schedule page
+  return <AdminSchedulePage onLogout={logout} />;
 }
 
 function HomePage() {
   const { t, language } = useLanguage();
-  const { user, login } = useAdminAuth();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -272,28 +270,24 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms' | 'admin-login'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule'>('home');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Check auth state on mount
   useEffect(() => {
-    if (user) {
-      setIsLoggedIn(true);
-    } else {
-      const checkAuth = async () => {
-        const { getSupabaseClient } = await import('./utils/supabase/client');
-        const supabase = getSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          setIsLoggedIn(true);
-        }
-      };
+    const checkAuth = async () => {
+      const { getSupabaseClient } = await import('./utils/supabase/client');
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      checkAuth();
-    }
-  }, [user]);
+      if (session?.user) {
+        setIsLoggedIn(true);
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   // Hero carousel timer - changes image every 30 seconds
   useEffect(() => {
@@ -316,13 +310,11 @@ function HomePage() {
         setCurrentPage('about');
         setSelectedProduct(null);
       } else if (path === '/admin/schedule') {
-        setCurrentPage('cms');
+        setCurrentPage('admin-schedule');
         setSelectedProduct(null);
-      } else if (path === '/admin/login') {
-        setCurrentPage('admin-login');
-        setSelectedProduct(null);
-      } else if (path === '/cms' || path.startsWith('/cms/')) {
-        setCurrentPage('cms');
+      } else if (path === '/cms') {
+        // v0.1 Beta: Direct CMS access without auth
+        setCurrentPage('cms-beta');
         setSelectedProduct(null);
       } else if (path === '/privacy' || path === '/legal/privacy') {
         setCurrentPage('privacy');
@@ -451,8 +443,10 @@ function HomePage() {
 
   const handleAdminNeedLogin = () => {
     // User tried to access admin but not logged in
-    setCurrentPage('admin-login');
-    window.history.pushState({}, '', '/admin/login');
+    setCurrentPage('home');
+    window.history.pushState({}, '', '/');
+    setAuthView('login');
+    setAuthModalOpen(true);
   };
 
   const handleAdminNotAuthorized = () => {
@@ -666,23 +660,22 @@ function HomePage() {
             }}
           />
         ) : currentPage === 'admin-schedule' ? (
-          <CmsBetaPage onLogout={async () => {
-            await handleLogout();
-            navigate('/');
-          }} />
-        ) : currentPage === 'cms' ? (
-          <CmsBetaPage onLogout={async () => {
-            await handleLogout();
-            navigate('/');
-          }} />
-        ) : currentPage === 'admin-login' ? (
-          <AdminLoginPage
-            onLogin={login}
-            onLoginSuccess={() => {
-              setCurrentPage('cms');
-              window.history.pushState({}, '', '/cms');
-            }}
+          <AdminAuthGuard 
+            onNeedLogin={handleAdminNeedLogin}
+            onNotAuthorized={handleAdminNotAuthorized}
           />
+        ) : currentPage === 'cms-beta' ? (
+          <>
+            {/* v0.1 Beta Banner */}
+            <div className="bg-amber-500 text-white py-3 px-4 text-center">
+              <div className="container mx-auto max-w-7xl">
+                <p className="text-sm font-medium">
+                  🚧 v0.1 Beta - CMS Preview Mode (Authentication will be added in future versions)
+                </p>
+              </div>
+            </div>
+            <AdminSchedulePage />
+          </>
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (
