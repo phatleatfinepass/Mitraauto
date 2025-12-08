@@ -2,14 +2,36 @@ import { getSupabaseClient } from './supabase/client.tsx';
 
 export type ProductSearchRow = {
   variant_id: string;
-  brand_name: string;
-  model_name: string;
-  size_label: string | null;
-  title: string | null;
-  min_price_cents: number | null;
-  min_price_sell_cents: number | null;
-  supplier_count: number | null;
+  product_type: 'tire' | 'rim';
+  brand: string;
+  brand_display_name: string | null;
+  brand_logo_url: string | null;
+  model: string;
+  size_string: string | null;
+  // Tire-specific
+  season: string | null;
+  studded: boolean | null;
+  runflat: boolean | null;
+  xl_reinforced: boolean | null;
+  // Rim-specific
+  width_in: number | null;
+  rim_diameter_in: number | null;
+  et_offset_mm: number | null;
+  bolt_pattern: string | null;
+  color: string | null;
+  finish: string | null;
+  // Pricing and stock
+  price: number | null;
+  currency: string | null;
   in_stock: boolean;
+  stock_qty: number | null;
+  // Display fields
+  best_image_url: string | null;
+  best_image_alt: string | null;
+  card_title: string | null;
+  subtitle: string | null;
+  tags: string[] | null;
+  seo_slug: string | null;
 };
 
 interface FetchOptions {
@@ -25,16 +47,18 @@ export async function fetchProductsSearch(
   const limit = options.limit ?? 24;
   const offset = options.offset ?? 0;
 
-  // Use different views/tables for tires and rims
-  const tableName = category === 'tire' ? 'products_search' : 'products_search';
-
   const { data, error, count } = await supabase
-    .from(tableName)
+    .from('products_search')
     .select(
-      `variant_id, brand_name, model_name, size_label, title, min_price_cents, min_price_sell_cents, supplier_count, in_stock`,
+      `variant_id, product_type, brand, brand_display_name, brand_logo_url, model, size_string, 
+       season, studded, runflat, xl_reinforced, 
+       width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, finish,
+       price, currency, in_stock, stock_qty,
+       best_image_url, best_image_alt, card_title, subtitle, tags, seo_slug`,
       { count: 'exact' }
     )
-    .order('min_price_sell_cents', { ascending: true, nullsFirst: true })
+    .eq('product_type', category)
+    .order('price', { ascending: true, nullsFirst: false })
     .range(offset, offset + limit - 1);
 
   if (error) {

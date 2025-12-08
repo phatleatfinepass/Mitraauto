@@ -452,17 +452,28 @@ function mapRimRow(row: any): CatalogProduct {
 }
 
 function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim'): CatalogProduct {
-  const priceCents = parseNumber(row.min_price_sell_cents ?? row.min_price_cents);
+  const priceEur = row.price !== null && row.price !== undefined ? row.price : undefined;
 
   return {
     id: row.variant_id,
-    brand: row.brand_name,
-    model: row.model_name,
-    size_text: row.size_label ?? undefined,
-    best_price_eur: priceCents !== undefined ? priceCents / 100 : undefined,
-    best_image_url: getFallbackImage(row.brand_name, row.model_name),
+    brand: row.brand_display_name || row.brand,
+    model: row.model,
+    size_text: row.size_string ?? undefined,
+    best_price_eur: priceEur,
+    best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
     in_stock: row.in_stock ?? false,
     product_type: productType,
+    // Tire-specific fields
+    season: productType === 'tire' ? row.season ?? undefined : undefined,
+    runflat: productType === 'tire' ? row.runflat ?? undefined : undefined,
+    xl: productType === 'tire' ? row.xl_reinforced ?? undefined : undefined,
+    studded: productType === 'tire' ? row.studded ?? undefined : undefined,
+    // Rim-specific fields
+    rim_width: productType === 'rim' ? row.width_in ?? undefined : undefined,
+    rim_diameter: productType === 'rim' ? row.rim_diameter_in ?? undefined : undefined,
+    et_offset: productType === 'rim' ? row.et_offset_mm ?? undefined : undefined,
+    pcd: productType === 'rim' ? row.bolt_pattern ?? undefined : undefined,
+    color: productType === 'rim' ? row.color ?? undefined : undefined,
   };
 }
 

@@ -1719,6 +1719,10 @@
     min-width: 20px;
   }
 
+  .min-w-\[180px\] {
+    min-width: 180px;
+  }
+
   .min-w-\[320px\] {
     min-width: 320px;
   }
@@ -3985,6 +3989,11 @@
     letter-spacing: -.7125px;
   }
 
+  .tracking-\[0\.08em\] {
+    --tw-tracking: .08em;
+    letter-spacing: .08em;
+  }
+
   .tracking-\[0\.167px\] {
     --tw-tracking: .167px;
     letter-spacing: .167px;
@@ -4276,6 +4285,16 @@
 
   .text-primary-foreground {
     color: var(--primary-foreground);
+  }
+
+  .text-primary-foreground\/90 {
+    color: var(--primary-foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-primary-foreground\/90 {
+      color: color-mix(in oklab, var(--primary-foreground) 90%, transparent);
+    }
   }
 
   .text-purple-300 {
@@ -5310,6 +5329,12 @@
   @media (hover: hover) {
     .hover\:bg-gray-200:hover {
       background-color: var(--color-gray-200);
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-muted:hover {
+      background-color: var(--muted);
     }
   }
 

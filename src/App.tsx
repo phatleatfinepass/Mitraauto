@@ -75,6 +75,26 @@ type ParsedTireSize = {
   speedRating?: string;
 };
 
+type CmsTab = 'schedule' | 'catalog-tires' | 'catalog-rims' | 'future';
+
+function resolveCmsTabFromHash(hash?: string): CmsTab {
+  const normalized = (hash ?? '').replace('#', '').toLowerCase();
+
+  if (normalized === 'catalog-tires') {
+    return 'catalog-tires';
+  }
+
+  if (normalized === 'catalog-rims') {
+    return 'catalog-rims';
+  }
+
+  if (normalized === 'future') {
+    return 'future';
+  }
+
+  return 'schedule';
+}
+
 const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
 
 function parseTireSize(sizeText?: string): ParsedTireSize {
@@ -272,7 +292,8 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-tires' | 'cms-rims'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'catalog-detail' | 'privacy' | 'terms'>('home');
+  const [cmsTab, setCmsTab] = useState<CmsTab>('schedule');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -317,6 +338,7 @@ function HomePage() {
       } else if (path === '/cms/tires') {
         setCurrentPage('cms-tires');
         setSelectedProduct(null);
+        setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
       } else if (path === '/cms/rims') {
         setCurrentPage('cms-rims');
         setSelectedProduct(null);
@@ -417,6 +439,14 @@ function HomePage() {
   const handleLogin = () => {
     setAuthView('login');
     setAuthModalOpen(true);
+  };
+
+    const handleCmsTabChange = (tab: CmsTab) => {
+    setCmsTab(tab);
+
+    if (typeof window !== 'undefined' && window.location.pathname === '/cms') {
+      window.history.replaceState(window.history.state, '', `/cms#${tab}`);
+    }
   };
 
   const handleSignup = () => {
@@ -539,6 +569,13 @@ function HomePage() {
     { key: 'booking.benefit1' },
     { key: 'booking.benefit2' },
     { key: 'booking.benefit3' },
+  ];
+
+  const cmsTabs = [
+    { id: 'schedule' as const, label: 'Booking Schedule', description: 'Manage appointments' },
+    { id: 'catalog-tires' as const, label: 'Tire Catalog', description: 'Edit tire content' },
+    { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
+    { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
   return (
@@ -686,9 +723,72 @@ function HomePage() {
                 </p>
               </div>
             </div>
-            <AdminSchedulePage />
+
+            <div className="bg-background">
+              <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS Beta</p>
+                      <h1 className="text-3xl font-semibold text-foreground">Control Center</h1>
+                    </div>
+                    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+                      Switch tabs to access schedule and catalog tools
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground max-w-3xl">
+                    Navigate between booking schedule management and product catalog overrides. Additional CMS tools will be added here in future updates.
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+                    {cmsTabs.map((tab) => {
+                      const isActive = cmsTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => handleCmsTabChange(tab.id)}
+                          className={`flex min-w-[180px] items-start gap-2 rounded-md px-4 py-3 text-left transition-colors ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-semibold">{tab.label}</span>
+                            {tab.description ? (
+                              <span className={`text-xs ${isActive ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>
+                                {tab.description}
+                              </span>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border bg-card shadow-sm">
+                  {cmsTab === 'schedule' ? (
+                    <AdminSchedulePage />
+                  ) : cmsTab === 'catalog-tires' ? (
+                    <TiresCMSPage />
+                  ) : cmsTab === 'catalog-rims' ? (
+                    <RimsCMSPage />
+                  ) : (
+                    <div className="space-y-2 p-8 text-muted-foreground">
+                      <h2 className="text-xl font-semibold text-foreground">Coming soon</h2>
+                      <p>Reserved for upcoming CMS modules.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </>
-        ) : currentPage === 'privacy' ? (
+
+) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (
           <LegalPage initialSection="terms" />
