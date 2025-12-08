@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { Card } from '../ui/card';
@@ -7,19 +9,25 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Search, Save, Check, X } from 'lucide-react';
+import { getSupabaseClient } from '../../utils/supabase/client';
 
 type RimRow = {
-  id: string;
+  variant_id: string;
   brand: string;
+  brand_display_name: string;
   model: string;
-  size: string;
-  width: number;
-  diameter: number;
-  boltPattern: string;
-  offset: number;
-  colorFinish: string;
+  size_string: string;
+  width_in: number | null;
+  rim_diameter_in: number | null;
+  bolt_pattern: string | null;
+  et_offset_mm: number | null;
+  color: string | null;
+  finish: string | null;
   price: number | null;
-  stock: number;
+  currency: string | null;
+  stock_qty: number | null;
+  card_title: string | null;
+  subtitle: string | null;
   cms_status: 'Default' | 'Overridden' | 'Hidden';
 };
 
@@ -45,10 +53,25 @@ type RimCMSData = {
   hideFromStorefront: boolean;
 };
 
+const emptyCmsState: RimCMSData = {
+  titleOverride: '',
+  subtitleOverride: '',
+  shortDescription: '',
+  longDescription: '',
+  heroImageUrl: '',
+  galleryUrls: '',
+  badges: '',
+  seoSlug: '',
+  seoTitle: '',
+  seoDescription: '',
+  hideFromStorefront: false,
+};
+
 export function RimsCMSPage() {
   const { theme } = useTheme();
   const { language } = useLanguage();
-  
+  const supabase = useMemo(() => getSupabaseClient(), []);
+
   const [filters, setFilters] = useState<RimFilters>({
     brand: '',
     model: '',
@@ -57,106 +80,207 @@ export function RimsCMSPage() {
     diameter: 'all',
   });
 
+  const [rims, setRims] = useState<RimRow[]>([]);
   const [selectedRim, setSelectedRim] = useState<RimRow | null>(null);
-  const [cmsData, setCmsData] = useState<RimCMSData>({
-    titleOverride: '',
-    subtitleOverride: '',
-    shortDescription: '',
-    longDescription: '',
-    heroImageUrl: '',
-    galleryUrls: '',
-    badges: '',
-    seoSlug: '',
-    seoTitle: '',
-    seoDescription: '',
-    hideFromStorefront: false,
-  });
-
+  const [cmsData, setCmsData] = useState<RimCMSData>(emptyCmsState);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
-
-  // Mock data - in real implementation, this would come from products_search view
-  const mockRims: RimRow[] = [
-    {
-      id: '1',
-      brand: 'BBS',
-      model: 'CH-R',
-      size: '8x18',
-      width: 8,
-      diameter: 18,
-      boltPattern: '5x112',
-      offset: 45,
-      colorFinish: 'Satin Black',
-      price: 425.00,
-      stock: 12,
-      cms_status: 'Default',
-    },
-    {
-      id: '2',
-      brand: 'OZ Racing',
-      model: 'Superturismo LM',
-      size: '8.5x19',
-      width: 8.5,
-      diameter: 19,
-      boltPattern: '5x120',
-      offset: 35,
-      colorFinish: 'Matt Graphite',
-      price: 389.90,
-      stock: 8,
-      cms_status: 'Overridden',
-    },
-    {
-      id: '3',
-      brand: 'Rotiform',
-      model: 'BLQ',
-      size: '9x20',
-      width: 9,
-      diameter: 20,
-      boltPattern: '5x114.3',
-      offset: 30,
-      colorFinish: 'Gloss Silver',
-      price: 465.50,
-      stock: 4,
-      cms_status: 'Default',
-    },
-  ];
+  const [listError, setListError] = useState<string | null>(null);
+  const [cmsError, setCmsError] = useState<string | null>(null);
+  const [hasCmsEntry, setHasCmsEntry] = useState(false);
 
   const handleFilterChange = (key: keyof RimFilters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const buildArrayFromCSV = (value: string) => {
+    const parts = value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    return parts.length ? parts : null;
+  };
+
+    const fetchRims = async () => {
+    setListError(null);
+
+    let query = supabase
+      .from('products_search')
+      .select(
+        `variant_id, product_type, brand, brand_display_name, model, size_string, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, finish, price, currency, stock_qty, card_title, subtitle`
+      )
+      .eq('product_type', 'rim');
+
+    if (filters.brand) {
+      query = query.ilike('brand_display_name', `%${filters.brand}%`);
+    }
+
+    if (filters.model) {
+      query = query.ilike('model', `%${filters.model}%`);
+    }
+
+    if (filters.size) {
+      query = query.ilike('size_string', `%${filters.size}%`);
+    }
+
+    if (filters.boltPattern) {
+      query = query.ilike('bolt_pattern', `%${filters.boltPattern}%`);
+    }
+
+    if (filters.diameter !== 'all') {
+      query = query.eq('rim_diameter_in', Number(filters.diameter));
+    }
+
+    const { data, error } = await query
+      .order('brand_display_name', { ascending: true })
+      .order('model', { ascending: true })
+      .order('size_string', { ascending: true });
+
+    if (error) {
+      setListError('Failed to load rims: ' + error.message);
+      setRims([]);
+      setSelectedRim(null);
+      return;
+    }
+
+    const variantIds = (data ?? []).map((item) => item.variant_id);
+    const cmsStatuses: Record<string, 'Default' | 'Overridden' | 'Hidden'> = {};
+
+    if (variantIds.length > 0) {
+      const { data: cmsRows, error: cmsFetchError } = await supabase
+        .from('product_cms')
+        .select('variant_id, is_hidden')
+        .in('variant_id', variantIds);
+
+      if (cmsFetchError) {
+        setListError('Failed to load CMS statuses: ' + cmsFetchError.message);
+      } else if (cmsRows) {
+        cmsRows.forEach((row) => {
+          cmsStatuses[row.variant_id] = row.is_hidden ? 'Hidden' : 'Overridden';
+        });
+      }
+    }
+
+    const mappedRims: RimRow[] = (data ?? []).map((item) => ({
+      variant_id: item.variant_id,
+      brand: item.brand ?? '',
+      brand_display_name: item.brand_display_name ?? item.brand ?? '',
+      model: item.model ?? '',
+      size_string: item.size_string ?? '',
+      width_in: item.width_in,
+      rim_diameter_in: item.rim_diameter_in,
+      bolt_pattern: item.bolt_pattern ?? null,
+      et_offset_mm: item.et_offset_mm ?? null,
+      color: item.color ?? null,
+      finish: item.finish ?? null,
+      price: item.price,
+      currency: item.currency,
+      stock_qty: item.stock_qty,
+      card_title: item.card_title ?? null,
+      subtitle: item.subtitle ?? null,
+      cms_status: cmsStatuses[item.variant_id] ?? 'Default',
+    }));
+
+    setRims(mappedRims);
+
+    if (selectedRim && !mappedRims.find((rim) => rim.variant_id === selectedRim.variant_id)) {
+      setSelectedRim(null);
+      setCmsData(emptyCmsState);
+      setHasCmsEntry(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRims();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleApplyFilters = () => {
-    // In real implementation, this would trigger API call with filters
-    console.log('Applying filters:', filters);
+    fetchRims();
+  };
+
+  const loadCmsData = async (variantId: string) => {
+    setCmsError(null);
+    setCmsData(emptyCmsState);
+    setHasCmsEntry(false);
+
+    const { data, error } = await supabase
+      .from('product_cms')
+      .select('*')
+      .eq('variant_id', variantId)
+      .maybeSingle();
+
+    if (error) {
+      setCmsError('Failed to load CMS data: ' + error.message);
+      return;
+    }
+
+    if (data) {
+      setHasCmsEntry(true);
+      setCmsData({
+        titleOverride: data.title ?? '',
+        subtitleOverride: data.subtitle ?? '',
+        shortDescription: data.short_description ?? '',
+        longDescription: data.long_description ?? '',
+        heroImageUrl: data.hero_image_url ?? '',
+        galleryUrls: Array.isArray(data.gallery) ? data.gallery.join(', ') : '',
+        badges: Array.isArray(data.badges) ? data.badges.join(', ') : '',
+        seoSlug: data.seo_slug ?? '',
+        seoTitle: data.seo_title ?? '',
+        seoDescription: data.seo_description ?? '',
+        hideFromStorefront: Boolean(data.is_hidden),
+      });
+    }
   };
 
   const handleSelectRim = (rim: RimRow) => {
     setSelectedRim(rim);
     setSaveStatus('idle');
-    // In real implementation, load CMS data from product_cms table
-    setCmsData({
-      titleOverride: '',
-      subtitleOverride: '',
-      shortDescription: '',
-      longDescription: '',
-      heroImageUrl: '',
-      galleryUrls: '',
-      badges: '',
-      seoSlug: '',
-      seoTitle: '',
-      seoDescription: '',
-      hideFromStorefront: false,
-    });
+    loadCmsData(rim.variant_id);
   };
 
   const handleCmsDataChange = (key: keyof RimCMSData, value: string | boolean) => {
-    setCmsData(prev => ({ ...prev, [key]: value }));
+    setCmsData((prev) => ({ ...prev, [key]: value }));
     setSaveStatus('idle');
   };
 
-  const handleSave = () => {
-    // In real implementation, save to product_cms table
-    console.log('Saving CMS data for rim:', selectedRim?.id, cmsData);
+  const handleSave = async () => {
+    if (!selectedRim) return;
+
+    setSaveStatus('idle');
+    setCmsError(null);
+
+    const gallery = buildArrayFromCSV(cmsData.galleryUrls);
+    const badges = buildArrayFromCSV(cmsData.badges);
+
+    const payload = {
+      variant_id: selectedRim.variant_id,
+      title: cmsData.titleOverride || null,
+      subtitle: cmsData.subtitleOverride || null,
+      short_description: cmsData.shortDescription || null,
+      long_description: cmsData.longDescription || null,
+      hero_image_url: cmsData.heroImageUrl || null,
+      gallery,
+      badges,
+      seo_slug: cmsData.seoSlug || null,
+      seo_title: cmsData.seoTitle || null,
+      seo_description: cmsData.seoDescription || null,
+      is_hidden: cmsData.hideFromStorefront,
+    };
+
+    const { error } = hasCmsEntry
+      ? await supabase.from('product_cms').update(payload).eq('variant_id', selectedRim.variant_id)
+      : await supabase.from('product_cms').insert(payload);
+
+    if (error) {
+      setSaveStatus('error');
+      setCmsError('Failed to save CMS data: ' + error.message);
+      return;
+    }
+
     setSaveStatus('success');
+    setHasCmsEntry(true);
+    await Promise.all([loadCmsData(selectedRim.variant_id), fetchRims()]);
     setTimeout(() => setSaveStatus('idle'), 3000);
   };
 
@@ -233,13 +357,13 @@ export function RimsCMSPage() {
                   value={filters.diameter}
                   onChange={(e) => handleFilterChange('diameter', e.target.value)}
                   className={`w-full h-10 px-3 rounded-md border ${
-                    isDark 
-                      ? 'bg-white/5 border-white/10 text-white' 
+                    isDark
+                      ? 'bg-white/5 border-white/10 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 >
                   <option value="all">All</option>
-                  {[14, 15, 16, 17, 18, 19, 20, 21, 22].map(d => (
+                  {[14, 15, 16, 17, 18, 19, 20, 21, 22].map((d) => (
                     <option key={d} value={d.toString()}>{d}"</option>
                   ))}
                 </select>
@@ -252,6 +376,10 @@ export function RimsCMSPage() {
                 </Button>
               </div>
             </div>
+
+            {listError && (
+              <p className="text-sm text-red-500 mb-2">{listError}</p>
+            )}
             
             <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
               Filters work on normalized rim data from products_search.
@@ -277,38 +405,40 @@ export function RimsCMSPage() {
                 </tr>
               </thead>
               <tbody>
-                {mockRims.length === 0 ? (
+                {rims.length === 0 ? (
                   <tr>
                     <td colSpan={11} className={`px-4 py-8 text-center ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                       No rims found with current filters.
                     </td>
                   </tr>
                 ) : (
-                  mockRims.map((rim) => (
+                  rims.map((rim) => (
                     <tr
-                      key={rim.id}
+                      key={rim.variant_id}
                       onClick={() => handleSelectRim(rim)}
                       className={`cursor-pointer border-b transition-colors ${
-                        selectedRim?.id === rim.id
+                        selectedRim?.variant_id === rim.variant_id
                           ? isDark ? 'bg-blue-500/20' : 'bg-blue-50'
-                          : isDark 
-                            ? 'border-white/5 hover:bg-white/5' 
+                          : isDark
+                            ? 'border-white/5 hover:bg-white/5'
                             : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
-                      <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>{rim.brand}</td>
+                      <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>{rim.brand_display_name}</td>
                       <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{rim.model}</td>
-                      <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{rim.size}</td>
-                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.width}"</td>
-                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.diameter}"</td>
-                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.boltPattern}</td>
-                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>ET{rim.offset}</td>
-                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.colorFinish}</td>
+                      <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{rim.size_string}</td>
+                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.width_in ?? '-'}"</td>
+                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.rim_diameter_in ?? '-'}"</td>
+                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.bolt_pattern ?? '-'}</td>
+                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{rim.et_offset_mm !== null ? `ET${rim.et_offset_mm}` : '-'}</td>
+                      <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {[rim.color, rim.finish].filter(Boolean).join(' / ') || '-'}
+                      </td>
                       <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {rim.price ? `€${rim.price.toFixed(2)}` : '-'}
+                        {rim.price ? `${rim.currency ?? '€'}${rim.price.toFixed(2)}` : '-'}
                       </td>
                       <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {rim.stock} pcs
+                        {rim.stock_qty ?? 0} pcs
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
@@ -336,6 +466,10 @@ export function RimsCMSPage() {
               Rim CMS Overrides
             </h2>
 
+            {cmsError && (
+              <div className="mb-4 text-sm text-red-500">{cmsError}</div>
+            )}
+
             {!selectedRim ? (
               <div className={`text-center py-12 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                 Select a rim from the table to edit CMS data.
@@ -347,7 +481,7 @@ export function RimsCMSPage() {
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Brand:</span>
-                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.brand}</span>
+                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.brand_display_name}</span>
                     </div>
                     <div>
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Model:</span>
@@ -355,33 +489,39 @@ export function RimsCMSPage() {
                     </div>
                     <div>
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Size:</span>
-                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.size}</span>
+                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.size_string}</span>
                     </div>
                     <div>
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Width / Diameter:</span>
-                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.width}" / {selectedRim.diameter}"</span>
+                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {selectedRim.width_in ?? '-'}" / {selectedRim.rim_diameter_in ?? '-'}"
+                      </span>
                     </div>
                     <div>
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Bolt Pattern:</span>
-                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.boltPattern}</span>
+                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.bolt_pattern ?? '-'}</span>
                     </div>
                     <div>
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Offset:</span>
-                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>ET{selectedRim.offset}</span>
+                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {selectedRim.et_offset_mm !== null ? `ET${selectedRim.et_offset_mm}` : '-'}
+                      </span>
                     </div>
                     <div>
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Color / Finish:</span>
-                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.colorFinish}</span>
+                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {[selectedRim.color, selectedRim.finish].filter(Boolean).join(' / ') || '-'}
+                      </span>
                     </div>
                     <div className="col-span-2">
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Current title:</span>
                       <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {selectedRim.brand} {selectedRim.model}
+                        {selectedRim.card_title || `${selectedRim.brand_display_name} ${selectedRim.model}`}
                       </span>
                     </div>
                     <div className="col-span-2">
                       <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Current subtitle:</span>
-                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.size}</span>
+                      <span className={`ml-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.subtitle || selectedRim.size_string}</span>
                     </div>
                   </div>
                 </Card>
@@ -425,8 +565,8 @@ export function RimsCMSPage() {
                           value={cmsData.shortDescription}
                           onChange={(e) => handleCmsDataChange('shortDescription', e.target.value)}
                           className={`w-full px-3 py-2 rounded-md border ${
-                            isDark 
-                              ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500' 
+                            isDark
+                              ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500'
                               : 'bg-white border-gray-300 text-gray-900'
                           }`}
                         />
@@ -439,8 +579,8 @@ export function RimsCMSPage() {
                           value={cmsData.longDescription}
                           onChange={(e) => handleCmsDataChange('longDescription', e.target.value)}
                           className={`w-full px-3 py-2 rounded-md border ${
-                            isDark 
-                              ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500' 
+                            isDark
+                              ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500'
                               : 'bg-white border-gray-300 text-gray-900'
                           }`}
                         />
@@ -531,8 +671,8 @@ export function RimsCMSPage() {
                         onCheckedChange={(checked) => handleCmsDataChange('hideFromStorefront', checked as boolean)}
                       />
                       <div>
-                        <Label 
-                          htmlFor="hideFromStorefront" 
+                        <Label
+                          htmlFor="hideFromStorefront"
                           className={`cursor-pointer ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
                         >
                           Hide this rim from storefront
@@ -553,7 +693,7 @@ export function RimsCMSPage() {
           {selectedRim && (
             <div className={`p-6 border-t ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center gap-4">
-                <Button 
+                <Button
                   onClick={handleSave}
                   className="bg-[#FF6B35] hover:bg-[#FF6B35]/90"
                 >
