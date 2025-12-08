@@ -23,6 +23,8 @@ import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
 import { AdminAuthProvider, useAdminAuth } from './components/admin/AdminAuthContext';
 import { AdminLoginPage } from './components/admin/AdminLoginPage';
 import { AdminPasswordChangePage } from './components/admin/AdminPasswordChangePage';
+import { TiresCMSPage } from './components/cms/TiresCMSPage';
+import { RimsCMSPage } from './components/cms/RimsCMSPage';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
@@ -270,7 +272,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-tires' | 'cms-rims'>('home');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -311,6 +313,12 @@ function HomePage() {
         setSelectedProduct(null);
       } else if (path === '/admin/schedule') {
         setCurrentPage('admin-schedule');
+        setSelectedProduct(null);
+      } else if (path === '/cms/tires') {
+        setCurrentPage('cms-tires');
+        setSelectedProduct(null);
+      } else if (path === '/cms/rims') {
+        setCurrentPage('cms-rims');
         setSelectedProduct(null);
       } else if (path === '/cms') {
         // v0.1 Beta: Direct CMS access without auth
@@ -664,6 +672,10 @@ function HomePage() {
             onNeedLogin={handleAdminNeedLogin}
             onNotAuthorized={handleAdminNotAuthorized}
           />
+        ) : currentPage === 'cms-tires' ? (
+          <TiresCMSPage />
+        ) : currentPage === 'cms-rims' ? (
+          <RimsCMSPage />
         ) : currentPage === 'cms-beta' ? (
           <>
             {/* v0.1 Beta Banner */}
