@@ -9,7 +9,7 @@ import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { Button } from '../ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { tiresSearchUI, rimsSearchUI } from '../../utils/rpc';
+import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
 
 type CatalogMode = 'tires' | 'rims';
 type SearchMode = 'license' | 'vehicle' | 'manual';
@@ -46,7 +46,7 @@ interface CatalogPageProps {
   onProductSelect?: (product: CatalogProduct) => void;
 }
 
-const ITEMS_PER_PAGE = 12;
+const ITEMS_PER_PAGE = 24;
 
 function getFallbackImage(brand?: string, model?: string) {
   const label = encodeURIComponent(`${brand ?? 'Product'} ${model ?? ''}`.trim());
@@ -451,95 +451,20 @@ function mapRimRow(row: any): CatalogProduct {
   };
 }
 
-// Demo data until products_search view is created
-const DEMO_TIRES: CatalogProduct[] = [
-  {
-    id: '1',
-    brand: 'Nokian',
-    model: 'Hakkapeliitta R5',
-    product_type: 'tire',
-    size_text: '205/55 R16 91H',
-    eu_fuel: 'B',
-    eu_wet: 'A',
-    eu_noise: 68,
-    season: 'winter',
-    runflat: false,
-    xl: false,
-    studded: false,
-    best_price_eur: 129.00,
-    best_image_url: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400',
-    in_stock: true,
-  },
-  {
-    id: '2',
-    brand: 'Michelin',
-    model: 'Pilot Sport 4',
-    product_type: 'tire',
-    size_text: '225/45 R17 94W',
-    eu_fuel: 'C',
-    eu_wet: 'A',
-    eu_noise: 71,
-    season: 'summer',
-    runflat: false,
-    xl: true,
-    studded: false,
-    best_price_eur: 159.00,
-    best_image_url: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400',
-    in_stock: true,
-  },
-  {
-    id: '3',
-    brand: 'Continental',
-    model: 'AllSeasonContact',
-    product_type: 'tire',
-    size_text: '195/65 R15 91H',
-    eu_fuel: 'B',
-    eu_wet: 'B',
-    eu_noise: 70,
-    season: 'all_season',
-    runflat: false,
-    xl: false,
-    studded: false,
-    best_price_eur: 99.00,
-    best_image_url: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400',
-    in_stock: true,
-  },
-];
+function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim'): CatalogProduct {
+  const priceCents = parseNumber(row.min_price_sell_cents ?? row.min_price_cents);
 
-const DEMO_RIMS: CatalogProduct[] = [
-  {
-    id: '4',
-    brand: 'BBS',
-    model: 'CH-R',
-    product_type: 'rim',
-    rim_width: 8,
-    rim_diameter: 18,
-    pcd: '5×112',
-    et_offset: 35,
-    cb: 66.6,
-    color: 'silver',
-    material: 'alloy',
-    best_price_eur: 450.00,
-    best_image_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
-    in_stock: true,
-  },
-  {
-    id: '5',
-    brand: 'OZ Racing',
-    model: 'Superturismo GT',
-    product_type: 'rim',
-    rim_width: 7.5,
-    rim_diameter: 17,
-    pcd: '5×100',
-    et_offset: 48,
-    cb: 68.0,
-    color: 'gunmetal',
-    material: 'alloy',
-    best_price_eur: 380.00,
-    best_image_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
-    in_stock: true,
-  },
-];
+  return {
+    id: row.variant_id,
+    brand: row.brand_name,
+    model: row.model_name,
+    size_text: row.size_label ?? undefined,
+    best_price_eur: priceCents !== undefined ? priceCents / 100 : undefined,
+    best_image_url: getFallbackImage(row.brand_name, row.model_name),
+    in_stock: row.in_stock ?? false,
+    product_type: productType,
+  };
+}
 
 export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const { language } = useLanguage();
@@ -549,9 +474,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const [searchMode, setSearchMode] = useState<SearchMode>('manual');
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<any>({});
   const [isRestoringState, setIsRestoringState] = useState(false);
   const productsGridRef = React.useRef<HTMLDivElement>(null);
@@ -649,108 +575,37 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
     if (isRestoringState && hasSearched) {
       fetchProducts();
     }
-  }, [isRestoringState]);
+  }, [isRestoringState, hasSearched]);
 
   // Normal pagination
   useEffect(() => {
     if (hasSearched && !isRestoringState) {
       fetchProducts();
     }
-  }, [currentPage]);
+  }, [currentPage, mode, hasSearched, isRestoringState]);
 
   const fetchProducts = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      if (mode === 'tires') {
-        const wStr = String(filters.width ?? '').trim();
-        const aStr = String(filters.aspectRatio ?? '').trim();
-        const dStr = String(filters.diameter ?? '').trim();
+      const category: 'tire' | 'rim' = mode === 'tires' ? 'tire' : 'rim';
+      const { items, total } = await fetchProductsSearch(category, {
+        limit: ITEMS_PER_PAGE,
+        offset: (currentPage - 1) * ITEMS_PER_PAGE,
+      });
+      const mapped = items.map((row) => mapProductSearchRow(row, category));
 
-        const w = wStr && wStr !== 'all' ? parseInt(wStr, 10) : null;
-        const a = aStr && aStr !== 'all' ? parseInt(aStr, 10) : null;
-        const d = dStr && dStr !== 'all' ? parseInt(dStr, 10) : null;
-
-        // If any of the filters are missing -> browse with the provided subset
-        if (w === null || a === null || d === null) {
-          console.debug('[TIRES] Browse query (subset allowed)', { w, a, d });
-          const supabase = (await import('../../utils/supabase/client')).getSupabaseClient();
-          const { data, error } = await supabase.rpc('tires_browse_ui', {
-            p_width: w, p_aspect: a, p_diameter: d,
-            p_limit: 48, p_offset: 0,
-          });
-          if (error) throw error;
-
-          const mapped = (data ?? []).map((row: any) => mapTireRow(row));
-
-          setProducts(mapped);
-          setTotalCount(mapped.length);
-        } else {
-          // All three provided -> exact mode
-          console.debug('[TIRES] Exact query', { w, a, d });
-          const { data, error } = await tiresSearchUI(w, a, d);
-          if (error) throw error;
-
-          const mapped = (data ?? []).map((row: any) => mapTireRow(row, `${w}/${a} R${d}`));
-
-          setProducts(mapped);
-          setTotalCount(mapped.length);
-        }
-      } else {
-        // RIMS (exact or browse)
-
-        const rwStr = String(filters.rimWidth ?? '').trim();
-        const rdStr = String(filters.rimDiameter ?? '').trim();
-
-        // Normalize values
-        const rw = rwStr && rwStr !== 'all' ? parseFloat(rwStr.replace(',', '.')) : null;
-        const rd = rdStr && rdStr !== 'all' ? parseInt(rdStr.replace(/[^0-9]/g, ''), 10) : null;
-
-        const rawPCD = (filters.pcd && filters.pcd !== 'all') ? String(filters.pcd) : '';
-        const pcd = rawPCD
-          ? rawPCD.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '')
-          : null;
-
-        // If we have both width and diameter -> exact RPC
-        if (rw !== null && rd !== null) {
-          console.debug('[RIMS] Exact query', { rw, rd, pcd });
-          const { data, error } = await rimsSearchUI(rw, rd, pcd);
-          if (error) throw error;
-
-          const mapped = (data ?? []).map((row: any) => {
-            const rim = mapRimRow(row);
-            return {
-              ...rim,
-              rim_width: rim.rim_width ?? rw ?? undefined,
-              rim_diameter: rim.rim_diameter ?? rd ?? undefined,
-              pcd: rim.pcd ?? pcd ?? undefined,
-            };
-          });
-
-          setProducts(mapped);
-          setTotalCount(mapped.length);
-        } else {
-          // Otherwise -> browse RPC (supports any subset, including all-null)
-          console.debug('[RIMS] Browse query', { rw, rd, pcd });
-          const supabase = (await import('../../utils/supabase/client')).getSupabaseClient();
-          const { data, error } = await supabase.rpc('rims_browse_ui', {
-            p_width: rw, p_diameter: rd, p_pcd: pcd,
-            p_limit: 48, p_offset: 0,
-          });
-          if (error) throw error;
-
-          const mapped = (data ?? []).map((row: any) => mapRimRow(row));
-
-          setProducts(mapped);
-          setTotalCount(mapped.length);
-        }
-      }
-      
+      setProducts(mapped);
+      setTotalCount(total ?? mapped.length);
     } catch (e) {
       console.error('Error fetching products:', e);
-      // Fallback to demo data on any error
-      const demoData = mode === 'tires' ? DEMO_TIRES : DEMO_RIMS;
-      setProducts(demoData);
-      setTotalCount(demoData.length);
+      setProducts([]);
+      setTotalCount(0);
+      setErrorMessage(
+        language === 'fi'
+          ? 'Tuotteiden lataus epäonnistui. Yritä uudelleen hetken kuluttua.'
+          : 'Failed to load products. Please try again soon.'
+      );
     } finally {
       setLoading(false);
     }
@@ -793,8 +648,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               onClick={() => {
                 setMode('tires');
                 setFilters({});
-                setHasSearched(false);
+                setHasSearched(true);
                 setProducts([]);
+                setErrorMessage(null);
+                setCurrentPage(1);
               }}
               className={`
                 relative px-8 py-3 rounded-xl transition-all duration-300
@@ -823,8 +680,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               onClick={() => {
                 setMode('rims');
                 setFilters({});
-                setHasSearched(false);
+                setHasSearched(true);
                 setProducts([]);
+                setErrorMessage(null);
+                setCurrentPage(1);
               }}
               className={`
                 relative px-8 py-3 rounded-xl transition-all duration-300
@@ -956,6 +815,13 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           </div>
         )}
 
+        {errorMessage && (
+          <div className={`mb-4 text-sm ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
+            {errorMessage}
+          </div>
+        )}
+
+
         {/* Empty State - Before Search */}
         {!hasSearched && (
           <div className="text-center py-20">
@@ -995,32 +861,30 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               transition={{ duration: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             >
-              {products
-                .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
-                .map((product, index) => (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    {mode === 'tires' ? (
-                      <TireCard
-                        product={product}
-                        index={index}
-                        onClick={onProductSelect ? () => handleProductClick(product) : undefined}
-                        onAddToCart={(e) => handleAddToCart(product, e)}
-                      />
-                    ) : (
-                      <RimCard
-                        product={product}
-                        index={index}
-                        onClick={onProductSelect ? () => handleProductClick(product) : undefined}
-                        onAddToCart={(e) => handleAddToCart(product, e)}
-                      />
-                    )}
-                  </motion.div>
-                ))}
+              {products.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  {mode === 'tires' ? (
+                    <TireCard
+                      product={product}
+                      index={index}
+                      onClick={onProductSelect ? () => handleProductClick(product) : undefined}
+                      onAddToCart={(e) => handleAddToCart(product, e)}
+                    />
+                  ) : (
+                    <RimCard
+                      product={product}
+                      index={index}
+                      onClick={onProductSelect ? () => handleProductClick(product) : undefined}
+                      onAddToCart={(e) => handleAddToCart(product, e)}
+                    />
+                  )}
+                </motion.div>
+              ))}
             </motion.div>
           </AnimatePresence>
         )}
@@ -1036,8 +900,12 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             <Button
               onClick={() => {
                 setFilters({});
+                setHasSearched(true);
                 setHasSearched(false);
                 setProducts([]);
+                setCurrentPage(1);
+                setErrorMessage(null);
+                fetchProducts();
               }}
               className="bg-[#FF6B35] hover:bg-[#FF6B35]/80"
             >

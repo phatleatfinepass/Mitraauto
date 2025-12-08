@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../utils/supabase/client';
+import { getSupabaseClient } from '../utils/supabase/client.tsx';
 
 export async function tiresSearchUI(width: number, aspect: number, diameter: number) {
   const supabase = getSupabaseClient();
