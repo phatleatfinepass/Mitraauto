@@ -20,11 +20,9 @@ import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import type { CatalogProduct } from './components/catalog/CatalogPage';
 import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
-import { AdminAuthProvider, useAdminAuth } from './components/admin/AdminAuthContext';
-import { AdminLoginPage } from './components/admin/AdminLoginPage';
-import { AdminPasswordChangePage } from './components/admin/AdminPasswordChangePage';
 import { TiresCMSPage } from './components/cms/TiresCMSPage';
 import { RimsCMSPage } from './components/cms/RimsCMSPage';
+import { CmsGuard } from './components/cms/CmsGuard';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
@@ -221,72 +219,9 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
   };
 }
 
-// Admin Auth Guard Component - receives callbacks from HomePage
-interface AdminAuthGuardProps {
-  onNeedLogin: () => void;
-  onNotAuthorized: () => void;
-}
-
-function AdminAuthGuard({ onNeedLogin, onNotAuthorized }: AdminAuthGuardProps) {
-  const { user, loading, isAdmin, needsPasswordChange, logout, changePassword } = useAdminAuth();
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    if (!loading && !checked) {
-      setChecked(true);
-      
-      // Not logged in - trigger login modal
-      if (!user) {
-        onNeedLogin();
-        return;
-      }
-
-      // Logged in but not admin - show error and redirect
-      if (!isAdmin) {
-        onNotAuthorized();
-        return;
-      }
-    }
-  }, [loading, user, isAdmin, checked, onNeedLogin, onNotAuthorized]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
-      </div>
-    );
-  }
-
-  // Not logged in or not admin - show loading while redirecting
-  if (!user || !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
-      </div>
-    );
-  }
-
-  // Logged in but needs password change (this won't trigger anymore, but kept for safety)
-  if (needsPasswordChange) {
-    return (
-      <AdminPasswordChangePage
-        onPasswordChanged={() => {
-          // Will be redirected to schedule after password change
-        }}
-        onChangePassword={changePassword}
-        onLogout={logout}
-      />
-    );
-  }
-
-  // Logged in and password is valid - show schedule page
-  return <AdminSchedulePage onLogout={logout} />;
-}
-
 function HomePage() {
   const { t, language } = useLanguage();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
-  const { user: adminUser, loading: adminAuthLoading, isAdmin } = useAdminAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
@@ -308,25 +243,26 @@ function HomePage() {
       if (session?.user) {
         setIsLoggedIn(true);
       }
+
+      // Listen for auth state changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          setIsLoggedIn(true);
+        } else {
+          setIsLoggedIn(false);
+        }
+      });
+
+      // Cleanup subscription on unmount
+      return () => {
+        subscription.unsubscribe();
+      };
     };
     
     checkAuth();
   }, []);
 
-  useEffect(() => {
-  const isCmsPage = currentPage === 'cms-tires' || currentPage === 'cms-rims' || currentPage === 'cms-beta';
 
-  if (!isCmsPage || adminAuthLoading) return;
-
-  if (!adminUser) {
-    handleAdminNeedLogin();
-    return;
-  }
-
-  if (!isAdmin) {
-    handleAdminNotAuthorized();
-  }
-}, [adminAuthLoading, adminUser, isAdmin, currentPage]);
 
   // Hero carousel timer - changes image every 30 seconds
   useEffect(() => {
@@ -488,28 +424,20 @@ function HomePage() {
     
     setIsLoggedIn(false);
     
-    // If on admin page, redirect to home
-    if (currentPage === 'admin-schedule') {
+    // If on CMS/admin page, redirect to home
+    const cmsPages = ['admin-schedule', 'cms-tires', 'cms-rims', 'cms-beta'];
+    if (cmsPages.includes(currentPage)) {
       setCurrentPage('home');
       window.history.pushState({}, '', '/');
     }
   };
 
-  const handleAdminNeedLogin = () => {
-    // User tried to access admin but not logged in
+  const handleLoginNeeded = () => {
+    // User tried to access CMS but not logged in
     setCurrentPage('home');
     window.history.pushState({}, '', '/');
     setAuthView('login');
     setAuthModalOpen(true);
-  };
-
-  const handleAdminNotAuthorized = () => {
-    // User is logged in but not admin
-    setCurrentPage('home');
-    window.history.pushState({}, '', '/');
-    alert(language === 'fi' 
-      ? 'Sinulla ei ole oikeutta käyttää hallintapaneelia.' 
-      : 'You do not have permission to access the admin panel.');
   };
 
   const services = [
@@ -721,35 +649,19 @@ function HomePage() {
             }}
           />
         ) : currentPage === 'admin-schedule' ? (
-          adminAuthLoading ? (
-            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
-            </div>
-          ) : adminUser && isAdmin ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
             <AdminSchedulePage />
-          ) : null
+          </CmsGuard>
         ) : currentPage === 'cms-tires' ? (
-          adminAuthLoading ? (
-            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
-            </div>
-          ) : adminUser && isAdmin ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
             <TiresCMSPage />
-          ) : null
+          </CmsGuard>
         ) : currentPage === 'cms-rims' ? (
-          adminAuthLoading ? (
-            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
-            </div>
-          ) : adminUser && isAdmin ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
             <RimsCMSPage />
-          ) : null
+          </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
-          adminAuthLoading ? (
-            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
-            </div>
-          ) : !adminUser || !isAdmin ? null : (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
           <>
             {/* v0.1 Beta Banner */}
             <div className="bg-amber-500 text-white py-3 px-4 text-center">
@@ -823,7 +735,7 @@ function HomePage() {
               </div>
             </div>
           </>
-        )
+          </CmsGuard>
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (
@@ -1269,11 +1181,9 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <AdminAuthProvider>
-          <CartProvider>
-            <HomePage />
-          </CartProvider>
-        </AdminAuthProvider>
+        <CartProvider>
+          <HomePage />
+        </CartProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

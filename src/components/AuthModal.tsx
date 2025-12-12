@@ -85,6 +85,13 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
       }
 
       if (data.user) {
+        // Bootstrap profile if it doesn't exist
+        try {
+          await supabase.rpc('account_profile_bootstrap');
+        } catch (bootstrapError) {
+          console.error('Profile bootstrap error (non-critical):', bootstrapError);
+        }
+
         // Check if user is admin
         const isAdmin = data.user.email === 'admin@mitra-auto.fi';
         
@@ -103,24 +110,81 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
     e.preventDefault();
     if (!signupData.acceptTerms) return;
     setLoading(true);
-    // [AUTH ACTION] /auth/signup
-    // Simulate API call
-    setTimeout(() => {
+    setError('');
+
+    try {
+      const supabase = getSupabaseClient();
+      
+      // Sign up with Supabase Auth
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email: signupData.email,
+        password: signupData.password,
+        options: {
+          data: {
+            full_name: signupData.name,
+          },
+        },
+      });
+
+      if (signupError) {
+        // Map signup errors to user-friendly messages
+        const errorMessage = signupError.message.toLowerCase();
+        if (errorMessage.includes('already registered') || errorMessage.includes('already exists')) {
+          setError(t('auth.error.emailExists') || 'Email already registered');
+        } else if (errorMessage.includes('invalid email')) {
+          setError(t('auth.error.invalidEmail'));
+        } else if (errorMessage.includes('password')) {
+          setError(t('auth.error.weakPassword') || 'Password must be at least 6 characters');
+        } else {
+          setError(signupError.message);
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Bootstrap profile immediately after signup
+        try {
+          await supabase.rpc('account_profile_bootstrap');
+        } catch (bootstrapError) {
+          console.error('Profile bootstrap error (non-critical):', bootstrapError);
+        }
+
+        setLoading(false);
+        onOpenChange(false);
+        onSuccess?.();
+      }
+    } catch (err) {
+      console.error('Signup error:', err);
+      setError(t('auth.error.unexpected'));
       setLoading(false);
-      onSuccess?.();
-      onOpenChange(false);
-    }, 1000);
+    }
   };
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // [AUTH ACTION] /auth/reset-password
-    // Simulate API call
-    setTimeout(() => {
+    setError('');
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (resetError) {
+        setError(resetError.message);
+        setLoading(false);
+        return;
+      }
+
       setLoading(false);
       setResetSuccess(true);
-    }, 1000);
+    } catch (err) {
+      console.error('Password reset error:', err);
+      setError(t('auth.error.unexpected'));
+      setLoading(false);
+    }
   };
 
   const handleSocialAuth = (provider: string) => {
