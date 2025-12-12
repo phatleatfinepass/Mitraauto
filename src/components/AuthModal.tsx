@@ -108,9 +108,18 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signupData.acceptTerms) return;
+    if (!signupData.acceptTerms) {
+      console.warn('Signup blocked: Terms not accepted');
+      return;
+    }
     setLoading(true);
     setError('');
+
+    console.log('Starting signup process...', {
+      email: signupData.email,
+      name: signupData.name,
+      passwordLength: signupData.password.length
+    });
 
     try {
       const supabase = getSupabaseClient();
@@ -125,6 +134,8 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
           },
         },
       });
+
+      console.log('Signup response:', { data, error: signupError });
 
       if (signupError) {
         // Map signup errors to user-friendly messages
@@ -143,9 +154,12 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
       }
 
       if (data.user) {
+        console.log('User created successfully:', data.user.id);
+        
         // Bootstrap profile immediately after signup
         try {
           await supabase.rpc('account_profile_bootstrap');
+          console.log('Profile bootstrap successful');
         } catch (bootstrapError) {
           console.error('Profile bootstrap error (non-critical):', bootstrapError);
         }
@@ -153,6 +167,9 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
         setLoading(false);
         onOpenChange(false);
         onSuccess?.();
+      } else {
+        console.warn('Signup succeeded but no user object returned');
+        setLoading(false);
       }
     } catch (err) {
       console.error('Signup error:', err);
@@ -221,7 +238,9 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 <Label htmlFor="login-email" className="transition-all group-hover:text-ring">{t('auth.login.email')}</Label>
                 <Input
                   id="login-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder={t('auth.placeholder.email')}
                   value={loginData.email}
                   onChange={(e) => {
@@ -236,7 +255,9 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 <Label htmlFor="login-password" className="transition-all group-hover:text-ring">{t('auth.login.password')}</Label>
                 <Input
                   id="login-password"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   value={loginData.password}
                   onChange={(e) => {
                     setLoginData({ ...loginData, password: e.target.value });
@@ -339,9 +360,14 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 <Label htmlFor="signup-name" className="transition-all group-hover:text-ring">{t('auth.signup.name')}</Label>
                 <Input
                   id="signup-name"
+                  name="name"
                   type="text"
+                  autoComplete="name"
                   value={signupData.name}
-                  onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
+                  onChange={(e) => {
+                    setSignupData({ ...signupData, name: e.target.value });
+                    if (error) setError(''); // Clear error when user starts typing
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
@@ -350,10 +376,15 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 <Label htmlFor="signup-email" className="transition-all group-hover:text-ring">{t('auth.signup.email')}</Label>
                 <Input
                   id="signup-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder={t('auth.placeholder.email')}
                   value={signupData.email}
-                  onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                  onChange={(e) => {
+                    setSignupData({ ...signupData, email: e.target.value });
+                    if (error) setError(''); // Clear error when user starts typing
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
@@ -362,13 +393,26 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 <Label htmlFor="signup-password" className="transition-all group-hover:text-ring">{t('auth.signup.password')}</Label>
                 <Input
                   id="signup-password"
+                  name="password"
                   type="password"
+                  autoComplete="new-password"
                   value={signupData.password}
-                  onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                  onChange={(e) => {
+                    setSignupData({ ...signupData, password: e.target.value });
+                    if (error) setError(''); // Clear error when user starts typing
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
               </div>
+              
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="terms"
@@ -384,6 +428,7 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   </a>
                 </label>
               </div>
+              
               <Button type="submit" className="w-full" disabled={loading || !signupData.acceptTerms}>
                 {loading ? t('ui.loading') : t('auth.signup.submit')}
               </Button>
