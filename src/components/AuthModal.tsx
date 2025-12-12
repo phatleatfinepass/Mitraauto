@@ -233,14 +233,15 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 {t('auth.login.subtitle')}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleLogin} className="space-y-4" method="post" action="#">
+            <form onSubmit={handleLogin} className="space-y-4" method="post" action="/" autoComplete="on">
+              <input type="hidden" name="form-name" value="login" />
               <div className="space-y-2 group">
                 <Label htmlFor="login-email" className="transition-all group-hover:text-ring">{t('auth.login.email')}</Label>
                 <Input
                   id="login-email"
                   name="username"
                   type="email"
-                  autoComplete="username email"
+                  autoComplete="username"
                   placeholder={t('auth.placeholder.email')}
                   value={loginData.email}
                   onChange={(e) => {
@@ -355,7 +356,8 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 {t('auth.signup.subtitle')}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSignup} className="space-y-4" method="post" action="#">
+            <form onSubmit={handleSignup} className="space-y-4" method="post" action="/" autoComplete="on">
+              <input type="hidden" name="form-name" value="signup" />
               <div className="space-y-2 group">
                 <Label htmlFor="signup-name" className="transition-all group-hover:text-ring">{t('auth.signup.name')}</Label>
                 <Input
@@ -378,7 +380,7 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   id="signup-email"
                   name="username"
                   type="email"
-                  autoComplete="username email"
+                  autoComplete="username"
                   placeholder={t('auth.placeholder.email')}
                   value={signupData.email}
                   onChange={(e) => {
