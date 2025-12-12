@@ -248,6 +248,21 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                     setLoginData({ ...loginData, email: e.target.value });
                     if (error) setError(''); // Clear error when user starts typing
                   }}
+                  onAnimationStart={(e: React.AnimationEvent<HTMLInputElement>) => {
+                    // Detect browser autofill (Chrome/Edge add autofill animation)
+                    if (e.animationName.includes('autofill')) {
+                      const target = e.target as HTMLInputElement;
+                      setLoginData({ ...loginData, email: target.value });
+                    }
+                  }}
+                  onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                    // Fallback for autofill detection (catches programmatic fills)
+                    const target = e.target as HTMLInputElement;
+                    if (target.value !== loginData.email) {
+                      setLoginData({ ...loginData, email: target.value });
+                      if (error) setError('');
+                    }
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
@@ -263,6 +278,21 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   onChange={(e) => {
                     setLoginData({ ...loginData, password: e.target.value });
                     if (error) setError(''); // Clear error when user starts typing
+                  }}
+                  onAnimationStart={(e: React.AnimationEvent<HTMLInputElement>) => {
+                    // Detect browser autofill (Chrome/Edge add autofill animation)
+                    if (e.animationName.includes('autofill')) {
+                      const target = e.target as HTMLInputElement;
+                      setLoginData({ ...loginData, password: target.value });
+                    }
+                  }}
+                  onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                    // Fallback for autofill detection (catches programmatic fills)
+                    const target = e.target as HTMLInputElement;
+                    if (target.value !== loginData.password) {
+                      setLoginData({ ...loginData, password: target.value });
+                      if (error) setError('');
+                    }
                   }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
@@ -370,6 +400,21 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                     setSignupData({ ...signupData, name: e.target.value });
                     if (error) setError(''); // Clear error when user starts typing
                   }}
+                  onAnimationStart={(e: React.AnimationEvent<HTMLInputElement>) => {
+                    // Detect browser autofill (Chrome/Edge add autofill animation)
+                    if (e.animationName.includes('autofill')) {
+                      const target = e.target as HTMLInputElement;
+                      setSignupData({ ...signupData, name: target.value });
+                    }
+                  }}
+                  onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                    // Fallback for autofill detection (catches programmatic fills)
+                    const target = e.target as HTMLInputElement;
+                    if (target.value !== signupData.name) {
+                      setSignupData({ ...signupData, name: target.value });
+                      if (error) setError('');
+                    }
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
@@ -387,6 +432,21 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                     setSignupData({ ...signupData, email: e.target.value });
                     if (error) setError(''); // Clear error when user starts typing
                   }}
+                  onAnimationStart={(e: React.AnimationEvent<HTMLInputElement>) => {
+                    // Detect browser autofill (Chrome/Edge add autofill animation)
+                    if (e.animationName.includes('autofill')) {
+                      const target = e.target as HTMLInputElement;
+                      setSignupData({ ...signupData, email: target.value });
+                    }
+                  }}
+                  onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                    // Fallback for autofill detection (catches programmatic fills)
+                    const target = e.target as HTMLInputElement;
+                    if (target.value !== signupData.email) {
+                      setSignupData({ ...signupData, email: target.value });
+                      if (error) setError('');
+                    }
+                  }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
                 />
@@ -402,6 +462,21 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   onChange={(e) => {
                     setSignupData({ ...signupData, password: e.target.value });
                     if (error) setError(''); // Clear error when user starts typing
+                  }}
+                  onAnimationStart={(e: React.AnimationEvent<HTMLInputElement>) => {
+                    // Detect browser autofill (Chrome/Edge add autofill animation)
+                    if (e.animationName.includes('autofill')) {
+                      const target = e.target as HTMLInputElement;
+                      setSignupData({ ...signupData, password: target.value });
+                    }
+                  }}
+                  onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                    // Fallback for autofill detection (catches programmatic fills)
+                    const target = e.target as HTMLInputElement;
+                    if (target.value !== signupData.password) {
+                      setSignupData({ ...signupData, password: target.value });
+                      if (error) setError('');
+                    }
                   }}
                   className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
                   required
