@@ -235,6 +235,8 @@ function HomePage() {
 
   // Check auth state on mount
   useEffect(() => {
+    let subscription: any = null;
+    
     const checkAuth = async () => {
       const { getSupabaseClient } = await import('./utils/supabase/client');
       const supabase = getSupabaseClient();
@@ -242,10 +244,14 @@ function HomePage() {
       
       if (session?.user) {
         setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
       }
 
       // Listen for auth state changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
         if (session?.user) {
           setIsLoggedIn(true);
         } else {
@@ -253,13 +259,17 @@ function HomePage() {
         }
       });
 
-      // Cleanup subscription on unmount
-      return () => {
-        subscription.unsubscribe();
-      };
+      subscription = authListener.subscription;
     };
     
     checkAuth();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
 
@@ -418,17 +428,35 @@ function HomePage() {
   };
 
   const handleLogout = async () => {
-    // Logout from Supabase
-    const supabase = await import('./utils/supabase/client').then(m => m.getSupabaseClient());
-    await supabase.auth.signOut();
+    console.log('Logout initiated...');
     
-    setIsLoggedIn(false);
-    
-    // If on CMS/admin page, redirect to home
-    const cmsPages = ['admin-schedule', 'cms-tires', 'cms-rims', 'cms-beta'];
-    if (cmsPages.includes(currentPage)) {
-      setCurrentPage('home');
-      window.history.pushState({}, '', '/');
+    try {
+      // Logout from Supabase
+      const supabase = await import('./utils/supabase/client').then(m => m.getSupabaseClient());
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+        throw error;
+      }
+      
+      console.log('Supabase signOut successful');
+      
+      // Force clear local state immediately
+      setIsLoggedIn(false);
+      
+      // If on CMS/admin page, redirect to home
+      const cmsPages = ['admin-schedule', 'cms-tires', 'cms-rims', 'cms-beta'];
+      if (cmsPages.includes(currentPage)) {
+        setCurrentPage('home');
+        window.history.pushState({}, '', '/');
+      }
+      
+      console.log('Logout complete');
+    } catch (error) {
+      console.error('Failed to logout:', error);
+      // Even if there's an error, clear the local state
+      setIsLoggedIn(false);
     }
   };
 
