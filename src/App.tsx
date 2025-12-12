@@ -286,6 +286,7 @@ function AdminAuthGuard({ onNeedLogin, onNotAuthorized }: AdminAuthGuardProps) {
 function HomePage() {
   const { t, language } = useLanguage();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
+  const { user: adminUser, loading: adminAuthLoading, isAdmin } = useAdminAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
@@ -311,6 +312,21 @@ function HomePage() {
     
     checkAuth();
   }, []);
+
+  useEffect(() => {
+  const isCmsPage = currentPage === 'cms-tires' || currentPage === 'cms-rims' || currentPage === 'cms-beta';
+
+  if (!isCmsPage || adminAuthLoading) return;
+
+  if (!adminUser) {
+    handleAdminNeedLogin();
+    return;
+  }
+
+  if (!isAdmin) {
+    handleAdminNotAuthorized();
+  }
+}, [adminAuthLoading, adminUser, isAdmin, currentPage]);
 
   // Hero carousel timer - changes image every 30 seconds
   useEffect(() => {
@@ -705,15 +721,35 @@ function HomePage() {
             }}
           />
         ) : currentPage === 'admin-schedule' ? (
-          <AdminAuthGuard 
-            onNeedLogin={handleAdminNeedLogin}
-            onNotAuthorized={handleAdminNotAuthorized}
-          />
+          adminAuthLoading ? (
+            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
+            </div>
+          ) : adminUser && isAdmin ? (
+            <AdminSchedulePage />
+          ) : null
         ) : currentPage === 'cms-tires' ? (
-          <TiresCMSPage />
+          adminAuthLoading ? (
+            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
+            </div>
+          ) : adminUser && isAdmin ? (
+            <TiresCMSPage />
+          ) : null
         ) : currentPage === 'cms-rims' ? (
-          <RimsCMSPage />
+          adminAuthLoading ? (
+            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
+            </div>
+          ) : adminUser && isAdmin ? (
+            <RimsCMSPage />
+          ) : null
         ) : currentPage === 'cms-beta' ? (
+          adminAuthLoading ? (
+            <div className="min-h-screen flex items-center justify-center bg-[#11141A]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
+            </div>
+          ) : !adminUser || !isAdmin ? null : (
           <>
             {/* v0.1 Beta Banner */}
             <div className="bg-amber-500 text-white py-3 px-4 text-center">
@@ -787,8 +823,8 @@ function HomePage() {
               </div>
             </div>
           </>
-
-) : currentPage === 'privacy' ? (
+        )
+        ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (
           <LegalPage initialSection="terms" />
