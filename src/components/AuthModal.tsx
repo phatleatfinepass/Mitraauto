@@ -30,6 +30,9 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
   const [signupData, setSignupData] = useState({ name: '', email: '', password: '', acceptTerms: false });
   const [resetEmail, setResetEmail] = useState('');
 
+  const loginEmailRef = React.useRef<HTMLInputElement>(null);
+  const loginPasswordRef = React.useRef<HTMLInputElement>(null);
+
   const getLoginErrorMessage = (error: any): string => {
     // Map Supabase errors to user-friendly localized messages
     const errorMessage = error?.message?.toLowerCase() || '';
@@ -215,6 +218,26 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
     setError(''); // Clear errors when modal opens or view changes
   }, [defaultView, open]);
 
+    React.useEffect(() => {
+    if (!open || view !== 'login') return;
+
+    const syncAutofilledValues = () => {
+      const emailValue = loginEmailRef.current?.value ?? '';
+      const passwordValue = loginPasswordRef.current?.value ?? '';
+
+      setLoginData((prev) => {
+        if (prev.email === emailValue && prev.password === passwordValue) return prev;
+        return { ...prev, email: emailValue, password: passwordValue };
+      });
+    };
+
+    // Edge + iCloud Passwords may not trigger input/animation events, so poll briefly
+    const interval = window.setInterval(syncAutofilledValues, 300);
+    syncAutofilledValues();
+
+    return () => window.clearInterval(interval);
+  }, [open, view]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal>
       <DialogContent className="w-[calc(100%-2rem)] min-w-[320px] max-w-[90vw] sm:max-w-[440px] md:max-w-[480px]">
@@ -242,6 +265,7 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   name="username"
                   type="email"
                   autoComplete="username"
+                  ref={loginEmailRef}
                   placeholder={t('auth.placeholder.email')}
                   value={loginData.email}
                   onChange={(e) => {
@@ -274,6 +298,7 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                   name="password"
                   type="password"
                   autoComplete="current-password"
+                  ref={loginPasswordRef}
                   value={loginData.password}
                   onChange={(e) => {
                     setLoginData({ ...loginData, password: e.target.value });
