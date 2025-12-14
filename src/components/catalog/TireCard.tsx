@@ -79,6 +79,12 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
   // Parse size into parts
   const sizeparts = product.size_text ? product.size_text.split(/[\s\/]/).filter(Boolean) : [];
 
+  // EU label values (optional)
+  const euFuel = product.eu_fuel;
+  const euWet = product.eu_wet;
+  const euNoise = product.eu_noise;
+  const hasEuLabel = euFuel !== undefined || euWet !== undefined || euNoise !== undefined;
+
   // Calculate 4-piece price
   const fourPiecePrice = (product.best_price_eur || 0) * 4;
 
