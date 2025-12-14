@@ -18,9 +18,6 @@ interface TireCardProps {
     brand: string;
     model: string;
     size_text?: string;
-    eu_fuel?: string;
-    eu_wet?: string;
-    eu_noise?: number;
     season?: string;
     runflat?: boolean;
     xl?: boolean;
@@ -40,16 +37,6 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
 
   // Use mockup images in rotation
   const mockupImage = MOCKUP_TIRE_IMAGES[index % MOCKUP_TIRE_IMAGES.length];
-
-  // Parse EU values
-  const euFuel = product.eu_fuel ? product.eu_fuel.toString().trim().toUpperCase() : undefined;
-  const euWet = product.eu_wet ? product.eu_wet.toString().trim().toUpperCase() : undefined;
-  const parsedNoise =
-    typeof product.eu_noise === 'number'
-      ? product.eu_noise
-      : Number.parseFloat(String(product.eu_noise ?? '').replace(/[^0-9.,-]/g, '').replace(',', '.'));
-  const euNoise = Number.isFinite(parsedNoise) ? parsedNoise : undefined;
-  const hasEuLabel = euFuel !== undefined || euWet !== undefined || euNoise !== undefined;
 
   const getSeasonLabel = (season?: string) => {
     if (!season) return '';
