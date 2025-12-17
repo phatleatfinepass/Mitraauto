@@ -3,23 +3,30 @@ import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
-import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle } from 'lucide-react';
-import { ImageUpload } from './ImageUpload';
-import { EULabelOverride } from './EULabelOverride';
+import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle, Upload, GripVertical, RotateCcw, AlertTriangle } from 'lucide-react';
 
-interface TireVariant {
-  id: string;
-  ean: string | null;
+interface ProductSearchTire {
+  variant_id: string;
+  product_type: 'tire';
+  derived_ean: string | null;
   brand: string;
-  brand_name?: string | null;
-  manufacturer?: string | null;
   model: string;
   size_string: string | null;
   season: string | null;
+  
+  // Base EU values from supplier
   eu_fuel_class: string | null;
-  eu_wet_class: string | null;
+  eu_wet_grip_class: string | null;
   eu_noise_db: number | null;
   eu_noise_class: string | null;
+  
+  // Final computed values
+  final_title: string | null;
+  final_price_eur: number | null;
+  final_is_hidden: boolean;
+  
+  // Conflict detection
+  ean_conflict_open: boolean | null;
 }
 
 interface ProductCMS {
@@ -34,12 +41,28 @@ interface ProductCMS {
   seo_title: string | null;
   seo_description: string | null;
   is_hidden: boolean;
-  spec_overrides: any | null;
+  spec_overrides: {
+    eu?: {
+      fuel_class?: string;
+      wet_grip_class?: string;
+      noise_db?: number;
+      noise_class?: string;
+    };
+    [key: string]: any;
+  } | null;
+  price_override_eur: number | null;
+  promo_enabled: boolean;
+  promo_price_eur: number | null;
+  promo_start: string | null;
+  promo_end: string | null;
 }
 
-interface TireRow extends TireVariant {
+interface TireRow extends ProductSearchTire {
   cms_data?: ProductCMS | null;
 }
+
+const EU_FUEL_WET_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
+const EU_NOISE_CLASS_OPTIONS = ['A', 'B', 'C'];
 
 export function TiresCMSPageV2() {
   const { theme } = useTheme();
@@ -52,6 +75,7 @@ export function TiresCMSPageV2() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showConflicts, setShowConflicts] = useState(false);
   const [selectedTire, setSelectedTire] = useState<TireRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -60,47 +84,46 @@ export function TiresCMSPageV2() {
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
 
+  // Image upload state
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
   useEffect(() => {
     fetchTires();
-  }, []);
+  }, [showConflicts]);
 
   const fetchTires = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch tire variants (base data - read-only)
-      const { data: variants, error: variantsError } = await supabase
-        .from('catalog_tire_variants')
+      // Build query for products_search
+      let query = supabase
+        .from('products_search')
         .select('*')
+        .eq('product_type', 'tire')
+        .order('brand', { ascending: true })
+        .order('model', { ascending: true })
         .limit(100);
 
-      if (variantsError) throw variantsError;
+      // Filter conflicts unless "Show conflicts" is enabled
+      if (!showConflicts) {
+        query = query.or('ean_conflict_open.is.null,ean_conflict_open.eq.false');
+      }
 
-      if (!variants || variants.length === 0) {
+      const { data: products, error: productsError } = await query;
+
+      if (productsError) throw productsError;
+
+      if (!products || products.length === 0) {
         setTires([]);
         setLoading(false);
         return;
       }
 
-      // Normalize brand field in case the view exposes a different column name
-      const normalizedVariants = variants.map(v => ({
-        ...v,
-        brand: (v as any).brand ?? (v as any).brand_name ?? (v as any).manufacturer ?? 'Unknown brand'
-      }));
-
-      // Sort client-side to avoid ordering on potentially missing DB columns
-      normalizedVariants.sort((a, b) => {
-        const brandA = (a.brand || '').toLowerCase();
-        const brandB = (b.brand || '').toLowerCase();
-        if (brandA === brandB) {
-          return (a.model || '').localeCompare(b.model || '');
-        }
-        return brandA.localeCompare(brandB);
-      });
-
       // Fetch CMS data for these variants
-      const variantIds = normalizedVariants.map(v => v.id);
+      const variantIds = products.map((p: any) => p.variant_id);
       const { data: cmsData, error: cmsError } = await supabase
         .from('product_cms')
         .select('*')
@@ -109,15 +132,15 @@ export function TiresCMSPageV2() {
       if (cmsError) throw cmsError;
 
       // Merge data
-      const cmsMap = new Map(cmsData?.map(c => [c.variant_id, c]) || []);
-      const merged = normalizedVariants.map(v => ({
-        ...v,
-        cms_data: cmsMap.get(v.id) || null
+      const cmsMap = new Map(cmsData?.map((c: any) => [c.variant_id, c]) || []);
+      const merged = products.map((p: any) => ({
+        ...p,
+        cms_data: cmsMap.get(p.variant_id) || null
       }));
 
-      setTires(merged);
+      setTires(merged as TireRow[]);
     } catch (err: any) {
-      console.error('Fetch error:', err);
+      console.error('Fetch tires error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -130,7 +153,7 @@ export function TiresCMSPageV2() {
     // Initialize edit data
     const cms = tire.cms_data;
     setEditData({
-      variant_id: tire.id,
+      variant_id: tire.variant_id,
       title: cms?.title || null,
       subtitle: cms?.subtitle || null,
       short_description: cms?.short_description || null,
@@ -142,9 +165,15 @@ export function TiresCMSPageV2() {
       seo_description: cms?.seo_description || null,
       is_hidden: cms?.is_hidden || false,
       spec_overrides: cms?.spec_overrides || null,
+      price_override_eur: cms?.price_override_eur || null,
+      promo_enabled: cms?.promo_enabled || false,
+      promo_price_eur: cms?.promo_price_eur || null,
+      promo_start: cms?.promo_start || null,
+      promo_end: cms?.promo_end || null,
     });
     
     setDrawerOpen(true);
+    setUploadError(null);
   };
 
   const handleCloseDrawer = () => {
@@ -152,6 +181,7 @@ export function TiresCMSPageV2() {
     setSelectedTire(null);
     setEditData({});
     setSaveError(null);
+    setUploadError(null);
   };
 
   const handleSave = async () => {
@@ -162,7 +192,7 @@ export function TiresCMSPageV2() {
 
     try {
       const payload: any = {
-        variant_id: selectedTire.id,
+        variant_id: selectedTire.variant_id,
         title: editData.title || null,
         subtitle: editData.subtitle || null,
         short_description: editData.short_description || null,
@@ -174,6 +204,11 @@ export function TiresCMSPageV2() {
         seo_description: editData.seo_description || null,
         is_hidden: editData.is_hidden || false,
         spec_overrides: editData.spec_overrides || null,
+        price_override_eur: editData.price_override_eur || null,
+        promo_enabled: editData.promo_enabled || false,
+        promo_price_eur: editData.promo_price_eur || null,
+        promo_start: editData.promo_start || null,
+        promo_end: editData.promo_end || null,
       };
 
       // Upsert to product_cms
@@ -201,7 +236,7 @@ export function TiresCMSPageV2() {
       const { error } = await supabase
         .from('product_cms')
         .upsert({
-          variant_id: tire.id,
+          variant_id: tire.variant_id,
           is_hidden: newHiddenState,
         }, { onConflict: 'variant_id' });
 
@@ -214,24 +249,173 @@ export function TiresCMSPageV2() {
     }
   };
 
+  // Image upload functions
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !selectedTire) return;
+
+    setUploadingImages(true);
+    setUploadError(null);
+
+    try {
+      const currentGallery = (editData.gallery as string[]) || [];
+      if (currentGallery.length + files.length > 10) {
+        throw new Error('Maximum 10 images allowed');
+      }
+
+      const newImages: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate file
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`${file.name} is not an image`);
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error(`${file.name} exceeds 5MB limit`);
+        }
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(7);
+        const ext = file.name.split('.').pop();
+        const filename = `${timestamp}_${randomStr}.${ext}`;
+        const path = `tires/${selectedTire.variant_id}/${filename}`;
+
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from('product-images')
+          .upload(path, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) throw error;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(path);
+
+        newImages.push(publicUrl);
+      }
+
+      // Add new images to gallery
+      const updatedGallery = [...currentGallery, ...newImages];
+      setEditData(prev => ({
+        ...prev,
+        gallery: updatedGallery,
+        hero_image_url: updatedGallery[0] || prev.hero_image_url
+      }));
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      setUploadError(error.message || 'Failed to upload images');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleRemoveImage = async (index: number) => {
+    const gallery = (editData.gallery as string[]) || [];
+    const imageUrl = gallery[index];
+    
+    // Try to delete from storage
+    try {
+      const urlPath = new URL(imageUrl).pathname;
+      const pathParts = urlPath.split('/product-images/');
+      if (pathParts.length > 1) {
+        const storagePath = pathParts[1];
+        await supabase.storage.from('product-images').remove([storagePath]);
+      }
+    } catch (error) {
+      console.warn('Could not delete from storage:', error);
+    }
+
+    // Remove from gallery
+    const updatedGallery = gallery.filter((_, i) => i !== index);
+    setEditData(prev => ({
+      ...prev,
+      gallery: updatedGallery,
+      hero_image_url: updatedGallery[0] || null
+    }));
+  };
+
+  const handleImageReorder = (newGallery: string[]) => {
+    setEditData(prev => ({
+      ...prev,
+      gallery: newGallery,
+      hero_image_url: newGallery[0] || prev.hero_image_url
+    }));
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const gallery = (editData.gallery as string[]) || [];
+    const newGallery = [...gallery];
+    const draggedItem = newGallery[draggedIndex];
+    newGallery.splice(draggedIndex, 1);
+    newGallery.splice(index, 0, draggedItem);
+    
+    handleImageReorder(newGallery);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  // EU override helpers
+  const getEUOverride = () => {
+    return editData.spec_overrides?.eu || null;
+  };
+
+  const setEUField = (field: string, value: any) => {
+    const currentOverrides = editData.spec_overrides || {};
+    const currentEU = currentOverrides.eu || {};
+    
+    const updatedEU = { ...currentEU, [field]: value };
+    
+    setEditData(prev => ({
+      ...prev,
+      spec_overrides: {
+        ...currentOverrides,
+        eu: updatedEU
+      }
+    }));
+  };
+
+  const clearEUOverrides = () => {
+    const currentOverrides = editData.spec_overrides || {};
+    const { eu, ...restOverrides } = currentOverrides;
+    
+    setEditData(prev => ({
+      ...prev,
+      spec_overrides: Object.keys(restOverrides).length > 0 ? restOverrides : null
+    }));
+  };
+
+  const hasEUOverride = () => {
+    const override = getEUOverride();
+    return override && Object.keys(override).length > 0;
+  };
+
   const filteredTires = tires.filter(tire => {
     const search = searchTerm.toLowerCase();
     return (
       tire.brand.toLowerCase().includes(search) ||
       tire.model.toLowerCase().includes(search) ||
-      tire.ean?.toLowerCase().includes(search) ||
+      tire.derived_ean?.toLowerCase().includes(search) ||
       tire.size_string?.toLowerCase().includes(search)
     );
   });
-
-  const getEUOverride = (cms: ProductCMS | null | undefined) => {
-    return cms?.spec_overrides?.eu || null;
-  };
-
-  const hasEUOverride = (cms: ProductCMS | null | undefined) => {
-    const override = getEUOverride(cms);
-    return override && Object.keys(override).length > 0;
-  };
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
@@ -243,27 +427,41 @@ export function TiresCMSPageV2() {
           </h1>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {language === 'fi' 
-              ? 'Hallitse renkaiden sisältöä, EU-merkintöjä ja kuvia'
-              : 'Manage tire content, EU labels, and images'}
+              ? 'Hallitse renkaiden sisältöä, EU-merkintöjä, hintoja ja kuvia'
+              : 'Manage tire content, EU labels, pricing, and images'}
           </p>
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search & Filters */}
       <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'} px-8 py-4`}>
-        <div className="relative max-w-md">
-          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-          <input
-            type="text"
-            placeholder={language === 'fi' ? 'Hae brändin, mallin tai EAN:n mukaan...' : 'Search by brand, model, or EAN...'}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-              isDark 
-                ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-            }`}
-          />
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="relative w-full sm:max-w-md">
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+            <input
+              type="text"
+              placeholder={language === 'fi' ? 'Hae brändin, mallin tai EAN:n mukaan...' : 'Search by brand, model, or EAN...'}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
+                isDark 
+                  ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+            />
+          </div>
+          
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showConflicts}
+              onChange={(e) => setShowConflicts(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300"
+            />
+            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {language === 'fi' ? 'Näytä konfliktit' : 'Show conflicts'}
+            </span>
+          </label>
         </div>
       </div>
 
@@ -312,12 +510,7 @@ export function TiresCMSPageV2() {
                       <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                         isDark ? 'text-gray-400' : 'text-gray-600'
                       }`}>
-                        {language === 'fi' ? 'Perus EU' : 'Base EU'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Ohitus' : 'Override'}
+                        {language === 'fi' ? 'Hinta' : 'Price'}
                       </th>
                       <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                         isDark ? 'text-gray-400' : 'text-gray-600'
@@ -333,9 +526,19 @@ export function TiresCMSPageV2() {
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {filteredTires.map((tire) => (
-                      <tr key={tire.id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
+                      <tr 
+                        key={tire.variant_id} 
+                        className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${
+                          tire.ean_conflict_open ? (isDark ? 'bg-yellow-500/10' : 'bg-yellow-50') : ''
+                        }`}
+                      >
                         <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {tire.brand}
+                          <div className="flex items-center gap-2">
+                            {tire.brand}
+                            {tire.ean_conflict_open && (
+                              <AlertTriangle className="w-4 h-4 text-yellow-500" title="EAN conflict" />
+                            )}
+                          </div>
                         </td>
                         <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {tire.model}
@@ -344,29 +547,10 @@ export function TiresCMSPageV2() {
                           {tire.size_string || '—'}
                         </td>
                         <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                          {tire.ean || '—'}
+                          {tire.derived_ean || '—'}
                         </td>
-                        <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          <div className="space-y-1">
-                            <div>F: {tire.eu_fuel_class || '—'}</div>
-                            <div>W: {tire.eu_wet_class || '—'}</div>
-                            <div>N: {tire.eu_noise_db ? `${tire.eu_noise_db}dB (${tire.eu_noise_class || '—'})` : '—'}</div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {hasEUOverride(tire.cms_data) ? (
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                              isDark ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
-                            }`}>
-                              {language === 'fi' ? 'KYLLÄ' : 'YES'}
-                            </span>
-                          ) : (
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                              isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {language === 'fi' ? 'EI' : 'NO'}
-                            </span>
-                          )}
+                        <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {tire.final_price_eur ? `€${tire.final_price_eur.toFixed(2)}` : '—'}
                         </td>
                         <td className="px-4 py-3">
                           <button
@@ -473,7 +657,7 @@ export function TiresCMSPageV2() {
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       EAN
                     </label>
-                    <p className={`text-sm font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedTire.ean || '—'}</p>
+                    <p className={`text-sm font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedTire.derived_ean || '—'}</p>
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -490,61 +674,383 @@ export function TiresCMSPageV2() {
                 </div>
               </div>
 
-              {/* Section B: EU Label Overrides */}
+              {/* Section B: EU Labels */}
               <div>
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {language === 'fi' ? 'EU-rengas­merkintä' : 'EU Tyre Label'}
                 </h3>
-                <EULabelOverride
-                  baseValues={{
-                    fuel: selectedTire.eu_fuel_class,
-                    wet: selectedTire.eu_wet_class,
-                    noise_db: selectedTire.eu_noise_db,
-                    noise_class: selectedTire.eu_noise_class,
-                  }}
-                  overrideValues={editData.spec_overrides?.eu || null}
-                  onOverrideChange={(values) => {
-                    setEditData(prev => ({
-                      ...prev,
-                      spec_overrides: {
-                        ...prev.spec_overrides,
-                        eu: Object.keys(values).length > 0 ? values : null
-                      }
-                    }));
-                  }}
-                  onClearOverride={() => {
-                    setEditData(prev => {
-                      const { eu, ...rest } = prev.spec_overrides || {};
-                      return {
-                        ...prev,
-                        spec_overrides: Object.keys(rest).length > 0 ? rest : null
-                      };
-                    });
-                  }}
-                />
+                
+                <div className={`flex gap-3 p-4 rounded-lg border mb-6 ${
+                  isDark 
+                    ? 'bg-blue-500/10 border-blue-500/30' 
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <div className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-900'}`}>
+                    {language === 'fi' 
+                      ? 'Voit ohittaa toimittajan arvot. Tyhjä = käytä perusarvoa.'
+                      : 'Override supplier values. Empty = use base value.'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Fuel Efficiency */}
+                  <div className="space-y-3">
+                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {language === 'fi' ? 'Polttoaine­tehokkuus' : 'Fuel Efficiency'}
+                    </label>
+                    
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
+                      </span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {selectedTire.eu_fuel_class || '—'}
+                      </span>
+                    </div>
+
+                    <select
+                      value={getEUOverride()?.fuel_class || ''}
+                      onChange={(e) => setEUField('fuel_class', e.target.value || undefined)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark 
+                          ? 'bg-[#1C1C1E] border-white/20 text-white' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+                      {EU_FUEL_WET_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Wet Grip */}
+                  <div className="space-y-3">
+                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {language === 'fi' ? 'Märkäpito' : 'Wet Grip'}
+                    </label>
+                    
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
+                      </span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {selectedTire.eu_wet_grip_class || '—'}
+                      </span>
+                    </div>
+
+                    <select
+                      value={getEUOverride()?.wet_grip_class || ''}
+                      onChange={(e) => setEUField('wet_grip_class', e.target.value || undefined)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark 
+                          ? 'bg-[#1C1C1E] border-white/20 text-white' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+                      {EU_FUEL_WET_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Noise dB */}
+                  <div className="space-y-3">
+                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {language === 'fi' ? 'Melutaso (dB)' : 'Noise Level (dB)'}
+                    </label>
+                    
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
+                      </span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {selectedTire.eu_noise_db ? `${selectedTire.eu_noise_db} dB` : '—'}
+                      </span>
+                    </div>
+
+                    <input
+                      type="number"
+                      min="50"
+                      max="90"
+                      step="1"
+                      value={getEUOverride()?.noise_db ?? ''}
+                      onChange={(e) => setEUField('noise_db', e.target.value ? parseInt(e.target.value) : undefined)}
+                      placeholder={language === 'fi' ? 'Käytä perustasoa' : 'Use base value'}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark 
+                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Noise Class */}
+                  <div className="space-y-3">
+                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {language === 'fi' ? 'Meluluokka' : 'Noise Class'}
+                    </label>
+                    
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
+                      </span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {selectedTire.eu_noise_class || '—'}
+                      </span>
+                    </div>
+
+                    <select
+                      value={getEUOverride()?.noise_class || ''}
+                      onChange={(e) => setEUField('noise_class', e.target.value || undefined)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark 
+                          ? 'bg-[#1C1C1E] border-white/20 text-white' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+                      {EU_NOISE_CLASS_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {hasEUOverride() && (
+                  <div className="flex justify-end pt-4 mt-4 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={clearEUOverrides}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                        isDark 
+                          ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400' 
+                          : 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
+                      }`}
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      {language === 'fi' ? 'Tyhjennä EU-ohitukset' : 'Clear EU Overrides'}
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Section C: Images */}
+              {/* Section C: Pricing */}
+              <div>
+                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {language === 'fi' ? 'Hinnoittelu' : 'Pricing'}
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {language === 'fi' ? 'Perushinta:' : 'Base price:'}
+                      </span>
+                      <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        €{selectedTire.final_price_eur?.toFixed(2) || '0.00'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {language === 'fi' ? 'Hinnan ohitus (€)' : 'Price Override (€)'}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editData.price_override_eur ?? ''}
+                      onChange={(e) => setEditData(prev => ({ 
+                        ...prev, 
+                        price_override_eur: e.target.value ? parseFloat(e.target.value) : null 
+                      }))}
+                      placeholder={language === 'fi' ? 'Jätä tyhjäksi käyttääksesi perushintaa' : 'Leave empty to use base price'}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark 
+                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 border-white/10">
+                    <label className="flex items-center gap-3 cursor-pointer mb-4">
+                      <input
+                        type="checkbox"
+                        checked={editData.promo_enabled || false}
+                        onChange={(e) => setEditData(prev => ({ ...prev, promo_enabled: e.target.checked }))}
+                        className="w-5 h-5 rounded border-gray-300"
+                      />
+                      <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {language === 'fi' ? 'Tarjoushinta käytössä' : 'Promotional price enabled'}
+                      </span>
+                    </label>
+
+                    {editData.promo_enabled && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {language === 'fi' ? 'Tarjoushinta (€)' : 'Promo Price (€)'}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editData.promo_price_eur ?? ''}
+                            onChange={(e) => setEditData(prev => ({ 
+                              ...prev, 
+                              promo_price_eur: e.target.value ? parseFloat(e.target.value) : null 
+                            }))}
+                            className={`w-full px-3 py-2 rounded-lg border ${
+                              isDark 
+                                ? 'bg-[#1C1C1E] border-white/20 text-white' 
+                                : 'bg-white border-gray-300 text-gray-900'
+                            }`}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                              {language === 'fi' ? 'Alkaa' : 'Start Date'}
+                            </label>
+                            <input
+                              type="date"
+                              value={editData.promo_start || ''}
+                              onChange={(e) => setEditData(prev => ({ ...prev, promo_start: e.target.value || null }))}
+                              className={`w-full px-3 py-2 rounded-lg border ${
+                                isDark 
+                                  ? 'bg-[#1C1C1E] border-white/20 text-white' 
+                                  : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          </div>
+
+                          <div>
+                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                              {language === 'fi' ? 'Päättyy' : 'End Date'}
+                            </label>
+                            <input
+                              type="date"
+                              value={editData.promo_end || ''}
+                              onChange={(e) => setEditData(prev => ({ ...prev, promo_end: e.target.value || null }))}
+                              className={`w-full px-3 py-2 rounded-lg border ${
+                                isDark 
+                                  ? 'bg-[#1C1C1E] border-white/20 text-white' 
+                                  : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section D: Images */}
               <div>
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {language === 'fi' ? 'Kuvat' : 'Images'}
                 </h3>
-                <ImageUpload
-                  images={(editData.gallery as string[]) || []}
-                  maxImages={10}
-                  onImagesChange={(images) => {
-                    setEditData(prev => ({
-                      ...prev,
-                      gallery: images,
-                      hero_image_url: images[0] || null
-                    }));
-                  }}
-                  productType="tire"
-                  variantId={selectedTire.id}
-                />
+
+                {/* Upload Button */}
+                {((editData.gallery as string[])?.length || 0) < 10 && (
+                  <label className="block cursor-pointer mb-4">
+                    <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      isDark 
+                        ? 'border-white/20 hover:border-white/40 bg-white/5' 
+                        : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+                    }`}>
+                      <Upload className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <p className={`text-sm mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {uploadingImages ? (language === 'fi' ? 'Ladataan...' : 'Uploading...') : (language === 'fi' ? 'Klikkaa ladataksesi kuvia' : 'Click to upload images')}
+                      </p>
+                      <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                        PNG, JPG max 5MB ({(editData.gallery as string[])?.length || 0}/10)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e.target.files)}
+                      disabled={uploadingImages}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+
+                {uploadError && (
+                  <div className={`p-3 rounded-lg mb-4 ${isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
+                    <p className="text-sm">{uploadError}</p>
+                  </div>
+                )}
+
+                {/* Image Grid */}
+                {((editData.gallery as string[])?.length || 0) > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {(editData.gallery as string[]).map((url, index) => (
+                      <div
+                        key={url}
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragEnd={handleDragEnd}
+                        className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
+                          draggedIndex === index 
+                            ? 'opacity-50 scale-95' 
+                            : 'opacity-100 scale-100'
+                        } ${
+                          isDark ? 'border-white/10 hover:border-white/30' : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="aspect-square bg-white">
+                          <img 
+                            src={url} 
+                            alt={`Product ${index + 1}`}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 cursor-move"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="w-5 h-5 text-white" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="p-2 rounded-lg bg-red-500/80 hover:bg-red-500 transition-colors"
+                            title="Remove"
+                          >
+                            <X className="w-5 h-5 text-white" />
+                          </button>
+                        </div>
+
+                        <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${
+                          index === 0 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-black/50 text-white'
+                        }`}>
+                          {index === 0 ? 'Hero' : `#${index + 1}`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Section D: Content */}
+              {/* Section E: Content */}
               <div>
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {language === 'fi' ? 'Sisältö' : 'Content'}
@@ -618,7 +1124,7 @@ export function TiresCMSPageV2() {
                 </div>
               </div>
 
-              {/* Section E: SEO */}
+              {/* Section F: SEO */}
               <div>
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   SEO
@@ -675,7 +1181,7 @@ export function TiresCMSPageV2() {
                 </div>
               </div>
 
-              {/* Section F: Visibility */}
+              {/* Section G: Visibility */}
               <div>
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {language === 'fi' ? 'Näkyvyys' : 'Visibility'}

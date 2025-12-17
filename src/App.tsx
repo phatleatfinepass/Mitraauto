@@ -297,17 +297,11 @@ function HomePage() {
       } else if (path === '/admin/schedule') {
         setCurrentPage('admin-schedule');
         setSelectedProduct(null);
-      } else if (path === '/cms/tires') {
-        setCurrentPage('cms-tires');
-        setSelectedProduct(null);
-        setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
-      } else if (path === '/cms/rims') {
-        setCurrentPage('cms-rims');
-        setSelectedProduct(null);
       } else if (path === '/cms') {
-        // v0.1 Beta: Direct CMS access without auth
+        // Single CMS route with hash-based tabs
         setCurrentPage('cms-beta');
         setSelectedProduct(null);
+        setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
       } else if (path === '/privacy' || path === '/legal/privacy') {
         setCurrentPage('privacy');
         setSelectedProduct(null);
@@ -386,11 +380,21 @@ function HomePage() {
       updatePageFromPath(path, state);
     };
 
+    const handleHashChange = () => {
+      if (window.location.pathname === '/cms') {
+        setCmsTab(resolveCmsTabFromHash(window.location.hash));
+      }
+    };
+
     handleNavigation();
     const listener = (event: PopStateEvent) => handleNavigation(event);
     window.addEventListener('popstate', listener);
+    window.addEventListener('hashchange', handleHashChange);
 
-    return () => window.removeEventListener('popstate', listener);
+    return () => {
+      window.removeEventListener('popstate', listener);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
   }, [updatePageFromPath]);
   
   // Debug emergency modal state
