@@ -11,6 +11,8 @@ interface TireVariant {
   id: string;
   ean: string | null;
   brand: string;
+  brand_name?: string | null;
+  manufacturer?: string | null;
   model: string;
   size_string: string | null;
   season: string | null;
@@ -70,9 +72,7 @@ export function TiresCMSPageV2() {
       // Fetch tire variants (base data - read-only)
       const { data: variants, error: variantsError } = await supabase
         .from('catalog_tire_variants')
-        .select('id, ean, brand, model, size_string, season, eu_fuel_class, eu_wet_class, eu_noise_db, eu_noise_class')
-        .order('brand', { ascending: true })
-        .order('model', { ascending: true })
+        .select('*')
         .limit(100);
 
       if (variantsError) throw variantsError;
@@ -83,8 +83,24 @@ export function TiresCMSPageV2() {
         return;
       }
 
+      // Normalize brand field in case the view exposes a different column name
+      const normalizedVariants = variants.map(v => ({
+        ...v,
+        brand: (v as any).brand ?? (v as any).brand_name ?? (v as any).manufacturer ?? 'Unknown brand'
+      }));
+
+      // Sort client-side to avoid ordering on potentially missing DB columns
+      normalizedVariants.sort((a, b) => {
+        const brandA = (a.brand || '').toLowerCase();
+        const brandB = (b.brand || '').toLowerCase();
+        if (brandA === brandB) {
+          return (a.model || '').localeCompare(b.model || '');
+        }
+        return brandA.localeCompare(brandB);
+      });
+
       // Fetch CMS data for these variants
-      const variantIds = variants.map(v => v.id);
+      const variantIds = normalizedVariants.map(v => v.id);
       const { data: cmsData, error: cmsError } = await supabase
         .from('product_cms')
         .select('*')
@@ -94,7 +110,7 @@ export function TiresCMSPageV2() {
 
       // Merge data
       const cmsMap = new Map(cmsData?.map(c => [c.variant_id, c]) || []);
-      const merged = variants.map(v => ({
+      const merged = normalizedVariants.map(v => ({
         ...v,
         cms_data: cmsMap.get(v.id) || null
       }));
