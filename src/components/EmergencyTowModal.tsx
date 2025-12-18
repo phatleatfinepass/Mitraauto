@@ -12,7 +12,7 @@ import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { MapPin, Phone, Loader2, CheckCircle2, AlertCircle, Navigation, ArrowLeft } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
-import { supabase } from '../utils/supabase/client';
+import { supabaseBrowserAnon as supabase } from '../utils/supabase/browserAnonClient';
 
 interface EmergencyTowModalProps {
   open: boolean;
