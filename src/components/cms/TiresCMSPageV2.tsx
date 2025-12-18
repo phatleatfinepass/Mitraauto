@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
-import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { supabase } from '../../utils/supabase/client';
 import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle, Upload, GripVertical, RotateCcw, AlertTriangle } from 'lucide-react';
 
 interface ProductSearchTire {
@@ -68,8 +67,6 @@ export function TiresCMSPageV2() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
-
-  const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 
   const [tires, setTires] = useState<TireRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,23 +190,24 @@ export function TiresCMSPageV2() {
     try {
       const payload: any = {
         variant_id: selectedTire.variant_id,
-        title: editData.title || null,
-        subtitle: editData.subtitle || null,
-        short_description: editData.short_description || null,
-        long_description: editData.long_description || null,
-        hero_image_url: editData.hero_image_url || null,
-        gallery: editData.gallery || [],
-        seo_slug: editData.seo_slug || null,
-        seo_title: editData.seo_title || null,
-        seo_description: editData.seo_description || null,
-        is_hidden: editData.is_hidden || false,
+        title: editData.title?.trim() || null,
+        subtitle: editData.subtitle?.trim() || null,
+        short_description: editData.short_description?.trim() || null,
+        long_description: editData.long_description?.trim() || null,
+        gallery: Array.isArray(editData.gallery) ? editData.gallery.filter(Boolean) : [],
+        seo_slug: editData.seo_slug?.trim() || null,
+        seo_title: editData.seo_title?.trim() || null,
+        seo_description: editData.seo_description?.trim() || null,
+        is_hidden: editData.is_hidden ?? false,
         spec_overrides: editData.spec_overrides || null,
-        price_override_eur: editData.price_override_eur || null,
-        promo_enabled: editData.promo_enabled || false,
-        promo_price_eur: editData.promo_price_eur || null,
+        price_override_eur: editData.price_override_eur ?? null,
+        promo_enabled: editData.promo_enabled ?? false,
+        promo_price_eur: editData.promo_price_eur ?? null,
         promo_start: editData.promo_start || null,
         promo_end: editData.promo_end || null,
       };
+
+      payload.hero_image_url = editData.hero_image_url || payload.gallery[0] || null;
 
       // Upsert to product_cms
       const { error } = await supabase
@@ -405,6 +403,47 @@ export function TiresCMSPageV2() {
   const hasEUOverride = () => {
     const override = getEUOverride();
     return override && Object.keys(override).length > 0;
+  };
+
+  const getIdentityOverride = () => {
+    return editData.spec_overrides?.identity || null;
+  };
+
+  const setIdentityField = (field: 'brand' | 'model' | 'size_string' | 'season', value?: string) => {
+    setEditData(prev => {
+      const currentOverrides = prev.spec_overrides || {};
+      const currentIdentity = currentOverrides.identity || {};
+
+      const updatedIdentity = { ...currentIdentity } as Record<string, string>;
+      if (value === undefined || value === '') {
+        delete updatedIdentity[field];
+      } else {
+        updatedIdentity[field] = value;
+      }
+
+      const { identity, ...restOverrides } = currentOverrides;
+      const nextOverrides = {
+        ...restOverrides,
+        ...(Object.keys(updatedIdentity).length > 0 ? { identity: updatedIdentity } : {})
+      };
+
+      return {
+        ...prev,
+        spec_overrides: Object.keys(nextOverrides).length > 0 ? nextOverrides : null
+      };
+    });
+  };
+
+  const clearIdentityOverrides = () => {
+    setEditData(prev => {
+      const currentOverrides = prev.spec_overrides || {};
+      const { identity, ...restOverrides } = currentOverrides;
+
+      return {
+        ...prev,
+        spec_overrides: Object.keys(restOverrides).length > 0 ? restOverrides : null
+      };
+    });
   };
 
   const filteredTires = tires.filter(tire => {
@@ -633,11 +672,22 @@ export function TiresCMSPageV2() {
             {/* Drawer Content */}
             <div className="px-6 py-6 space-y-8">
               
-              {/* Section A: Identity (Read-Only) */}
+              {/* Section A: Identity */}
               <div>
-                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Tunnisteet (vain luku)' : 'Identity (Read-Only)'}
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {language === 'fi' ? 'Tunnisteet' : 'Identity'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={clearIdentityOverrides}
+                    className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    {language === 'fi' ? 'Palauta perustasot' : 'Reset to base'}
+                  </button>
+                </div>
+
                 <div className={`grid grid-cols-2 gap-4 p-4 rounded-lg ${
                   isDark ? 'bg-white/5' : 'bg-gray-50'
                 }`}>
@@ -645,13 +695,27 @@ export function TiresCMSPageV2() {
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       {language === 'fi' ? 'Brändi' : 'Brand'}
                     </label>
-                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedTire.brand}</p>
+                    <input
+                      type="text"
+                      value={getIdentityOverride()?.brand ?? selectedTire.brand}
+                      onChange={(e) => setIdentityField('brand', e.target.value)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       {language === 'fi' ? 'Malli' : 'Model'}
                     </label>
-                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedTire.model}</p>
+                    <input
+                      type="text"
+                      value={getIdentityOverride()?.model ?? selectedTire.model}
+                      onChange={(e) => setIdentityField('model', e.target.value)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -663,13 +727,31 @@ export function TiresCMSPageV2() {
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       {language === 'fi' ? 'Koko' : 'Size'}
                     </label>
-                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedTire.size_string || '—'}</p>
+                    <input
+                      type="text"
+                      value={getIdentityOverride()?.size_string ?? selectedTire.size_string ?? ''}
+                      onChange={(e) => setIdentityField('size_string', e.target.value)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       {language === 'fi' ? 'Kausi' : 'Season'}
                     </label>
-                    <p className={`text-sm capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedTire.season || '—'}</p>
+                    <select
+                      value={getIdentityOverride()?.season ?? selectedTire.season ?? ''}
+                      onChange={(e) => setIdentityField('season', e.target.value)}
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value="">{language === 'fi' ? 'Perusta (ei muutosta)' : 'Use base value'}</option>
+                      <option value="summer">{language === 'fi' ? 'Kesä' : 'Summer'}</option>
+                      <option value="winter">{language === 'fi' ? 'Talvi' : 'Winter'}</option>
+                      <option value="all_season">{language === 'fi' ? 'Ympärivuotinen' : 'All Season'}</option>
+                    </select>
                   </div>
                 </div>
               </div>

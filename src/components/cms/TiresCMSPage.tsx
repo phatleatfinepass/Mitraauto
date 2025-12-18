@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { Card } from '../ui/card';
@@ -9,7 +9,7 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Search, Save, Check, X } from 'lucide-react';
-import { getSupabaseClient } from '../../utils/supabase/client';
+import { supabase } from '../../utils/supabase/client';
 
 type TireRow = {
   variant_id: string;
@@ -67,8 +67,6 @@ const emptyCmsState: TireCMSData = {
 export function TiresCMSPage() {
   const { theme } = useTheme();
   const { language } = useLanguage();
-  const supabase = useMemo(() => getSupabaseClient(), []);
-
   const [filters, setFilters] = useState<TireFilters>({
     brand: '',
     model: '',

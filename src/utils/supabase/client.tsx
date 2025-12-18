@@ -1,32 +1,20 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from './info';
 
-// Singleton Supabase client to avoid multiple instances
-let supabaseClient: SupabaseClient | null = null;
+const supabaseUrl = `https://${projectId}.supabase.co`;
 
-export function getSupabaseClient(): SupabaseClient {
-  if (!supabaseClient) {
-    const supabaseUrl = `https://${projectId}.supabase.co`;
-    const supabaseAnonKey = publicAnonKey;
+export const supabase = createClient(supabaseUrl, publicAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
+if (typeof window !== 'undefined') {
+  (window as any).supabase = supabase;
+}
 
-    const authConfig = {
-      persistSession: true,
-      storageKey: 'mitra-auto-auth',
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    } as const;
-
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth:
-        typeof window !== 'undefined'
-          ? { ...authConfig, storage: window.localStorage }
-          : authConfig,
-    });
-  }
-  
-  return supabaseClient;
+export function getSupabaseClient() {
+  return supabase;
 }

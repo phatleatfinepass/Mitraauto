@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
-import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { supabase } from '../../utils/supabase/client';
 import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle } from 'lucide-react';
 import { ImageUpload } from './ImageUpload';
 
@@ -40,8 +39,6 @@ export function RimsCMSPageV2() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
-
-  const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 
   const [rims, setRims] = useState<RimRow[]>([]);
   const [loading, setLoading] = useState(true);

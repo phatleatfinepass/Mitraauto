@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase/client.tsx';
+import { supabase } from './supabase/client';
 
 export type ProductSearchRow = {
   variant_id: string;
@@ -43,7 +43,6 @@ export async function fetchProductsSearch(
   category: 'tire' | 'rim',
   options: FetchOptions = {}
 ): Promise<{ items: ProductSearchRow[]; total: number }> {
-  const supabase = getSupabaseClient();
   const limit = options.limit ?? 24;
   const offset = options.offset ?? 0;
 

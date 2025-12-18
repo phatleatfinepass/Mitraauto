@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSupabaseClient } from '../../utils/supabase/client';
+import { supabase } from '../../utils/supabase/client';
 import { useLanguage } from '../LanguageContext';
 import { Button } from '../ui/button';
 import { Shield, AlertCircle } from 'lucide-react';
@@ -21,8 +21,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
 
     const checkAuth = async () => {
       try {
-        const supabase = getSupabaseClient();
-        
+
         // 1. Check if user has a session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -71,7 +70,6 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
     checkAuth();
 
     // Listen for auth state changes
-    const supabase = getSupabaseClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         // Re-check admin status when auth state changes

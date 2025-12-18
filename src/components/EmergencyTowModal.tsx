@@ -12,6 +12,7 @@ import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { MapPin, Phone, Loader2, CheckCircle2, AlertCircle, Navigation, ArrowLeft } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
+import { supabase } from '../utils/supabase/client';
 
 interface EmergencyTowModalProps {
   open: boolean;
@@ -32,12 +33,15 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [requestId, setRequestId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     street: '',
     postcode: '',
     city: '',
     coordinates: '',
     phone: '',
+    lat: null as number | null,
+    lng: null as number | null,
   });
 
   const handleChooseGPS = () => {
@@ -58,6 +62,8 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
         setFormData((prev) => ({
           ...prev,
           coordinates,
+          lat: latitude,
+          lng: longitude,
         }));
         setStep('gps');
         setGpsLoading(false);
@@ -96,44 +102,60 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
     setLoading(true);
     setError('');
 
-    // Validate
-    if (step === 'gps' && !formData.coordinates) {
-      setError(t('emergency.error.noLocation'));
-      setLoading(false);
-      return;
-    }
-
-    if (step === 'manual' && (!formData.street || !formData.city)) {
-      setError(t('emergency.error.noLocation'));
-      setLoading(false);
-      return;
-    }
-
-    if (!formData.phone) {
+    // Validate phone number
+    if (!formData.phone || formData.phone.trim().length < 6) {
       setError(t('emergency.error.noPhone'));
       setLoading(false);
       return;
     }
 
-    try {
-      // Production-ready API call
-      const response = await fetch('/api/emergency-tow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          locationType: step === 'gps' ? 'gps' : 'manual',
-          timestamp: new Date().toISOString(),
-        }),
-      });
+    // Validate based on mode
+    if (step === 'gps') {
+      if (!formData.lat || !formData.lng) {
+        setError(t('emergency.error.noLocation'));
+        setLoading(false);
+        return;
+      }
+    } else if (step === 'manual') {
+      if (!formData.street.trim() || !formData.postcode.trim() || !formData.city.trim()) {
+        setError(t('emergency.error.noLocation'));
+        setLoading(false);
+        return;
+      }
+    }
 
-      if (!response.ok) {
-        throw new Error('Failed to submit request');
+    try {
+      // Prepare payload for Supabase RPC
+      let payload: any;
+
+      if (step === 'gps') {
+        payload = {
+          p_phone: formData.phone.trim(),
+          p_lat: formData.lat,
+          p_lng: formData.lng,
+        };
+      } else {
+        payload = {
+          p_phone: formData.phone.trim(),
+          p_street_address: formData.street.trim(),
+          p_postcode: formData.postcode.trim(),
+          p_city: formData.city.trim(),
+        };
       }
 
-      const data = await response.json();
-      console.log('Emergency Tow Request submitted:', data);
+      console.log('📞 Calling emergency_roadside_create RPC with payload:', payload);
+
+      // Call Supabase RPC
+      const { data, error: rpcError } = await supabase.rpc('emergency_roadside_create', payload);
+
+      if (rpcError) {
+        console.error('❌ RPC Error:', rpcError);
+        throw new Error(rpcError.message || 'Failed to submit request');
+      }
+
+      console.log('✅ Emergency request created:', data);
       
+      setRequestId(data?.request_id ?? null);
       setSuccess(true);
       setLoading(false);
 
@@ -141,9 +163,10 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
       setTimeout(() => {
         handleReset();
         onOpenChange(false);
-      }, 3000);
-    } catch (err) {
-      setError(t('emergency.error.submit'));
+      }, 5000);
+    } catch (err: any) {
+      console.error('❌ Submit error:', err);
+      setError(err.message || t('emergency.error.submit'));
       setLoading(false);
     }
   };
@@ -152,12 +175,15 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
     setStep('choose');
     setSuccess(false);
     setError('');
+    setRequestId(null);
     setFormData({
       street: '',
       postcode: '',
       city: '',
       coordinates: '',
       phone: '',
+      lat: null,
+      lng: null,
     });
   };
 
@@ -201,6 +227,11 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
               <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
               <AlertDescription className="ml-2 text-green-600 dark:text-green-400">
                 {t('emergency.success')}
+                {requestId && (
+                  <span className="block mt-2 text-xs opacity-80">
+                    Request ID: {requestId}
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
           </div>

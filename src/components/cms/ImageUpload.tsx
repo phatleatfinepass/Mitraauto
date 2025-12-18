@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { Upload, X, GripVertical } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { supabase } from '../../utils/supabase/client';
 
 interface ImageUploadProps {
   images: string[];
@@ -17,11 +16,6 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-
-  const supabase = createClient(
-    `https://${projectId}.supabase.co`,
-    publicAnonKey
-  );
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
