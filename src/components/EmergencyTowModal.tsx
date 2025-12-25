@@ -12,7 +12,8 @@ import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { MapPin, Phone, Loader2, CheckCircle2, AlertCircle, Navigation, ArrowLeft } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
-import { supabaseBrowserAnon as supabase } from '../utils/supabase/browserAnonClient';
+import { supabaseBrowserAnon as supabase, supabaseBrowserAnonUrl } from '../utils/supabase/browserAnonClient';
+import { publicAnonKey } from '../utils/supabase/info';
 
 interface EmergencyTowModalProps {
   open: boolean;
@@ -141,6 +142,12 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
           p_postcode: formData.postcode.trim(),
           p_city: formData.city.trim(),
         };
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('SUPABASE URL:', supabaseBrowserAnonUrl);
+        console.log('ANON KEY prefix:', publicAnonKey.slice(0, 8));
+        console.log('RPC payload keys:', Object.keys(payload));
       }
 
       console.log('📞 Calling emergency_roadside_create RPC with payload:', payload);
