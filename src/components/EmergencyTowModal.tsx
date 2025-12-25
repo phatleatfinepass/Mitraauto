@@ -12,8 +12,7 @@ import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { MapPin, Phone, Loader2, CheckCircle2, AlertCircle, Navigation, ArrowLeft } from 'lucide-react';
 import { useLanguage } from './LanguageContext';
-import { supabaseBrowserAnon as supabase, supabaseBrowserAnonUrl } from '../utils/supabase/browserAnonClient';
-import { publicAnonKey } from '../utils/supabase/info';
+import { supabase } from '../utils/supabase/client';
 
 interface EmergencyTowModalProps {
   open: boolean;
@@ -145,8 +144,8 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
       }
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('SUPABASE URL:', supabaseBrowserAnonUrl);
-        console.log('ANON KEY prefix:', publicAnonKey.slice(0, 8));
+        console.log('SUPABASE URL:', supabase.url);
+        console.log('ANON KEY prefix:', supabase.key.slice(0, 8));
         console.log('RPC payload keys:', Object.keys(payload));
       }
 
