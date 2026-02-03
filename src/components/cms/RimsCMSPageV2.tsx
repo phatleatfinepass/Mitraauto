@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
-import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle } from 'lucide-react';
+import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle, RotateCcw } from 'lucide-react';
 import { ImageUpload } from './ImageUpload';
 
 interface RimVariant {
@@ -145,16 +145,16 @@ export function RimsCMSPageV2() {
     const cms = rim.cms_data;
     setEditData({
       variant_id: rim.id,
-      title: cms?.title || null,
-      subtitle: cms?.subtitle || null,
-      short_description: cms?.short_description || null,
-      long_description: cms?.long_description || null,
-      hero_image_url: cms?.hero_image_url || null,
-      gallery: cms?.gallery || [],
-      seo_slug: cms?.seo_slug || null,
-      seo_title: cms?.seo_title || null,
-      seo_description: cms?.seo_description || null,
-      is_hidden: cms?.is_hidden || false,
+      title: cms?.title ?? '',
+      subtitle: cms?.subtitle ?? '',
+      short_description: cms?.short_description ?? '',
+      long_description: cms?.long_description ?? '',
+      hero_image_url: cms?.hero_image_url ?? null,
+      gallery: cms?.gallery ?? [],
+      seo_slug: cms?.seo_slug ?? '',
+      seo_title: cms?.seo_title ?? '',
+      seo_description: cms?.seo_description ?? '',
+      is_hidden: cms?.is_hidden ?? false,
     });
     
     setDrawerOpen(true);
@@ -176,16 +176,16 @@ export function RimsCMSPageV2() {
     try {
       const payload: any = {
         variant_id: selectedRim.id,
-        title: editData.title || null,
-        subtitle: editData.subtitle || null,
-        short_description: editData.short_description || null,
-        long_description: editData.long_description || null,
+        title: editData.title?.trim() || null,
+        subtitle: editData.subtitle?.trim() || null,
+        short_description: editData.short_description?.trim() || null,
+        long_description: editData.long_description?.trim() || null,
         hero_image_url: editData.hero_image_url || null,
         gallery: editData.gallery || [],
-        seo_slug: editData.seo_slug || null,
-        seo_title: editData.seo_title || null,
-        seo_description: editData.seo_description || null,
-        is_hidden: editData.is_hidden || false,
+        seo_slug: editData.seo_slug?.trim() || null,
+        seo_title: editData.seo_title?.trim() || null,
+        seo_description: editData.seo_description?.trim() || null,
+        is_hidden: editData.is_hidden ?? false,
       };
 
       // Upsert to product_cms
@@ -223,6 +223,30 @@ export function RimsCMSPageV2() {
     } catch (err: any) {
       console.error('Toggle visibility error:', err);
       setError(err.message);
+    }
+  };
+
+  const handleResetCms = async () => {
+    if (!selectedRim) return;
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const { error } = await supabase
+        .from('product_cms')
+        .delete()
+        .eq('variant_id', selectedRim.id);
+
+      if (error) throw error;
+
+      await fetchRims();
+      handleCloseDrawer();
+    } catch (err: any) {
+      console.error('Reset error:', err);
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -510,7 +534,7 @@ export function RimsCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.title || ''}
+                      value={editData.title ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
                       placeholder={`${selectedRim.brand} ${selectedRim.model}`}
                       className={`w-full px-3 py-2 rounded-lg border ${
@@ -527,7 +551,7 @@ export function RimsCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.subtitle || ''}
+                      value={editData.subtitle ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, subtitle: e.target.value }))}
                       placeholder={formatSize(selectedRim)}
                       className={`w-full px-3 py-2 rounded-lg border ${
@@ -544,7 +568,7 @@ export function RimsCMSPageV2() {
                     </label>
                     <textarea
                       rows={3}
-                      value={editData.short_description || ''}
+                      value={editData.short_description ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, short_description: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -560,7 +584,7 @@ export function RimsCMSPageV2() {
                     </label>
                     <textarea
                       rows={6}
-                      value={editData.long_description || ''}
+                      value={editData.long_description ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, long_description: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -584,7 +608,7 @@ export function RimsCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.seo_slug || ''}
+                      value={editData.seo_slug ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, seo_slug: e.target.value }))}
                       placeholder="rim-brand-model-size"
                       className={`w-full px-3 py-2 rounded-lg border ${
@@ -601,7 +625,7 @@ export function RimsCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.seo_title || ''}
+                      value={editData.seo_title ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, seo_title: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -617,7 +641,7 @@ export function RimsCMSPageV2() {
                     </label>
                     <textarea
                       rows={3}
-                      value={editData.seo_description || ''}
+                      value={editData.seo_description ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, seo_description: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -661,7 +685,19 @@ export function RimsCMSPageV2() {
             {/* Drawer Footer */}
             <div className={`sticky bottom-0 border-t ${
               isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'
-            } px-6 py-4 flex items-center justify-end gap-3`}>
+            } px-6 py-4 flex items-center justify-between gap-3`}>
+              <button
+                onClick={handleResetCms}
+                disabled={saving}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isDark
+                    ? 'border border-red-500/40 text-red-300 hover:bg-red-500/20'
+                    : 'border border-red-300 text-red-600 hover:bg-red-50'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <RotateCcw className="w-4 h-4" />
+                {language === 'fi' ? 'Tyhjennä CMS' : 'Reset CMS'}
+              </button>
               <button
                 onClick={handleCloseDrawer}
                 disabled={saving}

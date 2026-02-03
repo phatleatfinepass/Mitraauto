@@ -2591,6 +2591,16 @@
     }
   }
 
+  .border-red-500\/40 {
+    border-color: color-mix(in srgb, oklch(.637 .237 25.331) 40%, transparent);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-red-500\/40 {
+      border-color: color-mix(in oklab, var(--color-red-500) 40%, transparent);
+    }
+  }
+
   .border-red-900\/50 {
     border-color: color-mix(in srgb, oklch(.396 .141 25.723) 50%, transparent);
   }
@@ -5535,6 +5545,12 @@
       .hover\:bg-primary\/90:hover {
         background-color: color-mix(in oklab, var(--primary) 90%, transparent);
       }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-red-50:hover {
+      background-color: var(--color-red-50);
     }
   }
 

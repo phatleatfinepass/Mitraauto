@@ -80,6 +80,7 @@ export function TiresCMSPageV2() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [sizeParts, setSizeParts] = useState({ width: '', aspect: '', rim: '' });
 
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
@@ -168,6 +169,29 @@ export function TiresCMSPageV2() {
     }
   };
 
+    const parseTireSize = (size?: string | null) => {
+    const cleaned = size?.trim() ?? '';
+    const match = cleaned.match(/(\d{3})\s*\/\s*(\d{2})\s*R?\s*(\d{2})/i);
+
+    if (!match) {
+      return { width: '', aspect: '', rim: '' };
+    }
+
+    return { width: match[1], aspect: match[2], rim: match[3] };
+  };
+
+  const formatTireSize = (parts: { width: string; aspect: string; rim: string }) => {
+    if (!parts.width && !parts.aspect && !parts.rim) {
+      return '';
+    }
+
+    if (!parts.width || !parts.aspect || !parts.rim) {
+      return '';
+    }
+
+    return `${parts.width}/${parts.aspect} R${parts.rim}`;
+  };
+
   const handleEdit = (tire: TireRow) => {
     setSelectedTire(tire);
     
@@ -175,23 +199,29 @@ export function TiresCMSPageV2() {
     const cms = tire.cms_data;
     setEditData({
       variant_id: tire.variant_id,
-      title: cms?.title || null,
-      subtitle: cms?.subtitle || null,
-      short_description: cms?.short_description || null,
-      long_description: cms?.long_description || null,
-      hero_image_url: cms?.hero_image_url || null,
-      gallery: cms?.gallery || [],
-      seo_slug: cms?.seo_slug || null,
-      seo_title: cms?.seo_title || null,
-      seo_description: cms?.seo_description || null,
-      is_hidden: cms?.is_hidden || false,
-      spec_overrides: cms?.spec_overrides || null,
-      price_override_eur: cms?.price_override_eur || null,
-      promo_enabled: cms?.promo_enabled || false,
-      promo_price_eur: cms?.promo_price_eur || null,
-      promo_start: cms?.promo_start || null,
-      promo_end: cms?.promo_end || null,
+      title: cms?.title ?? '',
+      subtitle: cms?.subtitle ?? '',
+      short_description: cms?.short_description ?? '',
+      long_description: cms?.long_description ?? '',
+      hero_image_url: cms?.hero_image_url ?? null,
+      gallery: cms?.gallery ?? [],
+      seo_slug: cms?.seo_slug ?? '',
+      seo_title: cms?.seo_title ?? '',
+      seo_description: cms?.seo_description ?? '',
+      is_hidden: cms?.is_hidden ?? false,
+      spec_overrides: cms?.spec_overrides ?? null,
+      price_override_eur: cms?.price_override_eur ?? null,
+      promo_enabled: cms?.promo_enabled ?? false,
+      promo_price_eur: cms?.promo_price_eur ?? null,
+      promo_start: cms?.promo_start ?? null,
+      promo_end: cms?.promo_end ?? null,
     });
+
+    const sizeSource =
+      (cms?.spec_overrides as any)?.identity?.size_string ??
+      tire.size_string ??
+      '';
+    setSizeParts(parseTireSize(sizeSource));
     
     setDrawerOpen(true);
     setUploadError(null);
@@ -203,6 +233,7 @@ export function TiresCMSPageV2() {
     setEditData({});
     setSaveError(null);
     setUploadError(null);
+    setSizeParts({ width: '', aspect: '', rim: '' });
   };
 
   const handleSave = async () => {
@@ -439,7 +470,7 @@ export function TiresCMSPageV2() {
       const currentIdentity = currentOverrides.identity || {};
 
       const updatedIdentity = { ...currentIdentity } as Record<string, string>;
-      if (value === undefined || value === '') {
+      if (value === undefined) {
         delete updatedIdentity[field];
       } else {
         updatedIdentity[field] = value;
@@ -468,6 +499,39 @@ export function TiresCMSPageV2() {
         spec_overrides: Object.keys(restOverrides).length > 0 ? restOverrides : null
       };
     });
+    setSizeParts(parseTireSize(selectedTire?.size_string ?? ''));
+  };
+
+  const updateSizePart = (field: 'width' | 'aspect' | 'rim', value: string) => {
+    setSizeParts(prev => {
+      const next = { ...prev, [field]: value };
+      setIdentityField('size_string', formatTireSize(next));
+      return next;
+    });
+  };
+
+  const handleResetCms = async () => {
+    if (!selectedTire) return;
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const { error } = await supabase
+        .from('product_cms')
+        .delete()
+        .eq('variant_id', selectedTire.variant_id);
+
+      if (error) throw error;
+
+      await fetchTires();
+      handleCloseDrawer();
+    } catch (err: any) {
+      console.error('Reset error:', err);
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filteredTires = tires;
@@ -804,14 +868,41 @@ export function TiresCMSPageV2() {
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       {language === 'fi' ? 'Koko' : 'Size'}
                     </label>
-                    <input
-                      type="text"
-                      value={getIdentityOverride()?.size_string ?? selectedTire.size_string ?? ''}
-                      onChange={(e) => setIdentityField('size_string', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="205"
+                        value={sizeParts.width}
+                        onChange={(e) => updateSizePart('width', e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="55"
+                        value={sizeParts.aspect}
+                        onChange={(e) => updateSizePart('aspect', e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="16"
+                        value={sizeParts.rim}
+                        onChange={(e) => updateSizePart('rim', e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      />
+                    </div>
+                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                      {language === 'fi' ? 'Muoto: 205 / 55 R 16' : 'Format: 205 / 55 R 16'}
+                    </p>
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -1080,7 +1171,7 @@ export function TiresCMSPageV2() {
                             </label>
                             <input
                               type="date"
-                              value={editData.promo_start || ''}
+                              value={editData.promo_start ?? ''}
                               onChange={(e) => setEditData(prev => ({ ...prev, promo_start: e.target.value || null }))}
                               className={`w-full px-3 py-2 rounded-lg border ${
                                 isDark 
@@ -1096,7 +1187,7 @@ export function TiresCMSPageV2() {
                             </label>
                             <input
                               type="date"
-                              value={editData.promo_end || ''}
+                              value={editData.promo_end ?? ''}
                               onChange={(e) => setEditData(prev => ({ ...prev, promo_end: e.target.value || null }))}
                               className={`w-full px-3 py-2 rounded-lg border ${
                                 isDark 
@@ -1221,7 +1312,7 @@ export function TiresCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.title || ''}
+                      value={editData.title ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
                       placeholder={`${selectedTire.brand} ${selectedTire.model}`}
                       className={`w-full px-3 py-2 rounded-lg border ${
@@ -1238,7 +1329,7 @@ export function TiresCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.subtitle || ''}
+                      value={editData.subtitle ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, subtitle: e.target.value }))}
                       placeholder={selectedTire.size_string || ''}
                       className={`w-full px-3 py-2 rounded-lg border ${
@@ -1255,7 +1346,7 @@ export function TiresCMSPageV2() {
                     </label>
                     <textarea
                       rows={3}
-                      value={editData.short_description || ''}
+                      value={editData.short_description ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, short_description: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -1271,7 +1362,7 @@ export function TiresCMSPageV2() {
                     </label>
                     <textarea
                       rows={6}
-                      value={editData.long_description || ''}
+                      value={editData.long_description ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, long_description: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -1295,7 +1386,7 @@ export function TiresCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.seo_slug || ''}
+                      value={editData.seo_slug ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, seo_slug: e.target.value }))}
                       placeholder="tire-brand-model-size"
                       className={`w-full px-3 py-2 rounded-lg border ${
@@ -1312,7 +1403,7 @@ export function TiresCMSPageV2() {
                     </label>
                     <input
                       type="text"
-                      value={editData.seo_title || ''}
+                      value={editData.seo_title ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, seo_title: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -1328,7 +1419,7 @@ export function TiresCMSPageV2() {
                     </label>
                     <textarea
                       rows={3}
-                      value={editData.seo_description || ''}
+                      value={editData.seo_description ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, seo_description: e.target.value }))}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
@@ -1372,7 +1463,19 @@ export function TiresCMSPageV2() {
             {/* Drawer Footer */}
             <div className={`sticky bottom-0 border-t ${
               isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'
-            } px-6 py-4 flex items-center justify-end gap-3`}>
+            } px-6 py-4 flex items-center justify-between gap-3`}>
+              <button
+                onClick={handleResetCms}
+                disabled={saving}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isDark
+                    ? 'border border-red-500/40 text-red-300 hover:bg-red-500/20'
+                    : 'border border-red-300 text-red-600 hover:bg-red-50'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <RotateCcw className="w-4 h-4" />
+                {language === 'fi' ? 'Tyhjennä CMS' : 'Reset CMS'}
+              </button>
               <button
                 onClick={handleCloseDrawer}
                 disabled={saving}

@@ -554,6 +554,8 @@ function HomePage() {
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
+  const isCmsPage = currentPage.startsWith('cms') || currentPage === 'admin-schedule';
+
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to main content */}
@@ -564,15 +566,17 @@ function HomePage() {
         {t('ui.skipToContent')}
       </a>
 
-      <Navbar
-        isLoggedIn={isLoggedIn}
-        onLoginClick={handleLogin}
-        onSignupClick={handleSignup}
-        onLogout={handleLogout}
-        cartCount={totalItems}
-        onNavigate={navigate}
-        onCartClick={() => setIsCartOpen(true)}
-      />
+      {!isCmsPage && (
+        <Navbar
+          isLoggedIn={isLoggedIn}
+          onLoginClick={handleLogin}
+          onSignupClick={handleSignup}
+          onLogout={handleLogout}
+          cartCount={totalItems}
+          onNavigate={navigate}
+          onCartClick={() => setIsCartOpen(true)}
+        />
+      )}
 
       <CartDrawer onCheckout={() => setCurrentPage('checkout')} />
 
@@ -695,15 +699,6 @@ function HomePage() {
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
           <>
-            {/* v0.1 Beta Banner */}
-            <div className="bg-amber-500 text-white py-3 px-4 text-center">
-              <div className="container mx-auto max-w-7xl">
-                <p className="text-sm font-medium">
-                  🚧 v0.1 Beta - CMS Preview Mode (Authentication will be added in future versions)
-                </p>
-              </div>
-            </div>
-
             <div className="bg-background">
               <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
                 <div className="flex flex-col gap-2">
