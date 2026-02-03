@@ -69,16 +69,52 @@ export function RimsCMSPageV2() {
         .order('model', { ascending: true })
         .limit(100);
 
-      if (variantsError) throw variantsError;
+      let resolvedVariants: RimVariant[] | null = variants;
 
-      if (!variants || variants.length === 0) {
+      if (variantsError) {
+        const message = variantsError.message ?? '';
+        const shouldFallback =
+          message.includes('catalog_rim_variants.brand') ||
+          message.includes('column "brand" does not exist');
+
+        if (!shouldFallback) {
+          throw variantsError;
+        }
+
+        const { data: fallbackVariants, error: fallbackError } = await supabase
+          .from('products_search')
+          .select(
+            'variant_id, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color',
+          )
+          .eq('product_type', 'rim')
+          .order('brand_display_name', { ascending: true })
+          .order('model', { ascending: true })
+          .limit(100);
+
+        if (fallbackError) throw fallbackError;
+
+        resolvedVariants =
+          fallbackVariants?.map((variant) => ({
+            id: variant.variant_id,
+            ean: null,
+            brand: variant.brand_display_name || variant.brand || 'Unknown',
+            model: variant.model || '',
+            width: variant.width_in ?? null,
+            diameter: variant.rim_diameter_in ?? null,
+            pcd: variant.bolt_pattern ?? null,
+            et: variant.et_offset_mm ?? null,
+            color: variant.color ?? null,
+          })) ?? [];
+      }
+
+      if (!resolvedVariants || resolvedVariants.length === 0) {
         setRims([]);
         setLoading(false);
         return;
       }
 
       // Fetch CMS data for these variants
-      const variantIds = variants.map(v => v.id);
+      const variantIds = resolvedVariants.map(v => v.id);
       const { data: cmsData, error: cmsError } = await supabase
         .from('product_cms')
         .select('*')
@@ -88,7 +124,7 @@ export function RimsCMSPageV2() {
 
       // Merge data
       const cmsMap = new Map(cmsData?.map(c => [c.variant_id, c]) || []);
-      const merged = variants.map(v => ({
+      const merged = resolvedVariants.map(v => ({
         ...v,
         cms_data: cmsMap.get(v.id) || null
       }));
