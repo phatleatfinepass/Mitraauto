@@ -67,6 +67,7 @@ export function TiresCMSPageV2() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
+  const pageSize = 100;
 
   const [tires, setTires] = useState<TireRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +78,8 @@ export function TiresCMSPageV2() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
@@ -88,7 +91,11 @@ export function TiresCMSPageV2() {
 
   useEffect(() => {
     fetchTires();
-  }, [showConflicts]);
+  }, [showConflicts, searchTerm, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [showConflicts, searchTerm]);
 
   const fetchTires = async () => {
     setLoading(true);
@@ -98,20 +105,37 @@ export function TiresCMSPageV2() {
       // Build query for products_search
       let query = supabase
         .from('products_search')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('product_type', 'tire')
         .order('brand', { ascending: true })
-        .order('model', { ascending: true })
-        .limit(100);
+        .order('model', { ascending: true });
 
       // Filter conflicts unless "Show conflicts" is enabled
       if (!showConflicts) {
         query = query.or('ean_conflict_open.is.null,ean_conflict_open.eq.false');
       }
 
-      const { data: products, error: productsError } = await query;
+      const trimmedSearch = searchTerm.trim();
+      if (trimmedSearch) {
+        query = query.or(
+          `brand.ilike.%${trimmedSearch}%,model.ilike.%${trimmedSearch}%,derived_ean.ilike.%${trimmedSearch}%,size_string.ilike.%${trimmedSearch}%`
+        );
+      }
+
+      const rangeStart = (currentPage - 1) * pageSize;
+      const rangeEnd = rangeStart + pageSize - 1;
+
+      const { data: products, error: productsError, count } = await query.range(rangeStart, rangeEnd);
 
       if (productsError) throw productsError;
+
+      const nextTotal = count ?? 0;
+      setTotalCount(nextTotal);
+      const totalPages = Math.max(1, Math.ceil(nextTotal / pageSize));
+      if (currentPage > totalPages) {
+        setCurrentPage(totalPages);
+        return;
+      }
 
       if (!products || products.length === 0) {
         setTires([]);
@@ -446,15 +470,11 @@ export function TiresCMSPageV2() {
     });
   };
 
-  const filteredTires = tires.filter(tire => {
-    const search = searchTerm.toLowerCase();
-    return (
-      tire.brand.toLowerCase().includes(search) ||
-      tire.model.toLowerCase().includes(search) ||
-      tire.derived_ean?.toLowerCase().includes(search) ||
-      tire.size_string?.toLowerCase().includes(search)
-    );
-  });
+  const filteredTires = tires;
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalCount);
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
@@ -628,6 +648,63 @@ export function TiresCMSPageV2() {
                 <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {language === 'fi' ? 'Ei renkaita löytynyt' : 'No tires found'}
                 </p>
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6">
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {language === 'fi'
+                    ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
+                    : `Showing ${startItem}-${endItem} of ${totalCount}`}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                  >
+                    {language === 'fi' ? 'Edellinen' : 'Previous'}
+                  </button>
+                  {Array.from({ length: totalPages }).map((_, index) => {
+                    const pageNumber = index + 1;
+                    return (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          pageNumber === currentPage
+                            ? isDark
+                              ? 'bg-blue-500/30 text-blue-200'
+                              : 'bg-blue-100 text-blue-700'
+                            : isDark
+                              ? 'text-gray-300 hover:bg-white/10'
+                              : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                  >
+                    {language === 'fi' ? 'Seuraava' : 'Next'}
+                  </button>
+                </div>
               </div>
             )}
           </>
