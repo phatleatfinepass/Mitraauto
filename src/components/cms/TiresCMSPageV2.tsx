@@ -27,6 +27,11 @@ interface ProductSearchTire {
   
   // Conflict detection
   ean_conflict_open?: boolean | null;
+  has_duplicate_ean_conflict?: boolean;
+  has_mandatory_field_conflict?: boolean;
+  is_non_passenger_auto?: boolean;
+  is_non_passenger_manual?: boolean;
+  is_non_passenger?: boolean;
 }
 
 interface ProductCMS {
@@ -69,12 +74,34 @@ export function TiresCMSPageV2() {
   const { language } = useLanguage();
   const isDark = theme === 'dark';
   const pageSize = 100;
+  const EXCLUDED_TIRE_KEYWORDS = [
+    'motorcycle',
+    'motorbike',
+    'moto',
+    'scooter',
+    'moped',
+    'atv',
+    'utv',
+    'quad',
+    'trailer',
+    'tractor',
+    'traktor',
+    'agri',
+    'agric',
+    'farm',
+    'implement',
+    'forklift',
+    'kart',
+    'enduro',
+  ];
 
   const [tires, setTires] = useState<TireRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showConflicts, setShowConflicts] = useState(false);
+  const [showNonPassenger, setShowNonPassenger] = useState(false);
+  const [hideMissingSupplierPrice, setHideMissingSupplierPrice] = useState(false);
   const [selectedTire, setSelectedTire] = useState<TireRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,13 +118,42 @@ export function TiresCMSPageV2() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  const toNumberOrNull = (value: any) => {
+    if (value === null || value === undefined || value === '') return null;
+    const numeric = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+
+  const isAutoNonPassengerTire = (row: any) => {
+    const searchBlob = `${row.brand ?? ''} ${row.model ?? ''} ${row.size_string ?? ''}`.toLowerCase();
+    const keywordMatched = EXCLUDED_TIRE_KEYWORDS.some((keyword) => searchBlob.includes(keyword));
+
+    const widthMm = toNumberOrNull(row.width_mm);
+    const aspectRatio = toNumberOrNull(row.aspect_ratio);
+    const diameterIn = toNumberOrNull(row.diameter_in);
+
+    const inchStyleNonPassenger =
+      widthMm !== null &&
+      widthMm > 0 &&
+      widthMm < 80 &&
+      !Number.isInteger(widthMm) &&
+      aspectRatio === null &&
+      diameterIn !== null &&
+      diameterIn >= 20;
+
+    return keywordMatched || inchStyleNonPassenger;
+  };
+
+  const getManualNonPassengerFlag = (specOverrides: any) =>
+    Boolean(specOverrides?.classification?.non_passenger_manual);
+
   useEffect(() => {
     fetchTires();
-  }, [showConflicts, searchTerm, currentPage]);
+  }, [showConflicts, showNonPassenger, hideMissingSupplierPrice, searchTerm, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [showConflicts, searchTerm]);
+  }, [showConflicts, showNonPassenger, hideMissingSupplierPrice, searchTerm]);
 
   const fetchTires = async () => {
     setLoading(true);
@@ -110,7 +166,8 @@ export function TiresCMSPageV2() {
       const runProductsQuery = async (
         ignoreConflictColumn: boolean,
         ignoreDerivedEanColumn: boolean,
-        useFullRange: boolean = false
+        useFullRange: boolean = false,
+        skipSearchFilters: boolean = false
       ) => {
         let query = supabase
           .from('products_search')
@@ -124,7 +181,7 @@ export function TiresCMSPageV2() {
           query = query.or('ean_conflict_open.is.null,ean_conflict_open.eq.false');
         }
 
-        if (trimmedSearch) {
+        if (trimmedSearch && !skipSearchFilters) {
           const searchFilters = [
             `brand.ilike.%${trimmedSearch}%`,
             `model.ilike.%${trimmedSearch}%`,
@@ -147,7 +204,7 @@ export function TiresCMSPageV2() {
         return query.range(rangeStart, rangeEnd);
       };
 
-      let ignoreConflictColumn = false;
+      let ignoreConflictColumn = true;
       let ignoreDerivedEanColumn = false;
       let products: any[] | null = null;
       let productsError: any = null;
@@ -161,22 +218,16 @@ export function TiresCMSPageV2() {
 
         if (!productsError) break;
 
-        const isMissingColumn = productsError?.code === '42703' && typeof productsError?.message === 'string';
+        const errorText = `${productsError?.message ?? ''} ${productsError?.details ?? ''} ${productsError?.hint ?? ''}`.toLowerCase();
+        const mentionsConflictColumn = errorText.includes('ean_conflict_open');
+        const mentionsDerivedEanColumn = errorText.includes('derived_ean');
 
-        if (
-          isMissingColumn &&
-          !ignoreConflictColumn &&
-          productsError.message.includes('ean_conflict_open')
-        ) {
+        if (!ignoreConflictColumn && mentionsConflictColumn) {
           ignoreConflictColumn = true;
           continue;
         }
 
-        if (
-          isMissingColumn &&
-          !ignoreDerivedEanColumn &&
-          productsError.message.includes('derived_ean')
-        ) {
+        if (!ignoreDerivedEanColumn && mentionsDerivedEanColumn) {
           ignoreDerivedEanColumn = true;
           continue;
         }
@@ -186,8 +237,10 @@ export function TiresCMSPageV2() {
 
       if (productsError) throw productsError;
 
-      if (ignoreConflictColumn) {
-        const fullResult = await runProductsQuery(true, ignoreDerivedEanColumn, true);
+      const shouldUseClientConflictFiltering = true;
+
+      if (shouldUseClientConflictFiltering) {
+        const fullResult = await runProductsQuery(true, ignoreDerivedEanColumn, true, true);
         if (fullResult.error) throw fullResult.error;
         products = fullResult.data;
         count = fullResult.count;
@@ -202,23 +255,33 @@ export function TiresCMSPageV2() {
 
       // Fetch CMS data for these variants
       const variantIds = products.map((p: any) => p.variant_id);
-      const [{ data: cmsData, error: cmsError }, { data: eanRows, error: eanError }] = await Promise.all([
-        supabase
-          .from('product_cms')
-          .select('*')
-          .in('variant_id', variantIds),
-        supabase
-          .from('catalog_tire_variants')
-          .select('id, ean')
-          .in('id', variantIds)
-      ]);
+      const chunkSize = 200;
+      const cmsRows: any[] = [];
+      const eanRows: any[] = [];
 
-      if (cmsError) throw cmsError;
-      if (eanError) throw eanError;
+      for (let i = 0; i < variantIds.length; i += chunkSize) {
+        const idChunk = variantIds.slice(i, i + chunkSize);
+        const [{ data: cmsBatch, error: cmsError }, { data: eanBatch, error: eanError }] = await Promise.all([
+          supabase
+            .from('product_cms')
+            .select('*')
+            .in('variant_id', idChunk),
+          supabase
+            .from('catalog_tire_variants')
+            .select('id, ean')
+            .in('id', idChunk),
+        ]);
+
+        if (cmsError) throw cmsError;
+        if (eanError) throw eanError;
+
+        if (cmsBatch?.length) cmsRows.push(...cmsBatch);
+        if (eanBatch?.length) eanRows.push(...eanBatch);
+      }
 
       // Merge data
-      const cmsMap = new Map(cmsData?.map((c: any) => [c.variant_id, c]) || []);
-      const eanMap = new Map(eanRows?.map((row: any) => [row.id, row.ean]) || []);
+      const cmsMap = new Map(cmsRows.map((c: any) => [c.variant_id, c]));
+      const eanMap = new Map(eanRows.map((row: any) => [row.id, row.ean]));
       const normalizedEanCounts = new Map<string, number>();
 
       for (const product of products) {
@@ -227,23 +290,67 @@ export function TiresCMSPageV2() {
         normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
       }
 
-      const merged = products.map((p: any) => ({
-        ...p,
-        derived_ean: p.derived_ean ?? eanMap.get(p.variant_id) ?? null,
-        final_price_eur: p.final_price_eur ?? p.price ?? null,
-        ean_conflict_open:
-          p.ean_conflict_open ??
-          (() => {
-            const ean = (p.derived_ean ?? eanMap.get(p.variant_id) ?? '').trim();
-            return ean ? (normalizedEanCounts.get(ean) ?? 0) > 1 : false;
-          })(),
-        cms_data: cmsMap.get(p.variant_id) || null
-      }));
+      const hasMandatoryFieldConflict = (product: any, resolvedEan: string | null) => {
+        const missingEan = !resolvedEan || resolvedEan.trim().length === 0;
+        const missingBrand = !product.brand || String(product.brand).trim().length === 0;
+        const missingModel = !product.model || String(product.model).trim().length === 0;
+        const missingSize = !product.size_string || String(product.size_string).trim().length === 0;
+        const resolvedPrice = product.final_price_eur ?? product.price ?? null;
+        const missingPrice = resolvedPrice === null || resolvedPrice === undefined;
 
-      if (ignoreConflictColumn) {
+        return missingEan || missingBrand || missingModel || missingSize || missingPrice;
+      };
+
+      const merged = products.map((p: any) => {
+        const resolvedEan = p.derived_ean ?? eanMap.get(p.variant_id) ?? null;
+        const cmsData = cmsMap.get(p.variant_id) || null;
+        const duplicateEanConflict = (() => {
+          const normalized = (resolvedEan ?? '').trim();
+          return normalized ? (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
+        })();
+        const mandatoryFieldConflict = hasMandatoryFieldConflict(p, resolvedEan);
+        const autoNonPassenger = isAutoNonPassengerTire(p);
+        const manualNonPassenger = getManualNonPassengerFlag(cmsData?.spec_overrides);
+        const nonPassenger = autoNonPassenger || manualNonPassenger;
+
+        return {
+          ...p,
+          derived_ean: resolvedEan,
+          final_price_eur: p.final_price_eur ?? p.price ?? null,
+          has_duplicate_ean_conflict: duplicateEanConflict,
+          has_mandatory_field_conflict: mandatoryFieldConflict,
+          is_non_passenger_auto: autoNonPassenger,
+          is_non_passenger_manual: manualNonPassenger,
+          is_non_passenger: nonPassenger,
+          ean_conflict_open: Boolean(p.ean_conflict_open) || duplicateEanConflict || mandatoryFieldConflict,
+          cms_data: cmsData
+        };
+      });
+
+      const vehicleFilteredRows = showNonPassenger
+        ? merged
+        : merged.filter((row: any) => !row.is_non_passenger);
+
+      const priceFilteredRows = hideMissingSupplierPrice
+        ? vehicleFilteredRows.filter((row: any) => !hasMissingSupplierPrice(row))
+        : vehicleFilteredRows;
+
+      if (shouldUseClientConflictFiltering) {
+        const searchFilteredRows = trimmedSearch
+          ? priceFilteredRows.filter((row: any) => {
+              const q = trimmedSearch.toLowerCase();
+              return (
+                (row.brand ?? '').toLowerCase().includes(q) ||
+                (row.model ?? '').toLowerCase().includes(q) ||
+                (row.size_string ?? '').toLowerCase().includes(q) ||
+                (row.derived_ean ?? '').toLowerCase().includes(q)
+              );
+            })
+          : priceFilteredRows;
+
         const visibleRows = showConflicts
-          ? merged
-          : merged.filter((row: any) => !row.ean_conflict_open);
+          ? searchFilteredRows
+          : searchFilteredRows.filter((row: any) => !row.has_duplicate_ean_conflict);
 
         const fallbackTotal = visibleRows.length;
         setTotalCount(fallbackTotal);
@@ -266,7 +373,7 @@ export function TiresCMSPageV2() {
         return;
       }
 
-      setTires(merged as TireRow[]);
+      setTires(priceFilteredRows as TireRow[]);
     } catch (err: any) {
       console.error('Fetch tires error:', err);
       setError(err.message);
@@ -298,6 +405,21 @@ export function TiresCMSPageV2() {
     return `${parts.width}/${parts.aspect} R${parts.rim}`;
   };
 
+  const hasMissingSupplierPrice = (tire: TireRow | null) =>
+    !tire || tire.final_price_eur === null || tire.final_price_eur === undefined;
+
+  const mustHideFromStore = (tire: TireRow | null) =>
+    hasMissingSupplierPrice(tire) || Boolean(tire?.is_non_passenger);
+
+  const getEffectiveIdentity = (tire: TireRow | null) => {
+    const identity = (tire?.cms_data?.spec_overrides as any)?.identity ?? {};
+    return {
+      brand: identity.brand?.trim() || tire?.brand || '',
+      model: identity.model?.trim() || tire?.model || '',
+      size_string: identity.size_string?.trim() || tire?.size_string || '',
+    };
+  };
+
   const handleEdit = (tire: TireRow) => {
     setSelectedTire(tire);
     
@@ -314,7 +436,7 @@ export function TiresCMSPageV2() {
       seo_slug: cms?.seo_slug ?? '',
       seo_title: cms?.seo_title ?? '',
       seo_description: cms?.seo_description ?? '',
-      is_hidden: cms?.is_hidden ?? false,
+      is_hidden: cms?.is_hidden ?? mustHideFromStore(tire),
       spec_overrides: cms?.spec_overrides ?? {},
       price_override_eur: cms?.price_override_eur ?? null,
       promo_enabled: cms?.promo_enabled ?? false,
@@ -342,6 +464,37 @@ export function TiresCMSPageV2() {
     setSizeParts({ width: '', aspect: '', rim: '' });
   };
 
+  const patchLocalCmsData = (variantId: string, cmsPatch: Record<string, any> | null) => {
+    setTires((prev) =>
+      prev.map((tire) => {
+        if (tire.variant_id !== variantId) return tire;
+        if (cmsPatch === null) {
+          const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
+          return {
+            ...tire,
+            cms_data: null,
+            is_non_passenger_manual: false,
+            is_non_passenger: autoNonPassenger,
+          };
+        }
+
+        const nextCmsData = {
+          ...(tire.cms_data ?? { variant_id: tire.variant_id }),
+          ...cmsPatch,
+        } as any;
+        const manualNonPassenger = getManualNonPassengerFlag(nextCmsData?.spec_overrides);
+        const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
+
+        return {
+          ...tire,
+          cms_data: nextCmsData,
+          is_non_passenger_manual: manualNonPassenger,
+          is_non_passenger: autoNonPassenger || manualNonPassenger,
+        };
+      })
+    );
+  };
+
   const handleSave = async () => {
     if (!selectedTire) return;
 
@@ -349,6 +502,10 @@ export function TiresCMSPageV2() {
     setSaveError(null);
 
     try {
+      const specOverrides = editData.spec_overrides ?? {};
+      const draftManualNonPassenger = getManualNonPassengerFlag(specOverrides);
+      const draftNonPassenger = Boolean(selectedTire.is_non_passenger_auto) || draftManualNonPassenger;
+      const mustBeHidden = hasMissingSupplierPrice(selectedTire) || draftNonPassenger;
       const payload: any = {
         variant_id: selectedTire.variant_id,
         title: editData.title?.trim() || null,
@@ -359,8 +516,8 @@ export function TiresCMSPageV2() {
         seo_slug: editData.seo_slug?.trim() || null,
         seo_title: editData.seo_title?.trim() || null,
         seo_description: editData.seo_description?.trim() || null,
-        is_hidden: editData.is_hidden ?? false,
-        spec_overrides: editData.spec_overrides ?? {},
+        is_hidden: mustBeHidden ? true : (editData.is_hidden ?? false),
+        spec_overrides: specOverrides,
         price_override_eur: editData.price_override_eur ?? null,
         promo_enabled: editData.promo_enabled ?? false,
         promo_price_eur: editData.promo_price_eur ?? null,
@@ -377,8 +534,7 @@ export function TiresCMSPageV2() {
 
       if (error) throw error;
 
-      // Refresh data
-      await fetchTires();
+      patchLocalCmsData(selectedTire.variant_id, payload);
       handleCloseDrawer();
     } catch (err: any) {
       console.error('Save error:', err);
@@ -389,9 +545,25 @@ export function TiresCMSPageV2() {
   };
 
   const handleToggleVisibility = async (tire: TireRow) => {
-    const newHiddenState = !tire.cms_data?.is_hidden;
+    const missingSupplierPrice = hasMissingSupplierPrice(tire);
+    const nonPassenger = Boolean(tire.is_non_passenger);
+    const forceHidden = missingSupplierPrice || nonPassenger;
+    const currentlyHidden = Boolean(tire.cms_data?.is_hidden) || forceHidden;
+    const newHiddenState = forceHidden ? true : !currentlyHidden;
 
     try {
+      if (forceHidden) {
+        setError(
+          language === 'fi'
+            ? (missingSupplierPrice
+              ? 'Tuote on piilotettu, koska toimittajahinta puuttuu.'
+              : 'Tuote on piilotettu, koska se ei ole henkilöauton rengas.')
+            : (missingSupplierPrice
+              ? 'Item is hidden because supplier price is missing.'
+              : 'Item is hidden because it is not a passenger-car tire.')
+        );
+      }
+
       const { error } = await supabase
         .from('product_cms')
         .upsert({
@@ -402,7 +574,11 @@ export function TiresCMSPageV2() {
 
       if (error) throw error;
 
-      await fetchTires();
+      patchLocalCmsData(tire.variant_id, {
+        variant_id: tire.variant_id,
+        is_hidden: newHiddenState,
+        spec_overrides: tire.cms_data?.spec_overrides ?? {},
+      });
     } catch (err: any) {
       console.error('Toggle visibility error:', err);
       setError(err.message);
@@ -631,7 +807,7 @@ export function TiresCMSPageV2() {
 
       if (error) throw error;
 
-      await fetchTires();
+      patchLocalCmsData(selectedTire.variant_id, null);
       handleCloseDrawer();
     } catch (err: any) {
       console.error('Reset error:', err);
@@ -690,6 +866,28 @@ export function TiresCMSPageV2() {
             />
             <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {language === 'fi' ? 'Näytä konfliktit' : 'Show conflicts'}
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showNonPassenger}
+              onChange={(e) => setShowNonPassenger(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300"
+            />
+            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {language === 'fi' ? 'Näytä ei-henkilöautot' : 'Show non-passenger'}
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hideMissingSupplierPrice}
+              onChange={(e) => setHideMissingSupplierPrice(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300"
+            />
+            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {language === 'fi' ? 'Piilota puuttuva toimittajahinta' : 'Hide missing supplier price'}
             </span>
           </label>
         </div>
@@ -756,25 +954,34 @@ export function TiresCMSPageV2() {
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {filteredTires.map((tire) => (
-                      <tr 
-                        key={tire.variant_id} 
+                      <tr
+                        key={tire.variant_id}
                         className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${
                           tire.ean_conflict_open ? (isDark ? 'bg-yellow-500/10' : 'bg-yellow-50') : ''
                         }`}
                       >
                         <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                           <div className="flex items-center gap-2">
-                            {tire.brand}
+                            {getEffectiveIdentity(tire).brand}
                             {tire.ean_conflict_open && (
                               <AlertTriangle className="w-4 h-4 text-yellow-500" title="EAN conflict" />
+                            )}
+                            {tire.is_non_passenger && (
+                              <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'
+                              }`}>
+                                {language === 'fi'
+                                  ? (tire.is_non_passenger_manual ? 'Ei-henkilöauto (manuaali)' : 'Ei-henkilöauto')
+                                  : (tire.is_non_passenger_manual ? 'Non-passenger (manual)' : 'Non-passenger')}
+                              </span>
                             )}
                           </div>
                         </td>
                         <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {tire.model}
+                          {getEffectiveIdentity(tire).model}
                         </td>
                         <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {tire.size_string || '—'}
+                          {getEffectiveIdentity(tire).size_string || '—'}
                         </td>
                         <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                           {tire.derived_ean || '—'}
@@ -783,17 +990,22 @@ export function TiresCMSPageV2() {
                           {tire.final_price_eur !== null && tire.final_price_eur !== undefined
                             ? `€${tire.final_price_eur.toFixed(2)}`
                             : '—'}
+                          {hasMissingSupplierPrice(tire) && (
+                            <p className={`mt-1 text-xs ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                              {language === 'fi' ? 'Toimittajahinta puuttuu' : 'Missing supplier price'}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <button
                             onClick={() => handleToggleVisibility(tire)}
                             className={`p-1 rounded transition-colors ${
-                              tire.cms_data?.is_hidden
+                              (tire.cms_data?.is_hidden || mustHideFromStore(tire))
                                 ? (isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600')
                                 : (isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700')
                             }`}
                           >
-                            {tire.cms_data?.is_hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {(tire.cms_data?.is_hidden || mustHideFromStore(tire)) ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -906,7 +1118,7 @@ export function TiresCMSPageV2() {
                   {language === 'fi' ? 'Muokkaa rengasta' : 'Edit Tire'}
                 </h2>
                 <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {selectedTire.brand} {selectedTire.model} — {selectedTire.size_string}
+                  {getEffectiveIdentity(selectedTire).brand} {getEffectiveIdentity(selectedTire).model} — {getEffectiveIdentity(selectedTire).size_string || '—'}
                 </p>
               </div>
               <button
@@ -1423,7 +1635,7 @@ export function TiresCMSPageV2() {
                       type="text"
                       value={editData.title ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder={`${selectedTire.brand} ${selectedTire.model}`}
+                      placeholder={`${getEffectiveIdentity(selectedTire).brand} ${getEffectiveIdentity(selectedTire).model}`}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
                           ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
@@ -1440,7 +1652,7 @@ export function TiresCMSPageV2() {
                       type="text"
                       value={editData.subtitle ?? ''}
                       onChange={(e) => setEditData(prev => ({ ...prev, subtitle: e.target.value }))}
-                      placeholder={selectedTire.size_string || ''}
+                      placeholder={getEffectiveIdentity(selectedTire).size_string || ''}
                       className={`w-full px-3 py-2 rounded-lg border ${
                         isDark 
                           ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
@@ -1545,15 +1757,70 @@ export function TiresCMSPageV2() {
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {language === 'fi' ? 'Näkyvyys' : 'Visibility'}
                 </h3>
+                {mustHideFromStore(selectedTire) && (
+                  <div className={`mb-3 flex items-start gap-2 rounded-lg border p-3 ${
+                    isDark ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' : 'border-amber-300 bg-amber-50 text-amber-800'
+                  }`}>
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p className="text-sm">
+                      {language === 'fi'
+                        ? (
+                          hasMissingSupplierPrice(selectedTire)
+                            ? 'Toimittajahinta puuttuu. Tuote pidetään automaattisesti piilotettuna verkkokaupasta.'
+                            : 'Tämä ei ole henkilöauton rengas. Tuote pidetään automaattisesti piilotettuna verkkokaupasta.'
+                        )
+                        : (
+                          hasMissingSupplierPrice(selectedTire)
+                            ? 'Supplier price is missing. This product is automatically kept hidden from webshop.'
+                            : 'This is not a passenger-car tire. The product is automatically kept hidden from webshop.'
+                        )}
+                    </p>
+                  </div>
+                )}
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={editData.is_hidden || false}
+                    checked={Boolean(editData.is_hidden) || mustHideFromStore(selectedTire)}
+                    disabled={mustHideFromStore(selectedTire)}
                     onChange={(e) => setEditData(prev => ({ ...prev, is_hidden: e.target.checked }))}
                     className="w-5 h-5 rounded border-gray-300"
                   />
                   <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {language === 'fi' ? 'Piilota kaupasta' : 'Hide from store'}
+                  </span>
+                </label>
+                <label className="mt-3 flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={getManualNonPassengerFlag(editData.spec_overrides)}
+                    onChange={(e) =>
+                      setEditData((prev) => {
+                        const currentOverrides = prev.spec_overrides || {};
+                        const currentClassification = (currentOverrides.classification || {}) as Record<string, any>;
+                        const nextClassification = { ...currentClassification };
+
+                        if (e.target.checked) {
+                          nextClassification.non_passenger_manual = true;
+                        } else {
+                          delete nextClassification.non_passenger_manual;
+                        }
+
+                        const { classification, ...restOverrides } = currentOverrides;
+                        const nextOverrides = {
+                          ...restOverrides,
+                          ...(Object.keys(nextClassification).length > 0 ? { classification: nextClassification } : {}),
+                        };
+
+                        return {
+                          ...prev,
+                          spec_overrides: Object.keys(nextOverrides).length > 0 ? nextOverrides : null,
+                        };
+                      })
+                    }
+                    className="w-5 h-5 rounded border-gray-300"
+                  />
+                  <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {language === 'fi' ? 'Merkitse ei-henkilöautoksi' : 'Mark as non-passenger'}
                   </span>
                 </label>
               </div>

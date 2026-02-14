@@ -22,6 +22,7 @@ import type { CatalogProduct } from './components/catalog/CatalogPage';
 import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
 import { TiresCMSPageV2 as TiresCMSPage } from './components/cms/TiresCMSPageV2';
 import { RimsCMSPageV2 as RimsCMSPage } from './components/cms/RimsCMSPageV2';
+import { OrdersCMSPage } from './components/cms/OrdersCMSPage';
 import { CmsGuard } from './components/cms/CmsGuard';
 // NEW PAGES
 import { ContactPage } from './components/ContactPage';
@@ -81,7 +82,7 @@ type ParsedTireSize = {
   speedRating?: string;
 };
 
-type CmsTab = 'schedule' | 'catalog-tires' | 'catalog-rims' | 'future';
+type CmsTab = 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'future';
 
 function resolveCmsTabFromHash(hash?: string): CmsTab {
   const normalized = (hash ?? '').replace('#', '').toLowerCase();
@@ -92,6 +93,10 @@ function resolveCmsTabFromHash(hash?: string): CmsTab {
 
   if (normalized === 'catalog-rims') {
     return 'catalog-rims';
+  }
+
+  if (normalized === 'orders') {
+    return 'orders';
   }
 
   if (normalized === 'future') {
@@ -236,7 +241,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('schedule');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -382,6 +387,9 @@ function HomePage() {
         setCurrentPage('cms-beta');
         setSelectedProduct(null);
         setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
+      } else if (path === '/cms/orders' || path === '/cms-orders') {
+        setCurrentPage('cms-orders');
+        setSelectedProduct(null);
       } 
       
       // Legal routes
@@ -542,7 +550,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-tires', 'cms-rims', 'cms-beta'];
+      const cmsPages = ['admin-schedule', 'cms-tires', 'cms-rims', 'cms-orders', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         setCurrentPage('home');
         window.history.pushState({}, '', '/');
@@ -643,6 +651,7 @@ function HomePage() {
     { id: 'schedule' as const, label: 'Booking Schedule', description: 'Manage appointments' },
     { id: 'catalog-tires' as const, label: 'Tire Catalog', description: 'Edit tire content' },
     { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
+    { id: 'orders' as const, label: 'Orders', description: 'Track customer purchases' },
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
@@ -814,6 +823,10 @@ function HomePage() {
           <CmsGuard onNeedLogin={handleLoginNeeded}>
             <RimsCMSPage />
           </CmsGuard>
+        ) : currentPage === 'cms-orders' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <OrdersCMSPage />
+          </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
           <>
@@ -870,6 +883,8 @@ function HomePage() {
                     <TiresCMSPage />
                   ) : cmsTab === 'catalog-rims' ? (
                     <RimsCMSPage />
+                  ) : cmsTab === 'orders' ? (
+                    <OrdersCMSPage />
                   ) : (
                     <div className="space-y-2 p-8 text-muted-foreground">
                       <h2 className="text-xl font-semibold text-foreground">Coming soon</h2>

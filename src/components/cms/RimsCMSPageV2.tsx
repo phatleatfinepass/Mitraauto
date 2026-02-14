@@ -15,6 +15,7 @@ interface RimVariant {
   pcd: string | null;
   et: number | null;
   color: string | null;
+  price_eur: number | null;
 }
 
 interface ProductCMS {
@@ -70,7 +71,11 @@ export function RimsCMSPageV2() {
         .order('model', { ascending: true })
         .limit(100);
 
-      let resolvedVariants: RimVariant[] | null = variants;
+      let resolvedVariants: RimVariant[] | null =
+        variants?.map((variant: any) => ({
+          ...variant,
+          price_eur: null,
+        })) ?? null;
 
       if (variantsError) {
         const message = variantsError.message ?? '';
@@ -85,7 +90,7 @@ export function RimsCMSPageV2() {
         const { data: fallbackVariants, error: fallbackError } = await supabase
           .from('products_search')
           .select(
-            'variant_id, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color',
+            'variant_id, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, price',
           )
           .eq('product_type', 'rim')
           .order('brand_display_name', { ascending: true })
@@ -105,6 +110,7 @@ export function RimsCMSPageV2() {
             pcd: variant.bolt_pattern ?? null,
             et: variant.et_offset_mm ?? null,
             color: variant.color ?? null,
+            price_eur: variant.price ?? null,
           })) ?? [];
       }
 
@@ -116,7 +122,11 @@ export function RimsCMSPageV2() {
 
       // Fetch CMS + EAN data for these variants
       const variantIds = resolvedVariants.map(v => v.id);
-      const [{ data: cmsData, error: cmsError }, { data: eanRows, error: eanError }] = await Promise.all([
+      const [
+        { data: cmsData, error: cmsError },
+        { data: eanRows, error: eanError },
+        { data: pricingRows, error: pricingError },
+      ] = await Promise.all([
         supabase
           .from('product_cms')
           .select('*')
@@ -125,17 +135,25 @@ export function RimsCMSPageV2() {
           .from('catalog_rim_variants')
           .select('id, ean')
           .in('id', variantIds),
+        supabase
+          .from('products_search')
+          .select('variant_id, price')
+          .eq('product_type', 'rim')
+          .in('variant_id', variantIds),
       ]);
 
       if (cmsError) throw cmsError;
       if (eanError) throw eanError;
+      if (pricingError) throw pricingError;
 
       // Merge data
       const cmsMap = new Map(cmsData?.map(c => [c.variant_id, c]) || []);
       const eanMap = new Map(eanRows?.map((row: any) => [row.id, row.ean]) || []);
+      const priceMap = new Map(pricingRows?.map((row: any) => [row.variant_id, row.price]) || []);
       const merged = resolvedVariants.map(v => ({
         ...v,
         ean: v.ean ?? eanMap.get(v.id) ?? null,
+        price_eur: v.price_eur ?? priceMap.get(v.id) ?? null,
         cms_data: cmsMap.get(v.id) || null
       }));
 
@@ -178,6 +196,25 @@ export function RimsCMSPageV2() {
     setSaveError(null);
   };
 
+  const patchLocalCmsData = (variantId: string, cmsPatch: Record<string, any> | null) => {
+    setRims((prev) =>
+      prev.map((rim) => {
+        if (rim.id !== variantId) return rim;
+        if (cmsPatch === null) {
+          return { ...rim, cms_data: null };
+        }
+
+        return {
+          ...rim,
+          cms_data: {
+            ...(rim.cms_data ?? { variant_id: rim.id }),
+            ...cmsPatch,
+          } as any,
+        };
+      })
+    );
+  };
+
   const handleSave = async () => {
     if (!selectedRim) return;
 
@@ -207,8 +244,7 @@ export function RimsCMSPageV2() {
 
       if (error) throw error;
 
-      // Refresh data
-      await fetchRims();
+      patchLocalCmsData(selectedRim.id, payload);
       handleCloseDrawer();
     } catch (err: any) {
       console.error('Save error:', err);
@@ -232,7 +268,11 @@ export function RimsCMSPageV2() {
 
       if (error) throw error;
 
-      await fetchRims();
+      patchLocalCmsData(rim.id, {
+        variant_id: rim.id,
+        is_hidden: newHiddenState,
+        spec_overrides: rim.cms_data?.spec_overrides ?? {},
+      });
     } catch (err: any) {
       console.error('Toggle visibility error:', err);
       setError(err.message);
@@ -253,7 +293,7 @@ export function RimsCMSPageV2() {
 
       if (error) throw error;
 
-      await fetchRims();
+      patchLocalCmsData(selectedRim.id, null);
       handleCloseDrawer();
     } catch (err: any) {
       console.error('Reset error:', err);
@@ -366,6 +406,11 @@ export function RimsCMSPageV2() {
                       <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                         isDark ? 'text-gray-400' : 'text-gray-600'
                       }`}>
+                        {language === 'fi' ? 'Hinta' : 'Price'}
+                      </th>
+                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDark ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
                         {language === 'fi' ? 'Näkyvyys' : 'Visible'}
                       </th>
                       <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${
@@ -392,6 +437,11 @@ export function RimsCMSPageV2() {
                         </td>
                         <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                           {rim.ean || '—'}
+                        </td>
+                        <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {rim.price_eur !== null && rim.price_eur !== undefined
+                            ? `€${Number(rim.price_eur).toFixed(2)}`
+                            : '—'}
                         </td>
                         <td className="px-4 py-3">
                           <button

@@ -46,26 +46,53 @@ export async function fetchProductsSearch(
   const limit = options.limit ?? 24;
   const offset = options.offset ?? 0;
 
-  const { data, error, count } = await supabase
+  // Fetch broad set first so storefront pagination can be based on visible (non-hidden) items.
+  const { data, error } = await supabase
     .from('products_search')
     .select(
       `variant_id, product_type, brand, brand_display_name, brand_logo_url, model, size_string, 
        season, studded, runflat, xl_reinforced, 
        width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, finish,
        price, currency, in_stock, stock_qty,
-       best_image_url, best_image_alt, card_title, subtitle, tags, seo_slug`,
-      { count: 'exact' }
+       best_image_url, best_image_alt, card_title, subtitle, tags, seo_slug`
     )
     .eq('product_type', category)
     .order('price', { ascending: true, nullsFirst: false })
-    .range(offset, offset + limit - 1);
+    .range(0, 4999);
 
   if (error) {
     throw error;
   }
 
+  const rows = data ?? [];
+  if (rows.length === 0) {
+    return { items: [], total: 0 };
+  }
+
+  const { data: hiddenRows, error: hiddenError } = await supabase
+    .from('product_cms')
+    .select('variant_id')
+    .eq('is_hidden', true);
+
+  if (hiddenError) {
+    // Some environments don't allow public read on product_cms.
+    // In that case, fail open instead of breaking storefront fetch.
+    if (hiddenError.code !== '42501') {
+      throw hiddenError;
+    }
+
+    return {
+      items: rows.slice(offset, offset + limit),
+      total: rows.length,
+    };
+  }
+
+  const hiddenVariantIds = new Set((hiddenRows ?? []).map((row) => row.variant_id));
+  const visibleRows = rows.filter((row) => !hiddenVariantIds.has(row.variant_id));
+  const pagedRows = visibleRows.slice(offset, offset + limit);
+
   return {
-    items: data ?? [],
-    total: count ?? (data?.length ?? 0),
+    items: pagedRows,
+    total: visibleRows.length,
   };
 }
