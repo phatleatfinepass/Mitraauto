@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
-import { AlertCircle, CheckCircle2, CreditCard, Mail, Package, Phone, RefreshCcw, Search, XCircle } from 'lucide-react';
+import { AlertCircle, Banknote, CheckCircle2, ChevronRight, CreditCard, Globe, Mail, Package, Phone, RefreshCcw, RotateCcw, Search, Send, Truck, XCircle } from 'lucide-react';
 
 interface OrderRow {
   id: string;
@@ -19,9 +19,31 @@ interface OrderRow {
   cart_snapshot: any;
 }
 
-type StatusFilter = 'all' | 'paid' | 'pending' | 'cancelled';
+type StatusFilter = 'all' | 'receive' | 'sent' | 'ready' | 'delivered' | 'cancelled' | 'returned' | 'done';
 
 const PAGE_SIZE = 50;
+const ORDER_MARK_STATUSES = [
+  'receive',
+  'sent',
+  'ready',
+  'delivered',
+  'cancelled',
+  'returned',
+  'done',
+] as const;
+type OrderMarkStatus = (typeof ORDER_MARK_STATUSES)[number];
+type PaymentMethod = 'card' | 'cash' | 'paytrail';
+type PaymentResult = 'purchased' | 'fail';
+
+const DB_STATUS_CANDIDATES: Record<OrderMarkStatus, string[]> = {
+  receive: ['pending', 'receive'],
+  sent: ['sent'],
+  ready: ['ready_for_pickup', 'arrived', 'ready'],
+  delivered: ['delivered'],
+  cancelled: ['cancelled', 'canceled'],
+  returned: ['returned'],
+  done: ['done', 'completed'],
+};
 
 export function OrdersCMSPage() {
   const { theme } = useTheme();
@@ -37,6 +59,24 @@ export function OrdersCMSPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<OrderRow | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [createOrderOpen, setCreateOrderOpen] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [createOrderError, setCreateOrderError] = useState<string | null>(null);
+  const [eanLookupLoading, setEanLookupLoading] = useState(false);
+  const [eanLookupMessage, setEanLookupMessage] = useState<string | null>(null);
+  const [createForm, setCreateForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    itemName: '',
+    itemEan: '',
+    qty: '1',
+    unitPriceEur: '',
+    paymentMethod: 'cash' as PaymentMethod,
+    status: 'receive' as OrderMarkStatus,
+  });
 
   useEffect(() => {
     fetchOrders();
@@ -47,9 +87,440 @@ export function OrdersCMSPage() {
   }, [searchTerm, statusFilter, purchasedOnly]);
 
   const isPurchased = (order: OrderRow) => {
-    const payment = (order.paytrail_status ?? '').toLowerCase();
-    const status = (order.status ?? '').toLowerCase();
-    return payment === 'paid' || status === 'paid' || status === 'completed' || status === 'delivered';
+    const status = getDisplayStatus(order);
+    return status === 'done' || status === 'delivered';
+  };
+
+  const normalizeStatus = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
+
+  const canonicalStatus = (value: string | null | undefined): OrderMarkStatus | null => {
+    const normalized = normalizeStatus(value);
+    if (!normalized) return null;
+
+    if (normalized === 'ready_for_pickup' || normalized === 'arrived') return 'ready';
+    if (normalized === 'pending' || normalized === 'received') return 'receive';
+    if (normalized === 'completed') return 'done';
+    if (normalized === 'canceled') return 'cancelled';
+
+    if ((ORDER_MARK_STATUSES as readonly string[]).includes(normalized)) {
+      return normalized as OrderMarkStatus;
+    }
+
+    return null;
+  };
+
+  const formatStatusLabel = (value: string | null | undefined) => {
+    const normalized = normalizeStatus(value);
+    if (!normalized) return '-';
+    return normalized
+      .split('_')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  };
+
+  const getDisplayStatus = (order: OrderRow): OrderMarkStatus => (
+    canonicalStatus(order.status) ??
+    'receive'
+  );
+
+  const getStatusMeta = (status: string) => {
+    switch (normalizeStatus(status)) {
+      case 'receive':
+        return { icon: Package, tone: 'gray' as const };
+      case 'sent':
+        return { icon: Send, tone: 'purple' as const };
+      case 'ready':
+        return { icon: Package, tone: 'green' as const };
+      case 'delivered':
+        return { icon: Truck, tone: 'blue' as const };
+      case 'done':
+        return { icon: CheckCircle2, tone: 'purple' as const };
+      case 'cancelled':
+      case 'canceled':
+        return { icon: XCircle, tone: 'red' as const };
+      case 'returned':
+        return { icon: RotateCcw, tone: 'orange' as const };
+      default:
+        return { icon: AlertCircle, tone: 'gray' as const };
+    }
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    const tone = getStatusMeta(status).tone;
+    if (tone === 'green') return isDark ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-green-100 text-green-700 border-green-300';
+    if (tone === 'red') return isDark ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-red-100 text-red-700 border-red-300';
+    if (tone === 'orange') return isDark ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' : 'bg-orange-100 text-orange-700 border-orange-300';
+    if (tone === 'blue') return isDark ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-blue-100 text-blue-700 border-blue-300';
+    if (tone === 'purple') return isDark ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-purple-100 text-purple-700 border-purple-300';
+    return isDark ? 'bg-white/10 text-gray-300 border-white/20' : 'bg-gray-100 text-gray-700 border-gray-300';
+  };
+
+  const getRowStatusClass = (status: string) => {
+    const tone = getStatusMeta(status).tone;
+    if (tone === 'green') return isDark ? 'border-l-2 border-l-green-500/40' : 'border-l-2 border-l-green-400';
+    if (tone === 'red') return isDark ? 'border-l-2 border-l-red-500/50' : 'border-l-2 border-l-red-400';
+    if (tone === 'orange') return isDark ? 'border-l-2 border-l-orange-500/50' : 'border-l-2 border-l-orange-400';
+    if (tone === 'blue') return isDark ? 'border-l-2 border-l-blue-500/50' : 'border-l-2 border-l-blue-400';
+    if (tone === 'purple') return isDark ? 'border-l-2 border-l-purple-500/50' : 'border-l-2 border-l-purple-400';
+    return '';
+  };
+
+  const getNextStatus = (status: OrderMarkStatus): OrderMarkStatus => {
+    const flow: OrderMarkStatus[] = ['receive', 'sent', 'ready', 'delivered', 'done'];
+    const index = flow.indexOf(status);
+    if (index === -1) return 'receive';
+    if (index === flow.length - 1) return flow[index];
+    return flow[index + 1];
+  };
+
+  const isOrderStatusEnumError = (error: any) => {
+    const text = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+    return text.includes('enum') && text.includes('order_status');
+  };
+
+  const updateOrderStatusWithFallback = async (orderId: string, uiStatus: OrderMarkStatus, extraPayload: Record<string, any> = {}) => {
+    const candidates = DB_STATUS_CANDIDATES[uiStatus] ?? [uiStatus];
+    let lastError: any = null;
+
+    for (let i = 0; i < candidates.length; i += 1) {
+      const dbStatus = candidates[i];
+      const { error } = await supabase
+        .from('orders')
+        .update({ ...extraPayload, status: dbStatus })
+        .eq('id', orderId);
+
+      if (!error) {
+        return { dbStatus, error: null };
+      }
+
+      lastError = error;
+      if (!isOrderStatusEnumError(error)) {
+        break;
+      }
+    }
+
+    return { dbStatus: null, error: lastError };
+  };
+
+  const getPaymentInfo = (order: OrderRow) => {
+    const snapshot = getSnapshot(order);
+    const paymentMethodRaw = String(snapshot?.payment_method ?? '').toLowerCase();
+    const hasPaytrail = Boolean(order.paytrail_transaction_id || order.paytrail_reference || normalizeStatus(order.paytrail_status));
+    let method: PaymentMethod = 'cash';
+    if (paymentMethodRaw.includes('cash')) {
+      method = 'cash';
+    } else if (paymentMethodRaw.includes('paytrail') || hasPaytrail) {
+      method = 'paytrail';
+    } else if (paymentMethodRaw.includes('card')) {
+      method = 'card';
+    }
+
+    const paytrail = normalizeStatus(order.paytrail_status);
+    const snapshotResult = normalizeStatus(snapshot?.payment_status);
+    const result: PaymentResult = (() => {
+      if (snapshotResult === 'purchased' || snapshotResult === 'paid') return 'purchased';
+      if (snapshotResult === 'fail' || snapshotResult === 'failed') return 'fail';
+      if (paytrail === 'paid' || paytrail === 'ok' || paytrail === 'success') return 'purchased';
+      if (paytrail === 'failed' || paytrail === 'cancelled' || paytrail === 'canceled') return 'fail';
+      return method === 'cash' ? 'purchased' : 'fail';
+    })();
+
+    return { method, result };
+  };
+
+  const getScheduledDeletionInfo = (order: OrderRow) => {
+    const snapshot = getSnapshot(order);
+    const rawDeleteAt = snapshot?.cleanup?.delete_at;
+    if (!rawDeleteAt) return null;
+
+    const deleteAt = new Date(rawDeleteAt);
+    if (Number.isNaN(deleteAt.getTime())) return null;
+
+    const now = new Date();
+    const ms = deleteAt.getTime() - now.getTime();
+    const daysLeft = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+
+    return {
+      deleteAt,
+      daysLeft,
+      isExpired: ms <= 0,
+    };
+  };
+
+  const resetCreateForm = () => {
+    setCreateForm({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      itemName: '',
+      itemEan: '',
+      qty: '1',
+      unitPriceEur: '',
+      paymentMethod: 'cash',
+      status: 'receive',
+    });
+    setCreateOrderError(null);
+    setEanLookupMessage(null);
+  };
+
+  const lookupItemByEan = async (eanRaw: string) => {
+    const ean = eanRaw.trim();
+    if (!ean) return;
+    setEanLookupLoading(true);
+    setEanLookupMessage(null);
+
+    try {
+      const searchSelect = 'variant_id, brand, model, size_string, price';
+      const isMissingColumn = (error: any, column: string) => {
+        const text = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+        return text.includes('column') && text.includes(column.toLowerCase());
+      };
+
+      let data: any = null;
+
+      // 1) Direct lookup by `ean` when column exists.
+      {
+        const byEan = await supabase
+          .from('products_search')
+          .select(searchSelect)
+          .eq('ean', ean)
+          .limit(1)
+          .maybeSingle();
+
+        if (!byEan.error) {
+          data = byEan.data;
+        } else if (!isMissingColumn(byEan.error, 'ean')) {
+          throw byEan.error;
+        }
+      }
+
+      // 2) Fallback lookup by `derived_ean` when column exists.
+      if (!data) {
+        const byDerivedEan = await supabase
+          .from('products_search')
+          .select(searchSelect)
+          .eq('derived_ean', ean)
+          .limit(1)
+          .maybeSingle();
+
+        if (!byDerivedEan.error) {
+          data = byDerivedEan.data;
+        } else if (!isMissingColumn(byDerivedEan.error, 'derived_ean')) {
+          throw byDerivedEan.error;
+        }
+      }
+
+      // 3) CMS-style robust fallback: map EAN -> variant_id from catalog tables, then resolve via products_search.
+      if (!data) {
+        const [{ data: tireHits, error: tireError }, { data: rimHits, error: rimError }] = await Promise.all([
+          supabase.from('catalog_tire_variants').select('id').eq('ean', ean).limit(1),
+          supabase.from('catalog_rim_variants').select('id').eq('ean', ean).limit(1),
+        ]);
+
+        if (tireError) {
+          console.warn('EAN lookup tire fallback error:', tireError);
+        }
+        if (rimError) {
+          console.warn('EAN lookup rim fallback error:', rimError);
+        }
+
+        const variantIds = [
+          ...(tireHits ?? []).map((row: any) => row.id),
+          ...(rimHits ?? []).map((row: any) => row.id),
+        ].filter(Boolean);
+
+        if (variantIds.length > 0) {
+          const byVariant = await supabase
+            .from('products_search')
+            .select(searchSelect)
+            .in('variant_id', variantIds)
+            .limit(1)
+            .maybeSingle();
+
+          if (byVariant.error) throw byVariant.error;
+          data = byVariant.data;
+        }
+      }
+
+      if (!data) {
+        setEanLookupMessage(language === 'fi' ? 'EAN ei löytynyt tuotteista.' : 'EAN not found in products.');
+        return;
+      }
+
+      const resolvedTitle = `${data.brand ?? ''} ${data.model ?? ''}`.trim();
+      const titled = data.size_string ? `${resolvedTitle} ${data.size_string}`.trim() : resolvedTitle;
+      const resolvedPrice = data.price ?? null;
+
+      setCreateForm((prev) => ({
+        ...prev,
+        itemName: titled || prev.itemName,
+        unitPriceEur: resolvedPrice !== null && resolvedPrice !== undefined ? String(Number(resolvedPrice).toFixed(2)) : prev.unitPriceEur,
+      }));
+
+      setEanLookupMessage(language === 'fi' ? 'Tuote löytyi ja hinta täytettiin.' : 'Item found and price auto-filled.');
+    } catch (err: any) {
+      console.error('EAN lookup error:', err);
+      setEanLookupMessage(err.message ?? 'EAN lookup failed');
+    } finally {
+      setEanLookupLoading(false);
+    }
+  };
+
+  const handleCreateOrder = async () => {
+    setCreateOrderError(null);
+
+    const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
+    const unitPriceValue = Number.parseFloat(createForm.unitPriceEur);
+    if (!Number.isFinite(unitPriceValue) || unitPriceValue <= 0) {
+      setCreateOrderError(language === 'fi' ? 'Anna kelvollinen yksikköhinta.' : 'Provide a valid unit price.');
+      return;
+    }
+
+    setCreatingOrder(true);
+    try {
+      const unitCents = Math.round(unitPriceValue * 100);
+      const totalCents = unitCents * qty;
+      const nowIso = new Date().toISOString();
+      const rowId = crypto.randomUUID();
+
+      const paytrailStatus = null;
+      const snapshot = {
+        created_by: 'cms',
+        created_at: nowIso,
+        subtotal_cents: totalCents,
+        vat_cents: 0,
+        shipping_cents: 0,
+        total_cents: totalCents,
+        customer: {
+          firstName: createForm.firstName || null,
+          lastName: createForm.lastName || null,
+          email: createForm.email || null,
+          phone: createForm.phone || null,
+        },
+        payment_method: createForm.paymentMethod,
+        payment_status: 'purchased',
+        items: [
+          {
+            name: createForm.itemName || 'Manual order',
+            qty,
+            ean: createForm.itemEan || null,
+            client_unit_price_cents: unitCents,
+          },
+        ],
+      };
+
+      const payloadFullBase: Record<string, any> = {
+        id: rowId,
+        paytrail_status: paytrailStatus,
+        subtotal_cents: totalCents,
+        grand_total_cents: totalCents,
+        customer_first_name: createForm.firstName || null,
+        customer_last_name: createForm.lastName || null,
+        customer_email: createForm.email || null,
+        customer_phone: createForm.phone || null,
+        cart_snapshot: snapshot,
+      };
+
+      const payloadFallbackBase: Record<string, any> = {
+        id: rowId,
+        paytrail_status: paytrailStatus,
+        subtotal_cents: totalCents,
+        grand_total_cents: totalCents,
+        cart_snapshot: snapshot,
+      };
+
+      const fullInsert = await supabase.from('orders').insert(payloadFullBase);
+      if (fullInsert.error) {
+        const message = `${fullInsert.error.message ?? ''} ${fullInsert.error.details ?? ''}`.toLowerCase();
+        const schemaMismatch = message.includes('column') && (
+          message.includes('customer_') || message.includes('paytrail_')
+        );
+
+        if (!schemaMismatch) throw fullInsert.error;
+
+        const fallbackInsert = await supabase.from('orders').insert(payloadFallbackBase);
+        if (fallbackInsert.error) throw fallbackInsert.error;
+      }
+
+      // Apply chosen workflow status after create; leave DB default when "receive".
+      if (createForm.status !== 'receive') {
+        const { error: statusError } = await updateOrderStatusWithFallback(rowId, createForm.status);
+        if (statusError) throw statusError;
+      }
+
+      setCreateOrderOpen(false);
+      resetCreateForm();
+      setCurrentPage(1);
+      fetchOrders();
+    } catch (err: any) {
+      console.error('Create order error:', err);
+      const errorText = `${err?.message ?? ''} ${err?.details ?? ''}`.toLowerCase();
+      if (errorText.includes('row-level security') || String(err?.code ?? '') === '42501') {
+        setCreateOrderError(
+          language === 'fi'
+            ? 'Ei oikeutta kirjoittaa orders-tauluun (RLS). Aja ORDERS_CMS_SAFE_READ_POLICY.sql.'
+            : 'No write permission for orders table (RLS). Run ORDERS_CMS_SAFE_READ_POLICY.sql.'
+        );
+      } else {
+        setCreateOrderError(err.message ?? 'Failed to create order');
+      }
+    } finally {
+      setCreatingOrder(false);
+    }
+  };
+
+  const markOrderStatus = async (orderId: string, nextStatus: OrderMarkStatus) => {
+    setUpdatingStatusId(orderId);
+    setError(null);
+
+    try {
+      const targetOrder = orders.find((o) => o.id === orderId) ?? (selectedOrder?.id === orderId ? selectedOrder : null);
+      const payment = targetOrder ? getPaymentInfo(targetOrder) : null;
+      const shouldScheduleDeletion = Boolean(targetOrder) && payment?.result === 'fail' && nextStatus === 'done';
+
+      const updatePayload: Record<string, any> = {};
+      if (shouldScheduleDeletion && targetOrder) {
+        const snapshot = getSnapshot(targetOrder);
+        updatePayload.cart_snapshot = {
+          ...snapshot,
+          cleanup: {
+            ...(snapshot?.cleanup ?? {}),
+            scheduled: true,
+            delete_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            reason: 'Failed payment marked done by admin',
+          },
+        };
+      }
+
+      const { error: updateError } = await updateOrderStatusWithFallback(orderId, nextStatus, updatePayload);
+      if (updateError) throw updateError;
+
+      setOrders((prev) => prev.map((row) => (
+        row.id === orderId
+          ? {
+              ...row,
+              status: nextStatus,
+              ...(updatePayload.cart_snapshot ? { cart_snapshot: updatePayload.cart_snapshot } : {}),
+            }
+          : row
+      )));
+      setSelectedOrder((prev) => (
+        prev && prev.id === orderId
+          ? {
+              ...prev,
+              status: nextStatus,
+              ...(updatePayload.cart_snapshot ? { cart_snapshot: updatePayload.cart_snapshot } : {}),
+            }
+          : prev
+      ));
+    } catch (err: any) {
+      console.error('Error updating order status:', err);
+      setError(err.message ?? 'Failed to update order status');
+    } finally {
+      setUpdatingStatusId(null);
+    }
   };
 
   const getCustomerFromSnapshot = (order: OrderRow) => {
@@ -150,16 +621,7 @@ export function OrdersCMSPage() {
       const rangeStart = (currentPage - 1) * PAGE_SIZE;
       const rangeEnd = rangeStart + PAGE_SIZE - 1;
 
-      const applyCommonFilters = (query: any) => {
-        if (statusFilter === 'paid') {
-          query = query.or('status.eq.paid,status.eq.completed,status.eq.delivered,paytrail_status.eq.paid');
-        } else if (statusFilter === 'pending') {
-          query = query.or('status.eq.pending,paytrail_status.eq.pending');
-        } else if (statusFilter === 'cancelled') {
-          query = query.or('status.eq.cancelled,status.eq.canceled,paytrail_status.eq.cancelled,paytrail_status.eq.canceled');
-        }
-        return query;
-      };
+      const applyCommonFilters = (query: any) => query;
 
       const fullSelect =
         'id, created_at, status, paytrail_status, paytrail_transaction_id, paytrail_reference, customer_email, customer_phone, customer_first_name, customer_last_name, grand_total_cents, cart_snapshot';
@@ -245,7 +707,11 @@ export function OrdersCMSPage() {
         });
       }
 
-      const filteredRows = purchasedOnly ? rows.filter(isPurchased) : rows;
+      const workflowFilteredRows = statusFilter === 'all'
+        ? rows
+        : rows.filter((row) => getDisplayStatus(row) === statusFilter);
+
+      const filteredRows = purchasedOnly ? workflowFilteredRows.filter(isPurchased) : workflowFilteredRows;
 
       setOrders(filteredRows);
       setTotalCount(count ?? 0);
@@ -266,6 +732,28 @@ export function OrdersCMSPage() {
   const selectedItems = useMemo(() => (
     selectedOrder ? extractOrderItems(selectedOrder) : []
   ), [selectedOrder]);
+
+  const orderSummary = useMemo(() => {
+    const summary = {
+      total: orders.length,
+      done: 0,
+      transit: 0,
+      alert: 0,
+    };
+
+    for (const order of orders) {
+      const status = getDisplayStatus(order);
+      if (status === 'delivered' || status === 'done') {
+        summary.done += 1;
+      } else if (status === 'sent' || status === 'ready' || status === 'receive') {
+        summary.transit += 1;
+      } else if (status === 'cancelled' || status === 'returned') {
+        summary.alert += 1;
+      }
+    }
+
+    return summary;
+  }, [orders]);
 
   const formatCustomerName = (order: OrderRow) => {
     const customer = getCustomerFromSnapshot(order);
@@ -300,6 +788,27 @@ export function OrdersCMSPage() {
     if (items.length === 0) return 0;
     return items.reduce((total: number, item: any) => total + Number(item?.qty ?? item?.quantity ?? 1), 0);
   };
+
+  const getItemTitle = (item: any) =>
+    item?.name ||
+    item?.title ||
+    item?.product_name ||
+    `${item?.brand || ''} ${item?.model || ''}`.trim() ||
+    '-';
+
+  const getItemEan = (item: any) =>
+    item?.ean ??
+    item?.barcode ??
+    item?.product_ean ??
+    item?.product?.ean ??
+    null;
+
+  const getItemSku = (item: any) =>
+    item?.sku ??
+    item?.product_sku ??
+    item?.id ??
+    item?.product_id ??
+    null;
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
@@ -342,9 +851,13 @@ export function OrdersCMSPage() {
               }`}
             >
               <option value="all">{language === 'fi' ? 'Kaikki tilat' : 'All statuses'}</option>
-              <option value="paid">{language === 'fi' ? 'Maksettu' : 'Paid'}</option>
-              <option value="pending">{language === 'fi' ? 'Odottaa' : 'Pending'}</option>
+              <option value="receive">{language === 'fi' ? 'Vastaanotettu' : 'Receive'}</option>
+              <option value="sent">{language === 'fi' ? 'Lähetetty' : 'Sent'}</option>
+              <option value="ready">{language === 'fi' ? 'Valmis noudettavaksi' : 'Ready'}</option>
+              <option value="delivered">{language === 'fi' ? 'Toimitettu' : 'Delivered'}</option>
               <option value="cancelled">{language === 'fi' ? 'Peruttu' : 'Cancelled'}</option>
+              <option value="returned">{language === 'fi' ? 'Palautettu' : 'Returned'}</option>
+              <option value="done">{language === 'fi' ? 'Valmis' : 'Done'}</option>
             </select>
 
             <label className="flex items-center gap-2 cursor-pointer">
@@ -368,11 +881,42 @@ export function OrdersCMSPage() {
               <RefreshCcw className="w-4 h-4" />
               {language === 'fi' ? 'Päivitä' : 'Refresh'}
             </button>
+            <button
+              onClick={() => {
+                resetCreateForm();
+                setCreateOrderOpen(true);
+              }}
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
+                isDark ? 'border-green-500/40 text-green-300 hover:bg-green-500/15' : 'border-green-300 text-green-700 hover:bg-green-50'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              {language === 'fi' ? 'Luo tilaus' : 'Create order'}
+            </button>
           </div>
         </div>
       </div>
 
       <div className="px-8 py-6">
+        <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Näytetyt tilaukset' : 'Visible orders'}</p>
+            <p className={`mt-1 text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>{orderSummary.total}</p>
+          </div>
+          <div className={`rounded-lg border p-4 ${isDark ? 'border-green-500/30 bg-green-500/10' : 'border-green-200 bg-green-50'}`}>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-green-300' : 'text-green-700'}`}>{language === 'fi' ? 'Valmis / Toimitettu' : 'Done / Delivered'}</p>
+            <p className={`mt-1 text-2xl ${isDark ? 'text-green-300' : 'text-green-700'}`}>{orderSummary.done}</p>
+          </div>
+          <div className={`rounded-lg border p-4 ${isDark ? 'border-blue-500/30 bg-blue-500/10' : 'border-blue-200 bg-blue-50'}`}>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{language === 'fi' ? 'Käsittelyssä' : 'In progress'}</p>
+            <p className={`mt-1 text-2xl ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{orderSummary.transit}</p>
+          </div>
+          <div className={`rounded-lg border p-4 ${isDark ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-red-300' : 'text-red-700'}`}>{language === 'fi' ? 'Poikkeus' : 'Exception'}</p>
+            <p className={`mt-1 text-2xl ${isDark ? 'text-red-300' : 'text-red-700'}`}>{orderSummary.alert}</p>
+          </div>
+        </div>
+
         {error && (
           <div className={`mb-4 flex gap-3 p-4 rounded-lg ${isDark ? 'bg-red-900/20 text-red-300' : 'bg-red-50 text-red-700'}`}>
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -412,9 +956,6 @@ export function OrdersCMSPage() {
                       <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                         {language === 'fi' ? 'Yhteensä' : 'Total'}
                       </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Maksu' : 'Payment'}
-                      </th>
                       <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                         {language === 'fi' ? 'Toiminto' : 'Action'}
                       </th>
@@ -422,9 +963,11 @@ export function OrdersCMSPage() {
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {orders.map((order) => {
-                      const purchased = isPurchased(order);
+                      const displayStatus = getDisplayStatus(order);
+                      const statusMeta = getStatusMeta(displayStatus);
+                      const StatusIcon = statusMeta.icon;
                       return (
-                        <tr key={order.id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
+                        <tr key={order.id} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${getRowStatusClass(displayStatus)}`}>
                           <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{formatDate(order.created_at)}</td>
                           <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>{order.id}</td>
                           <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -446,34 +989,66 @@ export function OrdersCMSPage() {
                               {getItemCount(order)}
                             </span>
                           </td>
-                          <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>{formatMoney(order.grand_total_cents)}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col gap-1">
-                              <span className={`inline-flex items-center gap-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                <CreditCard className="w-3 h-3" />
-                                {order.paytrail_status || order.status || '-'}
-                              </span>
-                              <span className={`inline-flex items-center gap-1 text-xs ${
-                                purchased
-                                  ? (isDark ? 'text-green-300' : 'text-green-700')
-                                  : (isDark ? 'text-amber-300' : 'text-amber-700')
-                              }`}>
-                                {purchased ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                                {purchased
-                                  ? (language === 'fi' ? 'Ostettu' : 'Purchased')
-                                  : (language === 'fi' ? 'Ei ostettu' : 'Not purchased')}
-                              </span>
-                            </div>
+                          <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            <p>{formatMoney(order.grand_total_cents)}</p>
+                            {(() => {
+                              const payment = getPaymentInfo(order);
+                              const deletionInfo = getScheduledDeletionInfo(order);
+                              const PaymentIcon = payment.method === 'cash'
+                                ? Banknote
+                                : payment.method === 'paytrail'
+                                  ? Globe
+                                  : CreditCard;
+                              const methodLabel = payment.method === 'paytrail'
+                                ? 'Paytrail'
+                                : (payment.method === 'card' ? 'Card' : 'Cash');
+                              return (
+                                <span className={`mt-1 inline-flex items-center gap-1 text-xs ${
+                                  payment.result === 'purchased'
+                                    ? (isDark ? 'text-green-300' : 'text-green-700')
+                                    : (isDark ? 'text-red-300' : 'text-red-700')
+                                } ${deletionInfo ? 'line-through' : ''}`}>
+                                  <PaymentIcon className="w-3 h-3" />
+                                  {methodLabel} · {payment.result === 'purchased' ? 'Purchased' : 'Fail'}
+                                </span>
+                              );
+                            })()}
+                            {(() => {
+                              const deletionInfo = getScheduledDeletionInfo(order);
+                              if (!deletionInfo) return null;
+                              return (
+                                <p className={`mt-1 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                                  {deletionInfo.isExpired
+                                    ? (language === 'fi' ? 'Poistettavissa nyt' : 'Scheduled for deletion now')
+                                    : (language === 'fi'
+                                        ? `Poistuu ${deletionInfo.daysLeft} päivän kuluttua`
+                                        : `Scheduled deletion in ${deletionInfo.daysLeft} day(s)`)}
+                                </p>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => setSelectedOrder(order)}
-                              className={`px-3 py-1.5 rounded-lg text-sm ${
-                                isDark ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                              }`}
-                            >
-                              {language === 'fi' ? 'Avaa' : 'Open'}
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => markOrderStatus(order.id, getNextStatus(displayStatus))}
+                                disabled={updatingStatusId === order.id}
+                                title={language === 'fi' ? 'Päivitä seuraavaan tilaan' : 'Move to next status'}
+                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${getStatusBadgeClass(displayStatus)} ${
+                                  isDark ? 'hover:bg-white/10' : 'hover:opacity-90'
+                                }`}
+                              >
+                                <StatusIcon className="w-3 h-3" />
+                                {formatStatusLabel(displayStatus)}
+                              </button>
+                              <button
+                                onClick={() => setSelectedOrder(order)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm ${
+                                  isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+                                }`}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -527,65 +1102,273 @@ export function OrdersCMSPage() {
         )}
 
         {selectedOrder && (
-          <div className={`mt-6 rounded-lg border p-5 ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className={`text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Tilauksen tiedot' : 'Order details'}
-              </h2>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className={`px-3 py-1.5 rounded-lg text-sm border ${
-                  isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                {language === 'fi' ? 'Sulje' : 'Close'}
-              </button>
-            </div>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <button
+              aria-label="Close modal overlay"
+              onClick={() => setSelectedOrder(null)}
+              className="absolute inset-0 bg-black/60"
+            />
+            <div className={`relative z-[101] w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border p-5 ${
+              isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
+            }`}>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className={`text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {language === 'fi' ? 'Tilauksen tiedot' : 'Order details'}
+                </h2>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${
+                    isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  {language === 'fi' ? 'Sulje' : 'Close'}
+                </button>
+              </div>
 
-            <div className={`mb-4 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              <p><strong>ID:</strong> {selectedOrder.id}</p>
-              <p><strong>{language === 'fi' ? 'Päivä' : 'Date'}:</strong> {formatDate(selectedOrder.created_at)}</p>
-              <p><strong>{language === 'fi' ? 'Asiakas' : 'Customer'}:</strong> {formatCustomerName(selectedOrder)} ({getCustomerEmail(selectedOrder)})</p>
-              <p><strong>{language === 'fi' ? 'Puhelin' : 'Phone'}:</strong> {getCustomerPhone(selectedOrder)}</p>
-              <p><strong>{language === 'fi' ? 'Maksun tila' : 'Payment status'}:</strong> {selectedOrder.paytrail_status || selectedOrder.status || '-'}</p>
-              <p><strong>{language === 'fi' ? 'Yhteensä' : 'Total'}:</strong> {formatMoney(selectedOrder.grand_total_cents)}</p>
-            </div>
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 mb-5 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                  <p><strong>ID:</strong> {selectedOrder.id}</p>
+                  <p><strong>{language === 'fi' ? 'Päivä' : 'Date'}:</strong> {formatDate(selectedOrder.created_at)}</p>
+                  <p className="mt-1">
+                    <strong>{language === 'fi' ? 'Maksun tila' : 'Payment status'}:</strong>{' '}
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${getStatusBadgeClass(getDisplayStatus(selectedOrder))}`}>
+                      {(() => {
+                        const icon = getStatusMeta(getDisplayStatus(selectedOrder)).icon;
+                        const Icon = icon;
+                        return <Icon className="w-3 h-3" />;
+                      })()}
+                      {formatStatusLabel(getDisplayStatus(selectedOrder))}
+                    </span>
+                  </p>
+                  <p><strong>{language === 'fi' ? 'Yhteensä' : 'Total'}:</strong> {formatMoney(selectedOrder.grand_total_cents)}</p>
+                </div>
+                <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                  <p><strong>{language === 'fi' ? 'Asiakas' : 'Customer'}:</strong> {formatCustomerName(selectedOrder)}</p>
+                  <p><strong>Email:</strong> {getCustomerEmail(selectedOrder)}</p>
+                  <p><strong>{language === 'fi' ? 'Puhelin' : 'Phone'}:</strong> {getCustomerPhone(selectedOrder)}</p>
+                </div>
+              </div>
 
-            <div>
-              <h3 className={`mb-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Tuotteet' : 'Items'}
-              </h3>
-              {selectedItems.length === 0 ? (
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>-</p>
-              ) : (
-                <div className="space-y-2">
-                  {selectedItems.map((item: any, index: number) => {
-                    const qty = Number(item?.qty ?? item?.quantity ?? 1);
-                    const unitCents = Number(item?.client_unit_price_cents ?? Math.round(Number(item?.price ?? 0) * 100));
-                    const lineTotal = (unitCents * qty) / 100;
-                    const sku = item?.sku ?? item?.ean ?? item?.id ?? '-';
-                    const size = item?.size ?? item?.size_string ?? item?.dimension ?? '';
-                    const title = item?.name || `${item?.brand || ''} ${item?.model || ''}`.trim() || '-';
-
+              <div className={`mb-5 rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                <p className={`mb-2 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {language === 'fi' ? 'Päivitä toimituksen tila' : 'Update fulfillment status'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {ORDER_MARK_STATUSES.map((status) => {
+                    const active = getDisplayStatus(selectedOrder) === status;
                     return (
-                      <div
-                        key={`${selectedOrder.id}-item-${index}`}
-                        className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}
+                      <button
+                        key={`modal-${selectedOrder.id}-${status}`}
+                        onClick={() => markOrderStatus(selectedOrder.id, status)}
+                        disabled={updatingStatusId === selectedOrder.id}
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors disabled:opacity-50 ${
+                          active
+                            ? getStatusBadgeClass(status)
+                            : (isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100')
+                        }`}
                       >
-                        <p className={isDark ? 'text-white' : 'text-gray-900'}>
-                          {title}
-                        </p>
-                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          SKU/EAN: {sku}{size ? ` · ${language === 'fi' ? 'Koko' : 'Size'}: ${size}` : ''}
-                        </p>
-                        <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {qty} x EUR {(unitCents / 100).toFixed(2)} = EUR {lineTotal.toFixed(2)}
-                        </p>
-                      </div>
+                        {formatStatusLabel(status)}
+                      </button>
                     );
                   })}
                 </div>
+              </div>
+
+              <div>
+                <h3 className={`mb-3 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {language === 'fi' ? 'Tilatut tuotteet' : 'Ordered items'}
+                </h3>
+                {selectedItems.length === 0 ? (
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>-</p>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {selectedItems.map((item: any, index: number) => {
+                      const qty = Number(item?.qty ?? item?.quantity ?? 1);
+                      const unitCents = Number(item?.client_unit_price_cents ?? Math.round(Number(item?.price ?? 0) * 100));
+                      const lineTotal = (unitCents * qty) / 100;
+                      const ean = getItemEan(item);
+                      const sku = getItemSku(item);
+                      const size = item?.size ?? item?.size_string ?? item?.dimension ?? item?.product?.size_string ?? '';
+                      const title = getItemTitle(item);
+
+                      return (
+                        <div
+                          key={`${selectedOrder.id}-item-${index}`}
+                          className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}
+                        >
+                          <p className={`mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</p>
+                          <div className={`space-y-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <p><strong>EAN:</strong> {ean || '-'}</p>
+                            <p><strong>SKU:</strong> {sku || '-'}</p>
+                            <p><strong>{language === 'fi' ? 'Koko' : 'Size'}:</strong> {size || '-'}</p>
+                            <p><strong>{language === 'fi' ? 'Määrä' : 'Qty'}:</strong> {qty}</p>
+                            <p><strong>{language === 'fi' ? 'Yksikköhinta' : 'Unit price'}:</strong> EUR {(unitCents / 100).toFixed(2)}</p>
+                            <p><strong>{language === 'fi' ? 'Rivin summa' : 'Line total'}:</strong> EUR {lineTotal.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {createOrderOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <button
+              aria-label="Close create order modal"
+              onClick={() => setCreateOrderOpen(false)}
+              className="absolute inset-0 bg-black/60"
+            />
+            <div className={`relative z-[111] w-full max-w-2xl rounded-2xl border p-5 ${
+              isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
+            }`}>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className={`text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {language === 'fi' ? 'Luo tilaus' : 'Create order'}
+                </h2>
+                <button
+                  onClick={() => setCreateOrderOpen(false)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${
+                    isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  {language === 'fi' ? 'Sulje' : 'Close'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder={language === 'fi' ? 'Etunimi' : 'First name'}
+                  value={createForm.firstName}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <input
+                  type="text"
+                  placeholder={language === 'fi' ? 'Sukunimi' : 'Last name'}
+                  value={createForm.lastName}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <input
+                  type="text"
+                  placeholder={language === 'fi' ? 'Puhelin' : 'Phone'}
+                  value={createForm.phone}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <input
+                  type="text"
+                  placeholder={language === 'fi' ? 'Tuotteen nimi' : 'Item name'}
+                  value={createForm.itemName}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, itemName: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <input
+                  type="text"
+                  placeholder="EAN"
+                  value={createForm.itemEan}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCreateForm((prev) => ({ ...prev, itemEan: value }));
+                    if (eanLookupMessage) setEanLookupMessage(null);
+                  }}
+                  onBlur={() => lookupItemByEan(createForm.itemEan)}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <input
+                  type="number"
+                  min={1}
+                  placeholder={language === 'fi' ? 'Määrä' : 'Qty'}
+                  value={createForm.qty}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, qty: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder={language === 'fi' ? 'Yksikköhinta EUR' : 'Unit price EUR'}
+                  value={createForm.unitPriceEur}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, unitPriceEur: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
+                <select
+                  value={createForm.paymentMethod}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, paymentMethod: e.target.value as PaymentMethod }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  <option value="cash">{language === 'fi' ? 'Käteinen' : 'Cash'}</option>
+                  <option value="card">{language === 'fi' ? 'Kortti' : 'Card'}</option>
+                </select>
+                <select
+                  value={createForm.status}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, status: e.target.value as OrderMarkStatus }))}
+                  className={`px-3 py-2 rounded-lg border md:col-span-2 ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  {ORDER_MARK_STATUSES.map((status) => (
+                    <option key={`create-${status}`} value={status}>{formatStatusLabel(status)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={`mt-3 rounded-lg border p-3 text-sm ${isDark ? 'border-white/10 bg-white/5 text-gray-200' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
+                <p>
+                  <strong>{language === 'fi' ? 'Kokonaissumma' : 'Total'}:</strong>{' '}
+                  EUR {(() => {
+                    const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
+                    const unit = Number.parseFloat(createForm.unitPriceEur || '0');
+                    const total = Number.isFinite(unit) ? unit * qty : 0;
+                    return total.toFixed(2);
+                  })()}
+                </p>
+                {eanLookupLoading && (
+                  <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {language === 'fi' ? 'Haetaan EAN-tuotetta...' : 'Looking up EAN item...'}
+                  </p>
+                )}
+                {eanLookupMessage && (
+                  <p className={`mt-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{eanLookupMessage}</p>
+                )}
+              </div>
+
+              {createOrderError && (
+                <p className={`mt-3 text-sm ${isDark ? 'text-red-300' : 'text-red-700'}`}>{createOrderError}</p>
               )}
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setCreateOrderOpen(false)}
+                  disabled={creatingOrder}
+                  className={`px-4 py-2 rounded-lg text-sm border ${
+                    isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  {language === 'fi' ? 'Peruuta' : 'Cancel'}
+                </button>
+                <button
+                  onClick={handleCreateOrder}
+                  disabled={creatingOrder}
+                  className={`px-4 py-2 rounded-lg text-sm ${
+                    isDark ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30' : 'bg-green-100 text-green-700 hover:bg-green-200'
+                  }`}
+                >
+                  {creatingOrder
+                    ? (language === 'fi' ? 'Luodaan...' : 'Creating...')
+                    : (language === 'fi' ? 'Luo tilaus' : 'Create order')}
+                </button>
+              </div>
             </div>
           </div>
         )}
