@@ -23,9 +23,10 @@ interface ProductSearchTire {
   final_title: string | null;
   final_price_eur: number | null;
   final_is_hidden: boolean;
+  price?: number | null;
   
   // Conflict detection
-  ean_conflict_open: boolean | null;
+  ean_conflict_open?: boolean | null;
 }
 
 interface ProductCMS {
@@ -103,30 +104,77 @@ export function TiresCMSPageV2() {
     setError(null);
 
     try {
-      // Build query for products_search
-      let query = supabase
-        .from('products_search')
-        .select('*', { count: 'exact' })
-        .eq('product_type', 'tire')
-        .order('brand', { ascending: true })
-        .order('model', { ascending: true });
-
-      // Filter conflicts unless "Show conflicts" is enabled
-      if (!showConflicts) {
-        query = query.or('ean_conflict_open.is.null,ean_conflict_open.eq.false');
-      }
-
       const trimmedSearch = searchTerm.trim();
-      if (trimmedSearch) {
-        query = query.or(
-          `brand.ilike.%${trimmedSearch}%,model.ilike.%${trimmedSearch}%,derived_ean.ilike.%${trimmedSearch}%,size_string.ilike.%${trimmedSearch}%`
-        );
-      }
-
       const rangeStart = (currentPage - 1) * pageSize;
       const rangeEnd = rangeStart + pageSize - 1;
+      const runProductsQuery = async (ignoreConflictColumn: boolean, ignoreDerivedEanColumn: boolean) => {
+        let query = supabase
+          .from('products_search')
+          .select('*', { count: 'exact' })
+          .eq('product_type', 'tire')
+          .order('brand', { ascending: true })
+          .order('model', { ascending: true });
 
-      const { data: products, error: productsError, count } = await query.range(rangeStart, rangeEnd);
+        // Old schemas might not have ean_conflict_open; fallback handled below.
+        if (!showConflicts && !ignoreConflictColumn) {
+          query = query.or('ean_conflict_open.is.null,ean_conflict_open.eq.false');
+        }
+
+        if (trimmedSearch) {
+          const searchFilters = [
+            `brand.ilike.%${trimmedSearch}%`,
+            `model.ilike.%${trimmedSearch}%`,
+            `size_string.ilike.%${trimmedSearch}%`
+          ];
+
+          if (!ignoreDerivedEanColumn) {
+            searchFilters.push(`derived_ean.ilike.%${trimmedSearch}%`);
+          }
+
+          query = query.or(
+            searchFilters.join(',')
+          );
+        }
+
+        return query.range(rangeStart, rangeEnd);
+      };
+
+      let ignoreConflictColumn = false;
+      let ignoreDerivedEanColumn = false;
+      let products: any[] | null = null;
+      let productsError: any = null;
+      let count: number | null = 0;
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const result = await runProductsQuery(ignoreConflictColumn, ignoreDerivedEanColumn);
+        products = result.data;
+        productsError = result.error;
+        count = result.count;
+
+        if (!productsError) break;
+
+        const isMissingColumn = productsError?.code === '42703' && typeof productsError?.message === 'string';
+
+        if (
+          isMissingColumn &&
+          !ignoreConflictColumn &&
+          productsError.message.includes('ean_conflict_open')
+        ) {
+          ignoreConflictColumn = true;
+          continue;
+        }
+
+        if (
+          isMissingColumn &&
+          !ignoreDerivedEanColumn &&
+          productsError.message.includes('derived_ean')
+        ) {
+          ignoreDerivedEanColumn = true;
+          continue;
+        }
+
+        break;
+      }
 
       if (productsError) throw productsError;
 
@@ -146,17 +194,28 @@ export function TiresCMSPageV2() {
 
       // Fetch CMS data for these variants
       const variantIds = products.map((p: any) => p.variant_id);
-      const { data: cmsData, error: cmsError } = await supabase
-        .from('product_cms')
-        .select('*')
-        .in('variant_id', variantIds);
+      const [{ data: cmsData, error: cmsError }, { data: eanRows, error: eanError }] = await Promise.all([
+        supabase
+          .from('product_cms')
+          .select('*')
+          .in('variant_id', variantIds),
+        supabase
+          .from('catalog_tire_variants')
+          .select('id, ean')
+          .in('id', variantIds)
+      ]);
 
       if (cmsError) throw cmsError;
+      if (eanError) throw eanError;
 
       // Merge data
       const cmsMap = new Map(cmsData?.map((c: any) => [c.variant_id, c]) || []);
+      const eanMap = new Map(eanRows?.map((row: any) => [row.id, row.ean]) || []);
       const merged = products.map((p: any) => ({
         ...p,
+        derived_ean: p.derived_ean ?? eanMap.get(p.variant_id) ?? null,
+        final_price_eur: p.final_price_eur ?? p.price ?? null,
+        ean_conflict_open: p.ean_conflict_open ?? null,
         cms_data: cmsMap.get(p.variant_id) || null
       }));
 

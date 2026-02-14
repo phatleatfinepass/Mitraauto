@@ -148,10 +148,10 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
                 {/* Size */}
                 <div className="content-stretch flex font-normal items-center leading-[20px] not-italic relative rounded-[16px] shrink-0 text-[14px] text-nowrap tracking-[-0.1504px] whitespace-pre">
                   {sizeparts.map((part, idx) => (
-                    <React.Fragment key={idx}>
+                    <span key={idx} className="contents">
                       {idx === 1 && <p className={`relative shrink-0 mx-[8px] ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>/</p>}
                       <p className={`relative shrink-0 ${idx === sizeparts.length - 1 ? 'ml-[12px]' : idx > 0 && idx < sizeparts.length - 1 ? 'ml-[8px]' : ''} ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>{part}</p>
-                    </React.Fragment>
+                    </span>
                   ))}
                 </div>
 

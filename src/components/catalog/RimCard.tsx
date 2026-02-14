@@ -112,14 +112,14 @@ export function RimCard({ product, index = 0, onClick, onAddToCart }: RimCardPro
                 {/* Size */}
                 <div className="content-stretch flex font-normal items-center leading-[20px] not-italic relative rounded-[16px] shrink-0 text-[14px] text-nowrap tracking-[-0.1504px] whitespace-pre">
                   {sizeParts.map((part, idx) => (
-                    <React.Fragment key={idx}>
+                    <span key={idx} className="contents">
                       {idx > 0 && idx < sizeParts.length && (
                         <p className={`relative shrink-0 mx-[4px] ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>
                           {idx === 1 ? '×' : ' '}
                         </p>
                       )}
                       <p className={`relative shrink-0 ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>{part}</p>
-                    </React.Fragment>
+                    </span>
                   ))}
                 </div>
 

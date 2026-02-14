@@ -23,6 +23,14 @@ import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
 import { TiresCMSPageV2 as TiresCMSPage } from './components/cms/TiresCMSPageV2';
 import { RimsCMSPageV2 as RimsCMSPage } from './components/cms/RimsCMSPageV2';
 import { CmsGuard } from './components/cms/CmsGuard';
+// NEW PAGES
+import { ContactPage } from './components/ContactPage';
+import { FAQPage } from './components/FAQPage';
+import { HelsinkiPage } from './components/HelsinkiPage';
+import { CarServicePage } from './components/CarServicePage';
+import { TireChangePage } from './components/TireChangePage';
+import { DiagnosticsPage } from './components/DiagnosticsPage';
+import { CarWashPage } from './components/CarWashPage';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
@@ -228,7 +236,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'catalog-detail' | 'privacy' | 'terms'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('schedule');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -285,6 +293,7 @@ function HomePage() {
   
   const updatePageFromPath = useCallback(
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
+      // Legacy routes (keep working)
       if (path === '/services') {
         setCurrentPage('services');
         setSelectedProduct(null);
@@ -294,15 +303,89 @@ function HomePage() {
       } else if (path === '/about') {
         setCurrentPage('about');
         setSelectedProduct(null);
-      } else if (path === '/admin/schedule') {
+      } 
+      
+      // NEW FINNISH CANONICAL ROUTES
+      else if (path === '/yhteystiedot') {
+        setCurrentPage('contact');
+        setSelectedProduct(null);
+      } else if (path === '/ukk') {
+        setCurrentPage('faq');
+        setSelectedProduct(null);
+      } else if (path === '/helsinki') {
+        setCurrentPage('helsinki');
+        setSelectedProduct(null);
+      } else if (path === '/palvelut') {
+        setCurrentPage('services');
+        setSelectedProduct(null);
+      } else if (path === '/palvelut/autohuolto' || path === '/helsinki/autohuolto') {
+        setCurrentPage('car-service');
+        setSelectedProduct(null);
+      } else if (path === '/palvelut/renkaanvaihto' || path === '/helsinki/renkaanvaihto') {
+        setCurrentPage('tire-change');
+        setSelectedProduct(null);
+      } else if (path === '/palvelut/rengashotelli' || path === '/helsinki/rengashotelli') {
+        setCurrentPage('tire-hotel');
+        setSelectedProduct(null);
+      } else if (path === '/palvelut/vikadiagnostiikka') {
+        setCurrentPage('diagnostics');
+        setSelectedProduct(null);
+      } else if (path === '/palvelut/autopesu') {
+        setCurrentPage('car-wash');
+        setSelectedProduct(null);
+      } else if (path === '/meista') {
+        setCurrentPage('about');
+        setSelectedProduct(null);
+      }
+      
+      // NEW ENGLISH MIRROR ROUTES
+      else if (path === '/en' || path === '/en/') {
+        setCurrentPage('home');
+        setSelectedProduct(null);
+      } else if (path === '/en/contact') {
+        setCurrentPage('contact');
+        setSelectedProduct(null);
+      } else if (path === '/en/faq') {
+        setCurrentPage('faq');
+        setSelectedProduct(null);
+      } else if (path === '/en/helsinki') {
+        setCurrentPage('helsinki');
+        setSelectedProduct(null);
+      } else if (path === '/en/services') {
+        setCurrentPage('services');
+        setSelectedProduct(null);
+      } else if (path === '/en/services/car-service' || path === '/en/helsinki/car-service') {
+        setCurrentPage('car-service');
+        setSelectedProduct(null);
+      } else if (path === '/en/services/tire-change' || path === '/en/helsinki/tire-change') {
+        setCurrentPage('tire-change');
+        setSelectedProduct(null);
+      } else if (path === '/en/services/tire-hotel' || path === '/en/helsinki/tire-hotel') {
+        setCurrentPage('tire-hotel');
+        setSelectedProduct(null);
+      } else if (path === '/en/services/diagnostics') {
+        setCurrentPage('diagnostics');
+        setSelectedProduct(null);
+      } else if (path === '/en/services/car-wash') {
+        setCurrentPage('car-wash');
+        setSelectedProduct(null);
+      } else if (path === '/en/about') {
+        setCurrentPage('about');
+        setSelectedProduct(null);
+      }
+      
+      // Admin/CMS/Protected routes
+      else if (path === '/admin/schedule') {
         setCurrentPage('admin-schedule');
         setSelectedProduct(null);
       } else if (path === '/cms') {
-        // Single CMS route with hash-based tabs
         setCurrentPage('cms-beta');
         setSelectedProduct(null);
         setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
-      } else if (path === '/privacy' || path === '/legal/privacy') {
+      } 
+      
+      // Legal routes
+      else if (path === '/privacy' || path === '/legal/privacy') {
         setCurrentPage('privacy');
         setSelectedProduct(null);
       } else if (path === '/terms' || path === '/legal/terms') {
@@ -311,7 +394,10 @@ function HomePage() {
       } else if (path === '/legal') {
         setCurrentPage('legal');
         setSelectedProduct(null);
-      } else if (path === '/catalog' || path === '/shop') {
+      } 
+      
+      // Catalog routes
+      else if (path === '/catalog' || path === '/shop') {
         setCurrentPage('catalog');
         setSelectedProduct(null);
       } else if (path.startsWith('/catalog/')) {
@@ -319,7 +405,10 @@ function HomePage() {
         if (state?.selectedProduct) {
           setSelectedProduct(state.selectedProduct);
         }
-      } else if (path === '/checkout/success') {
+      } 
+      
+      // Checkout routes
+      else if (path === '/checkout/success') {
         setCurrentPage('checkout-success');
         setSelectedProduct(null);
       } else if (path === '/checkout/cancel') {
@@ -328,7 +417,10 @@ function HomePage() {
       } else if (path === '/checkout') {
         setCurrentPage('checkout');
         setSelectedProduct(null);
-      } else {
+      } 
+      
+      // Default: Home
+      else {
         setCurrentPage('home');
         setSelectedProduct(null);
       }
@@ -554,8 +646,6 @@ function HomePage() {
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
-  const isCmsPage = currentPage.startsWith('cms') || currentPage === 'admin-schedule';
-  
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to main content */}
@@ -566,18 +656,15 @@ function HomePage() {
         {t('ui.skipToContent')}
       </a>
 
-      {!isCmsPage && (
-        <Navbar
-          isLoggedIn={isLoggedIn}
-          onLoginClick={handleLogin}
-          onSignupClick={handleSignup}
-          onLogout={handleLogout}
-          cartCount={totalItems}
-          
-          onNavigate={navigate}
-          onCartClick={() => setIsCartOpen(true)}
-        />
-      )}
+      <Navbar
+        isLoggedIn={isLoggedIn}
+        onLoginClick={handleLogin}
+        onSignupClick={handleSignup}
+        onLogout={handleLogout}
+        cartCount={totalItems}
+        onNavigate={navigate}
+        onCartClick={() => setIsCartOpen(true)}
+      />
 
       <CartDrawer onCheckout={() => setCurrentPage('checkout')} />
 
@@ -648,6 +735,36 @@ function HomePage() {
           <AboutPage
             onBookingClick={() => setBookingModalOpen(true)}
             onNavigate={navigate}
+          />
+        ) : currentPage === 'contact' ? (
+          <ContactPage
+            onBookingClick={() => setBookingModalOpen(true)}
+          />
+        ) : currentPage === 'faq' ? (
+          <FAQPage
+            onBookingClick={() => setBookingModalOpen(true)}
+            onNavigate={navigate}
+          />
+        ) : currentPage === 'helsinki' ? (
+          <HelsinkiPage
+            onBookingClick={() => setBookingModalOpen(true)}
+            onNavigate={navigate}
+          />
+        ) : currentPage === 'car-service' ? (
+          <CarServicePage
+            onBookingClick={() => setBookingModalOpen(true)}
+          />
+        ) : currentPage === 'tire-change' ? (
+          <TireChangePage
+            onBookingClick={() => setBookingModalOpen(true)}
+          />
+        ) : currentPage === 'diagnostics' ? (
+          <DiagnosticsPage
+            onBookingClick={() => setBookingModalOpen(true)}
+          />
+        ) : currentPage === 'car-wash' ? (
+          <CarWashPage
+            onBookingClick={() => setBookingModalOpen(true)}
           />
         ) : currentPage === 'catalog' ? (
           <CatalogPage onProductSelect={handleProductSelect} />
