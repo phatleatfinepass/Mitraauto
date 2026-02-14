@@ -29,6 +29,7 @@ interface ProductCMS {
   seo_title: string | null;
   seo_description: string | null;
   is_hidden: boolean;
+  spec_overrides: Record<string, any>;
 }
 
 interface RimRow extends RimVariant {
@@ -113,19 +114,28 @@ export function RimsCMSPageV2() {
         return;
       }
 
-      // Fetch CMS data for these variants
+      // Fetch CMS + EAN data for these variants
       const variantIds = resolvedVariants.map(v => v.id);
-      const { data: cmsData, error: cmsError } = await supabase
-        .from('product_cms')
-        .select('*')
-        .in('variant_id', variantIds);
+      const [{ data: cmsData, error: cmsError }, { data: eanRows, error: eanError }] = await Promise.all([
+        supabase
+          .from('product_cms')
+          .select('*')
+          .in('variant_id', variantIds),
+        supabase
+          .from('catalog_rim_variants')
+          .select('id, ean')
+          .in('id', variantIds),
+      ]);
 
       if (cmsError) throw cmsError;
+      if (eanError) throw eanError;
 
       // Merge data
       const cmsMap = new Map(cmsData?.map(c => [c.variant_id, c]) || []);
+      const eanMap = new Map(eanRows?.map((row: any) => [row.id, row.ean]) || []);
       const merged = resolvedVariants.map(v => ({
         ...v,
+        ean: v.ean ?? eanMap.get(v.id) ?? null,
         cms_data: cmsMap.get(v.id) || null
       }));
 
@@ -155,6 +165,7 @@ export function RimsCMSPageV2() {
       seo_title: cms?.seo_title ?? '',
       seo_description: cms?.seo_description ?? '',
       is_hidden: cms?.is_hidden ?? false,
+      spec_overrides: cms?.spec_overrides ?? {},
     });
     
     setDrawerOpen(true);
@@ -186,6 +197,7 @@ export function RimsCMSPageV2() {
         seo_title: editData.seo_title?.trim() || null,
         seo_description: editData.seo_description?.trim() || null,
         is_hidden: editData.is_hidden ?? false,
+        spec_overrides: editData.spec_overrides ?? selectedRim.cms_data?.spec_overrides ?? {},
       };
 
       // Upsert to product_cms
@@ -215,6 +227,7 @@ export function RimsCMSPageV2() {
         .upsert({
           variant_id: rim.id,
           is_hidden: newHiddenState,
+          spec_overrides: rim.cms_data?.spec_overrides ?? {},
         }, { onConflict: 'variant_id' });
 
       if (error) throw error;

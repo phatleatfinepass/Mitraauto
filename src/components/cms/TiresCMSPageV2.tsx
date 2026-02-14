@@ -107,7 +107,11 @@ export function TiresCMSPageV2() {
       const trimmedSearch = searchTerm.trim();
       const rangeStart = (currentPage - 1) * pageSize;
       const rangeEnd = rangeStart + pageSize - 1;
-      const runProductsQuery = async (ignoreConflictColumn: boolean, ignoreDerivedEanColumn: boolean) => {
+      const runProductsQuery = async (
+        ignoreConflictColumn: boolean,
+        ignoreDerivedEanColumn: boolean,
+        useFullRange: boolean = false
+      ) => {
         let query = supabase
           .from('products_search')
           .select('*', { count: 'exact' })
@@ -134,6 +138,10 @@ export function TiresCMSPageV2() {
           query = query.or(
             searchFilters.join(',')
           );
+        }
+
+        if (useFullRange) {
+          return query.range(0, 4999);
         }
 
         return query.range(rangeStart, rangeEnd);
@@ -178,15 +186,15 @@ export function TiresCMSPageV2() {
 
       if (productsError) throw productsError;
 
-      const nextTotal = count ?? 0;
-      setTotalCount(nextTotal);
-      const totalPages = Math.max(1, Math.ceil(nextTotal / pageSize));
-      if (currentPage > totalPages) {
-        setCurrentPage(totalPages);
-        return;
+      if (ignoreConflictColumn) {
+        const fullResult = await runProductsQuery(true, ignoreDerivedEanColumn, true);
+        if (fullResult.error) throw fullResult.error;
+        products = fullResult.data;
+        count = fullResult.count;
       }
 
       if (!products || products.length === 0) {
+        setTotalCount(0);
         setTires([]);
         setLoading(false);
         return;
@@ -211,13 +219,52 @@ export function TiresCMSPageV2() {
       // Merge data
       const cmsMap = new Map(cmsData?.map((c: any) => [c.variant_id, c]) || []);
       const eanMap = new Map(eanRows?.map((row: any) => [row.id, row.ean]) || []);
+      const normalizedEanCounts = new Map<string, number>();
+
+      for (const product of products) {
+        const ean = (product.derived_ean ?? eanMap.get(product.variant_id) ?? '').trim();
+        if (!ean) continue;
+        normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
+      }
+
       const merged = products.map((p: any) => ({
         ...p,
         derived_ean: p.derived_ean ?? eanMap.get(p.variant_id) ?? null,
         final_price_eur: p.final_price_eur ?? p.price ?? null,
-        ean_conflict_open: p.ean_conflict_open ?? null,
+        ean_conflict_open:
+          p.ean_conflict_open ??
+          (() => {
+            const ean = (p.derived_ean ?? eanMap.get(p.variant_id) ?? '').trim();
+            return ean ? (normalizedEanCounts.get(ean) ?? 0) > 1 : false;
+          })(),
         cms_data: cmsMap.get(p.variant_id) || null
       }));
+
+      if (ignoreConflictColumn) {
+        const visibleRows = showConflicts
+          ? merged
+          : merged.filter((row: any) => !row.ean_conflict_open);
+
+        const fallbackTotal = visibleRows.length;
+        setTotalCount(fallbackTotal);
+        const fallbackTotalPages = Math.max(1, Math.ceil(fallbackTotal / pageSize));
+        if (currentPage > fallbackTotalPages) {
+          setCurrentPage(fallbackTotalPages);
+          return;
+        }
+
+        const pagedRows = visibleRows.slice(rangeStart, rangeEnd + 1);
+        setTires(pagedRows as TireRow[]);
+        return;
+      }
+
+      const nextTotal = count ?? 0;
+      setTotalCount(nextTotal);
+      const totalPages = Math.max(1, Math.ceil(nextTotal / pageSize));
+      if (currentPage > totalPages) {
+        setCurrentPage(totalPages);
+        return;
+      }
 
       setTires(merged as TireRow[]);
     } catch (err: any) {
@@ -268,7 +315,7 @@ export function TiresCMSPageV2() {
       seo_title: cms?.seo_title ?? '',
       seo_description: cms?.seo_description ?? '',
       is_hidden: cms?.is_hidden ?? false,
-      spec_overrides: cms?.spec_overrides ?? null,
+      spec_overrides: cms?.spec_overrides ?? {},
       price_override_eur: cms?.price_override_eur ?? null,
       promo_enabled: cms?.promo_enabled ?? false,
       promo_price_eur: cms?.promo_price_eur ?? null,
@@ -313,7 +360,7 @@ export function TiresCMSPageV2() {
         seo_title: editData.seo_title?.trim() || null,
         seo_description: editData.seo_description?.trim() || null,
         is_hidden: editData.is_hidden ?? false,
-        spec_overrides: editData.spec_overrides || null,
+        spec_overrides: editData.spec_overrides ?? {},
         price_override_eur: editData.price_override_eur ?? null,
         promo_enabled: editData.promo_enabled ?? false,
         promo_price_eur: editData.promo_price_eur ?? null,
@@ -350,6 +397,7 @@ export function TiresCMSPageV2() {
         .upsert({
           variant_id: tire.variant_id,
           is_hidden: newHiddenState,
+          spec_overrides: tire.cms_data?.spec_overrides ?? {},
         }, { onConflict: 'variant_id' });
 
       if (error) throw error;
