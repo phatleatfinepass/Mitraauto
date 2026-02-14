@@ -555,7 +555,7 @@ function HomePage() {
   ];
 
   const isCmsPage = currentPage.startsWith('cms') || currentPage === 'admin-schedule';
-
+  
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to main content */}
@@ -573,6 +573,7 @@ function HomePage() {
           onSignupClick={handleSignup}
           onLogout={handleLogout}
           cartCount={totalItems}
+          
           onNavigate={navigate}
           onCartClick={() => setIsCartOpen(true)}
         />
