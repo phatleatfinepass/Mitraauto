@@ -732,7 +732,9 @@ export function TiresCMSPageV2() {
                           {tire.derived_ean || '—'}
                         </td>
                         <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {tire.final_price_eur ? `€${tire.final_price_eur.toFixed(2)}` : '—'}
+                          {tire.final_price_eur !== null && tire.final_price_eur !== undefined
+                            ? `€${tire.final_price_eur.toFixed(2)}`
+                            : '—'}
                         </td>
                         <td className="px-4 py-3">
                           <button
