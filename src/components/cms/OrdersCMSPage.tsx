@@ -36,9 +36,9 @@ type PaymentMethod = 'card' | 'cash' | 'paytrail';
 type PaymentResult = 'purchased' | 'fail';
 
 const DB_STATUS_CANDIDATES: Record<OrderMarkStatus, string[]> = {
-  receive: ['pending', 'receive'],
-  sent: ['sent'],
-  ready: ['ready_for_pickup', 'arrived', 'ready'],
+  receive: ['pending', 'received'],
+  sent: ['shipped', 'in_transit', 'processing'],
+  ready: ['ready_for_pickup', 'arrived', 'processing'],
   delivered: ['delivered'],
   cancelled: ['cancelled', 'canceled'],
   returned: ['returned'],
@@ -74,6 +74,7 @@ export function OrdersCMSPage() {
     itemEan: '',
     qty: '1',
     unitPriceEur: '',
+    vatPercent: '25.5',
     paymentMethod: 'cash' as PaymentMethod,
     status: 'receive' as OrderMarkStatus,
   });
@@ -99,6 +100,7 @@ export function OrdersCMSPage() {
 
     if (normalized === 'ready_for_pickup' || normalized === 'arrived') return 'ready';
     if (normalized === 'pending' || normalized === 'received') return 'receive';
+    if (normalized === 'processing' || normalized === 'in_transit' || normalized === 'shipped') return 'sent';
     if (normalized === 'completed') return 'done';
     if (normalized === 'canceled') return 'cancelled';
 
@@ -120,6 +122,10 @@ export function OrdersCMSPage() {
   };
 
   const getDisplayStatus = (order: OrderRow): OrderMarkStatus => (
+    canonicalStatus(getSnapshot(order)?.fulfillment_status) ??
+    canonicalStatus(getSnapshot(order)?.fulfilment_status) ??
+    canonicalStatus(getSnapshot(order)?.workflow?.status) ??
+    canonicalStatus(getSnapshot(order)?.admin_status) ??
     canonicalStatus(order.status) ??
     'receive'
   );
@@ -179,7 +185,17 @@ export function OrdersCMSPage() {
     return text.includes('enum') && text.includes('order_status');
   };
 
-  const updateOrderStatusWithFallback = async (orderId: string, uiStatus: OrderMarkStatus, extraPayload: Record<string, any> = {}) => {
+  const isMissingColumnError = (error: any, column: string) => {
+    const text = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+    return text.includes('column') && text.includes(column.toLowerCase());
+  };
+
+  const updateOrderStatusWithFallback = async (
+    orderId: string,
+    uiStatus: OrderMarkStatus,
+    extraPayload: Record<string, any> = {},
+    knownSnapshot?: any,
+  ) => {
     const candidates = DB_STATUS_CANDIDATES[uiStatus] ?? [uiStatus];
     let lastError: any = null;
 
@@ -200,7 +216,65 @@ export function OrdersCMSPage() {
       }
     }
 
-    return { dbStatus: null, error: lastError };
+    // Fallback for strict enums: persist fulfillment status in cart_snapshot without touching orders.status.
+    if (isOrderStatusEnumError(lastError)) {
+      let baseSnapshot: any = knownSnapshot ?? null;
+      if (!baseSnapshot) {
+        const { data: snapshotRow } = await supabase
+          .from('orders')
+          .select('cart_snapshot')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (snapshotRow?.cart_snapshot) {
+          baseSnapshot = typeof snapshotRow.cart_snapshot === 'string'
+            ? (() => {
+                try {
+                  return JSON.parse(snapshotRow.cart_snapshot);
+                } catch {
+                  return {};
+                }
+              })()
+            : snapshotRow.cart_snapshot;
+        }
+      }
+
+      const snapshotFromPayload = extraPayload.cart_snapshot
+        ? (typeof extraPayload.cart_snapshot === 'string'
+          ? (() => {
+              try {
+                return JSON.parse(extraPayload.cart_snapshot);
+              } catch {
+                return {};
+              }
+            })()
+          : extraPayload.cart_snapshot)
+        : null;
+
+      const mergedSnapshot = {
+        ...(baseSnapshot ?? {}),
+        ...(snapshotFromPayload ?? {}),
+        fulfillment_status: uiStatus,
+        fulfillment_status_updated_at: new Date().toISOString(),
+      };
+
+      const safePayload = {
+        ...extraPayload,
+        cart_snapshot: mergedSnapshot,
+      };
+
+      const { error: fallbackError } = await supabase
+        .from('orders')
+        .update(safePayload)
+        .eq('id', orderId);
+
+      if (!fallbackError) {
+        return { dbStatus: null, error: null, usedSnapshotFallback: true, snapshot: mergedSnapshot };
+      }
+
+      lastError = fallbackError;
+    }
+
+    return { dbStatus: null, error: lastError, usedSnapshotFallback: false, snapshot: null };
   };
 
   const getPaymentInfo = (order: OrderRow) => {
@@ -258,6 +332,7 @@ export function OrdersCMSPage() {
       itemEan: '',
       qty: '1',
       unitPriceEur: '',
+      vatPercent: '25.5',
       paymentMethod: 'cash',
       status: 'receive',
     });
@@ -373,15 +448,22 @@ export function OrdersCMSPage() {
 
     const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
     const unitPriceValue = Number.parseFloat(createForm.unitPriceEur);
+    const vatPercentValue = Number.parseFloat(createForm.vatPercent);
     if (!Number.isFinite(unitPriceValue) || unitPriceValue <= 0) {
       setCreateOrderError(language === 'fi' ? 'Anna kelvollinen yksikköhinta.' : 'Provide a valid unit price.');
+      return;
+    }
+    if (!Number.isFinite(vatPercentValue) || vatPercentValue < 0 || vatPercentValue > 100) {
+      setCreateOrderError(language === 'fi' ? 'Anna kelvollinen ALV-prosentti (0-100).' : 'Provide a valid VAT % (0-100).');
       return;
     }
 
     setCreatingOrder(true);
     try {
       const unitCents = Math.round(unitPriceValue * 100);
-      const totalCents = unitCents * qty;
+      const subtotalCents = unitCents * qty;
+      const vatCents = Math.round(subtotalCents * (vatPercentValue / 100));
+      const totalCents = subtotalCents + vatCents;
       const nowIso = new Date().toISOString();
       const rowId = crypto.randomUUID();
 
@@ -389,10 +471,13 @@ export function OrdersCMSPage() {
       const snapshot = {
         created_by: 'cms',
         created_at: nowIso,
-        subtotal_cents: totalCents,
-        vat_cents: 0,
+        fulfillment_status: createForm.status,
+        fulfillment_status_updated_at: nowIso,
+        subtotal_cents: subtotalCents,
+        vat_cents: vatCents,
         shipping_cents: 0,
         total_cents: totalCents,
+        vat_percent: vatPercentValue,
         customer: {
           firstName: createForm.firstName || null,
           lastName: createForm.lastName || null,
@@ -414,7 +499,9 @@ export function OrdersCMSPage() {
       const payloadFullBase: Record<string, any> = {
         id: rowId,
         paytrail_status: paytrailStatus,
-        subtotal_cents: totalCents,
+        subtotal_cents: subtotalCents,
+        vat_cents: vatCents,
+        total_cents: totalCents,
         grand_total_cents: totalCents,
         customer_first_name: createForm.firstName || null,
         customer_last_name: createForm.lastName || null,
@@ -426,12 +513,19 @@ export function OrdersCMSPage() {
       const payloadFallbackBase: Record<string, any> = {
         id: rowId,
         paytrail_status: paytrailStatus,
-        subtotal_cents: totalCents,
+        subtotal_cents: subtotalCents,
+        vat_cents: vatCents,
+        total_cents: totalCents,
         grand_total_cents: totalCents,
         cart_snapshot: snapshot,
       };
 
-      const fullInsert = await supabase.from('orders').insert(payloadFullBase);
+      let fullInsert = await supabase.from('orders').insert(payloadFullBase);
+      if (fullInsert.error && isMissingColumnError(fullInsert.error, 'vat_cents')) {
+        const { vat_cents, ...withoutVat } = payloadFullBase;
+        fullInsert = await supabase.from('orders').insert(withoutVat);
+      }
+
       if (fullInsert.error) {
         const message = `${fullInsert.error.message ?? ''} ${fullInsert.error.details ?? ''}`.toLowerCase();
         const schemaMismatch = message.includes('column') && (
@@ -440,14 +534,12 @@ export function OrdersCMSPage() {
 
         if (!schemaMismatch) throw fullInsert.error;
 
-        const fallbackInsert = await supabase.from('orders').insert(payloadFallbackBase);
+        let fallbackInsert = await supabase.from('orders').insert(payloadFallbackBase);
+        if (fallbackInsert.error && isMissingColumnError(fallbackInsert.error, 'vat_cents')) {
+          const { vat_cents, ...withoutVat } = payloadFallbackBase;
+          fallbackInsert = await supabase.from('orders').insert(withoutVat);
+        }
         if (fallbackInsert.error) throw fallbackInsert.error;
-      }
-
-      // Apply chosen workflow status after create; leave DB default when "receive".
-      if (createForm.status !== 'receive') {
-        const { error: statusError } = await updateOrderStatusWithFallback(rowId, createForm.status);
-        if (statusError) throw statusError;
       }
 
       setCreateOrderOpen(false);
@@ -494,15 +586,25 @@ export function OrdersCMSPage() {
         };
       }
 
-      const { error: updateError } = await updateOrderStatusWithFallback(orderId, nextStatus, updatePayload);
+      const currentSnapshot = targetOrder ? getSnapshot(targetOrder) : {};
+      const updateResult = await updateOrderStatusWithFallback(orderId, nextStatus, updatePayload, currentSnapshot);
+      const { error: updateError } = updateResult;
       if (updateError) throw updateError;
+
+      const mergedSnapshot = updateResult.snapshot
+        ?? {
+          ...(currentSnapshot ?? {}),
+          ...(updatePayload.cart_snapshot ?? {}),
+          fulfillment_status: nextStatus,
+          fulfillment_status_updated_at: new Date().toISOString(),
+        };
 
       setOrders((prev) => prev.map((row) => (
         row.id === orderId
           ? {
               ...row,
-              status: nextStatus,
-              ...(updatePayload.cart_snapshot ? { cart_snapshot: updatePayload.cart_snapshot } : {}),
+              ...(updateResult.dbStatus ? { status: updateResult.dbStatus } : {}),
+              cart_snapshot: mergedSnapshot,
             }
           : row
       )));
@@ -510,8 +612,8 @@ export function OrdersCMSPage() {
         prev && prev.id === orderId
           ? {
               ...prev,
-              status: nextStatus,
-              ...(updatePayload.cart_snapshot ? { cart_snapshot: updatePayload.cart_snapshot } : {}),
+              ...(updateResult.dbStatus ? { status: updateResult.dbStatus } : {}),
+              cart_snapshot: mergedSnapshot,
             }
           : prev
       ));
@@ -732,6 +834,61 @@ export function OrdersCMSPage() {
   const selectedItems = useMemo(() => (
     selectedOrder ? extractOrderItems(selectedOrder) : []
   ), [selectedOrder]);
+
+  const selectedOrderTotals = useMemo(() => {
+    if (!selectedOrder) return null;
+
+    const snapshot = getSnapshot(selectedOrder);
+    const toNumber = (value: any): number | null => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const subtotalFromItemsCents = selectedItems.reduce((sum: number, item: any) => {
+      const qty = Math.max(1, Number(item?.qty ?? item?.quantity ?? 1) || 1);
+      const unitCents = toNumber(item?.client_unit_price_cents) ?? Math.round((toNumber(item?.price) ?? 0) * 100);
+      return sum + (unitCents * qty);
+    }, 0);
+
+    let subtotalCents =
+      toNumber(snapshot?.subtotal_cents) ??
+      toNumber(snapshot?.subtotalCents);
+
+    let vatCents =
+      toNumber(snapshot?.vat_cents) ??
+      toNumber(snapshot?.vatCents);
+
+    let totalCents =
+      toNumber(snapshot?.total_cents) ??
+      toNumber(snapshot?.totalCents) ??
+      toNumber(snapshot?.grand_total_cents) ??
+      toNumber(snapshot?.grandTotalCents) ??
+      selectedOrder.grand_total_cents;
+
+    let vatPercent =
+      toNumber(snapshot?.vat_percent) ??
+      toNumber(snapshot?.vatPercent);
+
+    if (subtotalCents === null && subtotalFromItemsCents > 0) {
+      subtotalCents = subtotalFromItemsCents;
+    }
+    if (vatCents === null && subtotalCents !== null && totalCents !== null) {
+      vatCents = totalCents - subtotalCents;
+    }
+    if (totalCents === null && subtotalCents !== null && vatCents !== null) {
+      totalCents = subtotalCents + vatCents;
+    }
+    if (vatPercent === null && subtotalCents !== null && subtotalCents > 0 && vatCents !== null) {
+      vatPercent = (vatCents / subtotalCents) * 100;
+    }
+
+    return {
+      subtotalCents,
+      vatCents,
+      totalCents,
+      vatPercent,
+    };
+  }, [selectedOrder, selectedItems]);
 
   const orderSummary = useMemo(() => {
     const summary = {
@@ -1140,7 +1297,12 @@ export function OrdersCMSPage() {
                       {formatStatusLabel(getDisplayStatus(selectedOrder))}
                     </span>
                   </p>
-                  <p><strong>{language === 'fi' ? 'Yhteensä' : 'Total'}:</strong> {formatMoney(selectedOrder.grand_total_cents)}</p>
+                  <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> {formatMoney(selectedOrderTotals?.subtotalCents ?? null)}</p>
+                  <p>
+                    <strong>{language === 'fi' ? 'ALV' : 'VAT'} ({selectedOrderTotals?.vatPercent !== null && selectedOrderTotals?.vatPercent !== undefined ? selectedOrderTotals.vatPercent.toFixed(1) : '-' }%):</strong>{' '}
+                    {formatMoney(selectedOrderTotals?.vatCents ?? null)}
+                  </p>
+                  <p><strong>{language === 'fi' ? 'Yhteensä' : 'Total'}:</strong> {formatMoney(selectedOrderTotals?.totalCents ?? selectedOrder.grand_total_cents)}</p>
                 </div>
                 <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
                   <p><strong>{language === 'fi' ? 'Asiakas' : 'Customer'}:</strong> {formatCustomerName(selectedOrder)}</p>
@@ -1304,6 +1466,16 @@ export function OrdersCMSPage() {
                   onChange={(e) => setCreateForm((prev) => ({ ...prev, unitPriceEur: e.target.value }))}
                   className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.1"
+                  placeholder={language === 'fi' ? 'ALV %' : 'VAT %'}
+                  value={createForm.vatPercent}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, vatPercent: e.target.value }))}
+                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                />
                 <select
                   value={createForm.paymentMethod}
                   onChange={(e) => setCreateForm((prev) => ({ ...prev, paymentMethod: e.target.value as PaymentMethod }))}
@@ -1324,15 +1496,22 @@ export function OrdersCMSPage() {
               </div>
 
               <div className={`mt-3 rounded-lg border p-3 text-sm ${isDark ? 'border-white/10 bg-white/5 text-gray-200' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
-                <p>
-                  <strong>{language === 'fi' ? 'Kokonaissumma' : 'Total'}:</strong>{' '}
-                  EUR {(() => {
-                    const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
-                    const unit = Number.parseFloat(createForm.unitPriceEur || '0');
-                    const total = Number.isFinite(unit) ? unit * qty : 0;
-                    return total.toFixed(2);
-                  })()}
-                </p>
+                {(() => {
+                  const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
+                  const unit = Number.parseFloat(createForm.unitPriceEur || '0');
+                  const vatPercent = Number.parseFloat(createForm.vatPercent || '0');
+                  const subtotal = Number.isFinite(unit) ? unit * qty : 0;
+                  const vat = Number.isFinite(vatPercent) ? subtotal * (vatPercent / 100) : 0;
+                  const total = subtotal + vat;
+
+                  return (
+                    <>
+                      <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> EUR {subtotal.toFixed(2)}</p>
+                      <p><strong>{language === 'fi' ? 'ALV' : 'VAT'} ({Number.isFinite(vatPercent) ? vatPercent.toFixed(1) : '0.0'}%):</strong> EUR {vat.toFixed(2)}</p>
+                      <p><strong>{language === 'fi' ? 'Kokonaissumma' : 'Total'}:</strong> EUR {total.toFixed(2)}</p>
+                    </>
+                  );
+                })()}
                 {eanLookupLoading && (
                   <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                     {language === 'fi' ? 'Haetaan EAN-tuotetta...' : 'Looking up EAN item...'}

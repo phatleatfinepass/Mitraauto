@@ -1004,10 +1004,6 @@
     margin-inline: 4px;
   }
 
-  .mx-\[8px\] {
-    margin-inline: 8px;
-  }
-
   .mx-auto {
     margin-inline: auto;
   }
@@ -1126,14 +1122,6 @@
 
   .ml-7 {
     margin-left: calc(var(--spacing) * 7);
-  }
-
-  .ml-\[8px\] {
-    margin-left: 8px;
-  }
-
-  .ml-\[12px\] {
-    margin-left: 12px;
   }
 
   .ml-auto {
@@ -1955,6 +1943,10 @@
 
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .grid-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .grid-cols-\[0_1fr\] {
@@ -4929,6 +4921,10 @@
   .grayscale {
     --tw-grayscale: grayscale(100%);
     filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+
+  .\!filter {
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, ) !important;
   }
 
   .filter {

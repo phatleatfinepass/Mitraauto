@@ -31,6 +31,12 @@ export interface CatalogProduct {
   runflat?: boolean;
   xl?: boolean;
   studded?: boolean;
+  load_index?: string;
+  speed_rating?: string;
+  ev_ready?: boolean;
+  threepmsf?: boolean;
+  winter_approved?: boolean;
+  ice_approved?: boolean;
   // Rim specific
   rim_width?: number;
   rim_diameter?: number;
@@ -265,6 +271,72 @@ function parseNumber(value: unknown): number | undefined {
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
+function parseTireSizeParts(sizeString: string | null | undefined): {
+  width?: number;
+  aspect?: number;
+  diameter?: number;
+  loadIndex?: string;
+  speedRating?: string;
+} {
+  if (!sizeString) return {};
+  const normalized = sizeString.toUpperCase().replace(/\s+/g, '');
+  const match =
+    normalized.match(/(\d{3})[\/\-]?(\d{2})(?:ZR|R)?(\d{2})/) ??
+    normalized.match(/(\d{3})[\/\-](\d{2}).*?R(\d{2})/);
+  if (!match) return {};
+
+  const tail = String(sizeString).toUpperCase();
+  const liSrMatch = tail.match(/(?:^|\s)(\d{2,3})\s*([A-Z]{1,2})(?:\b|$)/);
+
+  return {
+    width: Number.parseInt(match[1], 10),
+    aspect: Number.parseInt(match[2], 10),
+    diameter: Number.parseInt(match[3], 10),
+    loadIndex: liSrMatch?.[1] || undefined,
+    speedRating: liSrMatch?.[2] || undefined,
+  };
+}
+
+function normalizeSpeedRating(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const normalized = String(value).trim().toUpperCase().replace(/[^A-Z]/g, '');
+  if (!normalized) return undefined;
+  return normalized.slice(0, 2);
+}
+
+function normalizeLoadIndex(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const normalized = String(value).trim().replace(/[^0-9]/g, '');
+  return normalized || undefined;
+}
+
+function formatCanonicalTireSize(
+  sizeString: string | null | undefined,
+  loadIndex?: string,
+  speedRating?: string
+): string | undefined {
+  const parsed = parseTireSizeParts(sizeString);
+  const li = normalizeLoadIndex(loadIndex) || normalizeLoadIndex(parsed.loadIndex);
+  const sr = normalizeSpeedRating(speedRating) || normalizeSpeedRating(parsed.speedRating);
+
+  if (parsed.width === undefined || parsed.aspect === undefined || parsed.diameter === undefined) {
+    if (!sizeString) return undefined;
+    return `${sizeString}${li ? ` ${li}` : ''}${sr ? ` ${sr}` : ''}`.trim();
+  }
+
+  const base = `${parsed.width} / ${String(parsed.aspect).padStart(2, '0')} R${String(parsed.diameter).padStart(2, '0')}`;
+  return `${base}${li ? ` ${li}` : ''}${sr ? ` ${sr}` : ''}`.trim();
+}
+
+function getTagList(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags.map((tag) => String(tag).toLowerCase());
+}
+
+function hasAnyTag(tags: string[], patterns: string[]) {
+  return patterns.some((pattern) => tags.some((tag) => tag.includes(pattern)));
+}
+
 function normalizeEuNoise(value: unknown): number | undefined {
   if (value === null || value === undefined) {
     return undefined;
@@ -453,12 +525,24 @@ function mapRimRow(row: any): CatalogProduct {
 
 function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim'): CatalogProduct {
   const priceEur = row.price !== null && row.price !== undefined ? row.price : undefined;
+  const sizeParts = parseTireSizeParts(row.size_string);
+  const tags = getTagList(row.tags);
+  const loadIndex = normalizeLoadIndex((row as any).load_index) || normalizeLoadIndex(sizeParts.loadIndex);
+  const speedRating = normalizeSpeedRating((row as any).speed_rating ?? (row as any).speed_index) || normalizeSpeedRating(sizeParts.speedRating);
+  const seasonNormalized = String(row.season ?? '').toLowerCase();
+  const evReady = Boolean((row as any).ev_ready) || hasAnyTag(tags, ['ev', 'electric']);
+  const threepmsf = Boolean((row as any).threepmsf) || hasAnyTag(tags, ['3pmsf', 'snowflake', 'alpine']);
+  const winterApproved = Boolean((row as any).winter_approved)
+    || seasonNormalized === 'winter'
+    || seasonNormalized === 'all_season'
+    || hasAnyTag(tags, ['winter']);
+  const iceApproved = Boolean((row as any).ice_approved) || hasAnyTag(tags, ['ice']);
 
   return {
     id: row.variant_id,
     brand: row.brand_display_name || row.brand,
     model: row.model,
-    size_text: row.size_string ?? undefined,
+    size_text: productType === 'tire' ? formatCanonicalTireSize(row.size_string, loadIndex, speedRating) : (row.size_string ?? undefined),
     best_price_eur: priceEur,
     best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
     in_stock: row.in_stock ?? false,
@@ -468,12 +552,21 @@ function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim')
     runflat: productType === 'tire' ? row.runflat ?? undefined : undefined,
     xl: productType === 'tire' ? row.xl_reinforced ?? undefined : undefined,
     studded: productType === 'tire' ? row.studded ?? undefined : undefined,
+    load_index: productType === 'tire' ? loadIndex : undefined,
+    speed_rating: productType === 'tire' ? speedRating : undefined,
+    ev_ready: productType === 'tire' ? evReady : undefined,
+    threepmsf: productType === 'tire' ? threepmsf : undefined,
+    winter_approved: productType === 'tire' ? winterApproved : undefined,
+    ice_approved: productType === 'tire' ? iceApproved : undefined,
     // Rim-specific fields
     rim_width: productType === 'rim' ? row.width_in ?? undefined : undefined,
     rim_diameter: productType === 'rim' ? row.rim_diameter_in ?? undefined : undefined,
     et_offset: productType === 'rim' ? row.et_offset_mm ?? undefined : undefined,
     pcd: productType === 'rim' ? row.bolt_pattern ?? undefined : undefined,
     color: productType === 'rim' ? row.color ?? undefined : undefined,
+    cb: productType === 'rim' ? (row as any).cb_mm ?? (row as any).center_bore_mm ?? undefined : undefined,
+    material: productType === 'rim' ? (row as any).material ?? row.finish ?? undefined : undefined,
+    bolts_included: productType === 'rim' ? (row as any).bolts_included ?? undefined : undefined,
   };
 }
 
@@ -578,7 +671,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const handleSearch = () => {
     setHasSearched(true);
     setCurrentPage(1);
-    fetchProducts();
+    fetchProducts(1, filters, mode);
   };
 
   // Trigger fetch when state is restored
@@ -595,14 +688,19 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
     }
   }, [currentPage, mode, hasSearched, isRestoringState]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (
+    page = currentPage,
+    activeFilters = filters,
+    activeMode = mode
+  ) => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const category: 'tire' | 'rim' = mode === 'tires' ? 'tire' : 'rim';
+      const category: 'tire' | 'rim' = activeMode === 'tires' ? 'tire' : 'rim';
       const { items, total } = await fetchProductsSearch(category, {
         limit: ITEMS_PER_PAGE,
-        offset: (currentPage - 1) * ITEMS_PER_PAGE,
+        offset: (page - 1) * ITEMS_PER_PAGE,
+        filters: activeFilters,
       });
       const mapped = items.map((row) => mapProductSearchRow(row, category));
 

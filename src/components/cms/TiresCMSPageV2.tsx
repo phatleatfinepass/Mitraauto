@@ -12,6 +12,15 @@ interface ProductSearchTire {
   model: string;
   size_string: string | null;
   season: string | null;
+  runflat?: boolean | null;
+  xl_reinforced?: boolean | null;
+  load_index?: string | number | null;
+  speed_rating?: string | null;
+  speed_index?: string | null;
+  ev_ready?: boolean | null;
+  threepmsf?: boolean | null;
+  winter_approved?: boolean | null;
+  ice_approved?: boolean | null;
   
   // Base EU values from supplier
   eu_fuel_class: string | null;
@@ -108,7 +117,7 @@ export function TiresCMSPageV2() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [sizeParts, setSizeParts] = useState({ width: '', aspect: '', rim: '' });
+  const [sizeParts, setSizeParts] = useState({ width: '', aspect: '', rim: '', load_index: '', speed_rating: '' });
 
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
@@ -163,87 +172,51 @@ export function TiresCMSPageV2() {
       const trimmedSearch = searchTerm.trim();
       const rangeStart = (currentPage - 1) * pageSize;
       const rangeEnd = rangeStart + pageSize - 1;
-      const runProductsQuery = async (
-        ignoreConflictColumn: boolean,
-        ignoreDerivedEanColumn: boolean,
-        useFullRange: boolean = false,
-        skipSearchFilters: boolean = false
-      ) => {
-        let query = supabase
+      const productsPageSize = 1000;
+      const firstProductsResult = await supabase
+        .from('products_search')
+        .select('*', { count: 'exact' })
+        .eq('product_type', 'tire')
+        .order('brand', { ascending: true })
+        .order('model', { ascending: true })
+        .order('variant_id', { ascending: true })
+        .range(0, productsPageSize - 1);
+
+      if (firstProductsResult.error) throw firstProductsResult.error;
+
+      const products = [...(firstProductsResult.data ?? [])];
+      const expectedProductCount = firstProductsResult.count ?? null;
+
+      while (true) {
+        if (expectedProductCount !== null && products.length >= expectedProductCount) {
+          break;
+        }
+        if (products.length > 0 && products.length % productsPageSize !== 0) {
+          break;
+        }
+
+        const nextFrom = products.length;
+        const nextProductsResult = await supabase
           .from('products_search')
-          .select('*', { count: 'exact' })
+          .select('*')
           .eq('product_type', 'tire')
           .order('brand', { ascending: true })
-          .order('model', { ascending: true });
+          .order('model', { ascending: true })
+          .order('variant_id', { ascending: true })
+          .range(nextFrom, nextFrom + productsPageSize - 1);
 
-        // Old schemas might not have ean_conflict_open; fallback handled below.
-        if (!showConflicts && !ignoreConflictColumn) {
-          query = query.or('ean_conflict_open.is.null,ean_conflict_open.eq.false');
+        if (nextProductsResult.error) throw nextProductsResult.error;
+
+        const batch = nextProductsResult.data ?? [];
+        if (batch.length === 0) {
+          break;
         }
 
-        if (trimmedSearch && !skipSearchFilters) {
-          const searchFilters = [
-            `brand.ilike.%${trimmedSearch}%`,
-            `model.ilike.%${trimmedSearch}%`,
-            `size_string.ilike.%${trimmedSearch}%`
-          ];
+        products.push(...batch);
 
-          if (!ignoreDerivedEanColumn) {
-            searchFilters.push(`derived_ean.ilike.%${trimmedSearch}%`);
-          }
-
-          query = query.or(
-            searchFilters.join(',')
-          );
+        if (batch.length < productsPageSize) {
+          break;
         }
-
-        if (useFullRange) {
-          return query.range(0, 4999);
-        }
-
-        return query.range(rangeStart, rangeEnd);
-      };
-
-      let ignoreConflictColumn = true;
-      let ignoreDerivedEanColumn = false;
-      let products: any[] | null = null;
-      let productsError: any = null;
-      let count: number | null = 0;
-
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const result = await runProductsQuery(ignoreConflictColumn, ignoreDerivedEanColumn);
-        products = result.data;
-        productsError = result.error;
-        count = result.count;
-
-        if (!productsError) break;
-
-        const errorText = `${productsError?.message ?? ''} ${productsError?.details ?? ''} ${productsError?.hint ?? ''}`.toLowerCase();
-        const mentionsConflictColumn = errorText.includes('ean_conflict_open');
-        const mentionsDerivedEanColumn = errorText.includes('derived_ean');
-
-        if (!ignoreConflictColumn && mentionsConflictColumn) {
-          ignoreConflictColumn = true;
-          continue;
-        }
-
-        if (!ignoreDerivedEanColumn && mentionsDerivedEanColumn) {
-          ignoreDerivedEanColumn = true;
-          continue;
-        }
-
-        break;
-      }
-
-      if (productsError) throw productsError;
-
-      const shouldUseClientConflictFiltering = true;
-
-      if (shouldUseClientConflictFiltering) {
-        const fullResult = await runProductsQuery(true, ignoreDerivedEanColumn, true, true);
-        if (fullResult.error) throw fullResult.error;
-        products = fullResult.data;
-        count = fullResult.count;
       }
 
       if (!products || products.length === 0) {
@@ -335,45 +308,32 @@ export function TiresCMSPageV2() {
         ? vehicleFilteredRows.filter((row: any) => !hasMissingSupplierPrice(row))
         : vehicleFilteredRows;
 
-      if (shouldUseClientConflictFiltering) {
-        const searchFilteredRows = trimmedSearch
-          ? priceFilteredRows.filter((row: any) => {
-              const q = trimmedSearch.toLowerCase();
-              return (
-                (row.brand ?? '').toLowerCase().includes(q) ||
-                (row.model ?? '').toLowerCase().includes(q) ||
-                (row.size_string ?? '').toLowerCase().includes(q) ||
-                (row.derived_ean ?? '').toLowerCase().includes(q)
-              );
-            })
-          : priceFilteredRows;
+      const searchFilteredRows = trimmedSearch
+        ? priceFilteredRows.filter((row: any) => {
+            const q = trimmedSearch.toLowerCase();
+            return (
+              (row.brand ?? '').toLowerCase().includes(q) ||
+              (row.model ?? '').toLowerCase().includes(q) ||
+              (row.size_string ?? '').toLowerCase().includes(q) ||
+              (row.derived_ean ?? '').toLowerCase().includes(q)
+            );
+          })
+        : priceFilteredRows;
 
-        const visibleRows = showConflicts
-          ? searchFilteredRows
-          : searchFilteredRows.filter((row: any) => !row.has_duplicate_ean_conflict);
+      const visibleRows = showConflicts
+        ? searchFilteredRows
+        : searchFilteredRows.filter((row: any) => !row.has_duplicate_ean_conflict);
 
-        const fallbackTotal = visibleRows.length;
-        setTotalCount(fallbackTotal);
-        const fallbackTotalPages = Math.max(1, Math.ceil(fallbackTotal / pageSize));
-        if (currentPage > fallbackTotalPages) {
-          setCurrentPage(fallbackTotalPages);
-          return;
-        }
-
-        const pagedRows = visibleRows.slice(rangeStart, rangeEnd + 1);
-        setTires(pagedRows as TireRow[]);
-        return;
-      }
-
-      const nextTotal = count ?? 0;
-      setTotalCount(nextTotal);
-      const totalPages = Math.max(1, Math.ceil(nextTotal / pageSize));
+      const visibleTotal = visibleRows.length;
+      setTotalCount(visibleTotal);
+      const totalPages = Math.max(1, Math.ceil(visibleTotal / pageSize));
       if (currentPage > totalPages) {
         setCurrentPage(totalPages);
         return;
       }
 
-      setTires(priceFilteredRows as TireRow[]);
+      const pagedRows = visibleRows.slice(rangeStart, rangeEnd + 1);
+      setTires(pagedRows as TireRow[]);
     } catch (err: any) {
       console.error('Fetch tires error:', err);
       setError(err.message);
@@ -384,17 +344,26 @@ export function TiresCMSPageV2() {
 
     const parseTireSize = (size?: string | null) => {
     const cleaned = size?.trim() ?? '';
-    const match = cleaned.match(/(\d{3})\s*\/\s*(\d{2})\s*R?\s*(\d{2})/i);
+    const baseMatch = cleaned.match(/(\d{3})\s*\/\s*(\d{2})\s*R?\s*(\d{2})/i);
 
-    if (!match) {
-      return { width: '', aspect: '', rim: '' };
+    if (!baseMatch) {
+      return { width: '', aspect: '', rim: '', load_index: '', speed_rating: '' };
     }
 
-    return { width: match[1], aspect: match[2], rim: match[3] };
+    const tail = cleaned.slice((baseMatch.index ?? 0) + baseMatch[0].length).trim();
+    const liSrMatch = tail.match(/^(\d{2,3})\s*([A-Z]{1,2})/i);
+
+    return {
+      width: baseMatch[1],
+      aspect: baseMatch[2],
+      rim: baseMatch[3],
+      load_index: liSrMatch?.[1] || '',
+      speed_rating: (liSrMatch?.[2] || '').toUpperCase(),
+    };
   };
 
-  const formatTireSize = (parts: { width: string; aspect: string; rim: string }) => {
-    if (!parts.width && !parts.aspect && !parts.rim) {
+  const formatTireSize = (parts: { width: string; aspect: string; rim: string; load_index?: string; speed_rating?: string }) => {
+    if (!parts.width && !parts.aspect && !parts.rim && !parts.load_index && !parts.speed_rating) {
       return '';
     }
 
@@ -402,7 +371,9 @@ export function TiresCMSPageV2() {
       return '';
     }
 
-    return `${parts.width}/${parts.aspect} R${parts.rim}`;
+    const li = (parts.load_index || '').trim();
+    const sr = (parts.speed_rating || '').trim().toUpperCase();
+    return `${parts.width} / ${parts.aspect} R${parts.rim}${li ? ` ${li}` : ''}${sr ? ` ${sr}` : ''}`.trim();
   };
 
   const hasMissingSupplierPrice = (tire: TireRow | null) =>
@@ -449,7 +420,12 @@ export function TiresCMSPageV2() {
       (cms?.spec_overrides as any)?.identity?.size_string ??
       tire.size_string ??
       '';
-    setSizeParts(parseTireSize(sizeSource));
+    const parsedSize = parseTireSize(sizeSource);
+    setSizeParts({
+      ...parsedSize,
+      load_index: String((cms?.spec_overrides as any)?.identity?.load_index ?? tire.load_index ?? parsedSize.load_index ?? ''),
+      speed_rating: String((cms?.spec_overrides as any)?.identity?.speed_rating ?? tire.speed_rating ?? tire.speed_index ?? parsedSize.speed_rating ?? '').toUpperCase(),
+    });
     
     setDrawerOpen(true);
     setUploadError(null);
@@ -461,7 +437,7 @@ export function TiresCMSPageV2() {
     setEditData({});
     setSaveError(null);
     setUploadError(null);
-    setSizeParts({ width: '', aspect: '', rim: '' });
+    setSizeParts({ width: '', aspect: '', rim: '', load_index: '', speed_rating: '' });
   };
 
   const patchLocalCmsData = (variantId: string, cmsPatch: Record<string, any> | null) => {
@@ -747,7 +723,7 @@ export function TiresCMSPageV2() {
     return editData.spec_overrides?.identity || null;
   };
 
-  const setIdentityField = (field: 'brand' | 'model' | 'size_string' | 'season', value?: string) => {
+  const setIdentityField = (field: 'brand' | 'model' | 'size_string' | 'season' | 'load_index' | 'speed_rating', value?: string) => {
     setEditData(prev => {
       const currentOverrides = prev.spec_overrides || {};
       const currentIdentity = currentOverrides.identity || {};
@@ -785,11 +761,71 @@ export function TiresCMSPageV2() {
     setSizeParts(parseTireSize(selectedTire?.size_string ?? ''));
   };
 
-  const updateSizePart = (field: 'width' | 'aspect' | 'rim', value: string) => {
+  const updateSizePart = (field: 'width' | 'aspect' | 'rim' | 'load_index' | 'speed_rating', value: string) => {
     setSizeParts(prev => {
       const next = { ...prev, [field]: value };
       setIdentityField('size_string', formatTireSize(next));
+      setIdentityField('load_index', next.load_index || undefined);
+      setIdentityField('speed_rating', next.speed_rating?.toUpperCase() || undefined);
       return next;
+    });
+  };
+
+  const getFeatureOverrides = () => editData.spec_overrides?.features || null;
+
+  const getBaseFeatureValue = (field: 'ev_ready' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved') => {
+    if (!selectedTire) return false;
+    switch (field) {
+      case 'ev_ready':
+        return Boolean((selectedTire as any).ev_ready);
+      case 'runflat':
+        return Boolean(selectedTire.runflat);
+      case 'xl':
+        return Boolean(selectedTire.xl_reinforced);
+      case 'studded':
+        return Boolean(selectedTire.studded);
+      case 'threepmsf':
+        return Boolean((selectedTire as any).threepmsf);
+      case 'winter_approved':
+        return Boolean((selectedTire as any).winter_approved) || selectedTire.season === 'winter' || selectedTire.season === 'all_season';
+      case 'ice_approved':
+        return Boolean((selectedTire as any).ice_approved);
+      default:
+        return false;
+    }
+  };
+
+  const getEffectiveFeatureValue = (field: 'ev_ready' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved') => {
+    const overrides = getFeatureOverrides();
+    if (overrides && Object.prototype.hasOwnProperty.call(overrides, field)) {
+      return Boolean(overrides[field]);
+    }
+    return getBaseFeatureValue(field);
+  };
+
+  const setFeatureField = (field: 'ev_ready' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved', value: boolean) => {
+    setEditData((prev) => {
+      const currentOverrides = prev.spec_overrides || {};
+      const currentFeatures = { ...(currentOverrides.features || {}) };
+      currentFeatures[field] = value;
+      return {
+        ...prev,
+        spec_overrides: {
+          ...currentOverrides,
+          features: currentFeatures,
+        },
+      };
+    });
+  };
+
+  const clearFeatureOverrides = () => {
+    setEditData((prev) => {
+      const currentOverrides = prev.spec_overrides || {};
+      const { features, ...rest } = currentOverrides;
+      return {
+        ...prev,
+        spec_overrides: Object.keys(rest).length > 0 ? rest : null,
+      };
     });
   };
 
@@ -1189,7 +1225,7 @@ export function TiresCMSPageV2() {
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       {language === 'fi' ? 'Koko' : 'Size'}
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-5 gap-2">
                       <input
                         type="text"
                         inputMode="numeric"
@@ -1220,9 +1256,28 @@ export function TiresCMSPageV2() {
                           isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                         }`}
                       />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="91"
+                        value={sizeParts.load_index}
+                        onChange={(e) => updateSizePart('load_index', e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      />
+                      <input
+                        type="text"
+                        placeholder="V"
+                        value={sizeParts.speed_rating}
+                        onChange={(e) => updateSizePart('speed_rating', e.target.value.toUpperCase())}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      />
                     </div>
                     <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                      {language === 'fi' ? 'Muoto: 205 / 55 R 16' : 'Format: 205 / 55 R 16'}
+                      {language === 'fi' ? 'Muoto: 205 / 55 R16 91 V' : 'Format: 205 / 55 R16 91 V'}
                     </p>
                   </div>
                   <div>
@@ -1243,6 +1298,54 @@ export function TiresCMSPageV2() {
                     </select>
                   </div>
                 </div>
+              </div>
+
+              {/* Section B: Tire Badges */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {language === 'fi' ? 'Rengasmerkit (badges)' : 'Tire badges'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={clearFeatureOverrides}
+                    className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    {language === 'fi' ? 'Palauta badge-ohitukset' : 'Reset badge overrides'}
+                  </button>
+                </div>
+
+                <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-lg ${
+                  isDark ? 'bg-white/5' : 'bg-gray-50'
+                }`}>
+                  {[
+                    { key: 'ev_ready', labelFi: 'EV', labelEn: 'EV' },
+                    { key: 'runflat', labelFi: 'RunFlat', labelEn: 'RunFlat' },
+                    { key: 'xl', labelFi: 'XL', labelEn: 'XL' },
+                    { key: 'studded', labelFi: 'Nastat', labelEn: 'Studded' },
+                    { key: 'threepmsf', labelFi: '3PMSF', labelEn: '3PMSF' },
+                    { key: 'winter_approved', labelFi: 'Talvi', labelEn: 'Winter' },
+                    { key: 'ice_approved', labelFi: 'Jää', labelEn: 'Ice approved' },
+                  ].map((feature) => (
+                    <label key={feature.key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={getEffectiveFeatureValue(feature.key as any)}
+                        onChange={(e) => setFeatureField(feature.key as any, e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {language === 'fi' ? feature.labelFi : feature.labelEn}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className={`mt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                  {language === 'fi'
+                    ? 'Nämä arvot tallennetaan CMS-ohituksina ja voidaan näyttää verkkokaupan korteissa.'
+                    : 'These are saved as CMS overrides and can be shown on webshop cards.'}
+                </p>
               </div>
 
               {/* Section B: EU Labels */}

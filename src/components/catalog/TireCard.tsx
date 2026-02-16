@@ -22,6 +22,15 @@ interface TireCardProps {
     runflat?: boolean;
     xl?: boolean;
     studded?: boolean;
+    ev_ready?: boolean;
+    threepmsf?: boolean;
+    winter_approved?: boolean;
+    ice_approved?: boolean;
+    load_index?: string;
+    speed_rating?: string;
+    eu_fuel?: string;
+    eu_wet?: string;
+    eu_noise?: number;
     best_price_eur?: number;
     best_image_url: string;
     in_stock: boolean;
@@ -76,8 +85,7 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
     return theme === 'dark' ? '#fff' : '#101828';
   };
 
-  // Parse size into parts
-  const sizeparts = product.size_text ? product.size_text.split(/[\s\/]/).filter(Boolean) : [];
+  const sizeText = product.size_text?.trim() || '—';
 
   // EU label values (optional)
   const euFuel = product.eu_fuel;
@@ -87,6 +95,16 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
 
   // Calculate 4-piece price
   const fourPiecePrice = (product.best_price_eur || 0) * 4;
+
+  const featureBadges = [
+    { key: 'ev', show: Boolean(product.ev_ready), label: 'EV' },
+    { key: 'runflat', show: Boolean(product.runflat), label: 'RunFlat' },
+    { key: 'xl', show: Boolean(product.xl), label: 'XL' },
+    { key: 'studded', show: Boolean(product.studded), label: language === 'fi' ? 'Nastat' : 'Studded' },
+    { key: 'threepmsf', show: Boolean(product.threepmsf), label: '3PMSF' },
+    { key: 'winter', show: Boolean(product.winter_approved) && !Boolean(product.studded), label: language === 'fi' ? 'Talvi' : 'Winter' },
+    { key: 'ice', show: Boolean(product.ice_approved), label: language === 'fi' ? 'Jää' : 'Ice Approved' },
+  ].filter((badge) => badge.show);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!onClick) return;
@@ -147,12 +165,9 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 {/* Size */}
                 <div className="content-stretch flex font-normal items-center leading-[20px] not-italic relative rounded-[16px] shrink-0 text-[14px] text-nowrap tracking-[-0.1504px] whitespace-pre">
-                  {sizeparts.map((part, idx) => (
-                    <span key={idx} className="contents">
-                      {idx === 1 && <p className={`relative shrink-0 mx-[8px] ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>/</p>}
-                      <p className={`relative shrink-0 ${idx === sizeparts.length - 1 ? 'ml-[12px]' : idx > 0 && idx < sizeparts.length - 1 ? 'ml-[8px]' : ''} ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>{part}</p>
-                    </span>
-                  ))}
+                  <p className={`relative shrink-0 ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>
+                    {sizeText}
+                  </p>
                 </div>
 
                 {/* Season Badge */}
@@ -420,33 +435,9 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
               <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full">
                 
                 {/* Feature Badges */}
-                <div className="content-stretch flex items-start justify-between relative shrink-0 w-full">
-                  {/* EV Ready - placeholder badge */}
-                  <div className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-all duration-300 ${
-                    theme === 'dark' ? 'bg-white/5 group-hover:bg-white/10' : 'bg-[rgba(250,250,250,0.2)] group-hover:bg-white/60'
-                  }`}>
-                    <div 
-                      aria-hidden="true" 
-                      className={`absolute border border-solid inset-0 pointer-events-none rounded-[8px] transition-colors duration-300 ${
-                        theme === 'dark' ? 'border-white/20 group-hover:border-white/40' : 'border-[rgba(106,114,130,0.3)] group-hover:border-gray-400'
-                      }`} 
-                    />
-                    <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0">
-                      <div className="relative shrink-0">
-                        <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border content-stretch flex gap-[10px] items-center justify-center relative">
-                          <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-[#99a1af]'
-                          }`}>
-                            {language === 'fi' ? 'EV VALMIS' : 'EV READY'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* XL Badge */}
-                  {product.xl && (
-                    <div className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-all duration-300 ${
+                <div className="content-stretch flex flex-wrap items-start gap-2 relative shrink-0 w-full">
+                  {featureBadges.map((badge) => (
+                    <div key={badge.key} className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-all duration-300 ${
                       theme === 'dark' ? 'bg-white/5 group-hover:bg-white/10' : 'bg-[rgba(250,250,250,0.2)] group-hover:bg-white/60'
                     }`}>
                       <div 
@@ -461,63 +452,13 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
                             <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
                               theme === 'dark' ? 'text-gray-400' : 'text-[#99a1af]'
                             }`}>
-                              XL
+                              {badge.label}
                             </p>
                           </div>
                         </div>
                       </div>
                     </div>
-                  )}
-
-                  {/* Runflat Badge */}
-                  {product.runflat && (
-                    <div className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-all duration-300 ${
-                      theme === 'dark' ? 'bg-white/5 group-hover:bg-white/10' : 'bg-[rgba(250,250,250,0.2)] group-hover:bg-white/60'
-                    }`}>
-                      <div 
-                        aria-hidden="true" 
-                        className={`absolute border border-solid inset-0 pointer-events-none rounded-[8px] transition-colors duration-300 ${
-                          theme === 'dark' ? 'border-white/20 group-hover:border-white/40' : 'border-[rgba(106,114,130,0.3)] group-hover:border-gray-400'
-                        }`} 
-                      />
-                      <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0">
-                        <div className="relative shrink-0">
-                          <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border content-stretch flex gap-[10px] items-center justify-center relative">
-                            <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
-                              theme === 'dark' ? 'text-gray-400' : 'text-[#99a1af]'
-                            }`}>
-                              Runflat
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Studded Badge */}
-                  {product.studded && (
-                    <div className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-all duration-300 ${
-                      theme === 'dark' ? 'bg-white/5 group-hover:bg-white/10' : 'bg-[rgba(250,250,250,0.2)] group-hover:bg-white/60'
-                    }`}>
-                      <div 
-                        aria-hidden="true" 
-                        className={`absolute border border-solid inset-0 pointer-events-none rounded-[8px] transition-colors duration-300 ${
-                          theme === 'dark' ? 'border-white/20 group-hover:border-white/40' : 'border-[rgba(106,114,130,0.3)] group-hover:border-gray-400'
-                        }`} 
-                      />
-                      <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0">
-                        <div className="relative shrink-0">
-                          <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border content-stretch flex gap-[10px] items-center justify-center relative">
-                            <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
-                              theme === 'dark' ? 'text-gray-400' : 'text-[#99a1af]'
-                            }`}>
-                              {language === 'fi' ? 'Nastat' : 'Studded'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  ))}
                 </div>
 
                 {/* Add Button */}
