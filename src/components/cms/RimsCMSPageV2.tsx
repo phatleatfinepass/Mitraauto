@@ -4,6 +4,17 @@ import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
 import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle, RotateCcw } from 'lucide-react';
 import { ImageUpload } from './ImageUpload';
+import {
+  calculateLinePricing,
+  getPricingRulesFromSpecOverrides,
+  isFixedBundleTotalCompatible,
+  setPricingRulesToSpecOverrides,
+  type BundlePricingMode,
+  type ProductPricingRules,
+} from '../../utils/pricing';
+
+const VAT_RATE = 0.255;
+const VAT_MULTIPLIER = 1 + VAT_RATE;
 
 interface RimVariant {
   id: string;
@@ -41,6 +52,7 @@ export function RimsCMSPageV2() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
+  const pageSize = 100;
 
   const [rims, setRims] = useState<RimRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,9 +62,17 @@ export function RimsCMSPageV2() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
+
+  const toPriceWithVat = (priceWithoutVat: number | null | undefined) => {
+    if (priceWithoutVat === null || priceWithoutVat === undefined) return null;
+    const numeric = Number(priceWithoutVat);
+    if (!Number.isFinite(numeric)) return null;
+    return numeric * VAT_MULTIPLIER;
+  };
 
   useEffect(() => {
     fetchRims();
@@ -63,56 +83,76 @@ export function RimsCMSPageV2() {
     setError(null);
 
     try {
-      // Fetch rim variants (base data - read-only)
-      const { data: variants, error: variantsError } = await supabase
-        .from('catalog_rim_variants')
-        .select('id, ean, brand, model, width, diameter, pcd, et, color')
+      const productsPageSize = 1000;
+      const firstResult = await supabase
+        .from('products_search')
+        .select(
+          'variant_id, ean, derived_ean, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, final_price_eur, price',
+          { count: 'exact' },
+        )
+        .eq('product_type', 'rim')
         .order('brand', { ascending: true })
         .order('model', { ascending: true })
-        .limit(100);
+        .order('variant_id', { ascending: true })
+        .range(0, productsPageSize - 1);
 
-      let resolvedVariants: RimVariant[] | null =
-        variants?.map((variant: any) => ({
-          ...variant,
-          price_eur: null,
-        })) ?? null;
+      if (firstResult.error) throw firstResult.error;
 
-      if (variantsError) {
-        const message = variantsError.message ?? '';
-        const shouldFallback =
-          message.includes('catalog_rim_variants.brand') ||
-          message.includes('column "brand" does not exist');
+      const allProducts = [...(firstResult.data ?? [])];
+      const expectedCount = firstResult.count ?? null;
 
-        if (!shouldFallback) {
-          throw variantsError;
+      while (true) {
+        if (expectedCount !== null && allProducts.length >= expectedCount) {
+          break;
+        }
+        if (allProducts.length > 0 && allProducts.length % productsPageSize !== 0) {
+          break;
         }
 
-        const { data: fallbackVariants, error: fallbackError } = await supabase
+        const nextFrom = allProducts.length;
+        const nextResult = await supabase
           .from('products_search')
           .select(
-            'variant_id, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, price',
+            'variant_id, ean, derived_ean, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, final_price_eur, price',
           )
           .eq('product_type', 'rim')
-          .order('brand_display_name', { ascending: true })
+          .order('brand', { ascending: true })
           .order('model', { ascending: true })
-          .limit(100);
+          .order('variant_id', { ascending: true })
+          .range(nextFrom, nextFrom + productsPageSize - 1);
 
-        if (fallbackError) throw fallbackError;
+        if (nextResult.error) throw nextResult.error;
 
-        resolvedVariants =
-          fallbackVariants?.map((variant) => ({
-            id: variant.variant_id,
-            ean: null,
-            brand: variant.brand_display_name || variant.brand || 'Unknown',
-            model: variant.model || '',
-            width: variant.width_in ?? null,
-            diameter: variant.rim_diameter_in ?? null,
-            pcd: variant.bolt_pattern ?? null,
-            et: variant.et_offset_mm ?? null,
-            color: variant.color ?? null,
-            price_eur: variant.price ?? null,
-          })) ?? [];
+        const batch = nextResult.data ?? [];
+        if (batch.length === 0) {
+          break;
+        }
+
+        allProducts.push(...batch);
+
+        if (batch.length < productsPageSize) {
+          break;
+        }
       }
+
+      const resolvedVariants: RimVariant[] = allProducts.map((variant: any) => ({
+        id: variant.variant_id,
+        ean: variant.ean ?? variant.derived_ean ?? null,
+        brand: variant.brand_display_name || variant.brand || 'Unknown',
+        model: variant.model || '',
+        width: variant.width_in !== null && variant.width_in !== undefined ? Number(variant.width_in) : null,
+        diameter:
+          variant.rim_diameter_in !== null && variant.rim_diameter_in !== undefined
+            ? Number(variant.rim_diameter_in)
+            : null,
+        pcd: variant.bolt_pattern ?? null,
+        et: variant.et_offset_mm !== null && variant.et_offset_mm !== undefined ? Number(variant.et_offset_mm) : null,
+        color: variant.color ?? null,
+        price_eur:
+          variant.final_price_eur !== null && variant.final_price_eur !== undefined
+            ? Number(variant.final_price_eur)
+            : (variant.price !== null && variant.price !== undefined ? Number(variant.price) : null),
+      }));
 
       if (!resolvedVariants || resolvedVariants.length === 0) {
         setRims([]);
@@ -122,38 +162,24 @@ export function RimsCMSPageV2() {
 
       // Fetch CMS + EAN data for these variants
       const variantIds = resolvedVariants.map(v => v.id);
-      const [
-        { data: cmsData, error: cmsError },
-        { data: eanRows, error: eanError },
-        { data: pricingRows, error: pricingError },
-      ] = await Promise.all([
-        supabase
+      const chunkSize = 200;
+      const cmsRows: any[] = [];
+
+      for (let i = 0; i < variantIds.length; i += chunkSize) {
+        const idChunk = variantIds.slice(i, i + chunkSize);
+        const { data: cmsBatch, error: cmsError } = await supabase
           .from('product_cms')
           .select('*')
-          .in('variant_id', variantIds),
-        supabase
-          .from('catalog_rim_variants')
-          .select('id, ean')
-          .in('id', variantIds),
-        supabase
-          .from('products_search')
-          .select('variant_id, price')
-          .eq('product_type', 'rim')
-          .in('variant_id', variantIds),
-      ]);
+          .in('variant_id', idChunk);
 
-      if (cmsError) throw cmsError;
-      if (eanError) throw eanError;
-      if (pricingError) throw pricingError;
+        if (cmsError) throw cmsError;
+        if (cmsBatch?.length) cmsRows.push(...cmsBatch);
+      }
 
       // Merge data
-      const cmsMap = new Map(cmsData?.map(c => [c.variant_id, c]) || []);
-      const eanMap = new Map(eanRows?.map((row: any) => [row.id, row.ean]) || []);
-      const priceMap = new Map(pricingRows?.map((row: any) => [row.variant_id, row.price]) || []);
+      const cmsMap = new Map(cmsRows.map((c: any) => [c.variant_id, c]));
       const merged = resolvedVariants.map(v => ({
         ...v,
-        ean: v.ean ?? eanMap.get(v.id) ?? null,
-        price_eur: v.price_eur ?? priceMap.get(v.id) ?? null,
         cms_data: cmsMap.get(v.id) || null
       }));
 
@@ -165,6 +191,10 @@ export function RimsCMSPageV2() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const handleEdit = (rim: RimRow) => {
     setSelectedRim(rim);
@@ -215,6 +245,40 @@ export function RimsCMSPageV2() {
     );
   };
 
+  const getBundlePricing = (): ProductPricingRules | null =>
+    getPricingRulesFromSpecOverrides(editData.spec_overrides);
+
+  const getBundleTier = (qty: 2 | 4) =>
+    qty === 2 ? (getBundlePricing()?.qty2 ?? null) : (getBundlePricing()?.qty4 ?? null);
+
+  const setBundleTier = (qty: 2 | 4, tier: { mode?: BundlePricingMode; percent_off?: number | null; fixed_total_eur?: number | null }) => {
+    setEditData((prev) => {
+      const currentPricing = getPricingRulesFromSpecOverrides(prev.spec_overrides) ?? { qty2: null, qty4: null };
+      const key = qty === 2 ? 'qty2' : 'qty4';
+      const existingTier = currentPricing[key] ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+      const mergedTier = {
+        ...existingTier,
+        ...tier,
+      };
+      const nextPricing: ProductPricingRules = {
+        qty2: key === 'qty2' ? mergedTier : currentPricing.qty2,
+        qty4: key === 'qty4' ? mergedTier : currentPricing.qty4,
+      };
+
+      return {
+        ...prev,
+        spec_overrides: setPricingRulesToSpecOverrides(prev.spec_overrides, nextPricing),
+      };
+    });
+  };
+
+  const clearBundlePricing = () => {
+    setEditData((prev) => ({
+      ...prev,
+      spec_overrides: setPricingRulesToSpecOverrides(prev.spec_overrides, null),
+    }));
+  };
+
   const handleSave = async () => {
     if (!selectedRim) return;
 
@@ -222,6 +286,29 @@ export function RimsCMSPageV2() {
     setSaveError(null);
 
     try {
+      const specOverrides = editData.spec_overrides ?? selectedRim.cms_data?.spec_overrides ?? {};
+      const pricingRules = getPricingRulesFromSpecOverrides(specOverrides);
+      if (
+        pricingRules?.qty2?.mode === 'fixed_total' &&
+        !isFixedBundleTotalCompatible(pricingRules.qty2.fixed_total_eur, 2)
+      ) {
+        throw new Error(
+          language === 'fi'
+            ? '2 kpl kiinteä pakettihinta pitää jakautua tasan kahdelle tuotteelle (sentteihin asti).'
+            : 'Fixed total for 2 items must be divisible evenly across 2 units (in cents).'
+        );
+      }
+      if (
+        pricingRules?.qty4?.mode === 'fixed_total' &&
+        !isFixedBundleTotalCompatible(pricingRules.qty4.fixed_total_eur, 4)
+      ) {
+        throw new Error(
+          language === 'fi'
+            ? '4 kpl kiinteä pakettihinta pitää jakautua tasan neljälle tuotteelle (sentteihin asti).'
+            : 'Fixed total for 4 items must be divisible evenly across 4 units (in cents).'
+        );
+      }
+
       const payload: any = {
         variant_id: selectedRim.id,
         title: editData.title?.trim() || null,
@@ -234,7 +321,7 @@ export function RimsCMSPageV2() {
         seo_title: editData.seo_title?.trim() || null,
         seo_description: editData.seo_description?.trim() || null,
         is_hidden: editData.is_hidden ?? false,
-        spec_overrides: editData.spec_overrides ?? selectedRim.cms_data?.spec_overrides ?? {},
+        spec_overrides: specOverrides,
       };
 
       // Upsert to product_cms
@@ -312,6 +399,42 @@ export function RimsCMSPageV2() {
       rim.color?.toLowerCase().includes(search)
     );
   });
+  const totalCount = filteredRims.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const clampedPage = Math.min(currentPage, totalPages);
+  const startItem = totalCount === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
+  const endItem = Math.min(clampedPage * pageSize, totalCount);
+  const pagedRims = filteredRims.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+  const paginationItems = (() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const items: Array<number | 'ellipsis-left' | 'ellipsis-right'> = [1];
+    const windowStart = Math.max(2, clampedPage - 1);
+    const windowEnd = Math.min(totalPages - 1, clampedPage + 1);
+
+    if (windowStart > 2) {
+      items.push('ellipsis-left');
+    }
+
+    for (let page = windowStart; page <= windowEnd; page += 1) {
+      items.push(page);
+    }
+
+    if (windowEnd < totalPages - 1) {
+      items.push('ellipsis-right');
+    }
+
+    items.push(totalPages);
+    return items;
+  })();
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const formatSize = (rim: RimVariant) => {
     const parts = [];
@@ -370,6 +493,19 @@ export function RimsCMSPageV2() {
           </div>
         ) : (
           <>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                {language === 'fi'
+                  ? `Yhteensä ${totalCount} tuotetta`
+                  : `${totalCount} items total`}
+              </p>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                {language === 'fi'
+                  ? `Näytetään ${startItem}-${endItem} / ${totalCount} (sivu ${clampedPage}/${totalPages})`
+                  : `Showing ${startItem}-${endItem} of ${totalCount} (page ${clampedPage}/${totalPages})`}
+              </p>
+            </div>
+
             {/* Table */}
             <div className={`rounded-lg border overflow-hidden ${
               isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
@@ -421,7 +557,7 @@ export function RimsCMSPageV2() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
-                    {filteredRims.map((rim) => (
+                    {pagedRims.map((rim) => (
                       <tr key={rim.id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
                         <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                           {rim.brand}
@@ -480,6 +616,100 @@ export function RimsCMSPageV2() {
                 <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {language === 'fi' ? 'Ei vanteita löytynyt' : 'No rims found'}
                 </p>
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {language === 'fi'
+                    ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
+                    : `Showing ${startItem}-${endItem} of ${totalCount}`}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={clampedPage === 1}
+                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                    aria-label={language === 'fi' ? 'Ensimmäinen sivu' : 'First page'}
+                  >
+                    {language === 'fi' ? 'Ens.' : 'First'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={clampedPage === 1}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                  >
+                    {language === 'fi' ? 'Edellinen' : 'Previous'}
+                  </button>
+                  {paginationItems.map((item, index) => {
+                    if (typeof item !== 'number') {
+                      return (
+                        <span
+                          key={`${item}-${index}`}
+                          className={`px-2 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+
+                    const pageNumber = item;
+                    return (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          pageNumber === clampedPage
+                            ? isDark
+                              ? 'bg-blue-500/30 text-blue-200'
+                              : 'bg-blue-100 text-blue-700'
+                            : isDark
+                              ? 'text-gray-300 hover:bg-white/10'
+                              : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={clampedPage === totalPages}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                  >
+                    {language === 'fi' ? 'Seuraava' : 'Next'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={clampedPage === totalPages}
+                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                    aria-label={language === 'fi' ? 'Viimeinen sivu' : 'Last page'}
+                  >
+                    {language === 'fi' ? 'Vik.' : 'Last'}
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -561,6 +791,26 @@ export function RimsCMSPageV2() {
                       {language === 'fi' ? 'Väri' : 'Color'}
                     </label>
                     <p className={`text-sm capitalize ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedRim.color || '—'}</p>
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {language === 'fi' ? 'Hinta (ilman ALV)' : 'Price (excl. VAT)'}
+                    </label>
+                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedRim.price_eur !== null && selectedRim.price_eur !== undefined
+                        ? `€${selectedRim.price_eur.toFixed(2)}`
+                        : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {language === 'fi' ? 'Hinta ALV 25.5% kanssa' : 'Price incl. VAT 25.5%'}
+                    </label>
+                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {toPriceWithVat(selectedRim.price_eur) !== null
+                        ? `€${toPriceWithVat(selectedRim.price_eur)!.toFixed(2)}`
+                        : '—'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -659,7 +909,166 @@ export function RimsCMSPageV2() {
                 </div>
               </div>
 
-              {/* Section D: SEO */}
+              {/* Section D: Bundle Pricing */}
+              <div>
+                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {language === 'fi' ? 'Pakettihinnoittelu' : 'Bundle Pricing'}
+                </h3>
+                {(() => {
+                  const bundlePricing = getBundlePricing();
+                  const tier2 = getBundleTier(2) ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+                  const tier4 = getBundleTier(4) ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+                  const basePrice = Number(selectedRim.price_eur ?? 0);
+                  const preview2 = calculateLinePricing(basePrice, 2, bundlePricing);
+                  const preview4 = calculateLinePricing(basePrice, 4, bundlePricing);
+                  const invalidFixed2 = tier2.mode === 'fixed_total' && tier2.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier2.fixed_total_eur, 2);
+                  const invalidFixed4 = tier4.mode === 'fixed_total' && tier4.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier4.fixed_total_eur, 4);
+
+                  return (
+                    <div className="space-y-4">
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {language === 'fi'
+                          ? 'Määritä alennus tai kiinteä kokonaishinta, kun asiakas ostaa 2 tai 4 kappaletta.'
+                          : 'Set a discount or fixed total when customer buys 2 or 4 units.'}
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                          <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>2 {language === 'fi' ? 'kpl' : 'items'}</p>
+                          <select
+                            value={tier2.mode}
+                            onChange={(e) => setBundleTier(2, {
+                              mode: e.target.value as BundlePricingMode,
+                              percent_off: null,
+                              fixed_total_eur: null,
+                            })}
+                            className={`w-full px-3 py-2 rounded-lg border ${
+                              isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                            }`}
+                          >
+                            <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
+                            <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
+                            <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
+                          </select>
+                          {tier2.mode === 'percent' && (
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={tier2.percent_off ?? ''}
+                              onChange={(e) => setBundleTier(2, { percent_off: e.target.value ? Number(e.target.value) : null })}
+                              placeholder={language === 'fi' ? 'Esim. 5' : 'e.g. 5'}
+                              className={`w-full px-3 py-2 rounded-lg border ${
+                                isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          )}
+                          {tier2.mode === 'fixed_total' && (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={tier2.fixed_total_eur ?? ''}
+                              onChange={(e) => setBundleTier(2, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
+                              placeholder={language === 'fi' ? 'Esim. 220.00' : 'e.g. 220.00'}
+                              className={`w-full px-3 py-2 rounded-lg border ${
+                                isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          )}
+                          {invalidFixed2 && (
+                            <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                              {language === 'fi'
+                                ? 'Kiinteä hinta ei jakaudu tasan 2 kappaleelle senttitasolla.'
+                                : 'Fixed total does not divide evenly across 2 units in cents.'}
+                            </p>
+                          )}
+                          <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview2.lineTotalEur.toFixed(2)}
+                            {preview2.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview2.savingsEur.toFixed(2)})` : ''}
+                          </p>
+                        </div>
+
+                        <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                          <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>4 {language === 'fi' ? 'kpl' : 'items'}</p>
+                          <select
+                            value={tier4.mode}
+                            onChange={(e) => setBundleTier(4, {
+                              mode: e.target.value as BundlePricingMode,
+                              percent_off: null,
+                              fixed_total_eur: null,
+                            })}
+                            className={`w-full px-3 py-2 rounded-lg border ${
+                              isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                            }`}
+                          >
+                            <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
+                            <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
+                            <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
+                          </select>
+                          {tier4.mode === 'percent' && (
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={tier4.percent_off ?? ''}
+                              onChange={(e) => setBundleTier(4, { percent_off: e.target.value ? Number(e.target.value) : null })}
+                              placeholder={language === 'fi' ? 'Esim. 10' : 'e.g. 10'}
+                              className={`w-full px-3 py-2 rounded-lg border ${
+                                isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          )}
+                          {tier4.mode === 'fixed_total' && (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={tier4.fixed_total_eur ?? ''}
+                              onChange={(e) => setBundleTier(4, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
+                              placeholder={language === 'fi' ? 'Esim. 420.00' : 'e.g. 420.00'}
+                              className={`w-full px-3 py-2 rounded-lg border ${
+                                isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          )}
+                          {invalidFixed4 && (
+                            <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                              {language === 'fi'
+                                ? 'Kiinteä hinta ei jakaudu tasan 4 kappaleelle senttitasolla.'
+                                : 'Fixed total does not divide evenly across 4 units in cents.'}
+                            </p>
+                          )}
+                          <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview4.lineTotalEur.toFixed(2)}
+                            {preview4.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview4.savingsEur.toFixed(2)})` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      {(bundlePricing?.qty2 || bundlePricing?.qty4) && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={clearBundlePricing}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                              isDark
+                                ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400'
+                                : 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
+                            }`}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                            {language === 'fi' ? 'Tyhjennä pakettihinnoittelu' : 'Clear bundle pricing'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Section E: SEO */}
               <div>
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   SEO
@@ -716,7 +1125,7 @@ export function RimsCMSPageV2() {
                 </div>
               </div>
 
-              {/* Section E: Visibility */}
+              {/* Section F: Visibility */}
               <div>
                 <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {language === 'fi' ? 'Näkyvyys' : 'Visibility'}

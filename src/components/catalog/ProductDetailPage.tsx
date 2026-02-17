@@ -21,12 +21,9 @@ import {
   Search,
   X,
   Gauge,
-  Weight,
-  Award,
   Settings,
   Volume2,
   ShoppingCart,
-  User,
   Droplet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -35,17 +32,23 @@ import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
+import { buildProductImageFallback } from '../../utils/productImage';
+import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
+
+const VAT_RATE = 0.255;
+const VAT_MULTIPLIER = 1 + VAT_RATE;
 
 export interface TireProduct {
   type: 'tire';
   id: string;
   brand: string;
   model: string;
-  tire_width: number;
-  aspect_ratio: number;
+  subtitle?: string;
+  tire_width?: number;
+  aspect_ratio?: number;
   construction: string;
-  rim_diameter: number;
-  load_index?: number;
+  rim_diameter?: number;
+  load_index?: string;
   speed_rating?: string;
   season: 'summer' | 'winter' | 'all_season';
   extra_load?: boolean;
@@ -58,8 +61,11 @@ export interface TireProduct {
   ev_ready?: boolean;
   three_pmsf?: boolean;
   best_price_eur?: number;
+  pricing_rules?: ProductPricingRules | null;
   best_image_url: string;
   images?: string[];
+  short_description?: string;
+  long_description?: string;
   description?: string;
   in_stock: boolean;
   stock_quantity?: number;
@@ -76,6 +82,7 @@ export interface RimProduct {
   id: string;
   brand: string;
   model: string;
+  subtitle?: string;
   rim_width?: number;
   rim_diameter?: number;
   pcd?: string;
@@ -86,8 +93,11 @@ export interface RimProduct {
   finish?: string;
   weight?: number;
   best_price_eur?: number;
+  pricing_rules?: ProductPricingRules | null;
   best_image_url: string;
   images?: string[];
+  short_description?: string;
+  long_description?: string;
   description?: string;
   in_stock: boolean;
   stock_quantity?: number;
@@ -109,119 +119,37 @@ interface ProductDetailPageProps {
   onShare?: (product: Product) => void;
 }
 
-// Compatibility List Component with See More functionality
-function CompatibilityList({ theme, language }: { theme: string; language: string }) {
-  // Mock compatibility data - will be replaced with CMS data
-  const compatibilityData = [
-    {
-      brand: 'Audi',
-      models: ['A3 (2012-2020)', 'A4 (2015-2023)', 'Q3 (2018-2024)', 'Q5 (2017-2023)']
-    },
-    {
-      brand: 'BMW',
-      models: ['3 Series (2012-2019)', '5 Series (2010-2017)', 'X1 (2015-2022)', 'X3 (2017-2024)']
-    },
-    {
-      brand: 'Mercedes-Benz',
-      models: ['C-Class (2014-2021)', 'E-Class (2016-2023)', 'GLC (2015-2022)', 'GLE (2019-2024)']
-    },
-    {
-      brand: 'Volkswagen',
-      models: ['Golf (2013-2020)', 'Passat (2015-2023)', 'Tiguan (2016-2024)', 'Touareg (2018-2024)']
-    },
-    {
-      brand: 'Volvo',
-      models: ['S60 (2018-2024)', 'S90 (2016-2023)', 'XC40 (2017-2024)', 'XC60 (2017-2024)', 'XC90 (2015-2024)']
-    },
-    {
-      brand: 'Toyota',
-      models: ['Camry (2018-2024)', 'RAV4 (2019-2024)', 'Corolla (2019-2024)']
-    },
-    {
-      brand: 'Ford',
-      models: ['Focus (2015-2023)', 'Mondeo (2015-2022)', 'Kuga (2017-2024)']
-    }
-  ];
-
-  const [expandedBrand, setExpandedBrand] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
-  
-  const displayedData = showAll ? compatibilityData : compatibilityData.slice(0, 5);
-  const hasMore = compatibilityData.length > 5;
+function CompatibilityList({
+  theme,
+  language,
+  vehicles,
+}: {
+  theme: string;
+  language: string;
+  vehicles: string[];
+}) {
+  if (vehicles.length === 0) {
+    return (
+      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
+        {language === 'fi' ? 'Yhteensopivuustietoja ei ole saatavilla.' : 'Compatibility data is not available.'}
+      </p>
+    );
+  }
 
   return (
-    <>
-      <div className="space-y-2">
-        {displayedData.map((item, idx) => (
-          <div 
-            key={idx}
-            className={`border rounded-lg overflow-hidden ${
-              theme === 'dark' ? 'border-white/10' : 'border-[#E2E8F0]'
-            }`}
-          >
-            <button
-              onClick={() => setExpandedBrand(expandedBrand === item.brand ? null : item.brand)}
-              className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors ${
-                theme === 'dark'
-                  ? 'hover:bg-white/5 text-white'
-                  : 'hover:bg-gray-50 text-[#0F172A]'
-              }`}
-            >
-              <span>{item.brand}</span>
-              <ChevronLeft 
-                className={`size-4 transition-transform ${
-                  expandedBrand === item.brand ? '-rotate-90' : 'rotate-180'
-                } ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}
-              />
-            </button>
-            
-            <AnimatePresence>
-              {expandedBrand === item.brand && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className={`border-t ${
-                    theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-[#E2E8F0] bg-gray-50'
-                  }`}
-                >
-                  <div className="px-4 py-3 space-y-2">
-                    {item.models.map((model, modelIdx) => (
-                      <div
-                        key={modelIdx}
-                        className={`flex items-center gap-2 text-sm ${
-                          theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'
-                        }`}
-                      >
-                        <Check className="size-4 text-[#FF6B00] flex-shrink-0" />
-                        {model}
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
-      </div>
-      
-      {hasMore && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className={`w-full mt-3 px-4 py-2.5 rounded-lg text-sm transition-colors ${
-            theme === 'dark'
-              ? 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
-              : 'bg-gray-50 hover:bg-gray-100 text-[#0F172A] border border-[#E2E8F0]'
+    <div className="space-y-2">
+      {vehicles.slice(0, 12).map((vehicle, idx) => (
+        <div
+          key={`${vehicle}-${idx}`}
+          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+            theme === 'dark' ? 'bg-white/5 text-gray-200' : 'bg-white text-[#334155]'
           }`}
         >
-          {showAll 
-            ? (language === 'fi' ? 'Näytä vähemmän' : 'Show less')
-            : (language === 'fi' ? `Näytä kaikki (${compatibilityData.length})` : `Show all (${compatibilityData.length})`)
-          }
-        </button>
-      )}
-    </>
+          <Check className="size-4 text-[#FF6B00] flex-shrink-0" />
+          <span>{vehicle}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -242,11 +170,25 @@ export function ProductDetailPage({
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
-  // Limit images to max 7 (will be controlled by CMS later)
-  const rawImages = product.images || [product.best_image_url];
-  const images = rawImages.slice(0, 7);
+  const displayName = String(product.model ?? '').trim();
+  const galleryImages = (product.images ?? [])
+    .map((value) => String(value ?? '').trim())
+    .filter((value) => value.length > 0);
+  const fallbackImage = String(product.best_image_url ?? '').trim() || buildProductImageFallback(product.brand, displayName);
+  const images = (galleryImages.length > 0 ? galleryImages : [fallbackImage]).slice(0, 7);
+  const displaySubtitle = String((product as any).subtitle ?? '').trim();
+  const hasReviewData =
+    typeof product.rating === 'number' || typeof product.review_count === 'number';
+  const compatibilityVehicles =
+    product.type === 'rim' && Array.isArray(product.compatible_vehicles)
+      ? product.compatible_vehicles.filter((item): item is string => Boolean(item && String(item).trim()))
+      : [];
+  const detailDescription = String(product.long_description ?? product.short_description ?? product.description ?? '').trim();
   const price = product.best_price_eur || 0;
-  const totalPrice = price * quantity;
+  const pricingForQuantity = calculateLinePricing(price, quantity, product.pricing_rules ?? null);
+  const totalPrice = pricingForQuantity.lineTotalEur * VAT_MULTIPLIER;
+  const displayUnitPrice = pricingForQuantity.effectiveUnitPriceEur * VAT_MULTIPLIER;
+  const hasTierDiscount = pricingForQuantity.savingsEur > 0;
 
   // Sticky CTA and floating back button on scroll
   useEffect(() => {
@@ -609,7 +551,7 @@ export function ProductDetailPage({
               <h1 className={`text-2xl sm:text-3xl lg:text-4xl mb-3 ${
                 theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
               }`}>
-                {product.model}
+                {displayName}
               </h1>
 
               {/* Size/Spec Line */}
@@ -617,18 +559,30 @@ export function ProductDetailPage({
                 theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'
               }`}>
                 {product.type === 'tire' ? (
-                  <>
-                    {product.tire_width}/{product.aspect_ratio} {product.construction}{product.rim_diameter}
-                    {product.load_index && ` ${product.load_index}`}
-                    {product.speed_rating && product.speed_rating}
-                  </>
+                  displaySubtitle ? (
+                    displaySubtitle
+                  ) : (
+                    <>
+                      {product.tire_width !== undefined && product.aspect_ratio !== undefined && product.rim_diameter !== undefined
+                        ? `${product.tire_width}/${product.aspect_ratio} ${product.construction}${product.rim_diameter}`
+                        : ''}
+                      {product.load_index && ` ${product.load_index}`}
+                      {product.speed_rating && ` ${product.speed_rating}`}
+                    </>
+                  )
                 ) : (
-                  <>
-                    {product.rim_width}×{product.rim_diameter}"
-                    {product.et_offset && ` ET${product.et_offset}`}
-                    {product.pcd && ` ${product.pcd}`}
-                    {product.cb && ` CB ${product.cb}mm`}
-                  </>
+                  displaySubtitle ? (
+                    displaySubtitle
+                  ) : (
+                    <>
+                      {product.rim_width !== undefined && product.rim_diameter !== undefined
+                        ? `${product.rim_width}×${product.rim_diameter}"`
+                        : ''}
+                      {product.et_offset !== undefined && ` ET${product.et_offset}`}
+                      {product.pcd && ` ${product.pcd}`}
+                      {product.cb && ` CB ${product.cb}mm`}
+                    </>
+                  )
                 )}
               </p>
 
@@ -660,7 +614,7 @@ export function ProductDetailPage({
             <div className="space-y-3">
               <div className="flex items-baseline gap-2 sm:gap-3">
                 <span className="text-3xl sm:text-4xl text-[#FF6B00]">
-                  €{price.toFixed(2)}
+                  €{displayUnitPrice.toFixed(2)}
                 </span>
                 <span className={`text-sm sm:text-base ${
                   theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
@@ -668,12 +622,22 @@ export function ProductDetailPage({
                   / {t('perPcs')}
                 </span>
               </div>
+
+              <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
+                {language === 'fi' ? 'Sis. ALV 25.5%' : 'Incl. VAT 25.5%'}
+              </p>
+
+              {hasTierDiscount && (
+                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
+                  {language === 'fi' ? 'Perushinta' : 'Base price'}: €{(price * VAT_MULTIPLIER).toFixed(2)} / {t('perPcs')}
+                </p>
+              )}
               
-              {product.type === 'tire' && quantity === 4 && (
+              {quantity > 1 && (
                 <p className={`text-sm ${
                   theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
                 }`}>
-                  {t('total')}: <span className={theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}>€{totalPrice.toFixed(2)}</span> / 4 {t('perPcs')}
+                  {t('total')}: <span className={theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}>€{totalPrice.toFixed(2)}</span> / {quantity} {t('perPcs')}
                 </p>
               )}
 
@@ -1152,7 +1116,7 @@ export function ProductDetailPage({
                     {language === 'fi' ? 'Yhteensopivuus' : 'Compatibility'}
                   </h3>
 
-                  <CompatibilityList theme={theme} language={language} />
+                  <CompatibilityList theme={theme} language={language} vehicles={compatibilityVehicles} />
 
                   <p className={`text-xs mt-4 ${
                     theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
@@ -1178,103 +1142,65 @@ export function ProductDetailPage({
             </h2>
             
             <div className="max-w-3xl">
-              <p className={`text-base leading-7 mb-6 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'
-              }`}>
-                {product.description || (
-                  product.type === 'tire' 
-                    ? (language === 'fi' 
-                      ? 'Tämä rengas tarjoaa erinomaisen suorituskyvyn kaikissa olosuhteissa. Kehittynyt kuviointi takaa luotettavan pidon märällä ja kuivalla tiellä. Optimoitu talvisekoite ja innovatiivinen urasyvyys takaavat pitkän käyttöiän ja tasaisen kulumisen.'
-                      : 'This tire offers excellent performance in all conditions. Advanced tread pattern ensures reliable grip on wet and dry roads. Optimized winter compound and innovative tread depth guarantee long service life and even wear.')
-                    : (language === 'fi'
-                      ? 'Laadukas alumiinivanne, joka yhdistää kevyen rakenteen ja kestävyyden. Moderni muotoilu sopii erinomaisesti eri autoihin. Tarkka valmistus takaa täydellisen tasapainon ja pitkäikäisyyden.'
-                      : 'High-quality aluminum wheel that combines lightweight construction with durability. Modern design fits excellently with various vehicles. Precise manufacturing ensures perfect balance and longevity.')
-                )}
-              </p>
-              
-              {/* Feature Bullets */}
-              {product.type === 'tire' ? (
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-3">
-                    <div className={`size-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      theme === 'dark' ? 'bg-[#FF6B00]/20' : 'bg-[#FF6B00]/10'
-                    }`}>
-                      <Snowflake className="size-4 text-[#FF6B00]" />
-                    </div>
-                    <span className={theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'}>
-                      {language === 'fi' ? 'Optimoitu talvisekoite varmistaa erinomaisen pidon kylmissä olosuhteissa' : 'Optimized winter compound ensures excellent grip in cold conditions'}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className={`size-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      theme === 'dark' ? 'bg-[#FF6B00]/20' : 'bg-[#FF6B00]/10'
-                    }`}>
-                      <CloudSun className="size-4 text-[#FF6B00]" />
-                    </div>
-                    <span className={theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'}>
-                      {language === 'fi' ? 'Erinomainen märkäpito ja lyhyt jarrutusmatka' : 'Excellent wet grip and short braking distance'}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className={`size-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      theme === 'dark' ? 'bg-[#FF6B00]/20' : 'bg-[#FF6B00]/10'
-                    }`}>
-                      <Volume2 className="size-4 text-[#FF6B00]" />
-                    </div>
-                    <span className={theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'}>
-                      {language === 'fi' ? 'Matala tiemelu mukavaan ajokokemukseen' : 'Low road noise for comfortable driving experience'}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className={`size-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      theme === 'dark' ? 'bg-[#FF6B00]/20' : 'bg-[#FF6B00]/10'
-                    }`}>
-                      <Gauge className="size-4 text-[#FF6B00]" />
-                    </div>
-                    <span className={theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'}>
-                      {language === 'fi' ? 'Pitkäikäinen ja tasaisesti kuluva kuviointi' : 'Long-lasting and evenly wearing tread pattern'}
-                    </span>
-                  </li>
-                </ul>
+              {detailDescription ? (
+                <div className="space-y-4">
+                  {detailDescription
+                    .split(/\n{2,}/)
+                    .map((paragraph) => paragraph.trim())
+                    .filter((paragraph) => paragraph.length > 0)
+                    .map((paragraph, idx) => (
+                      <p
+                        key={idx}
+                        className={`text-base leading-7 ${
+                          theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'
+                        }`}
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                </div>
               ) : (
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-3">
-                    <div className={`size-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      theme === 'dark' ? 'bg-[#FF6B00]/20' : 'bg-[#FF6B00]/10'
-                    }`}>
-                      <Award className="size-4 text-[#FF6B00]" />
-                    </div>
-                    <span className={theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'}>
-                      {language === 'fi' ? 'Laadukas alumiinirakenne keveyden ja kestävyyden yhdistelmä' : 'High-quality aluminum construction combining lightness and durability'}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className={`size-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      theme === 'dark' ? 'bg-[#FF6B00]/20' : 'bg-[#FF6B00]/10'
-                    }`}>
-                      <Settings className="size-4 text-[#FF6B00]" />
-                    </div>
-                    <span className={theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'}>
-                      {language === 'fi' ? 'Tarkka valmistus takaa täydellisen tasapainon' : 'Precise manufacturing ensures perfect balance'}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className={`size-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      theme === 'dark' ? 'bg-[#FF6B00]/20' : 'bg-[#FF6B00]/10'
-                    }`}>
-                      <Shield className="size-4 text-[#FF6B00]" />
-                    </div>
-                    <span className={theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'}>
-                      {language === 'fi' ? 'Moderni muotoilu sopii erinomaisesti eri autoihin' : 'Modern design fits excellently with various vehicles'}
-                    </span>
-                  </li>
-                </ul>
+                <p className={`text-base leading-7 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'
+                }`}>
+                  {t('noDescription')}
+                </p>
+              )}
+
+              {product.type === 'tire' && (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {product.ev_ready && (
+                    <Badge className={`${theme === 'dark' ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                      EV
+                    </Badge>
+                  )}
+                  {product.runflat && (
+                    <Badge className={`${theme === 'dark' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                      RunFlat
+                    </Badge>
+                  )}
+                  {product.extra_load && (
+                    <Badge className={`${theme === 'dark' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'}`}>
+                      XL
+                    </Badge>
+                  )}
+                  {product.studded && (
+                    <Badge className={`${theme === 'dark' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' : 'bg-cyan-50 text-cyan-700 border-cyan-200'}`}>
+                      {language === 'fi' ? 'Nastat' : 'Studded'}
+                    </Badge>
+                  )}
+                  {product.three_pmsf && (
+                    <Badge className={`${theme === 'dark' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                      3PMSF
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
           </div>
 
           {/* Feedback Section - Separated for Rims */}
-          {product.type === 'rim' && (
+          {product.type === 'rim' && hasReviewData && (
             <div>
               <h2 className={`text-2xl mb-6 ${
                 theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
@@ -1301,14 +1227,14 @@ export function ProductDetailPage({
                         <div className={`text-6xl mb-4 ${
                           theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
                         }`}>
-                          {product.rating?.toFixed(1) || '4.5'}
+                          {typeof product.rating === 'number' ? product.rating.toFixed(1) : '—'}
                         </div>
                         <div className="flex items-center gap-1 mb-3">
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
                               className={`size-6 ${
-                                i < Math.floor(product.rating || 4.5)
+                                i < Math.floor(product.rating || 0)
                                   ? 'fill-[#FF6B00] text-[#FF6B00]'
                                   : theme === 'dark'
                                   ? 'text-gray-600'
@@ -1320,7 +1246,7 @@ export function ProductDetailPage({
                         <div className={`text-sm ${
                           theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
                         }`}>
-                          {product.review_count || 127} {language === 'fi' ? 'arvostelua' : 'reviews'}
+                          {(product.review_count ?? 0)} {language === 'fi' ? 'arvostelua' : 'reviews'}
                         </div>
                       </div>
 
@@ -1337,7 +1263,7 @@ export function ProductDetailPage({
                         <div className={`text-6xl mb-2 ${
                           theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
                         }`}>
-                          {Math.floor((product.review_count || 127) * 3.2)}
+                          {Math.floor((product.review_count ?? 0) * 3.2)}
                         </div>
                         <div className={`text-sm ${
                           theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
@@ -1372,9 +1298,9 @@ export function ProductDetailPage({
                     {product.type === 'tire' ? (
                       <>
                         {[
-                          { label: t('width'), value: `${product.tire_width} mm` },
-                          { label: language === 'fi' ? 'Profiili' : 'Profile', value: product.aspect_ratio },
-                          { label: language === 'fi' ? 'Vanteen koko' : 'Rim Size', value: `${product.rim_diameter}"` },
+                          { label: t('width'), value: product.tire_width !== undefined ? `${product.tire_width} mm` : null },
+                          { label: language === 'fi' ? 'Profiili' : 'Profile', value: product.aspect_ratio ?? null },
+                          { label: language === 'fi' ? 'Vanteen koko' : 'Rim Size', value: product.rim_diameter !== undefined ? `${product.rim_diameter}"` : null },
                           { label: t('loadIndex'), value: product.load_index },
                           { label: t('speedIndex'), value: product.speed_rating },
                           { label: t('season'), value: getSeasonLabel(product.season) },
@@ -1444,6 +1370,7 @@ export function ProductDetailPage({
           </div>
 
           {/* Reviews & Ratings Section */}
+          {hasReviewData && (
           <div>
             <h2 className={`text-2xl mb-6 ${
               theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
@@ -1470,14 +1397,14 @@ export function ProductDetailPage({
                       <div className={`text-6xl mb-4 ${
                         theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
                       }`}>
-                        {product.rating?.toFixed(1) || '4.7'}
+                        {typeof product.rating === 'number' ? product.rating.toFixed(1) : '—'}
                       </div>
                       <div className="flex items-center gap-1 mb-3">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
                             className={`size-6 ${
-                              i < Math.floor(product.rating || 4.7)
+                              i < Math.floor(product.rating || 0)
                                 ? 'fill-[#FF6B00] text-[#FF6B00]'
                                 : theme === 'dark'
                                 ? 'text-gray-600'
@@ -1489,7 +1416,7 @@ export function ProductDetailPage({
                       <div className={`text-sm ${
                         theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
                       }`}>
-                        {product.review_count || 127} {language === 'fi' ? 'arvostelua' : 'reviews'}
+                        {(product.review_count ?? 0)} {language === 'fi' ? 'arvostelua' : 'reviews'}
                       </div>
                     </div>
 
@@ -1506,7 +1433,7 @@ export function ProductDetailPage({
                       <div className={`text-6xl mb-2 ${
                         theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
                       }`}>
-                        {Math.floor((product.review_count || 127) * 3.2)}
+                        {Math.floor((product.review_count ?? 0) * 3.2)}
                       </div>
                       <div className={`text-sm ${
                         theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
@@ -1519,6 +1446,7 @@ export function ProductDetailPage({
               </div>
             </div>
           </div>
+          )}
           </div>
           )}
         </div>
@@ -1663,7 +1591,7 @@ export function ProductDetailPage({
             <div className="flex items-center justify-between px-4 sm:px-6 h-full gap-3">
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl text-[#FF6B00]">
-                  €{price.toFixed(2)}
+                  €{displayUnitPrice.toFixed(2)}
                 </p>
                 <p className={`text-xs ${
                   theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'

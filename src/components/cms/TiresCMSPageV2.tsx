@@ -3,11 +3,22 @@ import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
 import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle, Upload, GripVertical, RotateCcw, AlertTriangle } from 'lucide-react';
+import {
+  calculateLinePricing,
+  getPricingRulesFromSpecOverrides,
+  isFixedBundleTotalCompatible,
+  setPricingRulesToSpecOverrides,
+  type BundlePricingMode,
+  type ProductPricingRules,
+} from '../../utils/pricing';
 
 interface ProductSearchTire {
   variant_id: string;
   product_type: 'tire';
+  ean?: string | null;
   derived_ean: string | null;
+  supplier_code_best?: string | null;
+  supplier_external_id_best?: string | null;
   brand: string;
   model: string;
   size_string: string | null;
@@ -38,6 +49,7 @@ interface ProductSearchTire {
   ean_conflict_open?: boolean | null;
   has_duplicate_ean_conflict?: boolean;
   has_mandatory_field_conflict?: boolean;
+  has_missing_ean?: boolean;
   is_non_passenger_auto?: boolean;
   is_non_passenger_manual?: boolean;
   is_non_passenger?: boolean;
@@ -77,6 +89,8 @@ interface TireRow extends ProductSearchTire {
 
 const EU_FUEL_WET_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
 const EU_NOISE_CLASS_OPTIONS = ['A', 'B', 'C'];
+const VAT_RATE = 0.255;
+const VAT_MULTIPLIER = 1 + VAT_RATE;
 
 export function TiresCMSPageV2() {
   const { theme } = useTheme();
@@ -108,16 +122,20 @@ export function TiresCMSPageV2() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showConflicts, setShowConflicts] = useState(false);
-  const [showNonPassenger, setShowNonPassenger] = useState(false);
-  const [hideMissingSupplierPrice, setHideMissingSupplierPrice] = useState(false);
+  const [showMissingEanOnly, setShowMissingEanOnly] = useState(false);
+  const [visibleRowsCache, setVisibleRowsCache] = useState<TireRow[]>([]);
   const [selectedTire, setSelectedTire] = useState<TireRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [syncingCatalog, setSyncingCatalog] = useState(false);
+  const [hasPendingCatalogSync, setHasPendingCatalogSync] = useState(false);
+  const [catalogSyncMessage, setCatalogSyncMessage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [sizeParts, setSizeParts] = useState({ width: '', aspect: '', rim: '', load_index: '', speed_rating: '' });
+  const [warningTooltip, setWarningTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
 
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
@@ -131,6 +149,105 @@ export function TiresCMSPageV2() {
     if (value === null || value === undefined || value === '') return null;
     const numeric = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(numeric) ? numeric : null;
+  };
+
+  const toPriceWithVat = (priceWithoutVat: number | null | undefined) => {
+    const numeric = toNumberOrNull(priceWithoutVat);
+    if (numeric === null) return null;
+    return numeric * VAT_MULTIPLIER;
+  };
+
+  const normalizeTextOrNull = (value: any) => {
+    if (value === null || value === undefined) return null;
+    const text = String(value).trim();
+    return text.length > 0 ? text : null;
+  };
+
+  const normalizeGallery = (value: any): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+      .map((item) => normalizeTextOrNull(item))
+      .filter((item): item is string => Boolean(item));
+  };
+
+  const normalizeSpecOverrides = (value: any): any => {
+    const normalizeNode = (node: any): any => {
+      if (node === undefined || node === null) return null;
+      if (Array.isArray(node)) {
+        const normalizedArray = node
+          .map((item) => normalizeNode(item))
+          .filter((item) => item !== null);
+        return normalizedArray.length > 0 ? normalizedArray : null;
+      }
+      if (typeof node === 'object') {
+        const normalizedEntries = Object.entries(node)
+          .map(([key, item]) => [key, normalizeNode(item)] as const)
+          .filter(([, item]) => item !== null);
+        if (normalizedEntries.length === 0) return null;
+
+        normalizedEntries.sort(([a], [b]) => a.localeCompare(b));
+        return normalizedEntries.reduce((acc, [key, item]) => {
+          acc[key] = item;
+          return acc;
+        }, {} as Record<string, any>);
+      }
+      if (typeof node === 'string') {
+        const text = node.trim();
+        return text.length > 0 ? text : null;
+      }
+      return node;
+    };
+
+    return normalizeNode(value);
+  };
+
+  const stableSerialize = (value: any): string => {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => stableSerialize(item)).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+      const keys = Object.keys(value).sort((a, b) => a.localeCompare(b));
+      const serialized = keys.map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`);
+      return `{${serialized.join(',')}}`;
+    }
+    return JSON.stringify(value);
+  };
+
+  const buildComparableCmsData = (
+    variantId: string,
+    source: Partial<ProductCMS> | null | undefined
+  ) => {
+    const gallery = normalizeGallery(source?.gallery);
+    return {
+      variant_id: variantId,
+      title: normalizeTextOrNull(source?.title),
+      subtitle: normalizeTextOrNull(source?.subtitle),
+      short_description: normalizeTextOrNull(source?.short_description),
+      long_description: normalizeTextOrNull(source?.long_description),
+      gallery,
+      hero_image_url: normalizeTextOrNull(source?.hero_image_url) || gallery[0] || null,
+      seo_slug: normalizeTextOrNull(source?.seo_slug),
+      seo_title: normalizeTextOrNull(source?.seo_title),
+      seo_description: normalizeTextOrNull(source?.seo_description),
+      is_hidden: Boolean(source?.is_hidden),
+      spec_overrides: normalizeSpecOverrides(source?.spec_overrides),
+      price_override_eur: toNumberOrNull(source?.price_override_eur),
+      promo_enabled: Boolean(source?.promo_enabled),
+      promo_price_eur: toNumberOrNull(source?.promo_price_eur),
+      promo_start: normalizeTextOrNull(source?.promo_start),
+      promo_end: normalizeTextOrNull(source?.promo_end),
+    };
+  };
+
+  const isValidEan13 = (ean: string) => {
+    if (!/^\d{13}$/.test(ean)) return false;
+    const digits = ean.split('').map((d) => Number(d));
+    const check = digits[12];
+    const sum = digits
+      .slice(0, 12)
+      .reduce((acc, digit, idx) => acc + digit * (idx % 2 === 0 ? 1 : 3), 0);
+    const expected = (10 - (sum % 10)) % 10;
+    return check === expected;
   };
 
   const isAutoNonPassengerTire = (row: any) => {
@@ -157,25 +274,33 @@ export function TiresCMSPageV2() {
     Boolean(specOverrides?.classification?.non_passenger_manual);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearchTerm(searchTerm), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchTires();
-  }, [showConflicts, showNonPassenger, hideMissingSupplierPrice, searchTerm, currentPage]);
+  }, [showMissingEanOnly, debouncedSearchTerm]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [showConflicts, showNonPassenger, hideMissingSupplierPrice, searchTerm]);
+  }, [showMissingEanOnly, debouncedSearchTerm]);
+
+  useEffect(() => {
+    const start = (currentPage - 1) * pageSize;
+    setTires(visibleRowsCache.slice(start, start + pageSize));
+  }, [currentPage, pageSize, visibleRowsCache]);
 
   const fetchTires = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const trimmedSearch = searchTerm.trim();
-      const rangeStart = (currentPage - 1) * pageSize;
-      const rangeEnd = rangeStart + pageSize - 1;
+      const trimmedSearch = debouncedSearchTerm.trim();
       const productsPageSize = 1000;
       const firstProductsResult = await supabase
         .from('products_search')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('product_type', 'tire')
         .order('brand', { ascending: true })
         .order('model', { ascending: true })
@@ -185,12 +310,8 @@ export function TiresCMSPageV2() {
       if (firstProductsResult.error) throw firstProductsResult.error;
 
       const products = [...(firstProductsResult.data ?? [])];
-      const expectedProductCount = firstProductsResult.count ?? null;
 
       while (true) {
-        if (expectedProductCount !== null && products.length >= expectedProductCount) {
-          break;
-        }
         if (products.length > 0 && products.length % productsPageSize !== 0) {
           break;
         }
@@ -221,6 +342,7 @@ export function TiresCMSPageV2() {
 
       if (!products || products.length === 0) {
         setTotalCount(0);
+        setVisibleRowsCache([]);
         setTires([]);
         setLoading(false);
         return;
@@ -258,7 +380,10 @@ export function TiresCMSPageV2() {
       const normalizedEanCounts = new Map<string, number>();
 
       for (const product of products) {
-        const ean = (product.derived_ean ?? eanMap.get(product.variant_id) ?? '').trim();
+        const cmsData = cmsMap.get(product.variant_id) || null;
+        const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
+        const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
+        const ean = (identityEan || product.derived_ean || eanMap.get(product.variant_id) || '').trim();
         if (!ean) continue;
         normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
       }
@@ -275,8 +400,11 @@ export function TiresCMSPageV2() {
       };
 
       const merged = products.map((p: any) => {
-        const resolvedEan = p.derived_ean ?? eanMap.get(p.variant_id) ?? null;
         const cmsData = cmsMap.get(p.variant_id) || null;
+        const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
+        const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
+        const resolvedEan = identityEan || p.derived_ean || eanMap.get(p.variant_id) || null;
+        const missingEan = !resolvedEan || String(resolvedEan).trim().length === 0 || String(resolvedEan).startsWith('EANMISSING_');
         const duplicateEanConflict = (() => {
           const normalized = (resolvedEan ?? '').trim();
           return normalized ? (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
@@ -288,8 +416,12 @@ export function TiresCMSPageV2() {
 
         return {
           ...p,
+          brand: identity.brand ?? p.brand,
+          model: identity.model ?? p.model,
+          size_string: identity.size_string ?? p.size_string,
           derived_ean: resolvedEan,
           final_price_eur: p.final_price_eur ?? p.price ?? null,
+          has_missing_ean: missingEan,
           has_duplicate_ean_conflict: duplicateEanConflict,
           has_mandatory_field_conflict: mandatoryFieldConflict,
           is_non_passenger_auto: autoNonPassenger,
@@ -300,16 +432,12 @@ export function TiresCMSPageV2() {
         };
       });
 
-      const vehicleFilteredRows = showNonPassenger
-        ? merged
-        : merged.filter((row: any) => !row.is_non_passenger);
-
-      const priceFilteredRows = hideMissingSupplierPrice
-        ? vehicleFilteredRows.filter((row: any) => !hasMissingSupplierPrice(row))
-        : vehicleFilteredRows;
+      const missingEanFilteredRows = showMissingEanOnly
+        ? merged.filter((row: any) => Boolean(row.has_missing_ean))
+        : merged;
 
       const searchFilteredRows = trimmedSearch
-        ? priceFilteredRows.filter((row: any) => {
+        ? missingEanFilteredRows.filter((row: any) => {
             const q = trimmedSearch.toLowerCase();
             return (
               (row.brand ?? '').toLowerCase().includes(q) ||
@@ -318,22 +446,23 @@ export function TiresCMSPageV2() {
               (row.derived_ean ?? '').toLowerCase().includes(q)
             );
           })
-        : priceFilteredRows;
+        : missingEanFilteredRows;
 
-      const visibleRows = showConflicts
-        ? searchFilteredRows
-        : searchFilteredRows.filter((row: any) => !row.has_duplicate_ean_conflict);
+      const visibleRows = searchFilteredRows;
 
-      const visibleTotal = visibleRows.length;
+      const visibleTypedRows = visibleRows as TireRow[];
+      const visibleTotal = visibleTypedRows.length;
       setTotalCount(visibleTotal);
+      setVisibleRowsCache(visibleTypedRows);
       const totalPages = Math.max(1, Math.ceil(visibleTotal / pageSize));
-      if (currentPage > totalPages) {
-        setCurrentPage(totalPages);
-        return;
+      const safePage = Math.min(currentPage, totalPages);
+      if (currentPage !== safePage) {
+        setCurrentPage(safePage);
       }
 
-      const pagedRows = visibleRows.slice(rangeStart, rangeEnd + 1);
-      setTires(pagedRows as TireRow[]);
+      const pagedStart = (safePage - 1) * pageSize;
+      const pagedRows = visibleTypedRows.slice(pagedStart, pagedStart + pageSize);
+      setTires(pagedRows);
     } catch (err: any) {
       console.error('Fetch tires error:', err);
       setError(err.message);
@@ -382,12 +511,58 @@ export function TiresCMSPageV2() {
   const mustHideFromStore = (tire: TireRow | null) =>
     hasMissingSupplierPrice(tire) || Boolean(tire?.is_non_passenger);
 
+  const getWarningReasons = (tire: TireRow) => {
+    const reasons: string[] = [];
+
+    if (tire.has_duplicate_ean_conflict) {
+      reasons.push(language === 'fi' ? 'Sama EAN löytyy useasta eri tuotteesta/specistä' : 'Same EAN appears on multiple different variants/specs');
+    }
+    if (tire.has_mandatory_field_conflict) {
+      reasons.push(language === 'fi' ? 'Pakollisia kenttiä puuttuu' : 'Mandatory fields are missing');
+    }
+    if (tire.has_missing_ean) {
+      reasons.push(language === 'fi' ? 'EAN puuttuu tai on väliaikainen' : 'EAN is missing or still a placeholder');
+    }
+    if (Boolean(tire.ean_conflict_open) && reasons.length === 0) {
+      reasons.push(language === 'fi' ? 'Katalogissa on avoin konflikti tälle tuotteelle' : 'There is an open catalog conflict for this item');
+    }
+
+    return reasons;
+  };
+
+  const getWarningTooltip = (tire: TireRow) => {
+    const reasons = getWarningReasons(tire);
+    if (reasons.length === 0) {
+      return language === 'fi' ? 'Varoitus' : 'Warning';
+    }
+    const prefix = language === 'fi' ? 'Varoitus:' : 'Warning:';
+    return `${prefix} ${reasons.join(' | ')}`;
+  };
+
+  const showWarningTooltip = (text: string, x: number, y: number) => {
+    setWarningTooltip({ text, x: x + 12, y: y + 12 });
+  };
+
+  const hideWarningTooltip = () => {
+    setWarningTooltip(null);
+  };
+
   const getEffectiveIdentity = (tire: TireRow | null) => {
     const identity = (tire?.cms_data?.spec_overrides as any)?.identity ?? {};
+    const baseSize = (identity.size_string?.trim() || tire?.size_string || '').trim();
+    const loadIndex = String(identity.load_index ?? tire?.load_index ?? '').trim();
+    const speedRaw = String(identity.speed_rating ?? tire?.speed_rating ?? tire?.speed_index ?? '').trim();
+    const speedIndex = speedRaw.toUpperCase();
+    const hasLiSiInSize = /\s\d{2,3}\s?[A-Z]{1,2}$/.test(baseSize.toUpperCase());
+    const liSiSuffix = `${loadIndex}${speedIndex ? ` ${speedIndex}` : ''}`.trim();
+    const sizeWithLiSi = baseSize && !hasLiSiInSize && liSiSuffix
+      ? `${baseSize} ${liSiSuffix}`.trim()
+      : baseSize;
+
     return {
       brand: identity.brand?.trim() || tire?.brand || '',
       model: identity.model?.trim() || tire?.model || '',
-      size_string: identity.size_string?.trim() || tire?.size_string || '',
+      size_string: sizeWithLiSi,
     };
   };
 
@@ -441,8 +616,8 @@ export function TiresCMSPageV2() {
   };
 
   const patchLocalCmsData = (variantId: string, cmsPatch: Record<string, any> | null) => {
-    setTires((prev) =>
-      prev.map((tire) => {
+    const applyCmsPatch = (rows: TireRow[]) =>
+      rows.map((tire) => {
         if (tire.variant_id !== variantId) return tire;
         if (cmsPatch === null) {
           const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
@@ -467,8 +642,31 @@ export function TiresCMSPageV2() {
           is_non_passenger_manual: manualNonPassenger,
           is_non_passenger: autoNonPassenger || manualNonPassenger,
         };
-      })
-    );
+      });
+
+    setVisibleRowsCache((prev) => applyCmsPatch(prev));
+    setTires((prev) => applyCmsPatch(prev));
+  };
+
+  const patchLocalIdentityData = (variantId: string, specOverrides: any) => {
+    const identity = specOverrides?.identity ?? {};
+    const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
+
+    const applyIdentityPatch = (rows: TireRow[]) =>
+      rows.map((tire) =>
+        tire.variant_id === variantId
+          ? {
+              ...tire,
+              brand: identity?.brand ?? tire.brand,
+              model: identity?.model ?? tire.model,
+              size_string: identity?.size_string ?? tire.size_string,
+              derived_ean: identityEan || tire.derived_ean,
+            }
+          : tire
+      );
+
+    setVisibleRowsCache((prev) => applyIdentityPatch(prev));
+    setTires((prev) => applyIdentityPatch(prev));
   };
 
   const handleSave = async () => {
@@ -479,11 +677,50 @@ export function TiresCMSPageV2() {
 
     try {
       const specOverrides = editData.spec_overrides ?? {};
+      const pricingRules = getPricingRulesFromSpecOverrides(specOverrides);
+      if (
+        pricingRules?.qty2?.mode === 'fixed_total' &&
+        !isFixedBundleTotalCompatible(pricingRules.qty2.fixed_total_eur, 2)
+      ) {
+        throw new Error(
+          language === 'fi'
+            ? '2 kpl kiinteä pakettihinta pitää jakautua tasan kahdelle tuotteelle (sentteihin asti).'
+            : 'Fixed total for 2 items must be divisible evenly across 2 units (in cents).'
+        );
+      }
+      if (
+        pricingRules?.qty4?.mode === 'fixed_total' &&
+        !isFixedBundleTotalCompatible(pricingRules.qty4.fixed_total_eur, 4)
+      ) {
+        throw new Error(
+          language === 'fi'
+            ? '4 kpl kiinteä pakettihinta pitää jakautua tasan neljälle tuotteelle (sentteihin asti).'
+            : 'Fixed total for 4 items must be divisible evenly across 4 units (in cents).'
+        );
+      }
+      const identityOverride = (specOverrides as any)?.identity ?? {};
+      let targetVariantId = selectedTire.variant_id;
+      const hasEanOverride =
+        Object.prototype.hasOwnProperty.call(identityOverride, 'ean') &&
+        selectedTire.supplier_code_best &&
+        selectedTire.supplier_external_id_best;
+      const eanDigits = String(identityOverride.ean ?? '').replace(/\D/g, '');
+      const currentEanDigits = String(selectedTire.derived_ean ?? '').replace(/\D/g, '');
+      const shouldPatchEan = Boolean(hasEanOverride) && eanDigits !== currentEanDigits;
+
+      if (shouldPatchEan && eanDigits.length > 0 && !isValidEan13(eanDigits)) {
+        throw new Error(
+          language === 'fi'
+            ? 'EAN ei ole kelvollinen EAN-13 (tarkistusnumero virheellinen).'
+            : 'EAN is not a valid EAN-13 (check digit mismatch).'
+        );
+      }
+
       const draftManualNonPassenger = getManualNonPassengerFlag(specOverrides);
       const draftNonPassenger = Boolean(selectedTire.is_non_passenger_auto) || draftManualNonPassenger;
       const mustBeHidden = hasMissingSupplierPrice(selectedTire) || draftNonPassenger;
       const payload: any = {
-        variant_id: selectedTire.variant_id,
+        variant_id: targetVariantId,
         title: editData.title?.trim() || null,
         subtitle: editData.subtitle?.trim() || null,
         short_description: editData.short_description?.trim() || null,
@@ -502,6 +739,38 @@ export function TiresCMSPageV2() {
       };
 
       payload.hero_image_url = editData.hero_image_url || payload.gallery[0] || null;
+      const hasCmsChanges =
+        stableSerialize(buildComparableCmsData(targetVariantId, payload)) !==
+        stableSerialize(buildComparableCmsData(selectedTire.variant_id, selectedTire.cms_data ?? null));
+
+      if (!shouldPatchEan && !hasCmsChanges) {
+        setCatalogSyncMessage(
+          language === 'fi'
+            ? 'Ei uusia muutoksia synkronoitavaksi.'
+            : 'No new changes to sync.'
+        );
+        handleCloseDrawer();
+        return;
+      }
+
+      if (shouldPatchEan) {
+        const { data: eanPatchResult, error: eanPatchError } = await supabase.rpc('catalog_patch_offer_ean_v3', {
+          p_supplier_code: selectedTire.supplier_code_best,
+          p_product_type: selectedTire.product_type,
+          p_external_id: selectedTire.supplier_external_id_best,
+          p_ean: eanDigits || null,
+          p_run_rebuild: false,
+        });
+
+        if (eanPatchError) throw eanPatchError;
+
+        const remappedVariantId = (eanPatchResult as any)?.new_variant_id;
+        if (typeof remappedVariantId === 'string' && remappedVariantId.trim().length > 0) {
+          targetVariantId = remappedVariantId;
+        }
+      }
+
+      payload.variant_id = targetVariantId;
 
       // Upsert to product_cms
       const { error } = await supabase
@@ -509,8 +778,28 @@ export function TiresCMSPageV2() {
         .upsert(payload, { onConflict: 'variant_id' });
 
       if (error) throw error;
+      setHasPendingCatalogSync(true);
+      setCatalogSyncMessage(
+        shouldPatchEan
+          ? (language === 'fi'
+            ? 'EAN-muutos tallennettu välimuistiin. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
+            : 'EAN change cached. Run "Apply Sync" to publish changes to catalog.')
+          : (language === 'fi'
+            ? 'Muutokset tallennettu. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
+            : 'Changes saved. Run "Apply Sync" to publish changes to catalog.')
+      );
 
-      patchLocalCmsData(selectedTire.variant_id, payload);
+      if (targetVariantId !== selectedTire.variant_id) {
+        await supabase
+          .from('product_cms')
+          .delete()
+          .eq('variant_id', selectedTire.variant_id);
+
+        await fetchTires();
+      } else {
+        patchLocalCmsData(targetVariantId, payload);
+        patchLocalIdentityData(targetVariantId, specOverrides);
+      }
       handleCloseDrawer();
     } catch (err: any) {
       console.error('Save error:', err);
@@ -520,10 +809,47 @@ export function TiresCMSPageV2() {
     }
   };
 
+  const handleApplyCatalogSync = async () => {
+    if (syncingCatalog) return;
+    setSyncingCatalog(true);
+    setError(null);
+    setCatalogSyncMessage(null);
+
+    try {
+      const { data: offersRun, error: offersError } = await supabase.rpc('catalog_build_offers_v3', { p_limit: 200000 });
+      if (offersError) throw offersError;
+      if ((offersRun as any)?.errors && Number((offersRun as any).errors) > 0) {
+        throw new Error((offersRun as any)?.error || 'catalog_build_offers_v3 failed');
+      }
+
+      const { error: prefilterError } = await supabase.rpc('catalog_build_offer_prefilter_v3');
+      if (prefilterError) throw prefilterError;
+
+      const { error: variantsError } = await supabase.rpc('catalog_build_variants_v3');
+      if (variantsError) throw variantsError;
+
+      const { error: conflictsError } = await supabase.rpc('catalog_refresh_conflicts_v3');
+      if (conflictsError) throw conflictsError;
+
+      const { error: refreshError } = await supabase.rpc('catalog_refresh_products_search_v3');
+      if (refreshError) throw refreshError;
+
+      setHasPendingCatalogSync(false);
+      setCatalogSyncMessage(language === 'fi' ? 'Catalog sync valmis.' : 'Catalog sync completed.');
+      await fetchTires();
+    } catch (err: any) {
+      console.error('Catalog sync error:', err);
+      setCatalogSyncMessage(err?.message || 'Catalog sync failed');
+    } finally {
+      setSyncingCatalog(false);
+    }
+  };
+
   const handleToggleVisibility = async (tire: TireRow) => {
     const missingSupplierPrice = hasMissingSupplierPrice(tire);
     const nonPassenger = Boolean(tire.is_non_passenger);
     const forceHidden = missingSupplierPrice || nonPassenger;
+    const previousHiddenState = Boolean(tire.cms_data?.is_hidden);
     const currentlyHidden = Boolean(tire.cms_data?.is_hidden) || forceHidden;
     const newHiddenState = forceHidden ? true : !currentlyHidden;
 
@@ -555,6 +881,15 @@ export function TiresCMSPageV2() {
         is_hidden: newHiddenState,
         spec_overrides: tire.cms_data?.spec_overrides ?? {},
       });
+
+      if (newHiddenState !== previousHiddenState) {
+        setHasPendingCatalogSync(true);
+        setCatalogSyncMessage(
+          language === 'fi'
+            ? 'Näkyvyysmuutos tallennettu. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
+            : 'Visibility change saved. Run "Apply Sync" to publish changes to catalog.'
+        );
+      }
     } catch (err: any) {
       console.error('Toggle visibility error:', err);
       setError(err.message);
@@ -723,7 +1058,7 @@ export function TiresCMSPageV2() {
     return editData.spec_overrides?.identity || null;
   };
 
-  const setIdentityField = (field: 'brand' | 'model' | 'size_string' | 'season' | 'load_index' | 'speed_rating', value?: string) => {
+  const setIdentityField = (field: 'brand' | 'model' | 'ean' | 'size_string' | 'season' | 'load_index' | 'speed_rating', value?: string) => {
     setEditData(prev => {
       const currentOverrides = prev.spec_overrides || {};
       const currentIdentity = currentOverrides.identity || {};
@@ -829,8 +1164,47 @@ export function TiresCMSPageV2() {
     });
   };
 
+  const getBundlePricing = (): ProductPricingRules | null =>
+    getPricingRulesFromSpecOverrides(editData.spec_overrides);
+
+  const getBundleTier = (qty: 2 | 4) =>
+    qty === 2 ? (getBundlePricing()?.qty2 ?? null) : (getBundlePricing()?.qty4 ?? null);
+
+  const setBundleTier = (qty: 2 | 4, tier: { mode?: BundlePricingMode; percent_off?: number | null; fixed_total_eur?: number | null }) => {
+    setEditData((prev) => {
+      const currentPricing = getPricingRulesFromSpecOverrides(prev.spec_overrides) ?? { qty2: null, qty4: null };
+      const key = qty === 2 ? 'qty2' : 'qty4';
+      const existingTier = currentPricing[key] ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+      const mergedTier = {
+        ...existingTier,
+        ...tier,
+      };
+      const nextPricing: ProductPricingRules = {
+        qty2: key === 'qty2' ? mergedTier : currentPricing.qty2,
+        qty4: key === 'qty4' ? mergedTier : currentPricing.qty4,
+      };
+
+      return {
+        ...prev,
+        spec_overrides: setPricingRulesToSpecOverrides(prev.spec_overrides, nextPricing),
+      };
+    });
+  };
+
+  const clearBundlePricing = () => {
+    setEditData((prev) => ({
+      ...prev,
+      spec_overrides: setPricingRulesToSpecOverrides(prev.spec_overrides, null),
+    }));
+  };
+
   const handleResetCms = async () => {
     if (!selectedTire) return;
+    if (!selectedTire.cms_data) {
+      setCatalogSyncMessage(language === 'fi' ? 'Ei uusia muutoksia synkronoitavaksi.' : 'No new changes to sync.');
+      handleCloseDrawer();
+      return;
+    }
 
     setSaving(true);
     setSaveError(null);
@@ -844,6 +1218,12 @@ export function TiresCMSPageV2() {
       if (error) throw error;
 
       patchLocalCmsData(selectedTire.variant_id, null);
+      setHasPendingCatalogSync(true);
+      setCatalogSyncMessage(
+        language === 'fi'
+          ? 'CMS-ohitukset poistettu. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
+          : 'CMS overrides cleared. Run "Apply Sync" to publish changes to catalog.'
+      );
       handleCloseDrawer();
     } catch (err: any) {
       console.error('Reset error:', err);
@@ -858,9 +1238,43 @@ export function TiresCMSPageV2() {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalCount);
+  const paginationItems = (() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const items: Array<number | 'ellipsis-left' | 'ellipsis-right'> = [1];
+    const windowStart = Math.max(2, currentPage - 1);
+    const windowEnd = Math.min(totalPages - 1, currentPage + 1);
+
+    if (windowStart > 2) {
+      items.push('ellipsis-left');
+    }
+
+    for (let page = windowStart; page <= windowEnd; page += 1) {
+      items.push(page);
+    }
+
+    if (windowEnd < totalPages - 1) {
+      items.push('ellipsis-right');
+    }
+
+    items.push(totalPages);
+    return items;
+  })();
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
+      {warningTooltip && (
+        <div
+          className={`fixed z-[120] max-w-[380px] rounded-md px-2 py-1.5 text-xs shadow-lg pointer-events-none ${
+            isDark ? 'bg-black/95 text-white border border-white/20' : 'bg-gray-900 text-white border border-gray-700'
+          }`}
+          style={{ left: `${warningTooltip.x}px`, top: `${warningTooltip.y}px` }}
+        >
+          {warningTooltip.text}
+        </div>
+      )}
       {/* Header */}
       <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
         <div className="px-8 py-6">
@@ -896,37 +1310,34 @@ export function TiresCMSPageV2() {
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={showConflicts}
-              onChange={(e) => setShowConflicts(e.target.checked)}
+              checked={showMissingEanOnly}
+              onChange={(e) => setShowMissingEanOnly(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300"
             />
             <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'Näytä konfliktit' : 'Show conflicts'}
+              {language === 'fi' ? 'Näytä vain puuttuva EAN' : 'Show missing EAN only'}
             </span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showNonPassenger}
-              onChange={(e) => setShowNonPassenger(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300"
-            />
-            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'Näytä ei-henkilöautot' : 'Show non-passenger'}
-            </span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hideMissingSupplierPrice}
-              onChange={(e) => setHideMissingSupplierPrice(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300"
-            />
-            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'Piilota puuttuva toimittajahinta' : 'Hide missing supplier price'}
-            </span>
-          </label>
+          <button
+            type="button"
+            onClick={handleApplyCatalogSync}
+            disabled={syncingCatalog || !hasPendingCatalogSync}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isDark
+                ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-white/10 disabled:text-gray-500'
+                : 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-100 disabled:text-gray-500'
+            } disabled:cursor-not-allowed`}
+          >
+            {syncingCatalog
+              ? (language === 'fi' ? 'Synkronoidaan...' : 'Syncing...')
+              : 'Apply Sync'}
+          </button>
         </div>
+        {catalogSyncMessage && (
+          <p className={`mt-3 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+            {catalogSyncMessage}
+          </p>
+        )}
       </div>
 
       {/* Main Content */}
@@ -943,6 +1354,19 @@ export function TiresCMSPageV2() {
           </div>
         ) : (
           <>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                {language === 'fi'
+                  ? `Yhteensä ${totalCount} tuotetta`
+                  : `${totalCount} items total`}
+              </p>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                {language === 'fi'
+                  ? `Näytetään ${startItem}-${endItem} / ${totalCount} (sivu ${currentPage}/${totalPages})`
+                  : `Showing ${startItem}-${endItem} of ${totalCount} (page ${currentPage}/${totalPages})`}
+              </p>
+            </div>
+
             {/* Table */}
             <div className={`rounded-lg border overflow-hidden ${
               isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
@@ -1000,7 +1424,20 @@ export function TiresCMSPageV2() {
                           <div className="flex items-center gap-2">
                             {getEffectiveIdentity(tire).brand}
                             {tire.ean_conflict_open && (
-                              <AlertTriangle className="w-4 h-4 text-yellow-500" title="EAN conflict" />
+                              <span
+                                className="inline-flex items-center px-1 cursor-help"
+                                aria-label={getWarningTooltip(tire)}
+                                onMouseEnter={(e) => showWarningTooltip(getWarningTooltip(tire), e.clientX, e.clientY)}
+                                onMouseMove={(e) => showWarningTooltip(getWarningTooltip(tire), e.clientX, e.clientY)}
+                                onMouseLeave={hideWarningTooltip}
+                                onFocus={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  showWarningTooltip(getWarningTooltip(tire), rect.left, rect.bottom);
+                                }}
+                                onBlur={hideWarningTooltip}
+                              >
+                                <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                              </span>
                             )}
                             {tire.is_non_passenger && (
                               <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
@@ -1082,6 +1519,19 @@ export function TiresCMSPageV2() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                    aria-label={language === 'fi' ? 'Ensimmäinen sivu' : 'First page'}
+                  >
+                    {language === 'fi' ? 'Ens.' : 'First'}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
@@ -1092,8 +1542,19 @@ export function TiresCMSPageV2() {
                   >
                     {language === 'fi' ? 'Edellinen' : 'Previous'}
                   </button>
-                  {Array.from({ length: totalPages }).map((_, index) => {
-                    const pageNumber = index + 1;
+                  {paginationItems.map((item, index) => {
+                    if (typeof item !== 'number') {
+                      return (
+                        <span
+                          key={`${item}-${index}`}
+                          className={`px-2 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+
+                    const pageNumber = item;
                     return (
                       <button
                         key={pageNumber}
@@ -1124,6 +1585,19 @@ export function TiresCMSPageV2() {
                     }`}
                   >
                     {language === 'fi' ? 'Seuraava' : 'Next'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      isDark
+                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
+                    }`}
+                    aria-label={language === 'fi' ? 'Viimeinen sivu' : 'Last page'}
+                  >
+                    {language === 'fi' ? 'Vik.' : 'Last'}
                   </button>
                 </div>
               </div>
@@ -1219,7 +1693,20 @@ export function TiresCMSPageV2() {
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                       EAN
                     </label>
-                    <p className={`text-sm font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedTire.derived_ean || '—'}</p>
+                    <input
+                      type="text"
+                      value={getIdentityOverride()?.ean ?? ''}
+                      onChange={(e) => setIdentityField('ean', e.target.value)}
+                      placeholder={selectedTire.ean || selectedTire.derived_ean || 'EAN'}
+                      className={`w-full px-3 py-2 rounded-lg border font-mono ${
+                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                      {language === 'fi'
+                        ? 'Syötä oikea EAN korvaamaan puuttuva EAN.'
+                        : 'Enter real EAN to replace missing EAN.'}
+                    </p>
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -1325,7 +1812,7 @@ export function TiresCMSPageV2() {
                     { key: 'xl', labelFi: 'XL', labelEn: 'XL' },
                     { key: 'studded', labelFi: 'Nastat', labelEn: 'Studded' },
                     { key: 'threepmsf', labelFi: '3PMSF', labelEn: '3PMSF' },
-                    { key: 'winter_approved', labelFi: 'Talvi', labelEn: 'Winter' },
+                    { key: 'winter_approved', labelFi: 'M+S', labelEn: 'M+S' },
                     { key: 'ice_approved', labelFi: 'Jää', labelEn: 'Ice approved' },
                   ].map((feature) => (
                     <label key={feature.key} className="flex items-center gap-2 cursor-pointer">
@@ -1522,10 +2009,18 @@ export function TiresCMSPageV2() {
                   <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
                     <div className="flex justify-between items-center mb-2">
                       <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Perushinta:' : 'Base price:'}
+                        {language === 'fi' ? 'Perushinta (ilman ALV):' : 'Base price (excl. VAT):'}
                       </span>
                       <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         €{selectedTire.final_price_eur?.toFixed(2) || '0.00'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {language === 'fi' ? 'Hinta ALV 25.5% kanssa:' : 'Price incl. VAT 25.5%:'}
+                      </span>
+                      <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                        €{(toPriceWithVat(selectedTire.final_price_eur ?? null) ?? 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -1550,6 +2045,10 @@ export function TiresCMSPageV2() {
                           : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                       }`}
                     />
+                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
+                      €{(toPriceWithVat(editData.price_override_eur ?? null) ?? 0).toFixed(2)}
+                    </p>
                   </div>
 
                   <div className="border-t pt-4 border-white/10">
@@ -1603,6 +2102,10 @@ export function TiresCMSPageV2() {
                                   : 'bg-white border-gray-300 text-gray-900'
                               }`}
                             />
+                            <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
+                              €{(toPriceWithVat(editData.promo_price_eur ?? null) ?? 0).toFixed(2)}
+                            </p>
                           </div>
 
                           <div>
@@ -1623,6 +2126,167 @@ export function TiresCMSPageV2() {
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  <div className="border-t pt-4 border-white/10 space-y-4">
+                    {(() => {
+                      const bundlePricing = getBundlePricing();
+                      const tier2 = bundlePricing?.qty2 ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+                      const tier4 = bundlePricing?.qty4 ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+                      const basePrice = Number(selectedTire.final_price_eur ?? selectedTire.price ?? 0);
+                      const preview2 = calculateLinePricing(basePrice, 2, bundlePricing);
+                      const preview4 = calculateLinePricing(basePrice, 4, bundlePricing);
+                      const invalidFixed2 = tier2.mode === 'fixed_total' && tier2.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier2.fixed_total_eur, 2);
+                      const invalidFixed4 = tier4.mode === 'fixed_total' && tier4.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier4.fixed_total_eur, 4);
+
+                      return (
+                        <>
+                          <div>
+                            <h4 className={`text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                              {language === 'fi' ? 'Pakettihinnoittelu (2 / 4 kpl)' : 'Bundle pricing (2 / 4 items)'}
+                            </h4>
+                            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {language === 'fi'
+                                ? 'Valitse alennusprosentti tai kiinteä kokonaishinta 2 tai 4 kappaleelle.'
+                                : 'Choose percentage discount or fixed total for bundles of 2 or 4 units.'}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                              <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>2 {language === 'fi' ? 'kpl' : 'items'}</p>
+                              <select
+                                value={tier2.mode}
+                                onChange={(e) => setBundleTier(2, {
+                                  mode: e.target.value as BundlePricingMode,
+                                  percent_off: null,
+                                  fixed_total_eur: null,
+                                })}
+                                className={`w-full px-3 py-2 rounded-lg border ${
+                                  isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              >
+                                <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
+                                <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
+                                <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
+                              </select>
+                              {tier2.mode === 'percent' && (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.1"
+                                  value={tier2.percent_off ?? ''}
+                                  onChange={(e) => setBundleTier(2, { percent_off: e.target.value ? Number(e.target.value) : null })}
+                                  placeholder={language === 'fi' ? 'Esim. 5' : 'e.g. 5'}
+                                  className={`w-full px-3 py-2 rounded-lg border ${
+                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                />
+                              )}
+                              {tier2.mode === 'fixed_total' && (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={tier2.fixed_total_eur ?? ''}
+                                  onChange={(e) => setBundleTier(2, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
+                                  placeholder={language === 'fi' ? 'Esim. 220.00' : 'e.g. 220.00'}
+                                  className={`w-full px-3 py-2 rounded-lg border ${
+                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                />
+                              )}
+                              {invalidFixed2 && (
+                                <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                                  {language === 'fi'
+                                    ? 'Kiinteä hinta ei jakaudu tasan 2 kappaleelle senttitasolla.'
+                                    : 'Fixed total does not divide evenly across 2 units in cents.'}
+                                </p>
+                              )}
+                              <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview2.lineTotalEur.toFixed(2)}
+                                {preview2.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview2.savingsEur.toFixed(2)})` : ''}
+                              </p>
+                            </div>
+
+                            <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                              <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>4 {language === 'fi' ? 'kpl' : 'items'}</p>
+                              <select
+                                value={tier4.mode}
+                                onChange={(e) => setBundleTier(4, {
+                                  mode: e.target.value as BundlePricingMode,
+                                  percent_off: null,
+                                  fixed_total_eur: null,
+                                })}
+                                className={`w-full px-3 py-2 rounded-lg border ${
+                                  isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              >
+                                <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
+                                <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
+                                <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
+                              </select>
+                              {tier4.mode === 'percent' && (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.1"
+                                  value={tier4.percent_off ?? ''}
+                                  onChange={(e) => setBundleTier(4, { percent_off: e.target.value ? Number(e.target.value) : null })}
+                                  placeholder={language === 'fi' ? 'Esim. 10' : 'e.g. 10'}
+                                  className={`w-full px-3 py-2 rounded-lg border ${
+                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                />
+                              )}
+                              {tier4.mode === 'fixed_total' && (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={tier4.fixed_total_eur ?? ''}
+                                  onChange={(e) => setBundleTier(4, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
+                                  placeholder={language === 'fi' ? 'Esim. 420.00' : 'e.g. 420.00'}
+                                  className={`w-full px-3 py-2 rounded-lg border ${
+                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                />
+                              )}
+                              {invalidFixed4 && (
+                                <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                                  {language === 'fi'
+                                    ? 'Kiinteä hinta ei jakaudu tasan 4 kappaleelle senttitasolla.'
+                                    : 'Fixed total does not divide evenly across 4 units in cents.'}
+                                </p>
+                              )}
+                              <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview4.lineTotalEur.toFixed(2)}
+                                {preview4.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview4.savingsEur.toFixed(2)})` : ''}
+                              </p>
+                            </div>
+                          </div>
+
+                          {(bundlePricing?.qty2 || bundlePricing?.qty4) && (
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={clearBundlePricing}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                                  isDark
+                                    ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400'
+                                    : 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
+                                }`}
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                                {language === 'fi' ? 'Tyhjennä pakettihinnoittelu' : 'Clear bundle pricing'}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

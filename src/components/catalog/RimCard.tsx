@@ -3,7 +3,8 @@ import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { motion } from 'motion/react';
 import svgPaths from '../../imports/svg-a1qm6qb0np';
-import mockupRimImage from 'figma:asset/a7d07b92f4849dcd91f999211a4f6982cfd3f72f.png';
+import { buildProductImageFallback } from '../../utils/productImage';
+import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
 
 interface RimCardProps {
   product: {
@@ -18,6 +19,7 @@ interface RimCardProps {
     color?: string;
     material?: string;
     best_price_eur?: number;
+    pricing_rules?: ProductPricingRules | null;
     best_image_url: string;
     in_stock: boolean;
   };
@@ -26,12 +28,25 @@ interface RimCardProps {
   onAddToCart?: (e: React.MouseEvent) => void;
 }
 
-export function RimCard({ product, index = 0, onClick, onAddToCart }: RimCardProps) {
+export function RimCard({ product, index: _index = 0, onClick, onAddToCart }: RimCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const fallbackImage = React.useMemo(
+    () => buildProductImageFallback(product.brand, product.model),
+    [product.brand, product.model]
+  );
+  const [cardImageSrc, setCardImageSrc] = React.useState(product.best_image_url || fallbackImage);
+
+  React.useEffect(() => {
+    setCardImageSrc(product.best_image_url || fallbackImage);
+  }, [product.best_image_url, fallbackImage]);
 
   // Calculate 4-piece price
-  const fourPiecePrice = (product.best_price_eur || 0) * 4;
+  const fourPiecePrice = calculateLinePricing(
+    product.best_price_eur || 0,
+    4,
+    product.pricing_rules ?? null,
+  ).lineTotalEur;
 
   // Format size parts
   const getSizeParts = () => {
@@ -150,7 +165,12 @@ export function RimCard({ product, index = 0, onClick, onAddToCart }: RimCardPro
                     <img 
                       alt={`${product.brand} ${product.model}`}
                       className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" 
-                      src={mockupRimImage} 
+                      src={cardImageSrc}
+                      onError={() => {
+                        if (cardImageSrc !== fallbackImage) {
+                          setCardImageSrc(fallbackImage);
+                        }
+                      }}
                     />
                   </div>
                 </div>

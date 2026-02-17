@@ -3,6 +3,7 @@ import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
 import { AlertCircle, Banknote, CheckCircle2, ChevronRight, CreditCard, Globe, Mail, Package, Phone, RefreshCcw, RotateCcw, Search, Send, Truck, XCircle } from 'lucide-react';
+import { calculateLinePricing, getPricingRulesFromSpecOverrides, type ProductPricingRules } from '../../utils/pricing';
 
 interface OrderRow {
   id: string;
@@ -34,6 +35,23 @@ const ORDER_MARK_STATUSES = [
 type OrderMarkStatus = (typeof ORDER_MARK_STATUSES)[number];
 type PaymentMethod = 'card' | 'cash' | 'paytrail';
 type PaymentResult = 'purchased' | 'fail';
+type OrderCreateForm = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  itemName: string;
+  itemEan: string;
+  variantId: string | null;
+  qty: string;
+  unitPriceEur: string;
+  baseUnitPriceEur: number | null;
+  pricingRules: ProductPricingRules | null;
+  unitPriceManuallyEdited: boolean;
+  vatPercent: string;
+  paymentMethod: PaymentMethod;
+  status: OrderMarkStatus;
+};
 
 const DB_STATUS_CANDIDATES: Record<OrderMarkStatus, string[]> = {
   receive: ['pending', 'received'],
@@ -65,18 +83,22 @@ export function OrdersCMSPage() {
   const [createOrderError, setCreateOrderError] = useState<string | null>(null);
   const [eanLookupLoading, setEanLookupLoading] = useState(false);
   const [eanLookupMessage, setEanLookupMessage] = useState<string | null>(null);
-  const [createForm, setCreateForm] = useState({
+  const [createForm, setCreateForm] = useState<OrderCreateForm>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     itemName: '',
     itemEan: '',
+    variantId: null,
     qty: '1',
     unitPriceEur: '',
+    baseUnitPriceEur: null,
+    pricingRules: null,
+    unitPriceManuallyEdited: false,
     vatPercent: '25.5',
-    paymentMethod: 'cash' as PaymentMethod,
-    status: 'receive' as OrderMarkStatus,
+    paymentMethod: 'cash',
+    status: 'receive',
   });
 
   useEffect(() => {
@@ -330,8 +352,12 @@ export function OrdersCMSPage() {
       phone: '',
       itemName: '',
       itemEan: '',
+      variantId: null,
       qty: '1',
       unitPriceEur: '',
+      baseUnitPriceEur: null,
+      pricingRules: null,
+      unitPriceManuallyEdited: false,
       vatPercent: '25.5',
       paymentMethod: 'cash',
       status: 'receive',
@@ -427,12 +453,41 @@ export function OrdersCMSPage() {
       const resolvedTitle = `${data.brand ?? ''} ${data.model ?? ''}`.trim();
       const titled = data.size_string ? `${resolvedTitle} ${data.size_string}`.trim() : resolvedTitle;
       const resolvedPrice = data.price ?? null;
+      const resolvedVariantId = data.variant_id ?? null;
 
-      setCreateForm((prev) => ({
-        ...prev,
-        itemName: titled || prev.itemName,
-        unitPriceEur: resolvedPrice !== null && resolvedPrice !== undefined ? String(Number(resolvedPrice).toFixed(2)) : prev.unitPriceEur,
-      }));
+      let pricingRules: ProductPricingRules | null = null;
+      if (resolvedVariantId) {
+        const { data: cmsRow, error: cmsLookupError } = await supabase
+          .from('product_cms')
+          .select('spec_overrides')
+          .eq('variant_id', resolvedVariantId)
+          .maybeSingle();
+
+        if (!cmsLookupError && cmsRow) {
+          pricingRules = getPricingRulesFromSpecOverrides(cmsRow.spec_overrides);
+        }
+      }
+
+      setCreateForm((prev) => {
+        const qty = Math.max(1, Number.parseInt(prev.qty, 10) || 1);
+        const baseUnitPriceEur = resolvedPrice !== null && resolvedPrice !== undefined
+          ? Number(resolvedPrice)
+          : prev.baseUnitPriceEur;
+        const autoPricing = calculateLinePricing(baseUnitPriceEur, qty, pricingRules);
+
+        return {
+          ...prev,
+          itemName: titled || prev.itemName,
+          variantId: resolvedVariantId || prev.variantId,
+          baseUnitPriceEur,
+          pricingRules: pricingRules ?? null,
+          unitPriceManuallyEdited: false,
+          unitPriceEur:
+            baseUnitPriceEur !== null && baseUnitPriceEur !== undefined
+              ? autoPricing.effectiveUnitPriceEur.toFixed(2)
+              : prev.unitPriceEur,
+        };
+      });
 
       setEanLookupMessage(language === 'fi' ? 'Tuote löytyi ja hinta täytettiin.' : 'Item found and price auto-filled.');
     } catch (err: any) {
@@ -464,6 +519,12 @@ export function OrdersCMSPage() {
       const subtotalCents = unitCents * qty;
       const vatCents = Math.round(subtotalCents * (vatPercentValue / 100));
       const totalCents = subtotalCents + vatCents;
+      const baseUnitPriceCents = createForm.baseUnitPriceEur !== null && createForm.baseUnitPriceEur !== undefined
+        ? Math.round(createForm.baseUnitPriceEur * 100)
+        : null;
+      const discountCents = baseUnitPriceCents !== null
+        ? Math.max(0, (baseUnitPriceCents * qty) - subtotalCents)
+        : 0;
       const nowIso = new Date().toISOString();
       const rowId = crypto.randomUUID();
 
@@ -491,7 +552,12 @@ export function OrdersCMSPage() {
             name: createForm.itemName || 'Manual order',
             qty,
             ean: createForm.itemEan || null,
+            variant_id: createForm.variantId || null,
             client_unit_price_cents: unitCents,
+            base_unit_price_cents: baseUnitPriceCents,
+            discount_cents: discountCents,
+            pricing_source: createForm.unitPriceManuallyEdited ? 'manual' : 'auto',
+            pricing_rules: createForm.pricingRules,
           },
         ],
       };
@@ -1443,7 +1509,13 @@ export function OrdersCMSPage() {
                   value={createForm.itemEan}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setCreateForm((prev) => ({ ...prev, itemEan: value }));
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      itemEan: value,
+                      variantId: null,
+                      baseUnitPriceEur: null,
+                      pricingRules: null,
+                    }));
                     if (eanLookupMessage) setEanLookupMessage(null);
                   }}
                   onBlur={() => lookupItemByEan(createForm.itemEan)}
@@ -1454,7 +1526,24 @@ export function OrdersCMSPage() {
                   min={1}
                   placeholder={language === 'fi' ? 'Määrä' : 'Qty'}
                   value={createForm.qty}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, qty: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCreateForm((prev) => {
+                      const nextQty = Math.max(1, Number.parseInt(value, 10) || 1);
+                      const next: OrderCreateForm = { ...prev, qty: value };
+
+                      if (!prev.unitPriceManuallyEdited && prev.baseUnitPriceEur !== null) {
+                        const autoPricing = calculateLinePricing(
+                          prev.baseUnitPriceEur,
+                          nextQty,
+                          prev.pricingRules,
+                        );
+                        next.unitPriceEur = autoPricing.effectiveUnitPriceEur.toFixed(2);
+                      }
+
+                      return next;
+                    });
+                  }}
                   className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
                 <input
@@ -1463,7 +1552,11 @@ export function OrdersCMSPage() {
                   step="0.01"
                   placeholder={language === 'fi' ? 'Yksikköhinta EUR' : 'Unit price EUR'}
                   value={createForm.unitPriceEur}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, unitPriceEur: e.target.value }))}
+                  onChange={(e) => setCreateForm((prev) => ({
+                    ...prev,
+                    unitPriceEur: e.target.value,
+                    unitPriceManuallyEdited: true,
+                  }))}
                   className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
                 <input
@@ -1500,12 +1593,21 @@ export function OrdersCMSPage() {
                   const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
                   const unit = Number.parseFloat(createForm.unitPriceEur || '0');
                   const vatPercent = Number.parseFloat(createForm.vatPercent || '0');
+                  const baseUnit = createForm.baseUnitPriceEur ?? (Number.isFinite(unit) ? unit : 0);
+                  const autoPricing = calculateLinePricing(baseUnit, qty, createForm.pricingRules);
+                  const usingAutoPricing = !createForm.unitPriceManuallyEdited && createForm.baseUnitPriceEur !== null;
                   const subtotal = Number.isFinite(unit) ? unit * qty : 0;
                   const vat = Number.isFinite(vatPercent) ? subtotal * (vatPercent / 100) : 0;
                   const total = subtotal + vat;
 
                   return (
                     <>
+                      {usingAutoPricing && autoPricing.savingsEur > 0 && (
+                        <p>
+                          <strong>{language === 'fi' ? 'Pakettialennus' : 'Bundle discount'}:</strong>{' '}
+                          EUR {autoPricing.savingsEur.toFixed(2)}
+                        </p>
+                      )}
                       <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> EUR {subtotal.toFixed(2)}</p>
                       <p><strong>{language === 'fi' ? 'ALV' : 'VAT'} ({Number.isFinite(vatPercent) ? vatPercent.toFixed(1) : '0.0'}%):</strong> EUR {vat.toFixed(2)}</p>
                       <p><strong>{language === 'fi' ? 'Kokonaissumma' : 'Total'}:</strong> EUR {total.toFixed(2)}</p>

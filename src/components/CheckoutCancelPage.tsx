@@ -8,6 +8,10 @@ import { Separator } from './ui/separator';
 import { AlertCircle, ShoppingCart, Info, ArrowLeft, Home } from 'lucide-react';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { parseCheckoutReference } from '../utils/paytrail';
+import { calculateLinePricing } from '../utils/pricing';
+
+const VAT_RATE = 0.255;
+const VAT_MULTIPLIER = 1 + VAT_RATE;
 
 interface CheckoutCancelPageProps {
   onNavigateHome: () => void;
@@ -165,7 +169,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
   const displayItems = cartSnapshot?.items || items;
   const displayTotal = order?.grand_total_cents 
     ? (order.grand_total_cents / 100) 
-    : totalPrice;
+    : (totalPrice * VAT_MULTIPLIER);
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#11141A]' : 'bg-gray-50'} py-12 px-4`}>
@@ -214,30 +218,32 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
 
             {/* Items List */}
             <div className="space-y-3 mb-4">
-              {displayItems.map((item: any, index: number) => (
-                <div key={index} className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {item.name || 
-                       (item.product ? `${item.product.brand || ''} ${item.product.model || ''}`.trim() : '') ||
-                       `${item.brand || ''} ${item.model || ''}`.trim()}
-                    </p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {item.qty || item.quantity || 1} × €{(
-                        item.price || 
-                        (item.client_unit_price_cents ? item.client_unit_price_cents / 100 : 0) ||
-                        0
-                      ).toFixed(2)}
-                    </p>
-                  </div>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    €{(
-                      (item.price || (item.client_unit_price_cents ? item.client_unit_price_cents / 100 : 0) || 0) * 
-                      (item.qty || item.quantity || 1)
-                    ).toFixed(2)}
-                  </p>
-                </div>
-              ))}
+              {displayItems.map((item: any, index: number) => {
+                const qty = Number(item?.qty || item?.quantity || 1);
+                const snapshotUnitPrice = item?.client_unit_price_cents ? (Number(item.client_unit_price_cents) / 100) : null;
+                const baseUnit = Number(item?.base_price ?? item?.price ?? 0);
+                const linePricing = calculateLinePricing(baseUnit, qty, item?.pricing_rules ?? item?.product?.pricing_rules ?? null);
+                const effectiveUnit = snapshotUnitPrice ?? (linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER);
+                const lineTotal = effectiveUnit * qty;
+
+                return (
+                    <div key={index} className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {item.name ||
+                           (item.product ? `${item.product.brand || ''} ${item.product.model || ''}`.trim() : '') ||
+                           `${item.brand || ''} ${item.model || ''}`.trim()}
+                        </p>
+                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {qty} × €{effectiveUnit.toFixed(2)}
+                        </p>
+                      </div>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        €{lineTotal.toFixed(2)}
+                      </p>
+                    </div>
+                );
+              })}
             </div>
 
             <Separator className={`mb-4 ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`} />

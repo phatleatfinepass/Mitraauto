@@ -1,4 +1,5 @@
 import { supabase } from './supabase/client';
+import { getPricingRulesFromSpecOverrides, type ProductPricingRules } from './pricing';
 
 export type ProductSearchRow = {
   variant_id: string;
@@ -35,14 +36,27 @@ export type ProductSearchRow = {
   currency: string | null;
   in_stock: boolean;
   stock_qty: number | null;
+  delivery_days_min?: number | null;
+  delivery_days_max?: number | null;
+  supplier_code_best?: string | null;
   // Display fields
   best_image_url: string | null;
+  hero_image_url?: string | null;
   best_image_alt: string | null;
   card_title: string | null;
   subtitle: string | null;
+  title?: string | null;
+  short_description?: string | null;
+  long_description?: string | null;
+  gallery?: string[] | null;
   tags: string[] | null;
   seo_slug: string | null;
+  eu_label_json?: any;
+  eu_fuel?: string | null;
+  eu_wet?: string | null;
+  eu_noise?: number | null;
   final_is_hidden?: boolean | null;
+  pricing_rules?: ProductPricingRules | null;
 };
 
 interface FetchOptions {
@@ -116,6 +130,40 @@ function normalizePcd(value: string | null): string {
 function toNumberOrUndefined(value: any): number | undefined {
   const num = Number(value);
   return Number.isFinite(num) ? num : undefined;
+}
+
+function toStringOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeGallery(value: unknown): string[] {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => toStringOrNull(item))
+      .filter((item): item is string => Boolean(item));
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => toStringOrNull(item))
+          .filter((item): item is string => Boolean(item));
+      }
+    } catch {
+      return [trimmed];
+    }
+  }
+
+  return [];
 }
 
 function applyFilters(rows: ProductSearchRow[], category: 'tire' | 'rim', filters: Record<string, any>): ProductSearchRow[] {
@@ -215,9 +263,35 @@ function applyCmsOverrides(row: ProductSearchRow, cmsRow: any): ProductSearchRow
   const spec = cmsRow?.spec_overrides ?? {};
   const identity = spec?.identity ?? {};
   const features = spec?.features ?? {};
+  const eu = spec?.eu ?? {};
+  const pricingRules = getPricingRulesFromSpecOverrides(spec);
+  const cmsTitle = toStringOrNull(cmsRow?.title);
+  const cmsSubtitle = toStringOrNull(cmsRow?.subtitle);
+  const cmsShortDescription = toStringOrNull(cmsRow?.short_description);
+  const cmsLongDescription = toStringOrNull(cmsRow?.long_description);
+  const cmsGallery = normalizeGallery(cmsRow?.gallery);
+  const cmsHeroImage =
+    toStringOrNull(cmsRow?.hero_image_url) ??
+    (cmsGallery.length > 0 ? cmsGallery[0] : null) ??
+    row.hero_image_url ??
+    row.best_image_url;
+  const mergedGallery =
+    cmsGallery.length > 0
+      ? cmsGallery
+      : (row.gallery?.length ? row.gallery : (cmsHeroImage ? [cmsHeroImage] : []));
 
   return {
     ...row,
+    card_title: cmsTitle ?? row.card_title,
+    subtitle: cmsSubtitle ?? row.subtitle,
+    title: cmsTitle ?? row.title ?? row.card_title ?? null,
+    short_description: cmsShortDescription ?? row.short_description ?? null,
+    long_description: cmsLongDescription ?? row.long_description ?? null,
+    hero_image_url: cmsHeroImage,
+    gallery: mergedGallery.length > 0 ? mergedGallery : null,
+    best_image_url: cmsHeroImage ?? row.best_image_url,
+    brand: identity.brand ?? row.brand,
+    model: identity.model ?? row.model,
     size_string: identity.size_string ?? row.size_string,
     season: identity.season ?? row.season,
     load_index: identity.load_index ?? row.load_index,
@@ -229,6 +303,12 @@ function applyCmsOverrides(row: ProductSearchRow, cmsRow: any): ProductSearchRow
     threepmsf: Object.prototype.hasOwnProperty.call(features, 'threepmsf') ? Boolean(features.threepmsf) : row.threepmsf,
     winter_approved: Object.prototype.hasOwnProperty.call(features, 'winter_approved') ? Boolean(features.winter_approved) : row.winter_approved,
     ice_approved: Object.prototype.hasOwnProperty.call(features, 'ice_approved') ? Boolean(features.ice_approved) : row.ice_approved,
+    eu_fuel: Object.prototype.hasOwnProperty.call(eu, 'fuel_class') ? String(eu.fuel_class ?? '').toUpperCase() : row.eu_fuel,
+    eu_wet: Object.prototype.hasOwnProperty.call(eu, 'wet_grip_class') ? String(eu.wet_grip_class ?? '').toUpperCase() : row.eu_wet,
+    eu_noise: Object.prototype.hasOwnProperty.call(eu, 'noise_db')
+      ? (toNumberOrUndefined(eu.noise_db) ?? row.eu_noise ?? null)
+      : row.eu_noise,
+    pricing_rules: pricingRules ?? row.pricing_rules ?? null,
   };
 }
 
@@ -245,53 +325,65 @@ export async function fetchProductsSearch(
     `variant_id, product_type, brand, brand_display_name, brand_logo_url, model, size_string, 
      season, studded, runflat, xl_reinforced, load_index, speed_rating, speed_index, ev_ready, threepmsf, winter_approved, ice_approved, width_mm, aspect_ratio, diameter_in,
      width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, finish, material, bolts_included, cb_mm, center_bore_mm,
-     eu_wet, eu_noise,
-     price, currency, in_stock, stock_qty,
-     best_image_url, best_image_alt, card_title, subtitle, tags, seo_slug, final_is_hidden`;
+     eu_wet, eu_noise, eu_label_json,
+     price, currency, in_stock, stock_qty, delivery_days_min, delivery_days_max, supplier_code_best,
+     best_image_url, hero_image_url, best_image_alt, card_title, subtitle, short_description, long_description, tags, seo_slug, final_is_hidden`;
   const baseSelect =
     `variant_id, product_type, brand, brand_display_name, brand_logo_url, model, size_string, 
      season, studded, runflat, xl_reinforced, 
      width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, finish,
-     price, currency, in_stock, stock_qty,
-     best_image_url, best_image_alt, card_title, subtitle, tags, seo_slug, final_is_hidden`;
+     price, currency, in_stock, stock_qty, delivery_days_min, delivery_days_max, supplier_code_best,
+     best_image_url, hero_image_url, best_image_alt, card_title, subtitle, short_description, long_description, tags, seo_slug, final_is_hidden`;
 
   const isMissingColumn = (error: any) => {
     const text = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
-    return String(error?.code ?? '') === '42703' || (text.includes('column') && text.includes('does not exist'));
+    const code = String(error?.code ?? '');
+    return (
+      code === '42703' ||
+      code === 'PGRST204' ||
+      (text.includes('column') && text.includes('does not exist')) ||
+      text.includes('could not find') ||
+      text.includes('schema cache')
+    );
   };
 
   let data: any[] | null = null;
   let error: any = null;
   const fetchAllRows = async (selectColumns: string) => {
-    const firstResult = await supabase
+    let firstQuery: any = supabase
       .from('products_search')
-      .select(selectColumns, { count: 'exact' })
+      .select(selectColumns)
       .eq('product_type', category)
+      .eq('final_is_hidden', false)
       .order('variant_id', { ascending: true })
       .range(0, PRODUCTS_SEARCH_PAGE_SIZE - 1);
+    if (category === 'tire') {
+      firstQuery = firstQuery.eq('in_stock', true).gt('price', 0);
+    }
+    const firstResult = await firstQuery;
 
     if (firstResult.error) {
       return { rows: null as any[] | null, error: firstResult.error };
     }
 
     const rows = [...(firstResult.data ?? [])];
-    const expectedTotal = firstResult.count ?? null;
-
     while (true) {
-      if (expectedTotal !== null && rows.length >= expectedTotal) {
-        break;
-      }
       if (rows.length > 0 && rows.length % PRODUCTS_SEARCH_PAGE_SIZE !== 0) {
         break;
       }
 
       const nextFrom = rows.length;
-      const nextResult = await supabase
+      let nextQuery: any = supabase
         .from('products_search')
         .select(selectColumns)
         .eq('product_type', category)
+        .eq('final_is_hidden', false)
         .order('variant_id', { ascending: true })
         .range(nextFrom, nextFrom + PRODUCTS_SEARCH_PAGE_SIZE - 1);
+      if (category === 'tire') {
+        nextQuery = nextQuery.eq('in_stock', true).gt('price', 0);
+      }
+      const nextResult = await nextQuery;
 
       if (nextResult.error) {
         return { rows: null as any[] | null, error: nextResult.error };
@@ -334,44 +426,58 @@ export async function fetchProductsSearch(
   if (rows.length === 0) {
     return { items: [], total: 0 };
   }
-
-  const { data: hiddenRows, error: hiddenError } = await supabase
-    .from('product_cms')
-    .select('variant_id')
-    .eq('is_hidden', true);
-
-  if (hiddenError) {
-    // Some environments don't allow public read on product_cms.
-    // In that case, fail open instead of breaking storefront fetch.
-    if (hiddenError.code !== '42501') {
-      throw hiddenError;
-    }
-
-    const visibleRows = (rows as ProductSearchRow[]).filter((row: any) => !Boolean(row.final_is_hidden));
-    const filteredRows = applyFilters(visibleRows, category, filters);
-    const sortedRows = applySort(filteredRows, filters.sortBy, category);
-    return {
-      items: sortedRows.slice(offset, offset + limit),
-      total: sortedRows.length,
-    };
-  }
-
-  const hiddenVariantIds = new Set((hiddenRows ?? []).map((row) => row.variant_id));
-  const visibleRows = rows.filter((row: any) => {
-    if (hiddenVariantIds.has(row.variant_id)) return false;
-    return !Boolean(row.final_is_hidden);
-  }) as ProductSearchRow[];
-  const filteredRows = applyFilters(visibleRows, category, filters);
+  const visibleRows = (rows as ProductSearchRow[]).filter((row: any) => !Boolean(row.final_is_hidden));
+  const webshopRows = visibleRows.filter((row) => {
+    if (category !== 'tire') return true;
+    const price = typeof row.price === 'number' ? row.price : Number(row.price);
+    const hasValidPrice = Number.isFinite(price) && price > 0;
+    return Boolean(row.in_stock) && hasValidPrice;
+  });
+  const filteredRows = applyFilters(webshopRows, category, filters);
   const sortedRows = applySort(filteredRows, filters.sortBy, category);
   const pagedRows = sortedRows.slice(offset, offset + limit);
   let mergedPagedRows = pagedRows;
 
   if (pagedRows.length > 0) {
     const pagedVariantIds = pagedRows.map((row) => row.variant_id);
-    const { data: cmsRows, error: cmsError } = await supabase
+    const cmsRichSelect = 'variant_id, title, subtitle, short_description, long_description, hero_image_url, gallery, spec_overrides';
+    const cmsLegacySelect = 'variant_id, title, subtitle, short_description, long_description, hero_image_url, gallery';
+    const cmsBaseSelect = 'variant_id';
+
+    let cmsRows: any[] | null = null;
+    let cmsError: any = null;
+
+    const richCmsResult = await supabase
       .from('product_cms')
-      .select('variant_id, spec_overrides')
+      .select(cmsRichSelect)
       .in('variant_id', pagedVariantIds);
+
+    if (richCmsResult.error) {
+      if (isMissingColumn(richCmsResult.error) || String(richCmsResult.error?.code ?? '') === '42501') {
+        const legacyCmsResult = await supabase
+          .from('product_cms')
+          .select(cmsLegacySelect)
+          .in('variant_id', pagedVariantIds);
+
+        if (legacyCmsResult.error && isMissingColumn(legacyCmsResult.error)) {
+          const baseCmsResult = await supabase
+            .from('product_cms')
+            .select(cmsBaseSelect)
+            .in('variant_id', pagedVariantIds);
+          cmsRows = baseCmsResult.data ?? null;
+          cmsError = baseCmsResult.error;
+        } else {
+          cmsRows = legacyCmsResult.data ?? null;
+          cmsError = legacyCmsResult.error;
+        }
+      } else {
+        cmsRows = null;
+        cmsError = richCmsResult.error;
+      }
+    } else {
+      cmsRows = richCmsResult.data ?? null;
+      cmsError = null;
+    }
 
     if (cmsError) {
       if (cmsError.code !== '42501') {

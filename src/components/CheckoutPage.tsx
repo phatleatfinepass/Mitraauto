@@ -12,6 +12,11 @@ import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Build
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '../utils/supabase/client';
+import { calculateLinePricing } from '../utils/pricing';
+
+const VAT_RATE = 0.255;
+const VAT_PERCENT = 25.5;
+const VAT_MULTIPLIER = 1 + VAT_RATE;
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -186,16 +191,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     try {
       // Build items array in correct Paytrail format
       const paytrailItems = items.map(item => {
-        const unitPriceCents = Math.round(item.price * 100);
+        const linePricing = calculateLinePricing(
+          item.base_price ?? item.price ?? 0,
+          item.quantity,
+          item.pricing_rules ?? item.product?.pricing_rules ?? null,
+        );
+        const unitPriceWithVatCents = Math.round(linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER * 100);
         const productName = `${item.product.brand || 'Product'} ${item.product.model || ''}`.trim();
         const sku = item.product.id || item.id;
         
         return {
           qty: item.quantity,
-          client_unit_price_cents: unitPriceCents,
+          client_unit_price_cents: unitPriceWithVatCents,
           sku: sku,
           name: productName,
-          vatPercentage: 24
+          vatPercentage: VAT_PERCENT
         };
       });
 
@@ -285,9 +295,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const vatAmount = totalPrice * 0.255;
+  const vatAmount = totalPrice * VAT_RATE;
   const shippingCost = totalPrice > 200 ? 0 : 15;
-  const finalTotal = totalPrice + shippingCost;
+  const subtotalWithVat = totalPrice * VAT_MULTIPLIER;
+  const finalTotal = subtotalWithVat + shippingCost;
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#11141A]' : 'bg-white'}`}>
@@ -615,36 +626,44 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
               </h2>
 
               <div className="space-y-3 mb-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex gap-3">
-                    <div className={`size-16 rounded-lg overflow-hidden flex-shrink-0 ${
-                      theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-100'
-                    }`}>
-                      {item.product.image_url && (
-                        <img
-                          src={item.product.image_url}
-                          alt={`${item.product.brand} ${item.product.model}`}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm truncate ${
-                        theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
-                      }`}>
-                        {item.product.brand} {item.product.model}
-                      </p>
-                      <p className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
-                      }`}>
-                        {item.quantity} × €{item.price.toFixed(2)}
-                      </p>
-                      <p className="text-sm text-[#FF6B00] mt-1">
-                        €{(item.price * item.quantity).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                {items.map((item) => {
+                  const linePricing = calculateLinePricing(
+                    item.base_price ?? item.price ?? 0,
+                    item.quantity,
+                    item.pricing_rules ?? item.product?.pricing_rules ?? null,
+                  );
+
+                  return (
+                    <div key={item.id} className="flex gap-3">
+                        <div className={`size-16 rounded-lg overflow-hidden flex-shrink-0 ${
+                          theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-gray-100'
+                        }`}>
+                          {item.product.image_url && (
+                            <img
+                              src={item.product.image_url}
+                              alt={`${item.product.brand} ${item.product.model}`}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm truncate ${
+                            theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
+                          }`}>
+                            {item.product.brand} {item.product.model}
+                          </p>
+                          <p className={`text-xs ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
+                          }`}>
+                            {item.quantity} × €{(linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER).toFixed(2)}
+                          </p>
+                          <p className="text-sm text-[#FF6B00] mt-1">
+                            €{(linePricing.lineTotalEur * VAT_MULTIPLIER).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                  );
+                })}
               </div>
 
               <Separator className={theme === 'dark' ? 'bg-white/10' : 'bg-[#E2E8F0]'} />
@@ -655,7 +674,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     {t('subtotal')}
                   </span>
                   <span className={theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}>
-                    €{totalPrice.toFixed(2)}
+                    €{subtotalWithVat.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">

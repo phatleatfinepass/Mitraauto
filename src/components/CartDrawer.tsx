@@ -17,6 +17,7 @@ import {
 } from './ui/alert-dialog';
 import { X, Plus, Minus, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { calculateLinePricing } from '../utils/pricing';
 
 interface CartDrawerProps {
   onCheckout: () => void;
@@ -127,7 +128,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <AnimatePresence mode="popLayout">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const linePricing = calculateLinePricing(
+                    item.base_price ?? item.price ?? 0,
+                    item.quantity,
+                    item.pricing_rules ?? item.product?.pricing_rules ?? null,
+                  );
+
+                  return (
                   <motion.div
                     key={item.id}
                     layout
@@ -212,12 +220,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
 
                           <div className="text-right">
                             <p className="text-sm text-[#FF6B00]">
-                              €{(item.price * item.quantity).toFixed(2)}
+                              €{linePricing.lineTotalEur.toFixed(2)}
                             </p>
                             <p className={`text-xs ${
                               theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'
                             }`}>
-                              €{item.price.toFixed(2)} / {t('perPcs')}
+                              €{linePricing.effectiveUnitPriceEur.toFixed(2)} / {t('perPcs')}
                             </p>
                           </div>
                         </div>
@@ -237,7 +245,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </AnimatePresence>
             </div>
 

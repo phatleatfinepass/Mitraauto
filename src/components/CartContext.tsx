@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { calculateLinePricing, normalizePricingRules, type ProductPricingRules } from '../utils/pricing';
 
 export interface CartItem {
   id: string;
   product: any; // TireProduct or RimProduct
   quantity: number;
   price: number;
+  base_price?: number;
+  pricing_rules?: ProductPricingRules | null;
 }
 
 interface CartContextType {
@@ -30,7 +33,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedCart = localStorage.getItem('mitra-auto-cart');
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed)) {
+          const normalizedItems = parsed.map((item: any) => {
+            const basePrice = Number(item?.base_price ?? item?.price ?? 0);
+            const safeBasePrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 0;
+            return {
+              ...item,
+              price: safeBasePrice,
+              base_price: safeBasePrice,
+              pricing_rules: normalizePricingRules(item?.pricing_rules ?? item?.product?.pricing_rules ?? null),
+            } as CartItem;
+          });
+          setItems(normalizedItems);
+        } else {
+          setItems([]);
+        }
       } catch (error) {
         console.error('Failed to load cart from localStorage:', error);
       }
@@ -52,15 +70,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (existingItemIndex > -1) {
         // Update quantity of existing item
         const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex].quantity += quantity;
+        const existingItem = updatedItems[existingItemIndex];
+        const basePrice = Number(product.best_price_eur ?? product.price ?? existingItem.base_price ?? existingItem.price ?? 0);
+        const safeBasePrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 0;
+        updatedItems[existingItemIndex] = {
+          ...existingItem,
+          quantity: existingItem.quantity + quantity,
+          price: safeBasePrice,
+          base_price: safeBasePrice,
+          pricing_rules: normalizePricingRules(existingItem.pricing_rules ?? product.pricing_rules ?? null),
+        };
         return updatedItems;
       } else {
         // Add new item to cart
+        const basePrice = Number(product.best_price_eur || product.price || 0);
+        const safeBasePrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 0;
         const newItem: CartItem = {
           id: `${product.id}-${Date.now()}`,
           product,
           quantity,
-          price: product.best_price_eur || product.price || 0,
+          price: safeBasePrice,
+          base_price: safeBasePrice,
+          pricing_rules: normalizePricingRules(product.pricing_rules ?? null),
         };
         return [...prevItems, newItem];
       }
@@ -92,7 +123,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = items.reduce((sum, item) => {
+    const line = calculateLinePricing(
+      item.base_price ?? item.price ?? 0,
+      item.quantity,
+      item.pricing_rules ?? null,
+    );
+    return sum + line.lineTotalEur;
+  }, 0);
 
   return (
     <CartContext.Provider

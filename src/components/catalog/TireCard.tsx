@@ -3,14 +3,9 @@ import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { motion } from 'motion/react';
 import { ShoppingCart, PackageX, Sun, Snowflake, CloudSun } from 'lucide-react';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
 import svgPaths from '../../imports/svg-eon971h5o4';
-import tireImage1 from 'figma:asset/9f9f5cd58eafeb7ee856be258ff8acd71a30b4cf.png';
-import tireImage2 from 'figma:asset/d9190247645f8cca8dcd9ad6412845b36c86680c.png';
-import tireImage3 from 'figma:asset/adb78c34e0828008e64c9fd199a33b3043beba86.png';
-
-// Mockup tire images (will be replaced by CMS later)
-const MOCKUP_TIRE_IMAGES = [tireImage1, tireImage2, tireImage3];
+import { buildProductImageFallback } from '../../utils/productImage';
+import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
 
 interface TireCardProps {
   product: {
@@ -32,6 +27,7 @@ interface TireCardProps {
     eu_wet?: string;
     eu_noise?: number;
     best_price_eur?: number;
+    pricing_rules?: ProductPricingRules | null;
     best_image_url: string;
     in_stock: boolean;
   };
@@ -40,12 +36,19 @@ interface TireCardProps {
   onAddToCart?: (e: React.MouseEvent) => void;
 }
 
-export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardProps) {
+export function TireCard({ product, index: _index = 0, onClick, onAddToCart }: TireCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
 
-  // Use mockup images in rotation
-  const mockupImage = MOCKUP_TIRE_IMAGES[index % MOCKUP_TIRE_IMAGES.length];
+  const fallbackImage = React.useMemo(
+    () => buildProductImageFallback(product.brand, product.model),
+    [product.brand, product.model]
+  );
+  const [cardImageSrc, setCardImageSrc] = React.useState(product.best_image_url || fallbackImage);
+
+  React.useEffect(() => {
+    setCardImageSrc(product.best_image_url || fallbackImage);
+  }, [product.best_image_url, fallbackImage]);
 
   const getSeasonLabel = (season?: string) => {
     if (!season) return '';
@@ -94,7 +97,11 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
   const hasEuLabel = euFuel !== undefined || euWet !== undefined || euNoise !== undefined;
 
   // Calculate 4-piece price
-  const fourPiecePrice = (product.best_price_eur || 0) * 4;
+  const fourPiecePrice = calculateLinePricing(
+    product.best_price_eur || 0,
+    4,
+    product.pricing_rules ?? null,
+  ).lineTotalEur;
 
   const featureBadges = [
     { key: 'ev', show: Boolean(product.ev_ready), label: 'EV' },
@@ -102,7 +109,7 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
     { key: 'xl', show: Boolean(product.xl), label: 'XL' },
     { key: 'studded', show: Boolean(product.studded), label: language === 'fi' ? 'Nastat' : 'Studded' },
     { key: 'threepmsf', show: Boolean(product.threepmsf), label: '3PMSF' },
-    { key: 'winter', show: Boolean(product.winter_approved) && !Boolean(product.studded), label: language === 'fi' ? 'Talvi' : 'Winter' },
+    { key: 'winter', show: Boolean(product.winter_approved) && !Boolean(product.studded), label: 'M+S' },
     { key: 'ice', show: Boolean(product.ice_approved), label: language === 'fi' ? 'Jää' : 'Ice Approved' },
   ].filter((badge) => badge.show);
 
@@ -197,8 +204,13 @@ export function TireCard({ product, index = 0, onClick, onAddToCart }: TireCardP
                 <div className="aspect-[248/157] overflow-clip relative rounded-[inherit] size-full">
                   <div className="absolute top-[16px] w-full aspect-square">
                     <img
-                      src={mockupImage}
+                      src={cardImageSrc}
                       alt={`${product.brand} ${product.model}`}
+                      onError={() => {
+                        if (cardImageSrc !== fallbackImage) {
+                          setCardImageSrc(fallbackImage);
+                        }
+                      }}
                       className="w-full h-full object-contain pointer-events-none transition-transform duration-700 group-hover:scale-110"
                     />
                   </div>

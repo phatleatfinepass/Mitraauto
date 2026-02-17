@@ -10,6 +10,8 @@ import { RimCard } from './RimCard';
 import { Button } from '../ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
+import { buildProductImageFallback } from '../../utils/productImage';
+import type { ProductPricingRules } from '../../utils/pricing';
 
 type CatalogMode = 'tires' | 'rims';
 type SearchMode = 'license' | 'vehicle' | 'manual';
@@ -22,6 +24,16 @@ export interface CatalogProduct {
   best_price_eur?: number;
   best_image_url: string;
   in_stock: boolean;
+  stock_qty?: number;
+  title?: string;
+  subtitle?: string;
+  short_description?: string;
+  long_description?: string;
+  hero_image_url?: string;
+  gallery_images?: string[];
+  supplier_name?: string;
+  delivery_days?: string;
+  pricing_rules?: ProductPricingRules | null;
   // Tire specific
   size_text?: string;
   eu_fuel?: string;
@@ -55,8 +67,7 @@ interface CatalogPageProps {
 const ITEMS_PER_PAGE = 24;
 
 function getFallbackImage(brand?: string, model?: string) {
-  const label = encodeURIComponent(`${brand ?? 'Product'} ${model ?? ''}`.trim());
-  return `https://picsum.photos/seed/${label}/640/640`;
+  return buildProductImageFallback(brand, model);
 }
 
 function safeParseJson(value: unknown): unknown {
@@ -527,6 +538,71 @@ function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim')
   const priceEur = row.price !== null && row.price !== undefined ? row.price : undefined;
   const sizeParts = parseTireSizeParts(row.size_string);
   const tags = getTagList(row.tags);
+  const cmsTitle = String((row as any).title ?? '').trim() || undefined;
+  const cmsSubtitle = String((row as any).subtitle ?? '').trim() || undefined;
+  const cmsShortDescription = String((row as any).short_description ?? '').trim() || undefined;
+  const cmsLongDescription = String((row as any).long_description ?? '').trim() || undefined;
+  const cmsGallery = Array.isArray((row as any).gallery)
+    ? (row as any).gallery
+        .map((value: unknown) => String(value ?? '').trim())
+        .filter((value: string) => value.length > 0)
+    : [];
+  const cmsHeroImage = String((row as any).hero_image_url ?? '').trim() || undefined;
+  const heroImage = cmsHeroImage || row.best_image_url || getFallbackImage(row.brand, row.model);
+  const galleryImages = cmsGallery.length > 0 ? cmsGallery : [heroImage];
+  const deliveryMin = typeof (row as any).delivery_days_min === 'number' ? (row as any).delivery_days_min : undefined;
+  const deliveryMax = typeof (row as any).delivery_days_max === 'number' ? (row as any).delivery_days_max : undefined;
+  const supplierCode = String((row as any).supplier_code_best ?? '').trim();
+  const supplierName =
+    supplierCode === 'VT' ? 'Vannetukku' :
+    supplierCode === 'RD' ? 'RengasDuo' :
+    undefined;
+  const deliveryDays =
+    deliveryMin !== undefined && deliveryMax !== undefined
+      ? (deliveryMin === deliveryMax ? `${deliveryMin} d` : `${deliveryMin}-${deliveryMax} d`)
+      : (deliveryMin !== undefined ? `${deliveryMin} d` : undefined);
+  const euLabel = safeParseJson((row as any).eu_label_json);
+  const euFuel = normalizeEuRating(
+    getFirstMeaningfulValue(
+      (row as any).eu_fuel,
+      extractLabelValue(euLabel, [
+        'fuel',
+        'fuel_class',
+        'fuelclass',
+        'fuelefficiency',
+        'fuel_efficiency',
+        'rrc',
+        'rolling_resistance',
+        'energy',
+      ])
+    )
+  );
+  const euWet = normalizeEuRating(
+    getFirstMeaningfulValue(
+      (row as any).eu_wet,
+      extractLabelValue(euLabel, [
+        'wet',
+        'wet_class',
+        'wet_grip_class',
+        'wetgripclass',
+        'wet_grip',
+        'wetgrip',
+      ])
+    )
+  );
+  const euNoise = normalizeEuNoise(
+    getFirstMeaningfulValue(
+      (row as any).eu_noise,
+      extractLabelValue(euLabel, [
+        'noise',
+        'noise_db',
+        'noiseclass',
+        'noise_class',
+        'noisedb',
+        'db',
+      ])
+    )
+  );
   const loadIndex = normalizeLoadIndex((row as any).load_index) || normalizeLoadIndex(sizeParts.loadIndex);
   const speedRating = normalizeSpeedRating((row as any).speed_rating ?? (row as any).speed_index) || normalizeSpeedRating(sizeParts.speedRating);
   const seasonNormalized = String(row.season ?? '').toLowerCase();
@@ -542,16 +618,29 @@ function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim')
     id: row.variant_id,
     brand: row.brand_display_name || row.brand,
     model: row.model,
+    title: cmsTitle || row.card_title || undefined,
+    subtitle: cmsSubtitle || undefined,
+    short_description: cmsShortDescription,
+    long_description: cmsLongDescription,
+    hero_image_url: heroImage,
+    gallery_images: galleryImages,
+    supplier_name: supplierName,
+    delivery_days: deliveryDays,
     size_text: productType === 'tire' ? formatCanonicalTireSize(row.size_string, loadIndex, speedRating) : (row.size_string ?? undefined),
     best_price_eur: priceEur,
-    best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
+    best_image_url: heroImage,
     in_stock: row.in_stock ?? false,
+    stock_qty: row.stock_qty ?? undefined,
+    pricing_rules: row.pricing_rules ?? null,
     product_type: productType,
     // Tire-specific fields
     season: productType === 'tire' ? row.season ?? undefined : undefined,
     runflat: productType === 'tire' ? row.runflat ?? undefined : undefined,
     xl: productType === 'tire' ? row.xl_reinforced ?? undefined : undefined,
     studded: productType === 'tire' ? row.studded ?? undefined : undefined,
+    eu_fuel: productType === 'tire' ? euFuel : undefined,
+    eu_wet: productType === 'tire' ? euWet : undefined,
+    eu_noise: productType === 'tire' ? euNoise : undefined,
     load_index: productType === 'tire' ? loadIndex : undefined,
     speed_rating: productType === 'tire' ? speedRating : undefined,
     ev_ready: productType === 'tire' ? evReady : undefined,
