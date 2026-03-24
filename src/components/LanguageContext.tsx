@@ -266,6 +266,7 @@ const translations: Translations = {
   'common.reviewsSubtitle': { fi: 'Katso mitä asiakkaamme sanovat palvelustamme', en: 'See what our customers say about our service' },
   'common.stars': { fi: 'tähteä', en: 'stars' },
   'common.happyCustomers': { fi: 'Tyytyväistä asiakasta', en: 'Happy Customers' },
+  'auth.or': { fi: 'TAI', en: 'OR' },
   'auth.placeholder.email': { fi: 'nimi@esimerkki.fi', en: 'name@example.com' },
   
   // Trust Signals (Landing Page)
@@ -653,6 +654,7 @@ const translations: Translations = {
   'legal.terms.consumer.clearInfoDesc': { fi: 'Läpinäkyvä hinnoittelu, ehdot ja sopimusta edeltävät tiedot', en: 'Transparent pricing, terms, and pre-contractual information' },
   'legal.terms.consumer.advisory': { fi: 'Kuluttajaneuvonta', en: 'Consumer Advisory Services' },
   
+  'legal.terms.payment.title': { fi: '6. Hinnoittelu ja maksuehdot', en: '6. Pricing and Payment Terms' },
   'legal.terms.payment.intro': { fi: 'Hinnoitteluun ja maksuihin sovelletaan seuraavia ehtoja:', en: 'The following terms apply to pricing and payments:' },
   'legal.terms.payment.item1': { fi: 'Hinnat: Kaikki verkkosivustolla ja tarjouksissa ilmoitetut hinnat sisältävät Suomen arvonlisäveron (ALV 25,5 %), ellei toisin mainita. Hinnat ovat voimassa tarjoushetkellä.', en: 'Prices: All prices stated on the website and in quotes include Finnish value-added tax (VAT 25.5%) unless otherwise stated. Prices are valid at the time of offer.' },
   'legal.terms.payment.item2': { fi: 'Maksupalveluntarjoaja: Maksut käsitellään Paytrail Oyj:n (Y-tunnus 2122839-7) kautta. Hyväksymme pankki- ja luottokorttimaksut, verkkopankkimaksut sekä laskun yrityksille.', en: 'Payment service provider: Payments are processed via Paytrail Oyj (Business ID 2122839-7). We accept bank and credit card payments, online banking, and invoicing for businesses.' },
