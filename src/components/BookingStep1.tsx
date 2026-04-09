@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
 import { LicensePlateInput } from './LicensePlateInput';
 import { TimeSlotGrid, TimeSlot } from './TimeSlotGrid';
@@ -7,6 +7,9 @@ import { Label } from './ui/label';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Alert, AlertDescription } from './ui/alert';
+import { getSupabaseClient } from '../utils/supabase/client';
+import { formatDateForSupabase } from '../utils/date';
+import { buildScheduleTimeSlots } from '../utils/schedule';
 
 interface BookingStep1Props {
   licensePlate: string;
@@ -19,36 +22,6 @@ interface BookingStep1Props {
   onCancel: () => void;
   t: (key: string) => string;
 }
-
-// Mock time slots - in production, fetch based on selected date
-const generateTimeSlots = (date: Date | undefined): TimeSlot[] => {
-  if (!date) return [];
-  
-  const slots: TimeSlot[] = [];
-  const startHour = 9;
-  const endHour = 17;
-  
-  // Fixed availability pattern - some slots are unavailable
-  const unavailableSlots = ['10:00', '12:00', '13:30', '15:00'];
-  
-  for (let hour = startHour; hour < endHour; hour++) {
-    const slot1 = `${hour}:00`;
-    const slot2 = `${hour}:30`;
-    
-    slots.push({
-      id: slot1,
-      time: slot1,
-      available: !unavailableSlots.includes(slot1),
-    });
-    slots.push({
-      id: slot2,
-      time: slot2,
-      available: !unavailableSlots.includes(slot2),
-    });
-  }
-  
-  return slots;
-};
 
 export function BookingStep1({
   licensePlate,
@@ -65,8 +38,69 @@ export function BookingStep1({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
 
-  const timeSlots = generateTimeSlots(date);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAvailability = async () => {
+      if (!date) {
+        setTimeSlots([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const supabase = getSupabaseClient();
+        const dateStr = formatDateForSupabase(date);
+
+        const [{ data: bookingsData, error: bookingsError }, { data: blockedData, error: blockedError }] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('id, license_plate, booking_date, booking_time, service_name, customer_name, customer_phone, customer_email, notes, status, created_at')
+            .eq('booking_date', dateStr),
+          supabase
+            .from('blocked_slots')
+            .select('id, date, start_time, end_time, reason, created_at')
+            .eq('date', dateStr),
+        ]);
+
+        if (bookingsError) {
+          throw bookingsError;
+        }
+
+        if (blockedError) {
+          throw blockedError;
+        }
+
+        const slots = buildScheduleTimeSlots(date, bookingsData || [], blockedData || []).map((slot) => ({
+          id: slot.time,
+          time: slot.time,
+          available: slot.available,
+        }));
+
+        if (!cancelled) {
+          setTimeSlots(slots);
+        }
+      } catch (err) {
+        console.error('[BOOKING] Failed to load availability:', err);
+        if (!cancelled) {
+          setTimeSlots([]);
+          setError('Unable to load available time slots. Please try again.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [date]);
 
   const validateAndContinue = async () => {
     setPlateError('');
@@ -90,11 +124,8 @@ export function BookingStep1({
       return;
     }
 
-    // Simulate checking availability
     setLoading(true);
     try {
-      // [BOOKING ACTION] Check availability: /api/bookings/check-availability
-      await new Promise(resolve => setTimeout(resolve, 500));
       onContinue();
     } catch (err) {
       setError('Unable to verify availability. Please try again.');

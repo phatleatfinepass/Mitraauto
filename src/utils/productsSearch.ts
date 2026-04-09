@@ -1,5 +1,5 @@
-import { supabase } from './supabase/client';
-import { getPricingRulesFromSpecOverrides, type ProductPricingRules } from './pricing';
+import { getSupabaseConfigError, supabase } from './supabase/client';
+import type { ProductPricingRules } from './pricing';
 
 export type ProductSearchRow = {
   variant_id: string;
@@ -41,10 +41,8 @@ export type ProductSearchRow = {
   best_image_alt: string | null;
   card_title: string | null;
   subtitle: string | null;
-  title?: string | null;
   short_description?: string | null;
   long_description?: string | null;
-  gallery?: string[] | null;
   tags: string[] | null;
   seo_slug: string | null;
   eu_label_json?: any;
@@ -166,6 +164,11 @@ export async function fetchProductsSearch(
   productType: 'tire' | 'rim',
   options: FetchOptions = {},
 ): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const configError = getSupabaseConfigError();
+  if (configError) {
+    throw new Error(configError);
+  }
+
   const limit = options.limit ?? 24;
   const offset = options.offset ?? 0;
   const filters = options.filters ?? {};
@@ -206,59 +209,32 @@ export async function fetchProductsSearch(
     'delivery_days_max',
     'supplier_code_best',
     'best_image_url',
+    'hero_image_url',
     'best_image_alt',
     'card_title',
     'subtitle',
-    'title',
     'short_description',
     'long_description',
-    'gallery',
     'tags',
     'seo_slug',
     'eu_label_json',
-    'eu_fuel',
     'eu_wet',
     'eu_noise',
     'final_is_hidden',
-    'spec_overrides',
   ].join(',');
 
-  const query = supabase
+  const { data, error } = await supabase
     .from('products_search')
     .select(baseSelect)
     .eq('product_type', productType)
-    .eq('final_is_hidden', false);
-
-  const { data, error } = await query.limit(PRODUCTS_SEARCH_PAGE_SIZE);
-  if (error && String(error.message || '').toLowerCase().includes('spec_overrides')) {
-    const fallbackSelect = baseSelect.replace(',spec_overrides', '');
-    const fallback = await supabase
-      .from('products_search')
-      .select(fallbackSelect)
-      .eq('product_type', productType)
-      .eq('final_is_hidden', false)
-      .limit(PRODUCTS_SEARCH_PAGE_SIZE);
-
-    if (fallback.error) throw fallback.error;
-
-    const rows = (fallback.data ?? []).map((row: any) => ({
-      ...row,
-      pricing_rules: null,
-    })) as ProductSearchRow[];
-
-    const filtered = productType === 'tire'
-      ? rows.filter((row) => matchesTireFilters(row, filters))
-      : rows.filter((row) => matchesRimFilters(row, filters));
-
-    const sorted = applySort(filtered, filters.sortBy);
-    return { items: sorted.slice(offset, offset + limit), total: sorted.length };
-  }
+    .eq('final_is_hidden', false)
+    .limit(PRODUCTS_SEARCH_PAGE_SIZE);
 
   if (error) throw error;
 
   const rows = ((data ?? []) as any[]).map((row) => ({
     ...row,
-    pricing_rules: getPricingRulesFromSpecOverrides((row as any).spec_overrides),
+    pricing_rules: null,
   })) as ProductSearchRow[];
 
   const filtered = productType === 'tire'

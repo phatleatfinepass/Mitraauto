@@ -45,7 +45,7 @@ const serviceHeroItems = [
 
 export function ServicesPage({ onBookingClick }: ServicesPageProps) {
   const { t } = useLanguage();
-  const [activeCategory, setActiveCategory] = useState<string>('car-wash');
+  const [activeCategory, setActiveCategory] = useState<string>('car-care');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Auto-rotate carousel every 30 seconds
@@ -62,7 +62,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
   // Scroll detection to highlight active category based on alignment
   useEffect(() => {
     const handleScroll = () => {
-      const categoryIds = ['car-wash', 'maintenance', 'tire-work', 'diagnostics'];
+      const categoryIds = ['car-care', 'tire-services', 'diagnostics-maintenance', 'ac-service'];
       
       // Get all sidebar buttons and section headers
       const buttons = categoryIds.map(id => 
@@ -112,53 +112,67 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
 
   const serviceCategories: ServiceCategoryData[] = [
     {
-      id: 'car-wash',
-      title: t('serviceCategory.carWash'),
+      id: 'car-care',
+      title: t('serviceCategory.carCare'),
       services: [
-        { id: 'exterior-wash', name: t('service.exteriorWash'), price: '95.00 €' },
-        { id: 'full-wash', name: t('service.fullWash'), price: '150.00 €' },
-        { id: 'interior-cleaning', name: t('service.interiorCleaning'), price: '30.00 €' },
-        { id: 'engine-wash', name: t('service.engineWash'), price: '65.00 €' },
-        { id: 'basic-hand-wash', name: t('service.basicHandWash'), price: '25.00 €' },
+        { id: 'basic-hand-wash-car', name: `${t('service.basicHandWash')} · ${t('vehicle.passengerCar')}`, price: '25.00 €' },
+        { id: 'basic-hand-wash-suv', name: `${t('service.basicHandWash')} · ${t('vehicle.suv')}`, price: '30.00 €' },
+        { id: 'quick-wax-car', name: `${t('service.quickWax')} · ${t('vehicle.passengerCar')}`, price: '30.00 €' },
+        { id: 'quick-wax-suv', name: `${t('service.quickWax')} · ${t('vehicle.suv')}`, price: '40.00 €' },
+        { id: 'interior-cleaning-car', name: `${t('service.interiorCleaning')} · ${t('vehicle.passengerCar')}`, price: '40.00 €' },
+        { id: 'interior-cleaning-suv', name: `${t('service.interiorCleaning')} · ${t('vehicle.suv')}`, price: '50.00 €' },
+        { id: 'super-exterior-wash-car', name: `${t('service.premiumExteriorWash')} · ${t('vehicle.passengerCar')}`, price: '45.00 €' },
+        { id: 'super-exterior-wash-suv', name: `${t('service.premiumExteriorWash')} · ${t('vehicle.suv')}`, price: '55.00 €' },
+        { id: 'hard-wax-car', name: `${t('service.hardWaxProtection')} · ${t('vehicle.passengerCar')}`, price: '110.00 €' },
+        { id: 'hard-wax-suv', name: `${t('service.hardWaxProtection')} · ${t('vehicle.suv')}`, price: '130.00 €' },
+        { id: 'engine-wash', name: t('service.engineWash'), price: 'from 60.00 €', note: `(${t('service.customerResponsibilityNote')})` },
+        { id: 'wheel-wash-set', name: t('service.wheelWash'), price: '10.00 € / set' },
       ],
     },
     {
-      id: 'maintenance',
-      title: t('serviceCategory.maintenance'),
+      id: 'tire-services',
+      title: t('serviceCategory.tireServices'),
       services: [
-        { id: 'basic-service', name: t('service.basicService'), price: 'from 250.00 €' },
-        { id: 'large-service', name: t('service.largeService'), price: 'from 400.00 €' },
-        { id: 'ac-service', name: t('service.acService'), price: 'from 100.00 €' },
-        { id: 'brake-fluid', name: t('service.brakeFluid'), price: 'from 75.00 €' },
-        { id: 'engine-oil-change', name: t('service.engineOilChange'), price: 'from 99.00 €' },
-        { id: 'seasonal-maintenance', name: t('service.seasonalMaintenance'), price: 'from 120.00 €' },
-        { id: 'annual-maintenance', name: t('service.annualMaintenance'), price: 'from 160.00 €' },
-        { id: 'pedal-installation', name: t('service.pedalInstallation'), price: 'from 300.00 €' },
-      ],
-    },
-    {
-      id: 'tire-work',
-      title: t('serviceCategory.tireWork'),
-      services: [
-        { id: 'tire-mounting', name: t('service.tireMounting'), price: 'from 80.00 €' },
-        { id: 'tire-removal', name: t('service.tireRemoval'), price: '40.00 €' },
-        { id: 'wheel-balancing', name: t('service.wheelBalancing'), price: '50.00 €' },
-        { id: 'tire-repair', name: t('service.tireRepair'), price: '25.00 €' },
-        { id: 'tpms-service', name: t('service.tpmsService'), price: '45.00 €' },
-        { id: 'wheel-alignment', name: t('service.wheelAlignment'), price: '95.00 €' },
-        { id: 'tire-hotel-storage', name: t('service.tireHotelStorage'), price: '60.00–90.00 €' },
-        { id: 'tire-washing', name: t('service.tireWashing'), price: '10.00 €' },
         { id: 'tire-change-car', name: t('service.tireChangeCar'), price: '30.00 €' },
         { id: 'tire-change-suv', name: t('service.tireChangeSuv'), price: '35.00 €' },
-        { id: 'tire-change-van', name: t('service.tireChangeVan'), price: '45.00 €' },
+        { id: 'tire-change-van', name: t('service.tireChangeVan'), price: 'from 45.00 €' },
+        { id: 'wheel-balancing', name: t('service.wheelBalancing'), price: '20.00 € / set' },
+        { id: 'tire-repair-outside', name: t('service.externalRepair'), price: '25.00 €' },
+        { id: 'tire-repair-inside', name: t('service.internalRepair'), price: '50.00 €' },
+        { id: 'tire-work-up-to-17', name: t('service.tireWorkUpTo17'), price: '80.00 €' },
+        { id: 'tire-work-18-19', name: t('service.tireWork18To19'), price: '90.00 €' },
+        { id: 'tire-work-20-21', name: t('service.tireWork20To21'), price: '100.00 €' },
+        { id: 'tire-hotel-storage', name: t('service.tireHotelStorage'), price: '90.00 € / season' },
       ],
     },
     {
-      id: 'diagnostics',
-      title: t('serviceCategory.diagnostics'),
+      id: 'diagnostics-maintenance',
+      title: t('serviceCategory.diagnosticsMaintenance'),
       services: [
         { id: 'error-code-reading', name: t('service.errorCodeReading'), price: '20.00 €' },
-        { id: 'troubleshooting', name: t('service.troubleshooting'), price: '80.00 €/h' },
+        { id: 'troubleshooting', name: t('service.troubleshooting'), price: '80.00 € / h' },
+        { id: 'engine-oil-change', name: t('service.engineOilChange'), price: 'from 80.00 €' },
+        { id: 'seasonal-maintenance', name: t('service.seasonalMaintenance'), price: 'from 120.00 €' },
+        { id: 'annual-maintenance', name: t('service.annualMaintenance'), price: 'from 170.00 €' },
+        { id: 'manual-gearbox-oil', name: t('service.manualGearboxOil'), price: 'from 80.00 €' },
+        { id: 'automatic-gearbox-oil', name: t('service.automaticGearboxOil'), price: 'from 180.00 €' },
+        { id: 'automatic-gearbox-flush', name: t('service.automaticGearboxFlush'), price: 'from 220.00 €' },
+        { id: 'brake-fluid', name: t('service.brakeFluid'), price: 'from 65.00 €' },
+        { id: 'pedal-installation', name: t('service.pedalInstallation'), price: 'from 260.00–320.00 €' },
+        { id: 'rust-repair', name: t('service.rustRepair'), price: '80.00 € / h' },
+      ],
+    },
+    {
+      id: 'ac-service',
+      title: t('serviceCategory.acService'),
+      services: [
+        { id: 'ac-service-r134a', name: t('service.acServiceR134a'), price: '60.00 €', note: 'includes 100 g refrigerant' },
+        { id: 'ac-extra-refrigerant', name: t('service.extraRefrigerant'), price: '10.00 € / 100 g' },
+        { id: 'ac-hybrid-extra-r134a', name: t('service.hybridSurcharge'), price: '+15.00 €' },
+        { id: 'ac-service-r1234yf', name: t('service.acServiceR1234yf'), price: '70.00 €', note: 'includes 100 g refrigerant' },
+        { id: 'ac-hybrid-extra-r1234yf', name: t('service.hybridSurcharge'), price: '+15.00 €' },
+        { id: 'ac-service-electric', name: t('service.acServiceElectric'), price: '120.00 €', note: 'includes 100 g refrigerant, R1234yf' },
+        { id: 'ac-diagnostics', name: t('service.acDiagnostics'), price: '80.00 € / h' },
       ],
     },
   ];

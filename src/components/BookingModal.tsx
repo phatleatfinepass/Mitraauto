@@ -87,6 +87,11 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
     setCurrentStep('step2');
   };
 
+  const handleDateChange = (nextDate: Date | undefined) => {
+    setDate(nextDate);
+    setSelectedTimeSlot(null);
+  };
+
   const handleStep2Back = () => {
     setCurrentStep('step1');
   };
@@ -116,34 +121,51 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
 
   // Get selected service name(s) for success screen
   const getServiceName = () => {
+    const serviceMap: Record<string, string> = {
+      'basic-hand-wash-car': `${t('service.basicHandWash')} · ${t('vehicle.passengerCar')}`,
+      'basic-hand-wash-suv': `${t('service.basicHandWash')} · ${t('vehicle.suv')}`,
+      'quick-wax-car': `${t('service.quickWax')} · ${t('vehicle.passengerCar')}`,
+      'quick-wax-suv': `${t('service.quickWax')} · ${t('vehicle.suv')}`,
+      'interior-cleaning-car': `${t('service.interiorCleaning')} · ${t('vehicle.passengerCar')}`,
+      'interior-cleaning-suv': `${t('service.interiorCleaning')} · ${t('vehicle.suv')}`,
+      'super-exterior-wash-car': `${t('service.premiumExteriorWash')} · ${t('vehicle.passengerCar')}`,
+      'super-exterior-wash-suv': `${t('service.premiumExteriorWash')} · ${t('vehicle.suv')}`,
+      'hard-wax-car': `${t('service.hardWaxProtection')} · ${t('vehicle.passengerCar')}`,
+      'hard-wax-suv': `${t('service.hardWaxProtection')} · ${t('vehicle.suv')}`,
+      'engine-wash': t('service.engineWash'),
+      'wheel-wash-set': t('service.wheelWash'),
+      'tire-change-car': t('service.tireChangeCar'),
+      'tire-change-suv': t('service.tireChangeSuv'),
+      'tire-change-van': t('service.tireChangeVan'),
+      'wheel-balancing': t('service.wheelBalancing'),
+      'tire-repair-outside': t('service.externalRepair'),
+      'tire-repair-inside': t('service.internalRepair'),
+      'tire-work-up-to-17': t('service.tireWorkUpTo17'),
+      'tire-work-18-19': t('service.tireWork18To19'),
+      'tire-work-20-21': t('service.tireWork20To21'),
+      'tire-hotel-storage': t('service.tireHotelStorage'),
+      'error-code-reading': t('service.errorCodeReading'),
+      'troubleshooting': t('service.troubleshooting'),
+      'engine-oil-change': t('service.engineOilChange'),
+      'seasonal-maintenance': t('service.seasonalMaintenance'),
+      'annual-maintenance': t('service.annualMaintenance'),
+      'manual-gearbox-oil': t('service.manualGearboxOil'),
+      'automatic-gearbox-oil': t('service.automaticGearboxOil'),
+      'automatic-gearbox-flush': t('service.automaticGearboxFlush'),
+      'brake-fluid': t('service.brakeFluid'),
+      'pedal-installation': t('service.pedalInstallation'),
+      'rust-repair': t('service.rustRepair'),
+      'ac-service-r134a': t('service.acServiceR134a'),
+      'ac-extra-refrigerant': t('service.extraRefrigerant'),
+      'ac-hybrid-extra-r134a': t('service.hybridSurcharge'),
+      'ac-service-r1234yf': t('service.acServiceR1234yf'),
+      'ac-hybrid-extra-r1234yf': t('service.hybridSurcharge'),
+      'ac-service-electric': t('service.acServiceElectric'),
+      'ac-diagnostics': t('service.acDiagnostics'),
+    };
+
     if (selectedServiceIds.length > 0) {
-      // Multiple services selected
-      return selectedServiceIds.map(id => {
-        const serviceMap: Record<string, string> = {
-          // Car Wash
-          'exterior-wash': 'Exterior washing + hard waxing',
-          'full-wash': 'Full wash inside and outside',
-          'interior-cleaning': 'Interior cleaning',
-          'engine-wash': 'Engine wash',
-          // Maintenance
-          'basic-service': 'Basic service',
-          'large-service': 'Large service',
-          'ac-service': 'Air conditioning service',
-          'brake-fluid': 'Brake fluid change',
-          // Tire Work
-          'tire-mounting': 'Tire mounting',
-          'tire-removal': 'Tire removal',
-          'wheel-balancing': 'Wheel balancing',
-          'tire-repair': 'Tire repair',
-          'tpms-service': 'TPMS tire pressure sensor service',
-          'wheel-alignment': 'Wheel alignment',
-          // Tire Hotel
-          'tire-hotel-storage': 'Tire storage plan',
-          'tire-hotel-seasonal-swap': 'Seasonal swap package',
-          'tire-hotel-hotel-package': 'Tire hotel package',
-        };
-        return serviceMap[id] || 'Service';
-      }).join(', ');
+      return selectedServiceIds.map((id) => serviceMap[id] || 'Service').join(', ');
     }
     
     return 'Service';
@@ -201,7 +223,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               date={date}
               selectedTimeSlot={selectedTimeSlot}
               onLicensePlateChange={setLicensePlate}
-              onDateChange={setDate}
+              onDateChange={handleDateChange}
               onTimeSlotChange={setSelectedTimeSlot}
               onContinue={handleStep1Continue}
               onCancel={handleClose}

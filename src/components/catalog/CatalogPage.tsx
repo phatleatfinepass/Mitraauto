@@ -737,22 +737,29 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
 
   // Restore scroll position after products are loaded
   useEffect(() => {
-    if (isRestoringState && products.length > 0 && !loading) {
-      const savedPosition = sessionStorage.getItem('catalog_scroll_position');
-      if (savedPosition) {
-        requestAnimationFrame(() => {
-          window.scrollTo({
-            top: parseInt(savedPosition, 10),
-            behavior: 'instant'
-          });
-          // Clear the stored data after restoring
-          sessionStorage.removeItem('catalog_scroll_position');
-          sessionStorage.removeItem('catalog_scroll_timestamp');
-          sessionStorage.removeItem('catalog_state');
-          setIsRestoringState(false);
+    if (!isRestoringState || loading) return;
+
+    const savedPosition = sessionStorage.getItem('catalog_scroll_position');
+
+    if (products.length > 0 && savedPosition) {
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: parseInt(savedPosition, 10),
+          behavior: 'instant'
         });
-      }
+        sessionStorage.removeItem('catalog_scroll_position');
+        sessionStorage.removeItem('catalog_scroll_timestamp');
+        sessionStorage.removeItem('catalog_state');
+        setIsRestoringState(false);
+      });
+      return;
     }
+
+    // Avoid getting stuck in restore mode when the saved state no longer yields products.
+    sessionStorage.removeItem('catalog_scroll_position');
+    sessionStorage.removeItem('catalog_scroll_timestamp');
+    sessionStorage.removeItem('catalog_state');
+    setIsRestoringState(false);
   }, [isRestoringState, products, loading]);
 
 
@@ -799,10 +806,16 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
       console.error('Error fetching products:', e);
       setProducts([]);
       setTotalCount(0);
+      const message = e instanceof Error ? e.message : '';
+      const isSupabaseConfigError = message.includes('VITE_SUPABASE_ANON_KEY');
       setErrorMessage(
-        language === 'fi'
-          ? 'Tuotteiden lataus epäonnistui. Yritä uudelleen hetken kuluttua.'
-          : 'Failed to load products. Please try again soon.'
+        isSupabaseConfigError
+          ? (language === 'fi'
+              ? 'Supabase-asetukset puuttuvat. Lisää VITE_SUPABASE_ANON_KEY Vite-ympäristöön.'
+              : 'Supabase config is missing. Add VITE_SUPABASE_ANON_KEY to the Vite environment.')
+          : (language === 'fi'
+              ? 'Tuotteiden lataus epäonnistui. Yritä uudelleen hetken kuluttua.'
+              : 'Failed to load products. Please try again soon.')
       );
     } finally {
       setLoading(false);

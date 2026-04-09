@@ -65,50 +65,6 @@ interface ServiceCategory {
   }[];
 }
 
-const serviceCategories: ServiceCategory[] = [
-  {
-    id: 'car-wash',
-    name: 'Car Wash',
-    services: [
-      { id: 'exterior-wash', name: 'Exterior Wash', price: 95.00 },
-      { id: 'full-wash', name: 'Full Wash', price: 150.00 },
-      { id: 'interior-cleaning', name: 'Interior Cleaning', price: 80.00 },
-      { id: 'engine-wash', name: 'Engine Wash', price: 65.00 },
-    ],
-  },
-  {
-    id: 'maintenance',
-    name: 'Maintenance',
-    services: [
-      { id: 'basic-service', name: 'Basic Service', price: 250.00 },
-      { id: 'large-service', name: 'Large Service', price: 450.00 },
-      { id: 'ac-service', name: 'AC Service', price: 120.00 },
-      { id: 'brake-fluid', name: 'Brake Fluid', price: 85.00 },
-    ],
-  },
-  {
-    id: 'tire-work',
-    name: 'Tire Work',
-    services: [
-      { id: 'tire-mounting', name: 'Tire Mounting', price: 60.00 },
-      { id: 'tire-removal', name: 'Tire Removal', price: 40.00 },
-      { id: 'wheel-balancing', name: 'Wheel Balancing', price: 15.00 },
-      { id: 'tire-repair', name: 'Tire Repair', price: 25.00 },
-      { id: 'tpms-service', name: 'TPMS Service', price: 45.00 },
-      { id: 'wheel-alignment', name: 'Wheel Alignment', price: 95.00 },
-    ],
-  },
-  {
-    id: 'tire-hotel',
-    name: 'Tire Hotel',
-    services: [
-      { id: 'tire-hotel-storage', name: 'Storage Plan', price: 50.0 },
-      { id: 'tire-hotel-seasonal-swap', name: 'Seasonal Swap', price: 45.0 },
-      { id: 'tire-hotel-hotel-package', name: 'Hotel Package', price: 90.0 },
-    ],
-  },
-];
-
 export function BookingStep2({
   licensePlate,
   date,
@@ -124,6 +80,72 @@ export function BookingStep2({
   t,
 }: BookingStep2Props) {
   const [error, setError] = useState<string>('');
+  const serviceCategories: ServiceCategory[] = [
+    {
+      id: 'car-care',
+      name: t('serviceCategory.carCare'),
+      services: [
+        { id: 'basic-hand-wash-car', name: `${t('service.basicHandWash')} · ${t('vehicle.passengerCar')}`, price: 25.00 },
+        { id: 'basic-hand-wash-suv', name: `${t('service.basicHandWash')} · ${t('vehicle.suv')}`, price: 30.00 },
+        { id: 'quick-wax-car', name: `${t('service.quickWax')} · ${t('vehicle.passengerCar')}`, price: 30.00 },
+        { id: 'quick-wax-suv', name: `${t('service.quickWax')} · ${t('vehicle.suv')}`, price: 40.00 },
+        { id: 'interior-cleaning-car', name: `${t('service.interiorCleaning')} · ${t('vehicle.passengerCar')}`, price: 40.00 },
+        { id: 'interior-cleaning-suv', name: `${t('service.interiorCleaning')} · ${t('vehicle.suv')}`, price: 50.00 },
+        { id: 'super-exterior-wash-car', name: `${t('service.premiumExteriorWash')} · ${t('vehicle.passengerCar')}`, price: 45.00 },
+        { id: 'super-exterior-wash-suv', name: `${t('service.premiumExteriorWash')} · ${t('vehicle.suv')}`, price: 55.00 },
+        { id: 'hard-wax-car', name: `${t('service.hardWaxProtection')} · ${t('vehicle.passengerCar')}`, price: 110.00 },
+        { id: 'hard-wax-suv', name: `${t('service.hardWaxProtection')} · ${t('vehicle.suv')}`, price: 130.00 },
+        { id: 'engine-wash', name: t('service.engineWash'), price: 60.00 },
+        { id: 'wheel-wash-set', name: t('service.wheelWash'), price: 10.00 },
+      ],
+    },
+    {
+      id: 'tire-services',
+      name: t('serviceCategory.tireServices'),
+      services: [
+        { id: 'tire-change-car', name: t('service.tireChangeCar'), price: 30.00 },
+        { id: 'tire-change-suv', name: t('service.tireChangeSuv'), price: 35.00 },
+        { id: 'tire-change-van', name: t('service.tireChangeVan'), price: 45.00 },
+        { id: 'wheel-balancing', name: t('service.wheelBalancing'), price: 20.00 },
+        { id: 'tire-repair-outside', name: t('service.externalRepair'), price: 25.00 },
+        { id: 'tire-repair-inside', name: t('service.internalRepair'), price: 50.00 },
+        { id: 'tire-work-up-to-17', name: t('service.tireWorkUpTo17'), price: 80.00 },
+        { id: 'tire-work-18-19', name: t('service.tireWork18To19'), price: 90.00 },
+        { id: 'tire-work-20-21', name: t('service.tireWork20To21'), price: 100.00 },
+        { id: 'tire-hotel-storage', name: t('service.tireHotelStorage'), price: 90.00 },
+      ],
+    },
+    {
+      id: 'diagnostics-maintenance',
+      name: t('serviceCategory.diagnosticsMaintenance'),
+      services: [
+        { id: 'error-code-reading', name: t('service.errorCodeReading'), price: 20.00 },
+        { id: 'troubleshooting', name: t('service.troubleshooting'), price: 80.00 },
+        { id: 'engine-oil-change', name: t('service.engineOilChange'), price: 80.00 },
+        { id: 'seasonal-maintenance', name: t('service.seasonalMaintenance'), price: 120.00 },
+        { id: 'annual-maintenance', name: t('service.annualMaintenance'), price: 170.00 },
+        { id: 'manual-gearbox-oil', name: t('service.manualGearboxOil'), price: 80.00 },
+        { id: 'automatic-gearbox-oil', name: t('service.automaticGearboxOil'), price: 180.00 },
+        { id: 'automatic-gearbox-flush', name: t('service.automaticGearboxFlush'), price: 220.00 },
+        { id: 'brake-fluid', name: t('service.brakeFluid'), price: 65.00 },
+        { id: 'pedal-installation', name: t('service.pedalInstallation'), price: 260.00 },
+        { id: 'rust-repair', name: t('service.rustRepair'), price: 80.00 },
+      ],
+    },
+    {
+      id: 'ac-service',
+      name: t('serviceCategory.acService'),
+      services: [
+        { id: 'ac-service-r134a', name: t('service.acServiceR134a'), price: 60.00 },
+        { id: 'ac-extra-refrigerant', name: t('service.extraRefrigerant'), price: 10.00 },
+        { id: 'ac-hybrid-extra-r134a', name: t('service.hybridSurcharge'), price: 15.00 },
+        { id: 'ac-service-r1234yf', name: t('service.acServiceR1234yf'), price: 70.00 },
+        { id: 'ac-hybrid-extra-r1234yf', name: t('service.hybridSurcharge'), price: 15.00 },
+        { id: 'ac-service-electric', name: t('service.acServiceElectric'), price: 120.00 },
+        { id: 'ac-diagnostics', name: t('service.acDiagnostics'), price: 80.00 },
+      ],
+    },
+  ];
   
   // For dropdown UI (Services page flow)
   const [selectedCategory, setSelectedCategory] = useState<string>('');

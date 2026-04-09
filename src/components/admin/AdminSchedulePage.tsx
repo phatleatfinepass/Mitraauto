@@ -13,40 +13,22 @@ import {
   Clock,
   Lock,
   Unlock,
-  ChevronLeft,
   ChevronRight,
   AlertCircle,
+  CheckSquare,
+  Square,
+  User,
+  Mail,
+  Phone,
+  Wrench,
+  StickyNote,
+  Send,
+  Ban,
 } from 'lucide-react';
 import { getSupabaseClient } from '../../utils/supabase/client';
 import { formatDateForSupabase } from '../../utils/date';
+import { buildScheduleTimeSlots, generateScheduleSlots, ScheduleBlockedSlot, ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
 import { toast } from 'sonner';
-
-interface Booking {
-  id: string;
-  license_plate: string;
-  booking_date: string;
-  booking_time: string;
-  created_at: string;
-}
-
-interface BlockedSlot {
-  id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  reason?: string;
-  created_at: string;
-}
-
-interface TimeSlot {
-  time: string;
-  bookings: Booking[];
-  isBlocked: boolean;
-  blockReason?: string;
-}
-
-const WEEKDAY_HOURS = { start: 9, end: 18 };
-const SATURDAY_HOURS = { start: 10, end: 17 };
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;
@@ -56,14 +38,20 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const { theme } = useTheme();
   const { language } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [timeSlots, setTimeSlots] = useState<ScheduleTimeSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<ScheduleTimeSlot | null>(null);
   const [selectedSlotTime, setSelectedSlotTime] = useState<string>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [blockReason, setBlockReason] = useState('');
+  const [cancellationNote, setCancellationNote] = useState('');
   const [loading, setLoading] = useState(false);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
+  const [bookings, setBookings] = useState<ScheduleBooking[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<ScheduleBlockedSlot[]>([]);
+  const [isBatchBlockMode, setIsBatchBlockMode] = useState(false);
+  const [selectedBlockTimes, setSelectedBlockTimes] = useState<string[]>([]);
+  const [resendingBookingId, setResendingBookingId] = useState<string | null>(null);
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [resendCounts, setResendCounts] = useState<Record<string, number>>({});
 
   const t = (key: string) => {
     const translations: Record<string, { fi: string; en: string }> = {
@@ -95,28 +83,35 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       errorBlocking: { fi: 'Virhe eston luomisessa', en: 'Error blocking slot' },
       errorUnblocking: { fi: 'Virhe eston poistamisessa', en: 'Error unblocking slot' },
       selectDate: { fi: 'Valitse päivä', en: 'Select Date' },
+      customerName: { fi: 'Asiakas', en: 'Customer' },
+      customerPhone: { fi: 'Puhelin', en: 'Phone' },
+      customerEmail: { fi: 'Sähköposti', en: 'Email' },
+      serviceName: { fi: 'Palvelu', en: 'Service' },
+      notes: { fi: 'Lisätiedot', en: 'Notes' },
+      status: { fi: 'Tila', en: 'Status' },
+      noNotes: { fi: 'Ei lisätietoja', en: 'No notes' },
+      blockSelectedSlots: { fi: 'Estä valitut ajat', en: 'Block selected slots' },
+      selectSlotsToBlock: { fi: 'Valitse estettävät ajat', en: 'Select slots to block' },
+      cancelSelection: { fi: 'Peru valinta', en: 'Cancel selection' },
+      slotsSelected: { fi: 'aikaa valittu', en: 'slots selected' },
+      clearSelection: { fi: 'Tyhjennä valinta', en: 'Clear selection' },
+      selectionModeHint: { fi: 'Klikkaa vapaita aikoja estääksesi ne yhdellä kertaa.', en: 'Click available slots to block them in one action.' },
+      batchBlockSuccessful: { fi: 'Valitut ajat estetty onnistuneesti', en: 'Selected slots blocked successfully' },
+      resendConfirmation: { fi: 'Lähetä uudelleen', en: 'Resend confirmation' },
+      resendSuccessful: { fi: 'Vahvistusviesti lähetetty uudelleen', en: 'Confirmation email sent again' },
+      resendFailed: { fi: 'Vahvistusviestin uudelleenlähetys epäonnistui', en: 'Failed to resend confirmation email' },
+      noEmailAddress: { fi: 'Ei sähköpostiosoitetta', en: 'No email address' },
+      sending: { fi: 'Lähetetään...', en: 'Sending...' },
+      resendCount: { fi: 'Lähetyksiä', en: 'Resends' },
+      cancelBooking: { fi: 'Peruuta', en: 'Cancel booking' },
+      cancelling: { fi: 'Perutaan...', en: 'Cancelling...' },
+      cancelSuccessful: { fi: 'Varaus peruttu', en: 'Booking cancelled' },
+      cancelFailed: { fi: 'Varauksen peruminen epäonnistui', en: 'Failed to cancel booking' },
+      cancellationEmailSent: { fi: 'Peruutusviesti lähetetty asiakkaalle', en: 'Cancellation email sent to customer' },
+      cancellationNote: { fi: 'Peruutuksen syy', en: 'Cancellation note' },
+      cancellationNotePlaceholder: { fi: 'Esim. Aika ei ole enää saatavilla tai varausta siirrettiin puhelimitse', en: 'For example, the slot is no longer available or the booking was moved by phone' },
     };
     return translations[key]?.[language] || key;
-  };
-
-  // Generate time slots based on day of week
-  const generateTimeSlots = (date: Date): string[] => {
-    const dayOfWeek = date.getDay();
-    
-    // Sunday - closed
-    if (dayOfWeek === 0) {
-      return [];
-    }
-    
-    const hours = dayOfWeek === 6 ? SATURDAY_HOURS : WEEKDAY_HOURS;
-    const slots: string[] = [];
-    
-    for (let hour = hours.start; hour < hours.end; hour++) {
-      slots.push(`${hour.toString().padStart(2, '0')}:00`);
-      slots.push(`${hour.toString().padStart(2, '0')}:30`);
-    }
-    
-    return slots;
   };
 
   // Fetch bookings and blocked slots
@@ -131,7 +126,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       // Fetch bookings
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('*')
+        .select('id, license_plate, booking_date, booking_time, service_name, customer_name, customer_phone, customer_email, notes, status, created_at')
         .eq('booking_date', dateStr);
 
       if (bookingsError) {
@@ -148,10 +143,35 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         setBookings(bookingsData || []);
       }
 
+      const bookingIds = (bookingsData || []).map((booking) => booking.id);
+      if (bookingIds.length > 0) {
+        const { data: emailEventsData, error: emailEventsError } = await supabase
+          .from('booking_email_events')
+          .select('booking_id, event_type')
+          .in('booking_id', bookingIds)
+          .eq('event_type', 'confirmation_resent');
+
+        if (emailEventsError) {
+          if (emailEventsError.message.includes('does not exist')) {
+            setResendCounts({});
+          } else {
+            throw emailEventsError;
+          }
+        } else {
+          const counts = (emailEventsData || []).reduce<Record<string, number>>((acc, event) => {
+            acc[event.booking_id] = (acc[event.booking_id] || 0) + 1;
+            return acc;
+          }, {});
+          setResendCounts(counts);
+        }
+      } else {
+        setResendCounts({});
+      }
+
       // Fetch blocked slots
       const { data: blockedData, error: blockedError } = await supabase
         .from('blocked_slots')
-        .select('*')
+        .select('id, date, start_time, end_time, reason, created_at')
         .eq('date', dateStr);
 
       if (blockedError) {
@@ -169,23 +189,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       }
 
       // Build time slots
-      const slots = generateTimeSlots(date);
-      const timeSlotsData: TimeSlot[] = slots.map((time) => {
-        const slotBookings = (bookingsData || []).filter(
-          (b) => b.booking_time === time
-        );
-        
-        const blockedSlot = (blockedData || []).find(
-          (bs) => time >= bs.start_time && time < bs.end_time
-        );
-
-        return {
-          time,
-          bookings: slotBookings,
-          isBlocked: !!blockedSlot,
-          blockReason: blockedSlot?.reason,
-        };
-      });
+      const timeSlotsData = buildScheduleTimeSlots(date, bookingsData || [], blockedData || []);
 
       console.log('[CMS] Time slots built:', timeSlotsData.filter(s => s.bookings.length > 0).length, 'with bookings');
       setTimeSlots(timeSlotsData);
@@ -195,14 +199,18 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       // Set empty data so UI doesn't break
       setBookings([]);
       setBlockedSlots([]);
-      const slots = generateTimeSlots(date);
-      setTimeSlots(slots.map(time => ({ time, bookings: [], isBlocked: false })));
+      setResendCounts({});
+      const slots = generateScheduleSlots(date);
+      setTimeSlots(slots.map(time => ({ time, bookings: [], isBlocked: false, available: true })));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    setSelectedBlockTimes([]);
+    setIsBatchBlockMode(false);
+    setCancellationNote('');
     fetchScheduleData(selectedDate);
   }, [selectedDate]);
 
@@ -214,9 +222,10 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     try {
       let endTime: string;
       if (untilEndOfDay) {
-        const dayOfWeek = selectedDate.getDay();
-        const hours = dayOfWeek === 6 ? SATURDAY_HOURS : WEEKDAY_HOURS;
-        endTime = `${hours.end.toString().padStart(2, '0')}:00`;
+        const slots = generateScheduleSlots(selectedDate);
+        const lastSlot = slots[slots.length - 1];
+        const [hours, minutes] = lastSlot.split(':').map(Number);
+        endTime = `${(minutes === 30 ? hours + 1 : hours).toString().padStart(2, '0')}:00`;
       } else {
         // Calculate end time (30 minutes later)
         const [hours, minutes] = time.split(':').map(Number);
@@ -244,6 +253,161 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     } catch (error) {
       console.error('Error blocking slot:', error);
       toast.error(t('errorBlocking'));
+    }
+  };
+
+  const handleBatchSlotToggle = (time: string) => {
+    setSelectedBlockTimes((current) =>
+      current.includes(time) ? current.filter((item) => item !== time) : [...current, time].sort(),
+    );
+  };
+
+  const handleBlockSelectedSlots = async () => {
+    if (selectedBlockTimes.length === 0) return;
+
+    const dateStr = formatDateForSupabase(selectedDate);
+    const supabase = getSupabaseClient();
+
+    try {
+      const rows = selectedBlockTimes.map((time) => {
+        const [hours, minutes] = time.split(':').map(Number);
+        const endMinutes = minutes + 30;
+        const endTime =
+          endMinutes >= 60
+            ? `${(hours + 1).toString().padStart(2, '0')}:00`
+            : `${hours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+
+        return {
+          date: dateStr,
+          start_time: time,
+          end_time: endTime,
+          reason: blockReason.trim() || null,
+        };
+      });
+
+      const { error } = await supabase.from('blocked_slots').insert(rows);
+
+      if (error) throw error;
+
+      toast.success(t('batchBlockSuccessful'));
+      setBlockReason('');
+      setSelectedBlockTimes([]);
+      setIsBatchBlockMode(false);
+      fetchScheduleData(selectedDate);
+    } catch (error) {
+      console.error('Error blocking selected slots:', error);
+      toast.error(t('errorBlocking'));
+    }
+  };
+
+  const handleResendBookingConfirmation = async (booking: ScheduleBooking) => {
+    if (!booking.customer_email) {
+      toast.error(t('noEmailAddress'));
+      return;
+    }
+
+    setResendingBookingId(booking.id);
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.functions.invoke('send_booking_confirmation', {
+        method: 'POST',
+        body: {
+          bookingId: booking.id,
+          customerName: booking.customer_name || '',
+          customerEmail: booking.customer_email,
+          customerPhone: booking.customer_phone || null,
+          licensePlate: booking.license_plate,
+          bookingDate: booking.booking_date,
+          bookingTime: booking.booking_time,
+          serviceName: booking.service_name || 'Service',
+          notes: booking.notes || null,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const { error: logError } = await supabase.from('booking_email_events').insert({
+        booking_id: booking.id,
+        event_type: 'confirmation_resent',
+        recipient_email: booking.customer_email,
+      });
+
+      if (logError && !logError.message.includes('does not exist')) {
+        throw logError;
+      }
+
+      setResendCounts((current) => ({
+        ...current,
+        [booking.id]: (current[booking.id] || 0) + 1,
+      }));
+
+      toast.success(t('resendSuccessful'));
+    } catch (error) {
+      console.error('Error resending booking confirmation:', error);
+      toast.error(t('resendFailed'));
+    } finally {
+      setResendingBookingId(null);
+    }
+  };
+
+  const handleCancelBooking = async (booking: ScheduleBooking) => {
+    setCancellingBookingId(booking.id);
+    try {
+      const supabase = getSupabaseClient();
+
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', booking.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (booking.customer_email) {
+        const { error: emailError } = await supabase.functions.invoke('send_booking_cancellation', {
+          method: 'POST',
+          body: {
+            bookingId: booking.id,
+            customerName: booking.customer_name || '',
+            customerEmail: booking.customer_email,
+            customerPhone: booking.customer_phone || null,
+            licensePlate: booking.license_plate,
+            bookingDate: booking.booking_date,
+            bookingTime: booking.booking_time,
+            serviceName: booking.service_name || 'Service',
+            cancellationNote: cancellationNote.trim() || null,
+          },
+        });
+
+        if (emailError) {
+          throw emailError;
+        }
+
+        const { error: logError } = await supabase.from('booking_email_events').insert({
+          booking_id: booking.id,
+          event_type: 'cancellation_sent',
+          recipient_email: booking.customer_email,
+        });
+
+        if (logError && !logError.message.includes('does not exist')) {
+          throw logError;
+        }
+
+        toast.success(t('cancellationEmailSent'));
+      }
+
+      toast.success(t('cancelSuccessful'));
+      setCancellationNote('');
+      setIsDrawerOpen(false);
+      fetchScheduleData(selectedDate);
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast.error(t('cancelFailed'));
+    } finally {
+      setCancellingBookingId(null);
     }
   };
 
@@ -275,7 +439,12 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }
   };
 
-  const handleSlotClick = (slot: TimeSlot, time: string) => {
+  const handleSlotClick = (slot: ScheduleTimeSlot, time: string) => {
+    if (isBatchBlockMode && !slot.isBlocked && slot.bookings.length === 0) {
+      handleBatchSlotToggle(time);
+      return;
+    }
+
     setSelectedSlot(slot);
     setSelectedSlotTime(time);
     setIsDrawerOpen(true);
@@ -403,10 +572,72 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
                 </Button>
               </div>
             </Card>
+
+            {isBatchBlockMode && (
+              <Card className={`p-4 ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'}`}>
+                <div className="space-y-3">
+                  <div>
+                    <h3 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {t('blockSelectedSlots')}
+                    </h3>
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {selectedBlockTimes.length} {t('slotsSelected')}
+                    </p>
+                  </div>
+                  <Textarea
+                    value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    placeholder={language === 'fi' ? 'Syy estolle (valinnainen)' : 'Reason for blocking (optional)'}
+                    className={theme === 'dark' ? 'bg-[#252525] border-white/10 text-white' : ''}
+                    rows={3}
+                  />
+                </div>
+              </Card>
+            )}
           </div>
 
           {/* Main Content - Schedule Grid */}
           <Card className={`p-6 ${theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'}`}>
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {t('scheduling')}
+                </h2>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {isBatchBlockMode ? t('selectionModeHint') : formatDate(selectedDate)}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant={isBatchBlockMode ? 'default' : 'outline'}
+                  onClick={() => {
+                    setIsBatchBlockMode((current) => !current);
+                    setSelectedBlockTimes([]);
+                  }}
+                  className={isBatchBlockMode ? 'bg-[#FF6B35] hover:bg-[#FF6B35]/90' : ''}
+                >
+                  {isBatchBlockMode ? <CheckSquare className="w-4 h-4 mr-2" /> : <Square className="w-4 h-4 mr-2" />}
+                  {isBatchBlockMode ? t('cancelSelection') : t('selectSlotsToBlock')}
+                </Button>
+                {isBatchBlockMode && selectedBlockTimes.length > 0 && (
+                  <>
+                    <Badge variant="secondary">
+                      {selectedBlockTimes.length} {t('slotsSelected')}
+                    </Badge>
+                    <Button variant="outline" onClick={() => setSelectedBlockTimes([])}>
+                      {t('clearSelection')}
+                    </Button>
+                    <Button
+                      onClick={handleBlockSelectedSlots}
+                      className="bg-[#FF6B35] hover:bg-[#FF6B35]/90"
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      {t('blockSelectedSlots')}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
             {isSunday ? (
               <div className="flex flex-col items-center justify-center h-[600px]">
                 <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${
@@ -432,6 +663,11 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
                     key={slot.time}
                     onClick={() => handleSlotClick(slot, slot.time)}
                     className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                      selectedBlockTimes.includes(slot.time)
+                        ? theme === 'dark'
+                          ? 'ring-2 ring-[#FF6B35] bg-[#FF6B35]/10 border-[#FF6B35]/50'
+                          : 'ring-2 ring-[#FF6B35] bg-orange-50 border-orange-300'
+                        :
                       slot.isBlocked
                         ? theme === 'dark'
                           ? 'bg-red-950/20 border-red-900/50 hover:bg-red-950/30'
@@ -460,7 +696,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
                           </Badge>
                         ) : slot.bookings.length > 0 ? (
                           <>
-                            <Badge className="bg-blue-600">
+                          <Badge className="bg-blue-600">
                               {t('booked')} ({slot.bookings.length})
                             </Badge>
                             <div className="flex gap-2">
@@ -507,13 +743,13 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
       {/* Slot Detail Drawer */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent
+      <SheetContent
           side="right"
-          className={`w-full sm:max-w-xl ${
+          className={`w-full overflow-y-auto sm:max-w-xl ${
             theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'
           }`}
         >
-          <SheetHeader>
+          <SheetHeader className={theme === 'dark' ? 'border-b border-white/10' : 'border-b border-gray-200'}>
             <SheetTitle className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
               {t('slotDetails')}
             </SheetTitle>
@@ -522,7 +758,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
             </SheetDescription>
           </SheetHeader>
 
-          <div className="mt-6 space-y-6">
+          <div className="space-y-6 px-4 py-5">
             {/* Bookings List */}
             <div>
               <h3 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -537,17 +773,115 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
                         theme === 'dark' ? 'bg-[#252525] border-white/10' : 'bg-gray-50 border-gray-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`font-mono font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {booking.license_plate}
-                        </span>
-                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {booking.booking_time}
-                        </span>
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`font-mono text-2xl font-semibold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {booking.license_plate}
+                              </span>
+                              <Badge variant="outline" className="whitespace-nowrap">
+                                {t('resendCount')}: {resendCounts[booking.id] || 0}
+                              </Badge>
+                            </div>
+                            <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
+                              {t('createdAt')}: {new Date(booking.created_at).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}
+                            </p>
+                          </div>
+
+                          <div className="grid gap-2 sm:w-[240px]">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleResendBookingConfirmation(booking)}
+                              disabled={!booking.customer_email || resendingBookingId === booking.id}
+                              className={`w-full justify-center ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
+                            >
+                              <Send className="w-4 h-4 mr-2 shrink-0" />
+                              {resendingBookingId === booking.id ? t('sending') : t('resendConfirmation')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleCancelBooking(booking)}
+                              disabled={cancellingBookingId === booking.id}
+                              className="w-full justify-center"
+                            >
+                              <Ban className="w-4 h-4 mr-2 shrink-0" />
+                              {cancellingBookingId === booking.id ? t('cancelling') : t('cancelBooking')}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className={`rounded-xl border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-white/80'}`}>
+                          <label className={`mb-2 block text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {t('cancellationNote')}
+                          </label>
+                          <Textarea
+                            value={cancellationNote}
+                            onChange={(e) => setCancellationNote(e.target.value)}
+                            placeholder={t('cancellationNotePlaceholder')}
+                            className={theme === 'dark' ? 'bg-[#11141A] border-white/10 text-white' : ''}
+                            rows={3}
+                          />
+                        </div>
+
+                        <dl className="grid gap-4 sm:grid-cols-2">
+                          {booking.service_name && (
+                            <div className="min-w-0 rounded-xl border p-3 sm:col-span-2">
+                              <dt className={`mb-1 flex items-center gap-2 text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <Wrench className="h-4 w-4 shrink-0" />
+                                {t('serviceName')}
+                              </dt>
+                              <dd className={`text-base font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                                {booking.service_name}
+                              </dd>
+                            </div>
+                          )}
+                          {booking.customer_name && (
+                            <div className="min-w-0 rounded-xl border p-3">
+                              <dt className={`mb-1 flex items-center gap-2 text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <User className="h-4 w-4 shrink-0" />
+                                {t('customerName')}
+                              </dt>
+                              <dd className={`text-base font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                                {booking.customer_name}
+                              </dd>
+                            </div>
+                          )}
+                          {booking.customer_phone && (
+                            <div className="min-w-0 rounded-xl border p-3">
+                              <dt className={`mb-1 flex items-center gap-2 text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <Phone className="h-4 w-4 shrink-0" />
+                                {t('customerPhone')}
+                              </dt>
+                              <dd className={`text-base font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                                {booking.customer_phone}
+                              </dd>
+                            </div>
+                          )}
+                          {booking.customer_email && (
+                            <div className="min-w-0 rounded-xl border p-3 sm:col-span-2">
+                              <dt className={`mb-1 flex items-center gap-2 text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <Mail className="h-4 w-4 shrink-0" />
+                                {t('customerEmail')}
+                              </dt>
+                              <dd className={`break-all text-base font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                                {booking.customer_email}
+                              </dd>
+                            </div>
+                          )}
+                          <div className="min-w-0 rounded-xl border p-3 sm:col-span-2">
+                            <dt className={`mb-1 flex items-center gap-2 text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <StickyNote className="h-4 w-4 shrink-0" />
+                              {t('notes')}
+                            </dt>
+                            <dd className={`text-base leading-relaxed ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                              {booking.notes || t('noNotes')}
+                            </dd>
+                          </div>
+                        </dl>
                       </div>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
-                        {t('createdAt')}: {new Date(booking.created_at).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}
-                      </p>
                     </Card>
                   ))}
                 </div>

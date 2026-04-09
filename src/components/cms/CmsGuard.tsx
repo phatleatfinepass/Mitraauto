@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../utils/supabase/client';
+import { getSupabaseConfigError, supabase } from '../../utils/supabase/client';
 import { useLanguage } from '../LanguageContext';
 import { Button } from '../ui/button';
 import { Shield, AlertCircle } from 'lucide-react';
@@ -21,6 +21,12 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
 
     const checkAuth = async () => {
       try {
+        const configError = getSupabaseConfigError();
+        if (configError) {
+          console.error('Supabase config error:', configError);
+          if (isMounted) setAuthState('unauthenticated');
+          return;
+        }
 
         // 1. Check if user has a session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();

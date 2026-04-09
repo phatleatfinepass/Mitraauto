@@ -99,8 +99,9 @@ export function BookingSuccess({
       {/* Confirmation Message */}
       <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <p className="text-sm text-blue-900 dark:text-blue-100">
-          A confirmation has been sent to your {contactInfo.email ? 'email and ' : ''}phone. 
-          We'll send you a reminder 24 hours before your appointment.
+          {contactInfo.email
+            ? 'A confirmation email has been sent to your inbox.'
+            : 'Your booking is confirmed. If you want an email confirmation, add an email address when booking.'}
         </p>
       </div>
 

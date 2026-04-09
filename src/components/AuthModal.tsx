@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { useLanguage } from './LanguageContext';
-import { getSupabaseClient } from '../utils/supabase/client';
+import { getSupabaseClient, getSupabaseConfigError } from '../utils/supabase/client';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle } from 'lucide-react';
 
@@ -75,6 +75,13 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
     setError('');
 
     try {
+      const configError = getSupabaseConfigError();
+      if (configError) {
+        setError(configError);
+        setLoading(false);
+        return;
+      }
+
       const supabase = getSupabaseClient();
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: loginData.email,
@@ -125,6 +132,13 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
     });
 
     try {
+      const configError = getSupabaseConfigError();
+      if (configError) {
+        setError(configError);
+        setLoading(false);
+        return;
+      }
+
       const supabase = getSupabaseClient();
       
       // Sign up with Supabase Auth
@@ -187,6 +201,13 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
     setError('');
 
     try {
+      const configError = getSupabaseConfigError();
+      if (configError) {
+        setError(configError);
+        setLoading(false);
+        return;
+      }
+
       const supabase = getSupabaseClient();
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
         redirectTo: `${window.location.origin}/reset-password`,

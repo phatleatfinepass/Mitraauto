@@ -81,6 +81,33 @@ export function getPricingRulesFromSpecOverrides(specOverrides: unknown): Produc
   );
 }
 
+export function isFixedBundleTotalCompatible(
+  fixedTotalEur: number | null | undefined,
+  quantity: number,
+): boolean {
+  if (fixedTotalEur === null || fixedTotalEur === undefined) return false;
+  if (!Number.isFinite(fixedTotalEur) || quantity <= 0) return false;
+  const cents = Math.round(fixedTotalEur * 100);
+  return cents % quantity === 0;
+}
+
+export function setPricingRulesToSpecOverrides(
+  specOverrides: Record<string, any> | null | undefined,
+  pricingRules: ProductPricingRules | null,
+): Record<string, any> | null {
+  const current = specOverrides && typeof specOverrides === 'object' ? { ...specOverrides } : {};
+
+  if (!pricingRules || (!normalizeTier(pricingRules.qty2) && !normalizeTier(pricingRules.qty4))) {
+    const { pricing_rules, bundle_pricing, pricing, ...rest } = current;
+    return Object.keys(rest).length > 0 ? rest : null;
+  }
+
+  return {
+    ...current,
+    pricing_rules: normalizePricingRules(pricingRules),
+  };
+}
+
 function getTierForQuantity(quantity: number, rules: ProductPricingRules | null | undefined): ProductPricingTier | null {
   if (!rules) return null;
   if (quantity === 2) return normalizeTier(rules.qty2);

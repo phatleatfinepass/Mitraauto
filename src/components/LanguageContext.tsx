@@ -64,10 +64,10 @@ const translations: Translations = {
   'servicesPage.from': { fi: 'alkaen', en: 'from' },
   
   // Service Categories
-  'serviceCategory.carWash': { fi: 'AUTOPESU', en: 'CAR WASH' },
-  'serviceCategory.maintenance': { fi: 'HUOLTO', en: 'MAINTENANCE' },
-  'serviceCategory.tireWork': { fi: 'RENGASTYÖT', en: 'TIRE WORK' },
-  'serviceCategory.diagnostics': { fi: 'DIAGNOSTIIKKA', en: 'DIAGNOSTICS' },
+  'serviceCategory.carCare': { fi: 'AUTONHOITOPALVELUT', en: 'CAR CARE' },
+  'serviceCategory.tireServices': { fi: 'RENGASPALVELUT', en: 'TIRE SERVICES' },
+  'serviceCategory.diagnosticsMaintenance': { fi: 'DIAGNOSTIIKKA & HUOLTOPALVELUT', en: 'DIAGNOSTICS & MAINTENANCE' },
+  'serviceCategory.acService': { fi: 'ILMASTOINTIHUOLTO', en: 'AC SERVICE' },
   
   // Car Wash Services
   'service.exteriorWash': { fi: 'Ulkopesu + kovavahaus', en: 'Exterior washing + hard waxing' },
@@ -75,6 +75,11 @@ const translations: Translations = {
   'service.interiorCleaning': { fi: 'Sisäpuhdistus', en: 'Interior cleaning' },
   'service.engineWash': { fi: 'Moottoripesu', en: 'Engine wash' },
   'service.basicHandWash': { fi: 'Perus käsipesu', en: 'Basic hand wash' },
+  'service.quickWax': { fi: 'Käsinpesu + pikavaha', en: 'Hand wash + quick wax' },
+  'service.premiumExteriorWash': { fi: 'Super ulkopesu', en: 'Premium exterior wash' },
+  'service.hardWaxProtection': { fi: 'Kovavahaus', en: 'Hard wax protection' },
+  'service.wheelWash': { fi: 'Vanteiden pesu', en: 'Wheel wash' },
+  'service.customerResponsibilityNote': { fi: 'asiakkaan omalla vastuulla', en: 'at customer’s own risk' },
   
   // Maintenance Services
   'service.basicService': { fi: 'Perushuolto', en: 'Basic service (including spare parts)' },
@@ -83,8 +88,12 @@ const translations: Translations = {
   'service.brakeFluid': { fi: 'Jarrunesteen vaihto', en: 'Brake fluid change' },
   'service.engineOilChange': { fi: 'Moottoriöljynvaihto', en: 'Engine oil change' },
   'service.seasonalMaintenance': { fi: 'Kausihuolto', en: 'Seasonal maintenance' },
-  'service.annualMaintenance': { fi: 'Vuosihuolto', en: 'Annual maintenance' },
+  'service.annualMaintenance': { fi: 'Määräaikaishuolto', en: 'Scheduled maintenance' },
   'service.pedalInstallation': { fi: 'Opetuspoljin asennus', en: 'Pedal installation for learner cars' },
+  'service.manualGearboxOil': { fi: 'Manuaalivaihteiston öljyn vaihto', en: 'Manual gearbox oil change' },
+  'service.automaticGearboxOil': { fi: 'Automaattivaihteiston öljyn vaihto', en: 'Automatic gearbox oil change' },
+  'service.automaticGearboxFlush': { fi: 'Automaattivaihteiston öljyn vaihto huuhtelulla', en: 'Automatic gearbox oil change with flush' },
+  'service.rustRepair': { fi: 'Ruostekorjaukset / hitsaustyöt', en: 'Rust repair / welding work' },
   
   // Tire Work Services
   'service.tireMounting': { fi: 'Renkaiden asennus', en: 'Tire mounting' },
@@ -98,10 +107,24 @@ const translations: Translations = {
   'service.tireChangeCar': { fi: 'Renkaiden vaihto – Henkilöauto', en: 'Tire change – passenger car' },
   'service.tireChangeSuv': { fi: 'Renkaiden vaihto – Maasturit', en: 'Tire change – SUV' },
   'service.tireChangeVan': { fi: 'Renkaiden vaihto – Pakettiautot', en: 'Tire change – Van' },
+  'service.externalRepair': { fi: 'Rengaspaikkaus ulkopuolelta', en: 'External tire repair' },
+  'service.internalRepair': { fi: 'Rengaspaikkaus sisäpuolelta', en: 'Internal tire repair' },
+  'service.tireWorkUpTo17': { fi: 'Rengastyö – Henkilöauto max. 17"', en: 'Tire work – passenger car up to 17"' },
+  'service.tireWork18To19': { fi: 'Rengastyö – Henkilöauto 18"–19"', en: 'Tire work – passenger car 18"–19"' },
+  'service.tireWork20To21': { fi: 'Rengastyö – Henkilöauto 20"–21"', en: 'Tire work – passenger car 20"–21"' },
   
   // Diagnostics Services
   'service.errorCodeReading': { fi: 'Vikakoodien luku', en: 'Error code reading' },
   'service.troubleshooting': { fi: 'Vianetsintä', en: 'Troubleshooting / diagnostics' },
+  'service.acServiceR134a': { fi: 'Ilmastointihuolto (R134a)', en: 'AC service (R134a)' },
+  'service.acServiceR1234yf': { fi: 'Ilmastointihuolto (R1234yf)', en: 'AC service (R1234yf)' },
+  'service.acServiceElectric': { fi: 'Ilmastointihuolto (sähköauto)', en: 'AC service (electric vehicle)' },
+  'service.extraRefrigerant': { fi: 'Ylimenevä kylmäaine', en: 'Extra refrigerant' },
+  'service.hybridSurcharge': { fi: 'Hybridiauto lisä', en: 'Hybrid surcharge' },
+  'service.acDiagnostics': { fi: 'Ilmastoinnin vianetsintä / vuototarkastus', en: 'AC diagnostics / leak check' },
+  'vehicle.passengerCar': { fi: 'Henkilöauto', en: 'Passenger car' },
+  'vehicle.suv': { fi: 'Maasturi', en: 'SUV' },
+  'vehicle.van': { fi: 'Pakettiauto', en: 'Van' },
   
   // Catalog
   'catalog.title': { fi: 'Rengaskatalogi', en: 'Tyre Catalog' },

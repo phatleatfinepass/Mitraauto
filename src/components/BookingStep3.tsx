@@ -113,6 +113,33 @@ export function BookingStep3({
       console.log('[BOOKING] ✅ Booking created successfully:', data);
       console.log('[BOOKING] Booking ID:', data?.[0]?.id);
       console.log('[BOOKING] Check CMS for date:', bookingDate, 'time:', timeSlot);
+
+      if (contactInfo.email && data?.[0]?.id) {
+        const { error: emailError } = await supabase.functions.invoke(
+          'send_booking_confirmation',
+          {
+            method: 'POST',
+            body: {
+              bookingId: data[0].id,
+              customerName: contactInfo.name,
+              customerEmail: contactInfo.email,
+              customerPhone: contactInfo.phone,
+              licensePlate: licensePlate.toUpperCase(),
+              bookingDate,
+              bookingTime: timeSlot,
+              serviceName,
+              notes: contactInfo.notes || null,
+            },
+          },
+        );
+
+        if (emailError) {
+          console.error('[BOOKING] Booking saved but confirmation email failed:', emailError);
+        } else {
+          console.log('[BOOKING] Booking confirmation email sent');
+        }
+      }
+
       onConfirm();
     } catch (err) {
       console.error('[BOOKING] ❌ Booking error:', err);

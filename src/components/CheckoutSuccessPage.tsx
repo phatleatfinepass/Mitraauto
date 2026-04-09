@@ -7,6 +7,7 @@ import { Card } from './ui/card';
 import { Separator } from './ui/separator';
 import { CheckCircle2, ArrowRight, AlertTriangle, Package, CreditCard, Calendar } from 'lucide-react';
 import { getSupabaseClient } from '../utils/supabase/client';
+import { projectId } from '../utils/supabase/info';
 import { toast } from 'sonner';
 
 interface CheckoutSuccessPageProps {
@@ -79,7 +80,9 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   const [checkoutInfo, setCheckoutInfo] = useState<CheckoutInfo | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
+  const [finalizingPayment, setFinalizingPayment] = useState(false);
   const hasClearedCartRef = useRef(false);
+  const hasFinalizedRef = useRef(false);
 
   const translations: Record<string, { fi: string; en: string }> = {
     loading: { fi: 'Ladataan...', en: 'Loading...' },
@@ -131,6 +134,39 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
       hasClearedCartRef.current = true;
     }
   }, [isSuccessfulPayment, clearCart]);
+
+  useEffect(() => {
+    if (!checkoutInfo || checkoutInfo.checkoutStatus !== 'ok' || hasFinalizedRef.current) {
+      return;
+    }
+
+    hasFinalizedRef.current = true;
+
+    const finalizePayment = async () => {
+      setFinalizingPayment(true);
+      try {
+        const webhookUrl = `https://${projectId}.functions.supabase.co/payments_paytrail_webhook${window.location.search}`;
+        const response = await fetch(webhookUrl, {
+          method: 'GET',
+        });
+
+        const payload = await response.json().catch(() => null);
+        console.log('Paytrail finalize response:', response.status, payload);
+
+        if (!response.ok) {
+          console.error('Failed to finalize Paytrail payment on success page', payload);
+        } else if (checkoutInfo.orderId) {
+          await fetchOrderDetails(checkoutInfo.orderId, checkoutInfo.transactionId);
+        }
+      } catch (error) {
+        console.error('Paytrail success finalization failed:', error);
+      } finally {
+        setFinalizingPayment(false);
+      }
+    };
+
+    void finalizePayment();
+  }, [checkoutInfo]);
 
   // Fetch order details
   const fetchOrderDetails = async (orderId: string, transactionId: string | null) => {
@@ -252,6 +288,13 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6B35] mx-auto mb-2" />
               <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                 {t('loading')}
+              </p>
+            </div>
+          ) : finalizingPayment ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6B35] mx-auto mb-2" />
+              <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                {language === 'fi' ? 'Vahvistetaan maksua...' : 'Finalizing payment...'}
               </p>
             </div>
           ) : (

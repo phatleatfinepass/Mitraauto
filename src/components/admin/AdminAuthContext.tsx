@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getSupabaseClient } from '../../utils/supabase/client';
+import { getSupabaseClient, getSupabaseConfigError } from '../../utils/supabase/client';
 import type { User } from '@supabase/supabase-js@2';
 
 interface AdminAuthContextType {
@@ -44,6 +44,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   useEffect(() => {
+    const configError = getSupabaseConfigError();
+    if (configError) {
+      console.error('Supabase config error:', configError);
+      setLoading(false);
+      return;
+    }
+
     const supabase = getSupabaseClient();
 
     // Check current session
@@ -75,6 +82,11 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const login = async (email: string, password: string) => {
     try {
+      const configError = getSupabaseConfigError();
+      if (configError) {
+        return { success: false, error: configError };
+      }
+
       const supabase = getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -110,6 +122,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const logout = async () => {
     try {
+      if (getSupabaseConfigError()) {
+        setUser(null);
+        setIsAdmin(false);
+        setNeedsPasswordChange(false);
+        return;
+      }
+
       const supabase = getSupabaseClient();
       await supabase.auth.signOut();
       setUser(null);
@@ -122,6 +141,11 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const changePassword = async (newPassword: string) => {
     try {
+      const configError = getSupabaseConfigError();
+      if (configError) {
+        return { success: false, error: configError };
+      }
+
       const supabase = getSupabaseClient();
       
       // Update password
