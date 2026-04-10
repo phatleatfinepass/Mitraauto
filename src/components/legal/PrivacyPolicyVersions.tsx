@@ -180,7 +180,7 @@ export function PrivacyPolicyV3({ t }: { t: (key: string) => string }) {
             <li><strong className="text-foreground">Company:</strong> Mitra Auto Oy</li>
             <li><strong>Business ID:</strong> 3408833-8</li>
             <li><strong>Address:</strong> Hankasuontie 5, 00390 Helsinki, Finland</li>
-            <li><strong>Email:</strong> <a href="mailto:info.mitra.auto@gmail.com" className="text-[#FF6B35] hover:underline">info.mitra.auto@gmail.com</a></li>
+            <li><strong>Email:</strong> <a href="mailto:contact@mitra-auto.fi" className="text-[#FF6B35] hover:underline">contact@mitra-auto.fi</a></li>
             <li><strong>Phone:</strong> <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></li>
           </ul>
           <p className="mt-3 text-sm italic">Contact information updated June 2025</p>
@@ -292,7 +292,7 @@ export function PrivacyPolicyV4({ t }: { t: (key: string) => string }) {
             <li><strong className="text-foreground">Company:</strong> Mitra Auto Oy</li>
             <li><strong>Business ID:</strong> 3408833-8</li>
             <li><strong>Address:</strong> Hankasuontie 5, 00390 Helsinki, Finland</li>
-            <li><strong>Email:</strong> <a href="mailto:info.mitra.auto@gmail.com" className="text-[#FF6B35] hover:underline">info.mitra.auto@gmail.com</a></li>
+            <li><strong>Email:</strong> <a href="mailto:contact@mitra-auto.fi" className="text-[#FF6B35] hover:underline">contact@mitra-auto.fi</a></li>
             <li><strong>Phone:</strong> <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></li>
           </ul>
         </div>
@@ -405,7 +405,7 @@ export function PrivacyPolicyV5({ t }: { t: (key: string) => string }) {
             <li><strong className="text-foreground">{t('legal.privacy.controller.company')}:</strong> Mitra Auto Oy</li>
             <li><strong>{t('legal.privacy.controller.businessId')}:</strong> 3408833-8</li>
             <li><strong>{t('legal.privacy.controller.address')}:</strong> Hankasuontie 5, 00390 Helsinki, Finland</li>
-            <li><strong>{t('legal.privacy.controller.email')}:</strong> <a href="mailto:info.mitra.auto@gmail.com" className="text-[#FF6B35] hover:underline">info.mitra.auto@gmail.com</a></li>
+            <li><strong>{t('legal.privacy.controller.email')}:</strong> <a href="mailto:contact@mitra-auto.fi" className="text-[#FF6B35] hover:underline">contact@mitra-auto.fi</a></li>
             <li><strong>{t('legal.privacy.controller.phone')}:</strong> <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></li>
           </ul>
         </div>

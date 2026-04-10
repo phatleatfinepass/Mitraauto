@@ -15,6 +15,7 @@ interface BookingSuccessProps {
   };
   onClose: () => void;
   t: (key: string) => string;
+  locale?: string;
 }
 
 export function BookingSuccess({
@@ -25,6 +26,7 @@ export function BookingSuccess({
   contactInfo,
   onClose,
   t,
+  locale = 'fi-FI',
 }: BookingSuccessProps) {
   const handleAddToCalendar = () => {
     // [BOOKING ACTION] Generate calendar event
@@ -53,20 +55,20 @@ export function BookingSuccess({
 
       {/* Booking Details Card */}
       <Card className="p-6 bg-secondary/30 text-left">
-        <h3 className="font-semibold mb-4">Booking Details</h3>
+        <h3 className="font-semibold mb-4">{t('booking.success.detailsTitle')}</h3>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Service</span>
+            <span className="text-muted-foreground">{t('booking.summary.service')}</span>
             <span className="font-medium">{serviceName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">License Plate</span>
+            <span className="text-muted-foreground">{t('booking.summary.licensePlate')}</span>
             <span className="font-medium tracking-wide">{licensePlate}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Date</span>
+            <span className="text-muted-foreground">{t('booking.summary.date')}</span>
             <span className="font-medium">
-              {date.toLocaleDateString('fi-FI', {
+              {date.toLocaleDateString(locale, {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric',
@@ -74,21 +76,21 @@ export function BookingSuccess({
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Time</span>
+            <span className="text-muted-foreground">{t('booking.summary.time')}</span>
             <span className="font-medium">{timeSlot}</span>
           </div>
           <div className="border-t pt-3 mt-3">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Name</span>
+              <span className="text-muted-foreground">{t('booking.success.name')}</span>
               <span className="font-medium">{contactInfo.name}</span>
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-muted-foreground">Phone</span>
+              <span className="text-muted-foreground">{t('booking.success.phone')}</span>
               <span className="font-medium">{contactInfo.phone}</span>
             </div>
             {contactInfo.email && (
               <div className="flex justify-between mt-2">
-                <span className="text-muted-foreground">Email</span>
+                <span className="text-muted-foreground">{t('booking.success.email')}</span>
                 <span className="font-medium">{contactInfo.email}</span>
               </div>
             )}
@@ -100,8 +102,8 @@ export function BookingSuccess({
       <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <p className="text-sm text-blue-900 dark:text-blue-100">
           {contactInfo.email
-            ? 'A confirmation email has been sent to your inbox.'
-            : 'Your booking is confirmed. If you want an email confirmation, add an email address when booking.'}
+            ? t('booking.success.emailSent')
+            : t('booking.success.emailMissing')}
         </p>
       </div>
 

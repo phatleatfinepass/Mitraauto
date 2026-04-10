@@ -3,6 +3,7 @@ export interface ScheduleBooking {
   license_plate: string;
   booking_date: string;
   booking_time: string;
+  booking_language?: 'fi' | 'en' | null;
   service_name?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;

@@ -10,6 +10,8 @@ interface BookingSummaryCardProps {
   serviceName?: string;
   onEdit?: () => void;
   compact?: boolean;
+  t?: (key: string) => string;
+  locale?: string;
 }
 
 export function BookingSummaryCard({
@@ -19,6 +21,8 @@ export function BookingSummaryCard({
   serviceName,
   onEdit,
   compact = false,
+  t,
+  locale = 'fi-FI',
 }: BookingSummaryCardProps) {
   const hasData = licensePlate || date || timeSlot || serviceName;
 
@@ -29,7 +33,7 @@ export function BookingSummaryCard({
   return (
     <Card className={`${compact ? 'p-4' : 'p-6'} bg-secondary/30 border-border/50`}>
       <div className="flex items-start justify-between mb-4">
-        <h3 className="font-semibold">Booking Summary</h3>
+        <h3 className="font-semibold">{t ? t('booking.summary.title') : 'Booking Summary'}</h3>
         {onEdit && (
           <Button
             variant="ghost"
@@ -38,7 +42,7 @@ export function BookingSummaryCard({
             className="h-8 px-2 hover:bg-secondary"
           >
             <Edit2 className="h-4 w-4 mr-1" />
-            Edit
+            {t ? t('booking.summary.edit') : 'Edit'}
           </Button>
         )}
       </div>
@@ -50,7 +54,7 @@ export function BookingSummaryCard({
               <Car className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">License Plate</p>
+              <p className="text-xs text-muted-foreground">{t ? t('booking.summary.licensePlate') : 'License Plate'}</p>
               <p className="font-semibold tracking-wide">{licensePlate}</p>
             </div>
           </div>
@@ -62,9 +66,9 @@ export function BookingSummaryCard({
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Date</p>
+              <p className="text-xs text-muted-foreground">{t ? t('booking.summary.date') : 'Date'}</p>
               <p className="font-semibold">
-                {date.toLocaleDateString('fi-FI', {
+                {date.toLocaleDateString(locale, {
                   weekday: 'short',
                   day: 'numeric',
                   month: 'short',
@@ -81,7 +85,7 @@ export function BookingSummaryCard({
               <Clock className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Time</p>
+              <p className="text-xs text-muted-foreground">{t ? t('booking.summary.time') : 'Time'}</p>
               <p className="font-semibold">{timeSlot}</p>
             </div>
           </div>
@@ -93,7 +97,7 @@ export function BookingSummaryCard({
               <Wrench className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Service</p>
+              <p className="text-xs text-muted-foreground">{t ? t('booking.summary.service') : 'Service'}</p>
               <p className="font-semibold">{serviceName}</p>
             </div>
           </div>

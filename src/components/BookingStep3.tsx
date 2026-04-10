@@ -14,6 +14,7 @@ interface BookingStep3Props {
   date: Date;
   timeSlot: string;
   serviceName: string;
+  language?: 'fi' | 'en';
   contactInfo: {
     name: string;
     phone: string;
@@ -25,6 +26,7 @@ interface BookingStep3Props {
   onEditStep1: () => void;
   onConfirm: () => void;
   t: (key: string) => string;
+  locale?: string;
 }
 
 export function BookingStep3({
@@ -32,12 +34,14 @@ export function BookingStep3({
   date,
   timeSlot,
   serviceName,
+  language = 'fi',
   contactInfo,
   onContactInfoChange,
   onBack,
   onEditStep1,
   onConfirm,
   t,
+  locale = 'fi-FI',
 }: BookingStep3Props) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -51,19 +55,19 @@ export function BookingStep3({
 
     // Validate name
     if (!contactInfo.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = t('booking.error.nameRequired');
     }
 
     // Validate phone
     if (!contactInfo.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = t('booking.error.phoneRequired');
     } else if (!/^\+?[\d\s-()]+$/.test(contactInfo.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
+      newErrors.phone = t('booking.error.invalidPhone');
     }
 
     // Validate email (optional but must be valid if provided)
     if (contactInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactInfo.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('booking.error.invalidEmail');
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -83,6 +87,7 @@ export function BookingStep3({
         license_plate: licensePlate.toUpperCase(),
         booking_date: bookingDate,
         booking_time: timeSlot,
+        booking_language: language,
         service_name: serviceName,
         customer_name: contactInfo.name,
         customer_phone: contactInfo.phone,
@@ -128,6 +133,7 @@ export function BookingStep3({
               bookingDate,
               bookingTime: timeSlot,
               serviceName,
+              language,
               notes: contactInfo.notes || null,
             },
           },
@@ -143,7 +149,7 @@ export function BookingStep3({
       onConfirm();
     } catch (err) {
       console.error('[BOOKING] ❌ Booking error:', err);
-      setError('Unable to complete booking. Please try again.');
+      setError(t('booking.error.unableToComplete'));
     } finally {
       setLoading(false);
     }
@@ -157,9 +163,9 @@ export function BookingStep3({
         <div className="lg:col-span-2 space-y-6">
           <div className="space-y-4">
             <div>
-              <h3 className="font-semibold mb-1">Contact Information</h3>
+              <h3 className="font-semibold mb-1">{t('booking.step3.contactTitle')}</h3>
               <p className="text-sm text-muted-foreground">
-                We'll use this information to confirm your booking
+                {t('booking.step3.contactIntro')}
               </p>
             </div>
 
@@ -169,14 +175,14 @@ export function BookingStep3({
                 htmlFor="name"
                 className={`transition-all ${errors.name ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
-                Full Name *
+                {t('booking.step3.fullName')} *
               </Label>
               <Input
                 id="name"
                 type="text"
                 value={contactInfo.name}
                 onChange={(e) => onContactInfoChange('name', e.target.value)}
-                placeholder="John Doe"
+                placeholder={t('booking.step3.fullNamePlaceholder')}
                 className={`transition-all ${errors.name ? 'border-destructive' : 'hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]'}`}
                 aria-invalid={!!errors.name}
               />
@@ -191,14 +197,14 @@ export function BookingStep3({
                 htmlFor="phone"
                 className={`transition-all ${errors.phone ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
-                Phone Number *
+                {t('booking.step3.phoneNumber')} *
               </Label>
               <Input
                 id="phone"
                 type="tel"
                 value={contactInfo.phone}
                 onChange={(e) => onContactInfoChange('phone', e.target.value)}
-                placeholder="+358 40 123 4567"
+                placeholder={t('booking.step3.phonePlaceholder')}
                 className={`transition-all ${errors.phone ? 'border-destructive' : 'hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]'}`}
                 aria-invalid={!!errors.phone}
               />
@@ -213,17 +219,20 @@ export function BookingStep3({
                 htmlFor="email"
                 className={`transition-all ${errors.email ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
-                Email <span className="text-muted-foreground">(Optional)</span>
+                {t('booking.step3.emailLabel')}
               </Label>
               <Input
                 id="email"
                 type="email"
                 value={contactInfo.email}
                 onChange={(e) => onContactInfoChange('email', e.target.value)}
-                placeholder="john.doe@example.com"
+                placeholder={t('booking.step3.emailPlaceholder')}
                 className={`transition-all ${errors.email ? 'border-destructive' : 'hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]'}`}
                 aria-invalid={!!errors.email}
               />
+              <p className="text-sm text-muted-foreground">
+                {t('booking.step3.emailHelper')}
+              </p>
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email}</p>
               )}
@@ -232,13 +241,13 @@ export function BookingStep3({
             {/* Notes */}
             <div className="space-y-2 group">
               <Label htmlFor="notes" className="transition-all group-hover:text-ring">
-                Additional Notes <span className="text-muted-foreground">(Optional)</span>
+                {t('booking.step3.additionalNotes')} <span className="text-muted-foreground">{t('booking.step3.optional')}</span>
               </Label>
               <Textarea
                 id="notes"
                 value={contactInfo.notes}
                 onChange={(e) => onContactInfoChange('notes', e.target.value)}
-                placeholder="Any special requirements or additional information..."
+                placeholder={t('booking.step3.notesPlaceholder')}
                 rows={4}
                 className="resize-none transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
               />
@@ -255,6 +264,8 @@ export function BookingStep3({
               timeSlot={timeSlot}
               serviceName={serviceName}
               onEdit={onEditStep1}
+              t={t}
+              locale={locale}
             />
           </div>
         </div>
@@ -269,6 +280,8 @@ export function BookingStep3({
           serviceName={serviceName}
           onEdit={onEditStep1}
           compact
+          t={t}
+          locale={locale}
         />
       </div>
 

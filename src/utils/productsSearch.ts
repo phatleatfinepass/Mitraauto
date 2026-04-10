@@ -30,6 +30,7 @@ export type ProductSearchRow = {
   color: string | null;
   finish: string | null;
   price: number | null;
+  final_price_eur?: number | null;
   currency: string | null;
   in_stock: boolean;
   stock_qty: number | null;
@@ -58,8 +59,6 @@ interface FetchOptions {
   offset?: number;
   filters?: Record<string, any>;
 }
-
-const PRODUCTS_SEARCH_PAGE_SIZE = 1000;
 
 function parseTireSize(sizeString: string | null): { width?: number; aspect?: number; diameter?: number } {
   if (!sizeString) return {};
@@ -202,6 +201,7 @@ export async function fetchProductsSearch(
     'color',
     'finish',
     'price',
+    'final_price_eur',
     'currency',
     'in_stock',
     'stock_qty',
@@ -223,12 +223,92 @@ export async function fetchProductsSearch(
     'final_is_hidden',
   ].join(',');
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('products_search')
-    .select(baseSelect)
+    .select(baseSelect, { count: 'estimated' })
     .eq('product_type', productType)
-    .eq('final_is_hidden', false)
-    .limit(PRODUCTS_SEARCH_PAGE_SIZE);
+    .eq('final_is_hidden', false);
+
+  if (productType === 'tire') {
+    if (filters.search) {
+      const q = String(filters.search).trim();
+      if (q) {
+        query = query.or([
+          `brand.ilike.%${q}%`,
+          `brand_display_name.ilike.%${q}%`,
+          `model.ilike.%${q}%`,
+          `size_string.ilike.%${q}%`,
+          `card_title.ilike.%${q}%`,
+        ].join(','));
+      }
+    }
+
+    if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
+    if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
+    if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
+    if (filters.season && filters.season !== 'all') query = query.eq('season', filters.season);
+    if (filters.runflat) query = query.eq('runflat', true);
+    if (filters.xl) query = query.eq('xl_reinforced', true);
+    if (filters.studded) query = query.eq('studded', true);
+    if (filters.inStockOnly) query = query.eq('in_stock', true);
+
+    switch (filters.sortBy) {
+      case 'price_desc':
+        query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
+        break;
+      case 'price_asc':
+        query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
+        break;
+      case 'wet_grip':
+        query = query.order('eu_wet', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+        break;
+      case 'noise':
+        query = query.order('eu_noise', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+        break;
+      default:
+        query = query.order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
+        break;
+    }
+  } else {
+    if (filters.search) {
+      const q = String(filters.search).trim();
+      if (q) {
+        query = query.or([
+          `brand.ilike.%${q}%`,
+          `brand_display_name.ilike.%${q}%`,
+          `model.ilike.%${q}%`,
+          `card_title.ilike.%${q}%`,
+          `color.ilike.%${q}%`,
+        ].join(','));
+      }
+    }
+
+    if (filters.rimDiameter && filters.rimDiameter !== 'all') query = query.eq('rim_diameter_in', Number(filters.rimDiameter));
+    if (filters.rimWidth && filters.rimWidth !== 'all') query = query.eq('width_in', Number(filters.rimWidth));
+    if (filters.pcd && filters.pcd !== 'all') query = query.eq('bolt_pattern', filters.pcd);
+    if (filters.etOffset !== '' && filters.etOffset !== null && filters.etOffset !== undefined) {
+      query = query.eq('et_offset_mm', Number(filters.etOffset));
+    }
+    if (filters.color && filters.color !== 'all') query = query.ilike('color', filters.color);
+    if (filters.inStockOnly) query = query.eq('in_stock', true);
+
+    switch (filters.sortBy) {
+      case 'price_desc':
+        query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
+        break;
+      case 'brand_asc':
+        query = query.order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
+        break;
+      case 'price_asc':
+      default:
+        query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
+        break;
+    }
+  }
+
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
 
   if (error) throw error;
 
@@ -236,11 +316,5 @@ export async function fetchProductsSearch(
     ...row,
     pricing_rules: null,
   })) as ProductSearchRow[];
-
-  const filtered = productType === 'tire'
-    ? rows.filter((row) => matchesTireFilters(row, filters))
-    : rows.filter((row) => matchesRimFilters(row, filters));
-
-  const sorted = applySort(filtered, filters.sortBy);
-  return { items: sorted.slice(offset, offset + limit), total: sorted.length };
+  return { items: rows, total: count ?? rows.length };
 }

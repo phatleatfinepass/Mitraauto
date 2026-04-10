@@ -23,7 +23,7 @@ export function ContactSection() {
     address: 'Hankasuontie 5, 00390 Helsinki',
     phone: '+358 40 7777 163',
     phoneDisplay: '+358 40 7777 163',
-    email: 'info.mitra.auto@gmail.com',
+    email: 'contact@mitra-auto.fi',
     // Universal map URL that opens in user's default map app
     mapUrl: 'https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland',
   };

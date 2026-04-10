@@ -187,7 +187,7 @@ export function TermsV3({ t }: { t: (key: string) => string }) {
         <div>
           <h2 className="text-2xl text-foreground mb-4">1. Agreement and Acceptance</h2>
           <p className="mb-3">These Terms and Conditions govern your use of services provided by Mitra Auto Oy (Business ID: 3408833-8), located at Hankasuontie 5, 00390 Helsinki, Finland.</p>
-          <p className="mb-3">Contact: <a href="mailto:info.mitra.auto@gmail.com" className="text-[#FF6B35] hover:underline">info.mitra.auto@gmail.com</a> | <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></p>
+          <p className="mb-3">Contact: <a href="mailto:contact@mitra-auto.fi" className="text-[#FF6B35] hover:underline">contact@mitra-auto.fi</a> | <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></p>
           <p className="italic text-sm font-medium text-foreground">Finnish version prevails in case of interpretation disputes.</p>
           <p className="mt-3 text-sm italic">Contact information updated June 2025</p>
         </div>
@@ -282,7 +282,7 @@ export function TermsV3({ t }: { t: (key: string) => string }) {
           <h2 className="text-2xl text-foreground mb-4">10. Dispute Resolution</h2>
           <p className="mb-3">Dispute resolution options:</p>
           <ul className="space-y-2 ml-6 list-disc">
-            <li>Direct contact: info.mitra.auto@gmail.com</li>
+            <li>Direct contact: contact@mitra-auto.fi</li>
             <li>Consumer Disputes Board (consumers only)</li>
             <li>Finnish courts (Helsinki District Court has jurisdiction)</li>
           </ul>
@@ -310,7 +310,7 @@ export function TermsV4({ t }: { t: (key: string) => string }) {
             <li>Mitra Auto Oy</li>
             <li>Business ID: 3408833-8</li>
             <li>Hankasuontie 5, 00390 Helsinki, Finland</li>
-            <li>Email: <a href="mailto:info.mitra.auto@gmail.com" className="text-[#FF6B35] hover:underline">info.mitra.auto@gmail.com</a></li>
+            <li>Email: <a href="mailto:contact@mitra-auto.fi" className="text-[#FF6B35] hover:underline">contact@mitra-auto.fi</a></li>
             <li>Phone: <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></li>
           </ul>
         </div>
@@ -431,7 +431,7 @@ export function TermsV4({ t }: { t: (key: string) => string }) {
           <h2 className="text-2xl text-foreground mb-4">11. Dispute Resolution</h2>
           <p className="mb-3"><strong>For Consumers:</strong></p>
           <ul className="space-y-2 ml-6 list-disc">
-            <li>Contact us first: info.mitra.auto@gmail.com</li>
+            <li>Contact us first: contact@mitra-auto.fi</li>
             <li>Consumer Disputes Board: <a href="https://www.kuluttajariita.fi" className="text-[#FF6B35] hover:underline" target="_blank" rel="noopener noreferrer">kuluttajariita.fi</a></li>
             <li>Consumer Ombudsman: <a href="https://www.kkv.fi" className="text-[#FF6B35] hover:underline" target="_blank" rel="noopener noreferrer">kkv.fi</a></li>
             <li>Helsinki District Court (as last resort)</li>
@@ -467,7 +467,7 @@ export function TermsV5({ t }: { t: (key: string) => string }) {
             <li>Mitra Auto Oy</li>
             <li>{t('legal.terms.acceptance.businessId')}: 3408833-8</li>
             <li>{t('legal.terms.acceptance.address')}: Hankasuontie 5, 00390 Helsinki, Finland</li>
-            <li>{t('legal.terms.acceptance.email')}: <a href="mailto:info.mitra.auto@gmail.com" className="text-[#FF6B35] hover:underline">info.mitra.auto@gmail.com</a></li>
+            <li>{t('legal.terms.acceptance.email')}: <a href="mailto:contact@mitra-auto.fi" className="text-[#FF6B35] hover:underline">contact@mitra-auto.fi</a></li>
             <li>{t('legal.terms.acceptance.phone')}: <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></li>
             <li>{t('legal.terms.acceptance.emergency')}</li>
           </ul>

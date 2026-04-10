@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
-import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle, Upload, GripVertical, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Edit, Eye, EyeOff, X, Save, AlertCircle, Upload, GripVertical, RotateCcw, AlertTriangle } from 'lucide-react';
+import { TiresCmsToolbar } from './tires/TiresCmsToolbar';
+import { TiresCmsPagination } from './tires/TiresCmsPagination';
 import {
   calculateLinePricing,
   getPricingRulesFromSpecOverrides,
@@ -123,7 +125,6 @@ export function TiresCMSPageV2() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showMissingEanOnly, setShowMissingEanOnly] = useState(false);
-  const [visibleRowsCache, setVisibleRowsCache] = useState<TireRow[]>([]);
   const [selectedTire, setSelectedTire] = useState<TireRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -280,16 +281,11 @@ export function TiresCMSPageV2() {
 
   useEffect(() => {
     fetchTires();
-  }, [showMissingEanOnly, debouncedSearchTerm]);
+  }, [showMissingEanOnly, debouncedSearchTerm, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [showMissingEanOnly, debouncedSearchTerm]);
-
-  useEffect(() => {
-    const start = (currentPage - 1) * pageSize;
-    setTires(visibleRowsCache.slice(start, start + pageSize));
-  }, [currentPage, pageSize, visibleRowsCache]);
 
   const fetchTires = async () => {
     setLoading(true);
@@ -297,54 +293,42 @@ export function TiresCMSPageV2() {
 
     try {
       const trimmedSearch = debouncedSearchTerm.trim();
-      const productsPageSize = 1000;
-      const firstProductsResult = await supabase
+      let productsQuery = supabase
         .from('products_search')
-        .select('*')
+        .select('*', { count: 'estimated' })
         .eq('product_type', 'tire')
         .order('brand', { ascending: true })
         .order('model', { ascending: true })
         .order('variant_id', { ascending: true })
-        .range(0, productsPageSize - 1);
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
 
-      if (firstProductsResult.error) throw firstProductsResult.error;
+      if (trimmedSearch) {
+        productsQuery = productsQuery.or([
+          `brand.ilike.%${trimmedSearch}%`,
+          `model.ilike.%${trimmedSearch}%`,
+          `size_string.ilike.%${trimmedSearch}%`,
+          `derived_ean.ilike.%${trimmedSearch}%`,
+        ].join(','));
+      }
 
-      const products = [...(firstProductsResult.data ?? [])];
+      if (showMissingEanOnly) {
+        productsQuery = productsQuery.or('derived_ean.is.null,derived_ean.like.EANMISSING_%');
+      }
 
-      while (true) {
-        if (products.length > 0 && products.length % productsPageSize !== 0) {
-          break;
-        }
+      const { data: products, error: productsError, count } = await productsQuery;
 
-        const nextFrom = products.length;
-        const nextProductsResult = await supabase
-          .from('products_search')
-          .select('*')
-          .eq('product_type', 'tire')
-          .order('brand', { ascending: true })
-          .order('model', { ascending: true })
-          .order('variant_id', { ascending: true })
-          .range(nextFrom, nextFrom + productsPageSize - 1);
+      if (productsError) throw productsError;
 
-        if (nextProductsResult.error) throw nextProductsResult.error;
+      const resolvedTotalCount = count ?? 0;
+      setTotalCount(resolvedTotalCount);
 
-        const batch = nextProductsResult.data ?? [];
-        if (batch.length === 0) {
-          break;
-        }
-
-        products.push(...batch);
-
-        if (batch.length < productsPageSize) {
-          break;
-        }
+      const safeTotalPages = Math.max(1, Math.ceil(resolvedTotalCount / pageSize));
+      if (currentPage > safeTotalPages) {
+        setCurrentPage(safeTotalPages);
       }
 
       if (!products || products.length === 0) {
-        setTotalCount(0);
-        setVisibleRowsCache([]);
         setTires([]);
-        setLoading(false);
         return;
       }
 
@@ -420,7 +404,10 @@ export function TiresCMSPageV2() {
           model: identity.model ?? p.model,
           size_string: identity.size_string ?? p.size_string,
           derived_ean: resolvedEan,
-          final_price_eur: p.final_price_eur ?? p.price ?? null,
+          final_price_eur:
+            cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
+              ? cmsData.promo_price_eur
+              : cmsData?.price_override_eur ?? p.final_price_eur ?? p.price ?? null,
           has_missing_ean: missingEan,
           has_duplicate_ean_conflict: duplicateEanConflict,
           has_mandatory_field_conflict: mandatoryFieldConflict,
@@ -432,37 +419,11 @@ export function TiresCMSPageV2() {
         };
       });
 
-      const missingEanFilteredRows = showMissingEanOnly
+      const visibleRows = showMissingEanOnly
         ? merged.filter((row: any) => Boolean(row.has_missing_ean))
         : merged;
 
-      const searchFilteredRows = trimmedSearch
-        ? missingEanFilteredRows.filter((row: any) => {
-            const q = trimmedSearch.toLowerCase();
-            return (
-              (row.brand ?? '').toLowerCase().includes(q) ||
-              (row.model ?? '').toLowerCase().includes(q) ||
-              (row.size_string ?? '').toLowerCase().includes(q) ||
-              (row.derived_ean ?? '').toLowerCase().includes(q)
-            );
-          })
-        : missingEanFilteredRows;
-
-      const visibleRows = searchFilteredRows;
-
-      const visibleTypedRows = visibleRows as TireRow[];
-      const visibleTotal = visibleTypedRows.length;
-      setTotalCount(visibleTotal);
-      setVisibleRowsCache(visibleTypedRows);
-      const totalPages = Math.max(1, Math.ceil(visibleTotal / pageSize));
-      const safePage = Math.min(currentPage, totalPages);
-      if (currentPage !== safePage) {
-        setCurrentPage(safePage);
-      }
-
-      const pagedStart = (safePage - 1) * pageSize;
-      const pagedRows = visibleTypedRows.slice(pagedStart, pagedStart + pageSize);
-      setTires(pagedRows);
+      setTires(visibleRows as TireRow[]);
     } catch (err: any) {
       console.error('Fetch tires error:', err);
       setError(err.message);
@@ -633,18 +594,22 @@ export function TiresCMSPageV2() {
           ...(tire.cms_data ?? { variant_id: tire.variant_id }),
           ...cmsPatch,
         } as any;
+        const effectivePrice =
+          nextCmsData?.promo_enabled && nextCmsData?.promo_price_eur !== null && nextCmsData?.promo_price_eur !== undefined
+            ? nextCmsData.promo_price_eur
+            : nextCmsData?.price_override_eur ?? tire.price ?? null;
         const manualNonPassenger = getManualNonPassengerFlag(nextCmsData?.spec_overrides);
         const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
 
         return {
           ...tire,
+          final_price_eur: effectivePrice,
           cms_data: nextCmsData,
           is_non_passenger_manual: manualNonPassenger,
           is_non_passenger: autoNonPassenger || manualNonPassenger,
         };
       });
 
-    setVisibleRowsCache((prev) => applyCmsPatch(prev));
     setTires((prev) => applyCmsPatch(prev));
   };
 
@@ -665,7 +630,6 @@ export function TiresCMSPageV2() {
           : tire
       );
 
-    setVisibleRowsCache((prev) => applyIdentityPatch(prev));
     setTires((prev) => applyIdentityPatch(prev));
   };
 
@@ -1263,6 +1227,17 @@ export function TiresCMSPageV2() {
     return items;
   })();
 
+  const originalApiPrice =
+    selectedTire?.price !== null && selectedTire?.price !== undefined
+      ? Number(selectedTire.price)
+      : null;
+  const effectiveDraftPrice =
+    editData.promo_enabled && editData.promo_price_eur !== null && editData.promo_price_eur !== undefined
+      ? Number(editData.promo_price_eur)
+      : editData.price_override_eur !== null && editData.price_override_eur !== undefined
+        ? Number(editData.price_override_eur)
+        : originalApiPrice;
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
       {warningTooltip && (
@@ -1275,70 +1250,18 @@ export function TiresCMSPageV2() {
           {warningTooltip.text}
         </div>
       )}
-      {/* Header */}
-      <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
-        <div className="px-8 py-6">
-          <h1 className={`text-3xl mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Renkaat CMS' : 'Tires CMS'}
-          </h1>
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' 
-              ? 'Hallitse renkaiden sisältöä, EU-merkintöjä, hintoja ja kuvia'
-              : 'Manage tire content, EU labels, pricing, and images'}
-          </p>
-        </div>
-      </div>
-
-      {/* Search & Filters */}
-      <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'} px-8 py-4`}>
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative w-full sm:max-w-md">
-            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-            <input
-              type="text"
-              placeholder={language === 'fi' ? 'Hae brändin, mallin tai EAN:n mukaan...' : 'Search by brand, model, or EAN...'}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-                isDark 
-                  ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-              }`}
-            />
-          </div>
-          
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showMissingEanOnly}
-              onChange={(e) => setShowMissingEanOnly(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300"
-            />
-            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'Näytä vain puuttuva EAN' : 'Show missing EAN only'}
-            </span>
-          </label>
-          <button
-            type="button"
-            onClick={handleApplyCatalogSync}
-            disabled={syncingCatalog || !hasPendingCatalogSync}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isDark
-                ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-white/10 disabled:text-gray-500'
-                : 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-100 disabled:text-gray-500'
-            } disabled:cursor-not-allowed`}
-          >
-            {syncingCatalog
-              ? (language === 'fi' ? 'Synkronoidaan...' : 'Syncing...')
-              : 'Apply Sync'}
-          </button>
-        </div>
-        {catalogSyncMessage && (
-          <p className={`mt-3 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-            {catalogSyncMessage}
-          </p>
-        )}
-      </div>
+      <TiresCmsToolbar
+        isDark={isDark}
+        language={language}
+        searchTerm={searchTerm}
+        showMissingEanOnly={showMissingEanOnly}
+        syncingCatalog={syncingCatalog}
+        hasPendingCatalogSync={hasPendingCatalogSync}
+        catalogSyncMessage={catalogSyncMessage}
+        onSearchTermChange={setSearchTerm}
+        onShowMissingEanOnlyChange={setShowMissingEanOnly}
+        onApplyCatalogSync={handleApplyCatalogSync}
+      />
 
       {/* Main Content */}
       <div className="px-8 py-6">
@@ -1509,99 +1432,17 @@ export function TiresCMSPageV2() {
               </div>
             )}
 
-            {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6">
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {language === 'fi'
-                    ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
-                    : `Showing ${startItem}-${endItem} of ${totalCount}`}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                    aria-label={language === 'fi' ? 'Ensimmäinen sivu' : 'First page'}
-                  >
-                    {language === 'fi' ? 'Ens.' : 'First'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                  >
-                    {language === 'fi' ? 'Edellinen' : 'Previous'}
-                  </button>
-                  {paginationItems.map((item, index) => {
-                    if (typeof item !== 'number') {
-                      return (
-                        <span
-                          key={`${item}-${index}`}
-                          className={`px-2 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
-                        >
-                          ...
-                        </span>
-                      );
-                    }
-
-                    const pageNumber = item;
-                    return (
-                      <button
-                        key={pageNumber}
-                        type="button"
-                        onClick={() => setCurrentPage(pageNumber)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          pageNumber === currentPage
-                            ? isDark
-                              ? 'bg-blue-500/30 text-blue-200'
-                              : 'bg-blue-100 text-blue-700'
-                            : isDark
-                              ? 'text-gray-300 hover:bg-white/10'
-                              : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                  >
-                    {language === 'fi' ? 'Seuraava' : 'Next'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                    aria-label={language === 'fi' ? 'Viimeinen sivu' : 'Last page'}
-                  >
-                    {language === 'fi' ? 'Vik.' : 'Last'}
-                  </button>
-                </div>
-              </div>
-            )}
+            <TiresCmsPagination
+              isDark={isDark}
+              language={language}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              startItem={startItem}
+              endItem={endItem}
+              paginationItems={paginationItems}
+              onPageChange={setCurrentPage}
+            />
           </>
         )}
       </div>
@@ -2006,31 +1847,39 @@ export function TiresCMSPageV2() {
                 </h3>
                 
                 <div className="space-y-4">
-                  <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Perushinta (ilman ALV):' : 'Base price (excl. VAT):'}
-                      </span>
-                      <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        €{selectedTire.final_price_eur?.toFixed(2) || '0.00'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Hinta ALV 25.5% kanssa:' : 'Price incl. VAT 25.5%:'}
-                      </span>
-                      <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                        €{(toPriceWithVat(selectedTire.final_price_eur ?? null) ?? 0).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+	                  <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+	                    <div className="flex justify-between items-center mb-2">
+	                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+	                        {language === 'fi' ? 'API / tietokannan alkuperäinen hinta (ilman ALV):' : 'Original API / database price (excl. VAT):'}
+	                      </span>
+	                      <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+	                        €{originalApiPrice?.toFixed(2) || '0.00'}
+	                      </span>
+	                    </div>
+	                    <div className="flex justify-between items-center">
+	                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+	                        {language === 'fi' ? 'Nykyinen voimassa oleva hinta (ilman ALV):' : 'Current effective price (excl. VAT):'}
+	                      </span>
+	                      <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+	                        €{effectiveDraftPrice?.toFixed(2) || '0.00'}
+	                      </span>
+	                    </div>
+	                    <div className="flex justify-between items-center mt-2">
+	                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+	                        {language === 'fi' ? 'Voimassa oleva hinta ALV 25.5% kanssa:' : 'Effective price incl. VAT 25.5%:'}
+	                      </span>
+	                      <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+	                        €{(toPriceWithVat(effectiveDraftPrice ?? null) ?? 0).toFixed(2)}
+	                      </span>
+	                    </div>
+	                  </div>
 
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       {language === 'fi' ? 'Hinnan ohitus (€)' : 'Price Override (€)'}
                     </label>
-                    <input
-                      type="number"
+	                    <input
+	                      type="number"
                       min="0"
                       step="0.01"
                       value={editData.price_override_eur ?? ''}
@@ -2039,17 +1888,38 @@ export function TiresCMSPageV2() {
                         price_override_eur: e.target.value ? parseFloat(e.target.value) : null 
                       }))}
                       placeholder={language === 'fi' ? 'Jätä tyhjäksi käyttääksesi perushintaa' : 'Leave empty to use base price'}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
-                      €{(toPriceWithVat(editData.price_override_eur ?? null) ?? 0).toFixed(2)}
-                    </p>
-                  </div>
+	                      className={`w-full px-3 py-2 rounded-lg border ${
+	                        isDark 
+	                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
+	                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+	                      }`}
+	                    />
+	                    <div className="mt-2 flex flex-wrap items-center gap-3">
+	                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+	                        {language === 'fi'
+	                          ? 'Tyhjä arvo palauttaa alkuperäisen API-hinnan.'
+	                          : 'Leaving this empty restores the original API price.'}
+	                      </p>
+	                      {editData.price_override_eur !== null && editData.price_override_eur !== undefined && (
+	                        <button
+	                          type="button"
+	                          onClick={() => setEditData((prev) => ({ ...prev, price_override_eur: null }))}
+	                          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+	                            isDark
+	                              ? 'border-white/10 text-gray-200 hover:bg-white/10'
+	                              : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+	                          }`}
+	                        >
+	                          <RotateCcw className="w-3.5 h-3.5" />
+	                          {language === 'fi' ? 'Palauta alkuperäinen API-hinta' : 'Restore original API price'}
+	                        </button>
+	                      )}
+	                    </div>
+	                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+	                      {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
+	                      €{(toPriceWithVat(editData.price_override_eur ?? null) ?? 0).toFixed(2)}
+	                    </p>
+	                  </div>
 
                   <div className="border-t pt-4 border-white/10">
                     <label className="flex items-center gap-3 cursor-pointer mb-4">

@@ -76,7 +76,9 @@ export function BookingStep1({
         const slots = buildScheduleTimeSlots(date, bookingsData || [], blockedData || []).map((slot) => ({
           id: slot.time,
           time: slot.time,
-          available: slot.available,
+          // Public booking should only respect admin blocks.
+          // Existing bookings remain visible in CMS but do not close the slot.
+          available: !slot.isBlocked,
         }));
 
         if (!cancelled) {

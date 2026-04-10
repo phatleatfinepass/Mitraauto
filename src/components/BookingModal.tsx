@@ -190,9 +190,9 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
             </DialogTitle>
             {currentStep !== 'success' && (
               <span className="text-sm text-muted-foreground">
-                {currentStep === 'step1' ? 'Step 1 of 3' : 
-                 currentStep === 'step2' ? 'Step 2 of 3' : 
-                 'Step 3 of 3'}
+                {currentStep === 'step1' ? t('booking.step1of3') : 
+                 currentStep === 'step2' ? t('booking.step2of3') : 
+                 t('booking.step3of3')}
               </span>
             )}
           </div>
@@ -200,10 +200,10 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
             {currentStep === 'step1' 
               ? t('booking.step1.description')
               : currentStep === 'step2'
-              ? (language === 'fi' ? 'Valitse tarvitsemasi palvelu' : 'Choose the service you need')
+              ? t('booking.step2.modalDescription')
               : currentStep === 'step3'
-              ? (language === 'fi' ? 'Syötä yhteystietosi' : 'Enter your contact information')
-              : (language === 'fi' ? 'Varauksesi on vahvistettu' : 'Your booking has been confirmed')
+              ? t('booking.step3.description')
+              : t('booking.success.description')
             }
           </DialogDescription>
         </DialogHeader>
@@ -244,6 +244,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               onEditStep1={handleEditStep1}
               onContinue={handleStep2Continue}
               t={t}
+              locale={language === 'fi' ? 'fi-FI' : 'en-US'}
             />
           )}
 
@@ -253,12 +254,14 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               date={date}
               timeSlot={selectedTimeSlot || ''}
               serviceName={getServiceName()}
+              language={language}
               contactInfo={contactInfo}
               onContactInfoChange={handleContactInfoChange}
               onBack={handleStep3Back}
               onEditStep1={handleEditStep1}
               onConfirm={handleConfirm}
               t={t}
+              locale={language === 'fi' ? 'fi-FI' : 'en-US'}
             />
           )}
 
@@ -271,6 +274,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               contactInfo={contactInfo}
               onClose={handleClose}
               t={t}
+              locale={language === 'fi' ? 'fi-FI' : 'en-US'}
             />
           )}
         </div>

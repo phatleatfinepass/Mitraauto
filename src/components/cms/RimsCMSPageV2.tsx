@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
-import { Search, Edit, Eye, EyeOff, X, Save, AlertCircle, RotateCcw } from 'lucide-react';
+import { X, Save, AlertCircle, RotateCcw } from 'lucide-react';
 import { ImageUpload } from './ImageUpload';
+import { RimsCmsToolbar } from './RimsCmsToolbar';
+import { RimsCmsPagination } from './RimsCmsPagination';
+import { RimsCmsTable } from './RimsCmsTable';
 import {
   calculateLinePricing,
   getPricingRulesFromSpecOverrides,
@@ -63,6 +66,8 @@ export function RimsCMSPageV2() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
@@ -75,67 +80,48 @@ export function RimsCMSPageV2() {
   };
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearchTerm(searchTerm), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchRims();
-  }, []);
+  }, [currentPage, debouncedSearchTerm]);
 
   const fetchRims = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const productsPageSize = 1000;
-      const firstResult = await supabase
+      const trimmedSearch = debouncedSearchTerm.trim();
+      let productsQuery = supabase
         .from('products_search')
         .select(
           'variant_id, ean, derived_ean, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, final_price_eur, price',
-          { count: 'exact' },
+          { count: 'estimated' },
         )
         .eq('product_type', 'rim')
         .order('brand', { ascending: true })
         .order('model', { ascending: true })
         .order('variant_id', { ascending: true })
-        .range(0, productsPageSize - 1);
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
 
-      if (firstResult.error) throw firstResult.error;
-
-      const allProducts = [...(firstResult.data ?? [])];
-      const expectedCount = firstResult.count ?? null;
-
-      while (true) {
-        if (expectedCount !== null && allProducts.length >= expectedCount) {
-          break;
-        }
-        if (allProducts.length > 0 && allProducts.length % productsPageSize !== 0) {
-          break;
-        }
-
-        const nextFrom = allProducts.length;
-        const nextResult = await supabase
-          .from('products_search')
-          .select(
-            'variant_id, ean, derived_ean, brand, brand_display_name, model, width_in, rim_diameter_in, et_offset_mm, bolt_pattern, color, final_price_eur, price',
-          )
-          .eq('product_type', 'rim')
-          .order('brand', { ascending: true })
-          .order('model', { ascending: true })
-          .order('variant_id', { ascending: true })
-          .range(nextFrom, nextFrom + productsPageSize - 1);
-
-        if (nextResult.error) throw nextResult.error;
-
-        const batch = nextResult.data ?? [];
-        if (batch.length === 0) {
-          break;
-        }
-
-        allProducts.push(...batch);
-
-        if (batch.length < productsPageSize) {
-          break;
-        }
+      if (trimmedSearch) {
+        productsQuery = productsQuery.or([
+          `brand.ilike.%${trimmedSearch}%`,
+          `brand_display_name.ilike.%${trimmedSearch}%`,
+          `model.ilike.%${trimmedSearch}%`,
+          `ean.ilike.%${trimmedSearch}%`,
+          `derived_ean.ilike.%${trimmedSearch}%`,
+          `color.ilike.%${trimmedSearch}%`,
+        ].join(','));
       }
 
-      const resolvedVariants: RimVariant[] = allProducts.map((variant: any) => ({
+      const { data: productRows, error: productsError, count } = await productsQuery;
+
+      if (productsError) throw productsError;
+
+      const resolvedVariants: RimVariant[] = (productRows ?? []).map((variant: any) => ({
         id: variant.variant_id,
         ean: variant.ean ?? variant.derived_ean ?? null,
         brand: variant.brand_display_name || variant.brand || 'Unknown',
@@ -154,9 +140,10 @@ export function RimsCMSPageV2() {
             : (variant.price !== null && variant.price !== undefined ? Number(variant.price) : null),
       }));
 
+      setTotalCount(count ?? resolvedVariants.length);
+
       if (!resolvedVariants || resolvedVariants.length === 0) {
         setRims([]);
-        setLoading(false);
         return;
       }
 
@@ -194,7 +181,7 @@ export function RimsCMSPageV2() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
 
   const handleEdit = (rim: RimRow) => {
     setSelectedRim(rim);
@@ -390,21 +377,10 @@ export function RimsCMSPageV2() {
     }
   };
 
-  const filteredRims = rims.filter(rim => {
-    const search = searchTerm.toLowerCase();
-    return (
-      rim.brand.toLowerCase().includes(search) ||
-      rim.model.toLowerCase().includes(search) ||
-      rim.ean?.toLowerCase().includes(search) ||
-      rim.color?.toLowerCase().includes(search)
-    );
-  });
-  const totalCount = filteredRims.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const clampedPage = Math.min(currentPage, totalPages);
   const startItem = totalCount === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
   const endItem = Math.min(clampedPage * pageSize, totalCount);
-  const pagedRims = filteredRims.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
   const paginationItems = (() => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -447,37 +423,12 @@ export function RimsCMSPageV2() {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
-      {/* Header */}
-      <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
-        <div className="px-8 py-6">
-          <h1 className={`text-3xl mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Vanteet CMS' : 'Rims CMS'}
-          </h1>
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' 
-              ? 'Hallitse vanteiden sisältöä ja kuvia'
-              : 'Manage rim content and images'}
-          </p>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'} px-8 py-4`}>
-        <div className="relative max-w-md">
-          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-          <input
-            type="text"
-            placeholder={language === 'fi' ? 'Hae brändin, mallin tai EAN:n mukaan...' : 'Search by brand, model, or EAN...'}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-              isDark 
-                ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-            }`}
-          />
-        </div>
-      </div>
+      <RimsCmsToolbar
+        isDark={isDark}
+        language={language}
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+      />
 
       {/* Main Content */}
       <div className="px-8 py-6">
@@ -506,112 +457,16 @@ export function RimsCMSPageV2() {
               </p>
             </div>
 
-            {/* Table */}
-            <div className={`rounded-lg border overflow-hidden ${
-              isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
-            }`}>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className={isDark ? 'bg-white/5' : 'bg-gray-50'}>
-                    <tr>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Brändi' : 'Brand'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Malli' : 'Model'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Koko' : 'Size'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Väri' : 'Color'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        EAN
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Hinta' : 'Price'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Näkyvyys' : 'Visible'}
-                      </th>
-                      <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Toiminnot' : 'Actions'}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {pagedRims.map((rim) => (
-                      <tr key={rim.id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
-                        <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {rim.brand}
-                        </td>
-                        <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {rim.model}
-                        </td>
-                        <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {formatSize(rim)}
-                        </td>
-                        <td className={`px-4 py-3 capitalize ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {rim.color || '—'}
-                        </td>
-                        <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                          {rim.ean || '—'}
-                        </td>
-                        <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {rim.price_eur !== null && rim.price_eur !== undefined
-                            ? `€${Number(rim.price_eur).toFixed(2)}`
-                            : '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleToggleVisibility(rim)}
-                            className={`p-1 rounded transition-colors ${
-                              rim.cms_data?.is_hidden
-                                ? (isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600')
-                                : (isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700')
-                            }`}
-                          >
-                            {rim.cms_data?.is_hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleEdit(rim)}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                              isDark 
-                                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' 
-                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                            }`}
-                          >
-                            <Edit className="w-4 h-4" />
-                            {language === 'fi' ? 'Muokkaa' : 'Edit'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <RimsCmsTable
+              isDark={isDark}
+              language={language}
+              rims={rims}
+              formatSize={formatSize}
+              onToggleVisibility={handleToggleVisibility}
+              onEdit={handleEdit}
+            />
 
-            {filteredRims.length === 0 && (
+            {rims.length === 0 && (
               <div className="text-center py-20">
                 <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {language === 'fi' ? 'Ei vanteita löytynyt' : 'No rims found'}
@@ -619,99 +474,17 @@ export function RimsCMSPageV2() {
               </div>
             )}
 
-            {totalPages > 1 && (
-              <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {language === 'fi'
-                    ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
-                    : `Showing ${startItem}-${endItem} of ${totalCount}`}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={clampedPage === 1}
-                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                    aria-label={language === 'fi' ? 'Ensimmäinen sivu' : 'First page'}
-                  >
-                    {language === 'fi' ? 'Ens.' : 'First'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    disabled={clampedPage === 1}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                  >
-                    {language === 'fi' ? 'Edellinen' : 'Previous'}
-                  </button>
-                  {paginationItems.map((item, index) => {
-                    if (typeof item !== 'number') {
-                      return (
-                        <span
-                          key={`${item}-${index}`}
-                          className={`px-2 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
-                        >
-                          ...
-                        </span>
-                      );
-                    }
-
-                    const pageNumber = item;
-                    return (
-                      <button
-                        key={pageNumber}
-                        type="button"
-                        onClick={() => setCurrentPage(pageNumber)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          pageNumber === clampedPage
-                            ? isDark
-                              ? 'bg-blue-500/30 text-blue-200'
-                              : 'bg-blue-100 text-blue-700'
-                            : isDark
-                              ? 'text-gray-300 hover:bg-white/10'
-                              : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                    disabled={clampedPage === totalPages}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                  >
-                    {language === 'fi' ? 'Seuraava' : 'Next'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={clampedPage === totalPages}
-                    className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      isDark
-                        ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-                        : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-                    }`}
-                    aria-label={language === 'fi' ? 'Viimeinen sivu' : 'Last page'}
-                  >
-                    {language === 'fi' ? 'Vik.' : 'Last'}
-                  </button>
-                </div>
-              </div>
-            )}
+            <RimsCmsPagination
+              isDark={isDark}
+              language={language}
+              currentPage={clampedPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              startItem={startItem}
+              endItem={endItem}
+              paginationItems={paginationItems}
+              onPageChange={setCurrentPage}
+            />
           </>
         )}
       </div>
@@ -1200,3 +973,5 @@ export function RimsCMSPageV2() {
     </div>
   );
 }
+
+export default RimsCMSPageV2;

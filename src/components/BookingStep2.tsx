@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { AlertCircle, Plus, X } from 'lucide-react';
-import { ServiceCardList, Service } from './ServiceCard';
 import { BookingSummaryCard } from './BookingSummaryCard';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
@@ -20,39 +19,8 @@ interface BookingStep2Props {
   onEditStep1: () => void;
   onContinue: () => void;
   t: (key: string) => string;
+  locale?: string;
 }
-
-// Mock services - in production, fetch from CMS
-const mockServices: Service[] = [
-  {
-    id: 'tire-change',
-    name: 'Tire Change',
-    duration: '45 min',
-    price: 49.90,
-    description: 'Professional tire change service with balance check',
-  },
-  {
-    id: 'tire-hotel',
-    name: 'Tire Storage',
-    duration: '15 min',
-    price: 99.00,
-    description: 'Seasonal tire storage in climate-controlled facility',
-  },
-  {
-    id: 'inspection',
-    name: 'Vehicle Inspection',
-    duration: '60 min',
-    price: 89.00,
-    description: 'Comprehensive vehicle safety inspection',
-  },
-  {
-    id: 'oil-change',
-    name: 'Oil Change',
-    duration: '30 min',
-    price: 69.00,
-    description: 'Full oil change with filter replacement',
-  },
-];
 
 // Categorized services for Services Page flow
 interface ServiceCategory {
@@ -78,6 +46,7 @@ export function BookingStep2({
   onEditStep1,
   onContinue,
   t,
+  locale = 'fi-FI',
 }: BookingStep2Props) {
   const [error, setError] = useState<string>('');
   const serviceCategories: ServiceCategory[] = [
@@ -169,7 +138,7 @@ export function BookingStep2({
 
     // Always validate for multiple services (new default)
     if (selectedServiceIds.length === 0) {
-      setError('Please select at least one service to continue');
+      setError(t('booking.step2.selectAtLeastOne'));
       return;
     }
 
@@ -181,7 +150,7 @@ export function BookingStep2({
     
     // Check if service is already added
     if (selectedServiceIds.includes(currentServiceId)) {
-      setError('This service is already added');
+      setError(t('booking.step2.serviceAlreadyAdded'));
       return;
     }
     
@@ -223,14 +192,14 @@ export function BookingStep2({
         <div className="lg:col-span-2 space-y-6">
           <div>
             <p className="text-sm text-muted-foreground mb-4">
-              Choose the service you need for your vehicle
+              {t('booking.step2.intro')}
             </p>
             
             <div className="space-y-5" id="services-page-multi-select">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Select category
+                    {t('booking.step2.selectCategory')}
                   </label>
                   <Select
                     value={selectedCategory || undefined}
@@ -240,8 +209,8 @@ export function BookingStep2({
                       setError('');
                     }}
                   >
-                    <SelectTrigger aria-label="Select service category">
-                      <SelectValue placeholder="Choose category" />
+                    <SelectTrigger aria-label={t('booking.step2.selectCategory')}>
+                      <SelectValue placeholder={t('booking.step2.chooseCategory')} />
                     </SelectTrigger>
                     <SelectContent>
                       {serviceCategories.map((category) => (
@@ -255,7 +224,7 @@ export function BookingStep2({
 
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Select service
+                    {t('booking.step2.selectService')}
                   </label>
                   <Select
                     value={currentServiceId || undefined}
@@ -265,8 +234,8 @@ export function BookingStep2({
                     }}
                     disabled={!selectedCategory}
                   >
-                    <SelectTrigger aria-label="Select service" disabled={!selectedCategory}>
-                      <SelectValue placeholder="Choose a service" />
+                    <SelectTrigger aria-label={t('booking.step2.selectService')} disabled={!selectedCategory}>
+                      <SelectValue placeholder={t('booking.step2.chooseService')} />
                     </SelectTrigger>
                     <SelectContent>
                       {getCategoryServices().map((service) => (
@@ -286,12 +255,12 @@ export function BookingStep2({
                   className="mt-6 sm:mt-auto sm:self-end"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Add service
+                  {t('booking.step2.addService')}
                 </Button>
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Selected services</h4>
+                <h4 className="text-sm font-medium">{t('booking.step2.selectedServices')}</h4>
                 {selectedServiceIds.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedServiceIds.map((serviceId) => {
@@ -309,7 +278,7 @@ export function BookingStep2({
                             type="button"
                             onClick={() => handleRemoveService(serviceId)}
                             className="rounded-full p-0.5 hover:bg-secondary-foreground/10 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                            aria-label={`Remove ${service.name}`}
+                            aria-label={`${t('booking.step2.removeService')}: ${service.name}`}
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -319,7 +288,7 @@ export function BookingStep2({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Added services will appear here.
+                    {t('booking.step2.emptySelection')}
                   </p>
                 )}
               </div>
@@ -335,6 +304,8 @@ export function BookingStep2({
               date={date}
               timeSlot={timeSlot}
               onEdit={onEditStep1}
+              t={t}
+              locale={locale}
             />
           </div>
         </div>
@@ -348,6 +319,8 @@ export function BookingStep2({
           timeSlot={timeSlot}
           onEdit={onEditStep1}
           compact
+          t={t}
+          locale={locale}
         />
       </div>
 

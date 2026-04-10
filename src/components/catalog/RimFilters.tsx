@@ -74,7 +74,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
   const widthOptions = ['5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12'];
   const pcdOptions = ['4×100', '4×108', '5×100', '5×108', '5×112', '5×114.3', '5×120', '6×139.7'];
 
-  const bgClass = theme === 'dark' ? 'bg-white/5' : 'bg-white';
+  const bgClass = theme === 'dark' ? 'bg-[#161A22]' : 'bg-white';
   const borderClass = theme === 'dark' ? 'border-white/10' : 'border-gray-200';
   const textClass = theme === 'dark' ? 'text-white' : 'text-gray-900';
   const secondaryTextClass = theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600';
@@ -82,7 +82,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
   const selectBgClass = theme === 'dark' ? 'bg-[#161A22]' : 'bg-white';
 
   return (
-    <div className={`glassmorphic-panel rounded-2xl p-6 border backdrop-blur-xl ${borderClass} ${bgClass}`}>
+    <div className={`rounded-xl p-5 border ${borderClass} ${bgClass}`}>
       {/* License Plate Search */}
       {searchMode === 'license' && (
         <div className="space-y-4" onKeyDown={handleLicensePlateKeyDown}>
@@ -105,7 +105,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
           {/* Simple Main Filters - Diameter, Width, PCD */}
           <div>
             <Label className={`${textClass} text-sm mb-3 block`}>
-              {language === 'fi' ? '⚙️ Vanteen koko' : '⚙️ Rim Size'}
+              {language === 'fi' ? 'Vanteen koko' : 'Rim size'}
             </Label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               {/* Diameter */}
@@ -173,9 +173,9 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
           {/* Search Button */}
           <Button
             onClick={onSearch}
-            className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white shadow-[0_0_20px_rgba(255,107,53,0.3)] mb-4"
+            className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white mb-4"
           >
-            {language === 'fi' ? '🔍 Hae' : '🔍 Search'}
+            {language === 'fi' ? 'Hae vanteet' : 'Search rims'}
           </Button>
 
           {/* Advanced Filters Toggle */}
@@ -192,7 +192,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
           </div>
 
           {showAdvanced && (
-            <div className={`space-y-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`space-y-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-[#11161d] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
               {/* ET Offset & CB */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

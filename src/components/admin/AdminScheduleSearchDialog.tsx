@@ -37,12 +37,12 @@ import {
   SupportedBookingLanguage,
 } from '../../utils/serviceCatalog';
 import { toast } from 'sonner';
-import { AdminScheduleBookingPanel } from './schedule/AdminScheduleBookingPanel';
-import { AdminScheduleDrawer } from './schedule/AdminScheduleDrawer';
-import { AdminScheduleGrid } from './schedule/AdminScheduleGrid';
-import { AdminScheduleSearchDialog } from './schedule/AdminScheduleSearchDialog';
-import { AdminScheduleSidebar } from './schedule/AdminScheduleSidebar';
-import type { AdminBookingFormState, BookingMessageDraft } from './schedule/types';
+import { AdminScheduleBookingPanel } from './AdminScheduleBookingPanel';
+import { AdminScheduleDrawer } from './AdminScheduleDrawer';
+import { AdminScheduleGrid } from './AdminScheduleGrid';
+import { AdminScheduleSearchDialog } from './AdminScheduleSearchDialog';
+import { AdminScheduleSidebar } from './AdminScheduleSidebar';
+import type { AdminBookingFormState, BookingMessageDraft } from './AdminSchedule.types';
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;

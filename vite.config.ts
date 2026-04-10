@@ -4,8 +4,20 @@
   import tailwindcss from '@tailwindcss/vite';
   import path from 'path';
 
+function figmaAssetResolver() {
+  return {
+    name: 'figma-asset-resolver',
+    resolveId(id) {
+      if (id.startsWith('figma:asset/')) {
+        const filename = id.replace('figma:asset/', '')
+        return path.resolve(__dirname, 'src/assets', filename)
+      }
+    },
+  }
+}
+
   export default defineConfig({
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), figmaAssetResolver()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
@@ -18,18 +30,6 @@
         'next-themes@0.4.6': 'next-themes',
         'lucide-react@0.487.0': 'lucide-react',
         'input-otp@1.4.2': 'input-otp',
-        'figma:asset/e954c70ab138fb6c5af10ceabd8d779e68047d5d.png': path.resolve(__dirname, './src/assets/e954c70ab138fb6c5af10ceabd8d779e68047d5d.png'),
-        'figma:asset/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png': path.resolve(__dirname, './src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png'),
-        'figma:asset/cac46ce90efaaa69a5d5eac00cb56658fc7c8afa.png': path.resolve(__dirname, './src/assets/cac46ce90efaaa69a5d5eac00cb56658fc7c8afa.png'),
-        'figma:asset/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png': path.resolve(__dirname, './src/assets/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png'),
-        'figma:asset/adb78c34e0828008e64c9fd199a33b3043beba86.png': path.resolve(__dirname, './src/assets/adb78c34e0828008e64c9fd199a33b3043beba86.png'),
-        'figma:asset/a7d07b92f4849dcd91f999211a4f6982cfd3f72f.png': path.resolve(__dirname, './src/assets/a7d07b92f4849dcd91f999211a4f6982cfd3f72f.png'),
-        'figma:asset/8204366cdd338c064d2e5f81eda8c7d2bffb439c.png': path.resolve(__dirname, './src/assets/8204366cdd338c064d2e5f81eda8c7d2bffb439c.png'),
-        'figma:asset/7f3da97624c68ef159f5a1406820901e8a63dd7e.png': path.resolve(__dirname, './src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png'),
-        'figma:asset/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png': path.resolve(__dirname, './src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png'),
-        'figma:asset/7a4460f78adaeb7811f555061adc7a3eb129dbf1.png': path.resolve(__dirname, './src/assets/7a4460f78adaeb7811f555061adc7a3eb129dbf1.png'),
-        'figma:asset/23fb0673ef5da715efe16a47361607b6c4536093.png': path.resolve(__dirname, './src/assets/23fb0673ef5da715efe16a47361607b6c4536093.png'),
-        'figma:asset/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.png': path.resolve(__dirname, './src/assets/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.png'),
         'embla-carousel-react@8.6.0': 'embla-carousel-react',
         'cmdk@1.1.1': 'cmdk',
         'class-variance-authority@0.7.1': 'class-variance-authority',

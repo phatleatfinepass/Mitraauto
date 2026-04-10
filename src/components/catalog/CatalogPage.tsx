@@ -7,6 +7,7 @@ import { TireFilters } from './TireFilters';
 import { RimFilters } from './RimFilters';
 import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
+import { RimCatalogLayout } from './RimCatalogLayout';
 import { Button } from '../ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
@@ -535,7 +536,8 @@ function mapRimRow(row: any): CatalogProduct {
 }
 
 function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim'): CatalogProduct {
-  const priceEur = row.price !== null && row.price !== undefined ? row.price : undefined;
+  const effectivePrice = row.final_price_eur ?? row.price;
+  const priceEur = effectivePrice !== null && effectivePrice !== undefined ? effectivePrice : undefined;
   const sizeParts = parseTireSizeParts(row.size_string);
   const tags = getTagList(row.tags);
   const cmsTitle = String((row as any).title ?? '').trim() || undefined;
@@ -823,6 +825,9 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const productGridClass = mode === 'rims'
+    ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5'
+    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
@@ -859,7 +864,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               onClick={() => {
                 setMode('tires');
                 setFilters({});
-                setHasSearched(true);
+                setHasSearched(false);
                 setProducts([]);
                 setErrorMessage(null);
                 setCurrentPage(1);
@@ -891,7 +896,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               onClick={() => {
                 setMode('rims');
                 setFilters({});
-                setHasSearched(true);
+                setHasSearched(false);
                 setProducts([]);
                 setErrorMessage(null);
                 setCurrentPage(1);
@@ -923,6 +928,131 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
       </div>
 
       {/* Header */}
+      {mode === 'rims' ? (
+        <RimCatalogLayout
+          language={language}
+          theme={theme}
+          searchMode={searchMode === 'license' ? 'license' : 'manual'}
+          onSearchModeChange={setSearchMode}
+          filters={(
+            <RimFilters
+              onFilterChange={handleFilterChange}
+              onSearch={handleSearch}
+              searchMode={searchMode}
+            />
+          )}
+          hasSearched={hasSearched}
+          totalCount={totalCount}
+          errorMessage={errorMessage}
+          loading={loading}
+          productsGridRef={productsGridRef}
+          emptyBeforeSearch={(
+            <div className={`rounded-xl border px-6 py-12 text-center ${theme === 'dark' ? 'border-white/10 bg-[#0f1319]' : 'border-gray-200 bg-gray-50'}`}>
+              <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {language === 'fi' ? 'Aloita vannemitoituksen haku' : 'Start a rim fitment search'}
+              </h2>
+              <p className={`mx-auto mt-2 max-w-xl text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                {language === 'fi'
+                  ? 'Hae rekisterinumerolla, jos haluat suositellut vaihtoehdot ajoneuvolle. Käytä manuaalista hakua, kun tiedät halkaisijan, leveyden tai PCD:n jo valmiiksi.'
+                  : 'Use vehicle search for recommended fitment, or switch to manual search when you already know the diameter, width, or PCD you need.'}
+              </p>
+            </div>
+          )}
+          content={loading ? (
+            <div className={productGridClass}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-[500px] rounded-xl animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${mode}-${currentPage}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className={productGridClass}
+              >
+                {products.map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <RimCard
+                      product={product}
+                      index={index}
+                      onClick={onProductSelect ? () => handleProductClick(product) : undefined}
+                      onAddToCart={(e) => handleAddToCart(product, e)}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )}
+          emptyAfterSearch={(
+            <div className={`rounded-xl border px-6 py-12 text-center ${theme === 'dark' ? 'border-white/10 bg-[#0f1319]' : 'border-gray-200 bg-gray-50'}`}>
+              <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {language === 'fi' ? 'Hakuehdoilla ei löytynyt vanteita' : 'No rims matched these filters'}
+              </h2>
+              <p className={`mx-auto mt-2 max-w-xl text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                {language === 'fi'
+                  ? 'Kokeile toista halkaisijaa, väljempää PCD-suodatusta tai poista ET- ja keskiöreikärajaukset.'
+                  : 'Try a different diameter, a wider PCD match, or remove the ET and center-bore constraints.'}
+              </p>
+            </div>
+          )}
+          pagination={totalPages > 1 ? (
+            <div className="flex items-center justify-center gap-4">
+              <Button
+                onClick={() => {
+                  setCurrentPage(prev => Math.max(1, prev - 1));
+                  scrollToProducts();
+                }}
+                disabled={currentPage === 1}
+                variant="outline"
+                className={`disabled:opacity-30 flex items-center justify-center ${
+                  theme === 'dark'
+                    ? 'border-white/10 bg-white/5 hover:bg-white/10 text-white'
+                    : 'border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-900'
+                }`}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              <span className={theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}>
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                onClick={() => {
+                  setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                  scrollToProducts();
+                }}
+                disabled={currentPage === totalPages}
+                variant="outline"
+                className={`disabled:opacity-30 flex items-center justify-center ${
+                  theme === 'dark'
+                    ? 'border-white/10 bg-white/5 hover:bg-white/10 text-white'
+                    : 'border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-900'
+                }`}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+            </div>
+          ) : null}
+          onClearSearch={() => {
+            setFilters({});
+            setHasSearched(false);
+            setProducts([]);
+            setCurrentPage(1);
+            setErrorMessage(null);
+          }}
+        />
+      ) : (
       <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-12">
         <AnimatePresence mode="wait">
           <motion.div
@@ -932,29 +1062,16 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            {mode === 'tires' ? (
-              <div className="text-center mb-8">
-                <h1 className={`text-5xl lg:text-6xl mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Löydä Renkaasi' : 'Find Your Tires'}
-                </h1>
-                <p className={`text-xl ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                  {language === 'fi'
-                    ? 'Valitse hakutapa löytääksesi täydellisen sopivuuden ajoneuvollesi.'
-                    : 'Choose your search method to find the perfect fit for your vehicle.'}
-                </p>
-              </div>
-            ) : (
-              <div className="text-center mb-8">
-                <h1 className={`text-5xl lg:text-6xl mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Valitse Vanteesi' : 'Choose Your Rims'}
-                </h1>
-                <p className={`text-xl ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                  {language === 'fi'
-                    ? 'Valitse hakutapa löytääksesi täydelliset pyörät.'
-                    : 'Choose your search method to find perfect-fit wheels.'}
-                </p>
-              </div>
-            )}
+            <div className="text-center mb-8">
+              <h1 className={`text-5xl lg:text-6xl mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {language === 'fi' ? 'Löydä Renkaasi' : 'Find Your Tires'}
+              </h1>
+              <p className={`text-xl ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                {language === 'fi'
+                  ? 'Valitse hakutapa löytääksesi täydellisen sopivuuden ajoneuvollesi.'
+                  : 'Choose your search method to find the perfect fit for your vehicle.'}
+              </p>
+            </div>
           </motion.div>
         </AnimatePresence>
 
@@ -999,19 +1116,11 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             exit={{ opacity: 0 }}
             className="mb-8"
           >
-            {mode === 'tires' ? (
-              <TireFilters 
-                onFilterChange={handleFilterChange} 
-                onSearch={handleSearch}
-                searchMode={searchMode}
-              />
-            ) : (
-              <RimFilters 
-                onFilterChange={handleFilterChange}
-                onSearch={handleSearch}
-                searchMode={searchMode}
-              />
-            )}
+            <TireFilters 
+              onFilterChange={handleFilterChange} 
+              onSearch={handleSearch}
+              searchMode={searchMode}
+            />
           </motion.div>
         </AnimatePresence>
 
@@ -1042,17 +1151,17 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             <h3 className={`text-2xl mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {language === 'fi' ? 'Aloita haku' : 'Start Your Search'}
             </h3>
-            <p className={`max-w-md mx-auto ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-              {language === 'fi'
-                ? 'Valitse hakutapa yllä ja täytä tiedot löytääksesi sopivat tuotteet.'
-                : 'Select a search method above and fill in the details to find matching products.'}
-            </p>
+              <p className={`max-w-md mx-auto ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                {language === 'fi'
+                  ? 'Valitse hakutapa yllä ja täytä tiedot löytääksesi sopivat renkaat.'
+                  : 'Select a search method above and fill in the details to find matching tires.'}
+              </p>
           </div>
         )}
 
         {/* Product Grid */}
         {hasSearched && loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className={productGridClass}>
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
@@ -1070,7 +1179,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              className={productGridClass}
             >
               {products.map((product, index) => (
                 <motion.div
@@ -1079,21 +1188,12 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  {mode === 'tires' ? (
-                    <TireCard
-                      product={product}
-                      index={index}
-                      onClick={onProductSelect ? () => handleProductClick(product) : undefined}
-                      onAddToCart={(e) => handleAddToCart(product, e)}
-                    />
-                  ) : (
-                    <RimCard
-                      product={product}
-                      index={index}
-                      onClick={onProductSelect ? () => handleProductClick(product) : undefined}
-                      onAddToCart={(e) => handleAddToCart(product, e)}
-                    />
-                  )}
+                  <TireCard
+                    product={product}
+                    index={index}
+                    onClick={onProductSelect ? () => handleProductClick(product) : undefined}
+                    onAddToCart={(e) => handleAddToCart(product, e)}
+                  />
                 </motion.div>
               ))}
             </motion.div>
@@ -1105,18 +1205,16 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           <div className="text-center py-20">
             <p className={`text-2xl mb-4 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
               {language === 'fi'
-                ? 'Ei tuloksia hakuehdoillasi'
-                : 'No products found with your filters'}
+                ? 'Ei renkaita hakuehdoillasi'
+                : 'No tires found with your filters'}
             </p>
             <Button
               onClick={() => {
                 setFilters({});
-                setHasSearched(true);
                 setHasSearched(false);
                 setProducts([]);
                 setCurrentPage(1);
                 setErrorMessage(null);
-                fetchProducts();
               }}
               className="bg-[#FF6B35] hover:bg-[#FF6B35]/80"
             >
@@ -1199,6 +1297,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
