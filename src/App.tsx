@@ -1,14 +1,39 @@
-import React, { Suspense, lazy, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
 import { CartProvider, useCart } from './components/CartContext';
 import { CartDrawer } from './components/CartDrawer';
+import { CheckoutPage } from './components/CheckoutPage';
+import { CheckoutSuccessPage } from './components/CheckoutSuccessPage';
+import { CheckoutCancelPage } from './components/CheckoutCancelPage';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ContactSection } from './components/ContactSection';
-import type { Product as ProductDetail, TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
+import { AuthModal } from './components/AuthModal';
+import { EmergencyTowModal } from './components/EmergencyTowModal';
+import { BookingModal } from './components/BookingModal';
+import { ServicesPage } from './components/ServicesPage';
+import { TireHotelPage } from './components/TireHotelPage';
+import { AboutPage } from './components/AboutPage';
+import { LegalPage } from './components/LegalPage';
+import { CatalogPage } from './components/catalog/CatalogPage';
+import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import type { CatalogProduct } from './components/catalog/CatalogPage';
+import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
+import { TiresCMSPageV2 as TiresCMSPage } from './components/cms/TiresCMSPageV2';
+import { RimsCMSPageV2 as RimsCMSPage } from './components/cms/RimsCMSPageV2';
+import { OrdersCMSPage } from './components/cms/OrdersCMSPage';
+import { CmsGuard } from './components/cms/CmsGuard';
+// NEW PAGES
+import { ContactPage } from './components/ContactPage';
+import { FAQPage } from './components/FAQPage';
+import { HelsinkiPage } from './components/HelsinkiPage';
+import { CarServicePage } from './components/CarServicePage';
+import { TireChangePage } from './components/TireChangePage';
+import { DiagnosticsPage } from './components/DiagnosticsPage';
+import { CarWashPage } from './components/CarWashPage';
 import { Button } from './components/ui/button';
+import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
@@ -28,39 +53,22 @@ import {
   Navigation,
   Users
 } from 'lucide-react';
-
-const AuthModal = lazy(() => import('./components/AuthModal').then((m) => ({ default: m.AuthModal })));
-const EmergencyTowModal = lazy(() => import('./components/EmergencyTowModal').then((m) => ({ default: m.EmergencyTowModal })));
-const BookingModal = lazy(() => import('./components/BookingModal').then((m) => ({ default: m.BookingModal })));
-const ServicesPage = lazy(() => import('./components/ServicesPage').then((m) => ({ default: m.ServicesPage })));
-const TireHotelPage = lazy(() => import('./components/TireHotelPage').then((m) => ({ default: m.TireHotelPage })));
-const AboutPage = lazy(() => import('./components/AboutPage').then((m) => ({ default: m.AboutPage })));
-const LegalPage = lazy(() => import('./components/LegalPage').then((m) => ({ default: m.LegalPage })));
-const CatalogPage = lazy(() => import('./components/catalog/CatalogPage').then((m) => ({ default: m.CatalogPage })));
-const ProductDetailPage = lazy(() => import('./components/catalog/ProductDetailPage'));
-const ContactPage = lazy(() => import('./components/ContactPage').then((m) => ({ default: m.ContactPage })));
-const FAQPage = lazy(() => import('./components/FAQPage').then((m) => ({ default: m.FAQPage })));
-const HelsinkiPage = lazy(() => import('./components/HelsinkiPage').then((m) => ({ default: m.HelsinkiPage })));
-const CarServicePage = lazy(() => import('./components/CarServicePage').then((m) => ({ default: m.CarServicePage })));
-const TireChangePage = lazy(() => import('./components/TireChangePage').then((m) => ({ default: m.TireChangePage })));
-const DiagnosticsPage = lazy(() => import('./components/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })));
-const CarWashPage = lazy(() => import('./components/CarWashPage').then((m) => ({ default: m.CarWashPage })));
-const CheckoutPage = lazy(() => import('./components/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
-const CheckoutSuccessPage = lazy(() => import('./components/CheckoutSuccessPage').then((m) => ({ default: m.CheckoutSuccessPage })));
-const CheckoutCancelPage = lazy(() => import('./components/CheckoutCancelPage').then((m) => ({ default: m.CheckoutCancelPage })));
+import waitingArea from 'figma:asset/7f3da97624c68ef159f5a1406820901e8a63dd7e.png';
+import exterior from 'figma:asset/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png';
+import workshop from 'figma:asset/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png';
 
 // Hero carousel images
 const heroImages = [
   {
-    src: '/home-hero/waiting-area.jpg',
+    src: waitingArea,
     alt: "Mitra Auto Waiting Area Interior"
   },
   {
-    src: '/home-hero/exterior.jpg',
+    src: exterior,
     alt: "Mitra Auto Building Exterior"
   },
   {
-    src: '/home-hero/workshop.jpg',
+    src: workshop,
     alt: "Mitra Auto Workshop Garage"
   }
 ];
@@ -74,19 +82,31 @@ type ParsedTireSize = {
   speedRating?: string;
 };
 
-const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
+type CmsTab = 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'future';
 
-function RouteFallback({ cms = false }: { cms?: boolean }) {
-  return (
-    <div className={cms ? 'min-h-[100dvh] bg-[#11141A]' : 'min-h-[40vh] bg-background'}>
-      <div className="mx-auto flex h-full min-h-[40vh] max-w-5xl items-center justify-center px-4 py-12">
-        <div className={cms ? 'text-sm text-gray-400' : 'text-sm text-muted-foreground'}>
-          Loading...
-        </div>
-      </div>
-    </div>
-  );
+function resolveCmsTabFromHash(hash?: string): CmsTab {
+  const normalized = (hash ?? '').replace('#', '').toLowerCase();
+
+  if (normalized === 'catalog-tires') {
+    return 'catalog-tires';
+  }
+
+  if (normalized === 'catalog-rims') {
+    return 'catalog-rims';
+  }
+
+  if (normalized === 'orders') {
+    return 'orders';
+  }
+
+  if (normalized === 'future') {
+    return 'future';
+  }
+
+  return 'schedule';
 }
+
+const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
 
 function parseTireSize(sizeText?: string): ParsedTireSize {
   if (!sizeText) {
@@ -216,13 +236,13 @@ function HomePage() {
   const { t, language } = useLanguage();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash'>('home');
+  const [cmsTab, setCmsTab] = useState<CmsTab>('schedule');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -242,7 +262,9 @@ function HomePage() {
       }
 
       // Listen for auth state changes
-      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
         if (session?.user) {
           setIsLoggedIn(true);
         } else {
@@ -263,30 +285,17 @@ function HomePage() {
     };
   }, []);
 
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 767px)');
-    const updateViewport = () => setIsMobileViewport(media.matches);
-    updateViewport();
-    media.addEventListener('change', updateViewport);
 
-    return () => {
-      media.removeEventListener('change', updateViewport);
-    };
-  }, []);
 
   // Hero carousel timer - changes image every 30 seconds
   useEffect(() => {
-    if (isMobileViewport) {
-      return undefined;
-    }
-
     const timer = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
     }, 30000); // 30 seconds
 
     return () => clearInterval(timer);
-  }, [isMobileViewport]);
-
+  }, []);
+  
   const updatePageFromPath = useCallback(
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
       // Legacy routes (keep working)
@@ -369,6 +378,19 @@ function HomePage() {
         setCurrentPage('about');
         setSelectedProduct(null);
       }
+      
+      // Admin/CMS/Protected routes
+      else if (path === '/admin/schedule') {
+        setCurrentPage('admin-schedule');
+        setSelectedProduct(null);
+      } else if (path === '/cms') {
+        setCurrentPage('cms-beta');
+        setSelectedProduct(null);
+        setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
+      } else if (path === '/cms/orders' || path === '/cms-orders') {
+        setCurrentPage('cms-orders');
+        setSelectedProduct(null);
+      } 
       
       // Legal routes
       else if (path === '/privacy' || path === '/legal/privacy') {
@@ -458,19 +480,41 @@ function HomePage() {
       updatePageFromPath(path, state);
     };
 
+    const handleHashChange = () => {
+      if (window.location.pathname === '/cms') {
+        setCmsTab(resolveCmsTabFromHash(window.location.hash));
+      }
+    };
+
     handleNavigation();
     const listener = (event: PopStateEvent) => handleNavigation(event);
     window.addEventListener('popstate', listener);
+    window.addEventListener('hashchange', handleHashChange);
 
     return () => {
       window.removeEventListener('popstate', listener);
+      window.removeEventListener('hashchange', handleHashChange);
     };
   }, [updatePageFromPath]);
   
+  // Debug emergency modal state
+  React.useEffect(() => {
+    console.log('📱 Emergency Modal State Changed:', emergencyModalOpen);
+  }, [emergencyModalOpen]);
+
   const handleLogin = () => {
     setAuthView('login');
     setAuthModalOpen(true);
   };
+
+    const handleCmsTabChange = (tab: CmsTab) => {
+    setCmsTab(tab);
+
+    if (typeof window !== 'undefined' && window.location.pathname === '/cms') {
+      window.history.replaceState(window.history.state, '', `/cms#${tab}`);
+    }
+  };
+
   const handleSignup = () => {
     setAuthView('signup');
     setAuthModalOpen(true);
@@ -478,10 +522,12 @@ function HomePage() {
 
   const handleAuthSuccess = (isAdmin?: boolean) => {
     setIsLoggedIn(true);
-
-    // If admin user, redirect to CMS
+    
+    // If admin user, redirect to admin schedule
     if (isAdmin) {
-      window.location.assign('/cms');
+      setCurrentPage('admin-schedule');
+      // Update URL without page reload
+      window.history.pushState({}, '', '/admin/schedule');
     }
   };
 
@@ -503,12 +549,27 @@ function HomePage() {
       // Force clear local state immediately
       setIsLoggedIn(false);
       
+      // If on CMS/admin page, redirect to home
+      const cmsPages = ['admin-schedule', 'cms-tires', 'cms-rims', 'cms-orders', 'cms-beta'];
+      if (cmsPages.includes(currentPage)) {
+        setCurrentPage('home');
+        window.history.pushState({}, '', '/');
+      }
+      
       console.log('Logout complete');
     } catch (error) {
       console.error('Failed to logout:', error);
       // Even if there's an error, clear the local state
       setIsLoggedIn(false);
     }
+  };
+
+  const handleLoginNeeded = () => {
+    // User tried to access CMS but not logged in
+    setCurrentPage('home');
+    window.history.pushState({}, '', '/');
+    setAuthView('login');
+    setAuthModalOpen(true);
   };
 
   const services = [
@@ -586,6 +647,14 @@ function HomePage() {
     { key: 'booking.benefit3' },
   ];
 
+  const cmsTabs = [
+    { id: 'schedule' as const, label: 'Booking Schedule', description: 'Manage appointments' },
+    { id: 'catalog-tires' as const, label: 'Tire Catalog', description: 'Edit tire content' },
+    { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
+    { id: 'orders' as const, label: 'Orders', description: 'Track customer purchases' },
+    { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to main content */}
@@ -608,51 +677,48 @@ function HomePage() {
 
       <CartDrawer onCheckout={() => setCurrentPage('checkout')} />
 
-      {authModalOpen ? (
-        <Suspense fallback={null}>
-          <AuthModal
-            open={authModalOpen}
-            onOpenChange={setAuthModalOpen}
-            defaultView={authView}
-            onSuccess={handleAuthSuccess}
-          />
-        </Suspense>
-      ) : null}
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        defaultView={authView}
+        onSuccess={handleAuthSuccess}
+      />
 
-      {emergencyModalOpen ? (
-        <Suspense fallback={null}>
-          <EmergencyTowModal
-            open={emergencyModalOpen}
-            onOpenChange={setEmergencyModalOpen}
-          />
-        </Suspense>
-      ) : null}
+      <EmergencyTowModal
+        open={emergencyModalOpen}
+        onOpenChange={setEmergencyModalOpen}
+      />
 
-      {bookingModalOpen ? (
-        <Suspense fallback={null}>
-          <BookingModal
-            open={bookingModalOpen}
-            onOpenChange={setBookingModalOpen}
-            preSelectedService={preSelectedService}
-          />
-        </Suspense>
-      ) : null}
+      <BookingModal
+        open={bookingModalOpen}
+        onOpenChange={setBookingModalOpen}
+        preSelectedService={preSelectedService}
+      />
 
-      <div className="fixed inset-0 hidden overflow-hidden pointer-events-none -z-10 lg:block">
+      {/* Unified Background Gradient Blobs - Continuous Web Across Entire Scroll */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute inset-0 w-full" style={{height: '400vh'}}>
+          {/* Large overlapping blobs distributed throughout the page */}
           <div className="absolute top-[5%] right-[10%] w-[700px] h-[700px] bg-accent/10 rounded-full blur-3xl animate-blob" />
           <div className="absolute top-[8%] left-[5%] w-[600px] h-[600px] bg-ring/12 rounded-full blur-3xl animate-blob animation-delay-2000" />
+          
           <div className="absolute top-[18%] left-[60%] w-[650px] h-[650px] bg-primary/8 rounded-full blur-3xl animate-blob animation-delay-4000" />
           <div className="absolute top-[25%] right-[70%] w-[550px] h-[550px] bg-accent/8 rounded-full blur-3xl animate-blob" />
+          
           <div className="absolute top-[35%] right-[15%] w-[600px] h-[600px] bg-ring/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
           <div className="absolute top-[42%] left-[8%] w-[580px] h-[580px] bg-accent/7 rounded-full blur-3xl animate-blob animation-delay-4000" />
+          
           <div className="absolute top-[52%] left-[40%] w-[620px] h-[620px] bg-primary/9 rounded-full blur-3xl animate-blob" />
           <div className="absolute top-[58%] right-[45%] w-[540px] h-[540px] bg-ring/9 rounded-full blur-3xl animate-blob animation-delay-2000" />
+          
           <div className="absolute top-[68%] right-[20%] w-[640px] h-[640px] bg-accent/8 rounded-full blur-3xl animate-blob animation-delay-4000" />
           <div className="absolute top-[72%] left-[25%] w-[520px] h-[520px] bg-primary/7 rounded-full blur-3xl animate-blob" />
+          
           <div className="absolute top-[82%] left-[15%] w-[600px] h-[600px] bg-ring/11 rounded-full blur-3xl animate-blob animation-delay-2000" />
           <div className="absolute top-[88%] right-[30%] w-[550px] h-[550px] bg-accent/9 rounded-full blur-3xl animate-blob animation-delay-4000" />
           <div className="absolute top-[92%] left-[50%] -translate-x-1/2 w-[500px] h-[500px] bg-primary/6 rounded-full blur-3xl animate-blob" />
+          
+          {/* Additional mid-layer blobs for more coverage */}
           <div className="absolute top-[15%] right-[50%] w-[480px] h-[480px] bg-ring/6 rounded-full blur-3xl animate-blob animation-delay-2000" />
           <div className="absolute top-[48%] left-[70%] w-[520px] h-[520px] bg-accent/6 rounded-full blur-3xl animate-blob animation-delay-4000" />
           <div className="absolute top-[78%] right-[60%] w-[560px] h-[560px] bg-primary/5 rounded-full blur-3xl animate-blob" />
@@ -660,7 +726,6 @@ function HomePage() {
       </div>
 
       <main id="main-content">
-        <Suspense fallback={<RouteFallback />}>
         {currentPage === 'services' ? (
           <ServicesPage
             onBookingClick={(serviceId) => {
@@ -746,6 +811,91 @@ function HomePage() {
               navigate('/checkout');
             }}
           />
+        ) : currentPage === 'admin-schedule' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <AdminSchedulePage />
+          </CmsGuard>
+        ) : currentPage === 'cms-tires' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <TiresCMSPage />
+          </CmsGuard>
+        ) : currentPage === 'cms-rims' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <RimsCMSPage />
+          </CmsGuard>
+        ) : currentPage === 'cms-orders' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <OrdersCMSPage />
+          </CmsGuard>
+        ) : currentPage === 'cms-beta' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <>
+            <div className="bg-background">
+              <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS Beta</p>
+                      <h1 className="text-3xl font-semibold text-foreground">Control Center</h1>
+                    </div>
+                    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+                      Switch tabs to access schedule and catalog tools
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground max-w-3xl">
+                    Navigate between booking schedule management and product catalog overrides. Additional CMS tools will be added here in future updates.
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+                    {cmsTabs.map((tab) => {
+                      const isActive = cmsTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => handleCmsTabChange(tab.id)}
+                          className={`flex min-w-[180px] items-start gap-2 rounded-md px-4 py-3 text-left transition-colors ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-semibold">{tab.label}</span>
+                            {tab.description ? (
+                              <span className={`text-xs ${isActive ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>
+                                {tab.description}
+                              </span>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border bg-card shadow-sm">
+                  {cmsTab === 'schedule' ? (
+                    <AdminSchedulePage />
+                  ) : cmsTab === 'catalog-tires' ? (
+                    <TiresCMSPage />
+                  ) : cmsTab === 'catalog-rims' ? (
+                    <RimsCMSPage />
+                  ) : cmsTab === 'orders' ? (
+                    <OrdersCMSPage />
+                  ) : (
+                    <div className="space-y-2 p-8 text-muted-foreground">
+                      <h2 className="text-xl font-semibold text-foreground">Coming soon</h2>
+                      <p>Reserved for upcoming CMS modules.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+          </CmsGuard>
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
         ) : currentPage === 'terms' ? (
@@ -757,25 +907,20 @@ function HomePage() {
         {/* Hero Section */}
         <section className="relative" aria-labelledby="hero-heading">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className={`items-center ${isMobileViewport ? 'py-14' : 'grid gap-16 py-20 lg:grid-cols-2 lg:gap-20 lg:py-32'}`}>
-              <div className={`text-center ${isMobileViewport ? 'mx-auto max-w-xl' : 'lg:text-left'}`}>
-                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/15 bg-accent/6 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-accent">
-                  <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
-                  Helsinki service garage
-                </div>
-
-                <h1 id="hero-heading" className={`font-bold tracking-tight ${isMobileViewport ? 'mb-5 text-[2.6rem] leading-[0.95]' : 'mb-6 text-5xl lg:text-6xl xl:text-7xl'}`}>
+            <div className="grid gap-16 py-20 lg:grid-cols-2 lg:gap-20 lg:py-32 items-center">
+              <div className="text-center lg:text-left">
+                <h1 id="hero-heading" className="mb-6 text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight">
                   {t('hero.headline')}
                 </h1>
                 
-                <p className={`text-muted-foreground ${isMobileViewport ? 'mb-7 text-base leading-7' : 'mb-8 text-xl lg:text-2xl'}`}>
+                <p className="mb-8 text-xl lg:text-2xl text-muted-foreground">
                   {t('hero.subheadline')}
                 </p>
                 
-                <div className={`gap-4 ${isMobileViewport ? 'flex flex-col' : 'flex flex-col justify-center sm:flex-row lg:justify-start'}`}>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                   <Button 
                     size="lg" 
-                    className={`bg-accent text-white hover:bg-accent/90 ${isMobileViewport ? 'h-12 rounded-2xl px-6' : 'h-12 rounded-full px-8'}`}
+                    className="bg-accent hover:bg-accent/90 text-white h-12 px-8 rounded-full"
                     onClick={() => {
                       setPreSelectedService('');
                       setBookingModalOpen(true);
@@ -786,15 +931,18 @@ function HomePage() {
                   <Button 
                     size="lg" 
                     variant="outline" 
-                    className={isMobileViewport ? 'h-12 rounded-2xl px-6' : 'h-12 rounded-full px-8'}
+                    className="h-12 px-8 rounded-full"
                     asChild
                   >
                     <a href="/catalog">{t('hero.cta.secondary')}</a>
                   </Button>
                   <button 
-                    className={`inline-flex cursor-pointer items-center justify-center gap-2 border-2 border-accent font-semibold text-accent transition-all duration-200 hover:bg-accent hover:text-white ${isMobileViewport ? 'h-12 rounded-2xl px-6' : 'h-12 rounded-full px-8'}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-white h-12 px-8 transition-all duration-200 cursor-pointer font-semibold"
                     onClick={() => {
+                      console.log('🚨 Emergency button clicked! Opening modal...');
+                      console.log('Current emergencyModalOpen state:', emergencyModalOpen);
                       setEmergencyModalOpen(true);
+                      console.log('setEmergencyModalOpen(true) called');
                     }}
                     data-testid="emergency-button"
                   >
@@ -804,7 +952,7 @@ function HomePage() {
                 </div>
 
                 {/* Trust Badges */}
-                <div className={`mt-10 flex flex-wrap justify-center gap-4 ${isMobileViewport ? '' : 'lg:justify-start'}`}>
+                <div className="mt-12 flex flex-wrap gap-6 justify-center lg:justify-start">
                   {trustBadges.map((badge, idx) => (
                     <div key={idx} className="flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] rounded-full px-2 py-1">
                       <div className="rounded-full bg-secondary p-2 transition-all hover:shadow-[0_0_15px_rgba(231,76,60,0.25)]">
@@ -816,7 +964,6 @@ function HomePage() {
                 </div>
               </div>
 
-              {!isMobileViewport ? (
               <div className="relative">
                 <div className="aspect-[4/3] overflow-hidden rounded-3xl relative">
                   <AnimatePresence mode="wait">
@@ -832,14 +979,11 @@ function HomePage() {
                         src={heroImages[currentImageIndex].src}
                         alt={heroImages[currentImageIndex].alt}
                         className="h-full w-full object-cover"
-                        loading="eager"
-                        decoding="sync"
                       />
                     </motion.div>
                   </AnimatePresence>
                 </div>
               </div>
-              ) : null}
             </div>
           </div>
         </section>
@@ -1186,7 +1330,6 @@ function HomePage() {
         <ContactSection />
           </>
         )}
-        </Suspense>
       </main>
 
       <Footer onNavigate={navigate} />
