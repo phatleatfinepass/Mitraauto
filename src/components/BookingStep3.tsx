@@ -119,6 +119,28 @@ export function BookingStep3({
       console.log('[BOOKING] Booking ID:', data?.[0]?.id);
       console.log('[BOOKING] Check CMS for date:', bookingDate, 'time:', timeSlot);
 
+      if (data?.[0]?.id) {
+        const { error: pushError } = await supabase.functions.invoke(
+          'send_booking_push',
+          {
+            method: 'POST',
+            body: {
+              booking: {
+                id: data[0].id,
+                license_plate: licensePlate.toUpperCase(),
+                customer_name: contactInfo.name,
+                booking_date: bookingDate,
+                booking_time: timeSlot,
+              },
+            },
+          },
+        );
+
+        if (pushError) {
+          console.error('[BOOKING] Booking saved but push notification failed:', pushError);
+        }
+      }
+
       if (contactInfo.email && data?.[0]?.id) {
         const { error: emailError } = await supabase.functions.invoke(
           'send_booking_confirmation',

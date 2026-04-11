@@ -824,6 +824,23 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         }
       }
 
+      const { error: pushError } = await supabase.functions.invoke('send_booking_push', {
+        method: 'POST',
+        body: {
+          booking: {
+            id: data.id,
+            license_plate: data.license_plate,
+            customer_name: data.customer_name,
+            booking_date: data.booking_date,
+            booking_time: data.booking_time,
+          },
+        },
+      });
+
+      if (pushError) {
+        console.error('Booking saved but push notification failed:', pushError);
+      }
+
       toast.success(t('bookingSaved'));
       setIsCreateFormOpen(false);
       setCreateBookingForm(buildBookingFormState(undefined, selectedSlotTime));

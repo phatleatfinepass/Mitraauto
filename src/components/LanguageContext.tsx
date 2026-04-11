@@ -924,6 +924,17 @@ const translations: Translations = {
   'legal.paytrail.effectiveDate': { fi: '27. marraskuuta 2025', en: 'November 27, 2025' },
   'legal.paytrail.lastUpdated': { fi: 'Viimeksi päivitetty', en: 'Last Updated' },
   'legal.paytrail.nav': { fi: 'Maksupalvelutarjoaja', en: 'Payment Provider' },
+
+  'notFound.badge': { fi: '404 virhe', en: '404 error' },
+  'notFound.title': { fi: 'Tämä auto taisi ajaa väärään risteykseen.', en: 'Looks like this car took the wrong turn.' },
+  'notFound.body': { fi: 'Etsimääsi sivua ei löydy juuri nyt. Palataan takaisin oikealle reitille.', en: "The page you are looking for is not here right now. Let's get you back on the road." },
+  'notFound.pathLabel': { fi: 'Pyydetty polku:', en: 'Requested path:' },
+  'notFound.backHome': { fi: 'Takaisin etusivulle', en: 'Back to homepage' },
+  'notFound.contact': { fi: 'Ota yhteyttä', en: 'Contact Us' },
+  'notFound.pwaTitle': { fi: 'Tämä reitti hajosi matkalla tänne.', en: 'This route broke down on the way here.' },
+  'notFound.pwaBody': { fi: 'Sivua ei ole saatavilla juuri nyt. Palaa CMS PWA:n etusivulle ja jatka sieltä.', en: 'The page is not available right now. Head back to the CMS PWA home and continue from there.' },
+  'notFound.backCmsPwa': { fi: 'Takaisin CMS PWA:han', en: 'Back to CMS PWA' },
+  'notFound.goWebsite': { fi: 'Siirry sivustolle', en: 'Go to website' },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

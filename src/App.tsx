@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
 import { CartProvider, useCart } from './components/CartContext';
@@ -32,12 +32,15 @@ import { CarServicePage } from './components/CarServicePage';
 import { TireChangePage } from './components/TireChangePage';
 import { DiagnosticsPage } from './components/DiagnosticsPage';
 import { CarWashPage } from './components/CarWashPage';
+import { NotFoundPage } from './components/NotFoundPage';
+import { CmsPwaScreen } from './CmsPwaApp';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { supabase } from './utils/supabase/client';
 import { 
   Wrench, 
   Scale, 
@@ -83,6 +86,8 @@ type ParsedTireSize = {
 };
 
 type CmsTab = 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'future';
+const BOOKING_STATUS_HANDOFF = 'handoff';
+const BOOKING_STATUS_HANDOFF_DONE = 'handoff_done';
 
 function resolveCmsTabFromHash(hash?: string): CmsTab {
   const normalized = (hash ?? '').replace('#', '').toLowerCase();
@@ -104,6 +109,100 @@ function resolveCmsTabFromHash(hash?: string): CmsTab {
   }
 
   return 'schedule';
+}
+
+function normalizeAppPath(path: string): string {
+  if (!path) {
+    return '/';
+  }
+
+  if (path.length > 1 && path.endsWith('/')) {
+    return path.replace(/\/+$/, '') || '/';
+  }
+
+  return path;
+}
+
+function CmsBetaHandoffControl() {
+  const [handoffCount, setHandoffCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  const loadHandoffCount = useCallback(async () => {
+    const { count } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', BOOKING_STATUS_HANDOFF);
+
+    setHandoffCount(count ?? 0);
+  }, []);
+
+  useEffect(() => {
+    void loadHandoffCount();
+    const intervalId = window.setInterval(() => {
+      void loadHandoffCount();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [loadHandoffCount]);
+
+  const handleFinishHandoff = async () => {
+    if (loading || handoffCount === 0) return;
+    setLoading(true);
+
+    try {
+      const { data, error: queryError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('status', BOOKING_STATUS_HANDOFF);
+
+      if (queryError) {
+        throw queryError;
+      }
+
+      const ids = (data ?? []).map((booking) => booking.id).filter(Boolean);
+      if (ids.length === 0) {
+        setHandoffCount(0);
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ status: BOOKING_STATUS_HANDOFF_DONE })
+        .in('id', ids);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast.success('Booking handoff finished');
+      await loadHandoffCount();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to finish booking handoff');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (handoffCount > 0) {
+    return (
+      <button
+        type="button"
+        onClick={handleFinishHandoff}
+        disabled={loading}
+        className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
+      >
+        <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+        {loading ? 'Finishing handoff...' : `Finish handoff (${handoffCount})`}
+      </button>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
+      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+      Switch tabs to access schedule and catalog tools
+    </span>
+  );
 }
 
 const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
@@ -241,10 +340,14 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('schedule');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const requestedProtectedPathRef = useRef<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
 
   // Check auth state on mount
   useEffect(() => {
@@ -287,128 +390,168 @@ function HomePage() {
 
 
 
-  // Hero carousel timer - changes image every 30 seconds
   useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const applyMatch = (event?: MediaQueryListEvent) => {
+      setIsMobileViewport(event ? event.matches : mediaQuery.matches);
+    };
+
+    applyMatch();
+    mediaQuery.addEventListener('change', applyMatch);
+
+    return () => {
+      mediaQuery.removeEventListener('change', applyMatch);
+    };
+  }, []);
+
+  // Hero carousel timer - desktop only
+  useEffect(() => {
+    if (isMobileViewport) {
+      return undefined;
+    }
+
     const timer = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
     }, 30000); // 30 seconds
 
     return () => clearInterval(timer);
-  }, []);
+  }, [isMobileViewport]);
   
   const updatePageFromPath = useCallback(
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
+      const normalizedPath = normalizeAppPath(path);
+
+      if (normalizedPath === '/') {
+        setCurrentPage('home');
+        setSelectedProduct(null);
+      }
+
       // Legacy routes (keep working)
-      if (path === '/services') {
+      else if (normalizedPath === '/services') {
         setCurrentPage('services');
         setSelectedProduct(null);
-      } else if (path === '/tire-hotel') {
+      } else if (normalizedPath === '/tire-hotel') {
         setCurrentPage('tire-hotel');
         setSelectedProduct(null);
-      } else if (path === '/about') {
+      } else if (normalizedPath === '/about') {
         setCurrentPage('about');
         setSelectedProduct(null);
       } 
       
       // NEW FINNISH CANONICAL ROUTES
-      else if (path === '/yhteystiedot') {
+      else if (normalizedPath === '/yhteystiedot') {
         setCurrentPage('contact');
         setSelectedProduct(null);
-      } else if (path === '/ukk') {
+      } else if (normalizedPath === '/ukk') {
         setCurrentPage('faq');
         setSelectedProduct(null);
-      } else if (path === '/helsinki') {
+      } else if (normalizedPath === '/helsinki') {
         setCurrentPage('helsinki');
         setSelectedProduct(null);
-      } else if (path === '/palvelut') {
+      } else if (normalizedPath === '/palvelut') {
         setCurrentPage('services');
         setSelectedProduct(null);
-      } else if (path === '/palvelut/autohuolto' || path === '/helsinki/autohuolto') {
+      } else if (normalizedPath === '/palvelut/autohuolto' || normalizedPath === '/helsinki/autohuolto') {
         setCurrentPage('car-service');
         setSelectedProduct(null);
-      } else if (path === '/palvelut/renkaanvaihto' || path === '/helsinki/renkaanvaihto') {
+      } else if (normalizedPath === '/palvelut/renkaanvaihto' || normalizedPath === '/helsinki/renkaanvaihto') {
         setCurrentPage('tire-change');
         setSelectedProduct(null);
-      } else if (path === '/palvelut/rengashotelli' || path === '/helsinki/rengashotelli') {
+      } else if (normalizedPath === '/palvelut/rengashotelli' || normalizedPath === '/helsinki/rengashotelli') {
         setCurrentPage('tire-hotel');
         setSelectedProduct(null);
-      } else if (path === '/palvelut/vikadiagnostiikka') {
+      } else if (normalizedPath === '/palvelut/vikadiagnostiikka') {
         setCurrentPage('diagnostics');
         setSelectedProduct(null);
-      } else if (path === '/palvelut/autopesu') {
+      } else if (normalizedPath === '/palvelut/autopesu') {
         setCurrentPage('car-wash');
         setSelectedProduct(null);
-      } else if (path === '/meista') {
+      } else if (normalizedPath === '/meista') {
         setCurrentPage('about');
         setSelectedProduct(null);
       }
       
       // NEW ENGLISH MIRROR ROUTES
-      else if (path === '/en' || path === '/en/') {
+      else if (normalizedPath === '/en') {
         setCurrentPage('home');
         setSelectedProduct(null);
-      } else if (path === '/en/contact') {
+      } else if (normalizedPath === '/en/contact') {
         setCurrentPage('contact');
         setSelectedProduct(null);
-      } else if (path === '/en/faq') {
+      } else if (normalizedPath === '/en/faq') {
         setCurrentPage('faq');
         setSelectedProduct(null);
-      } else if (path === '/en/helsinki') {
+      } else if (normalizedPath === '/en/helsinki') {
         setCurrentPage('helsinki');
         setSelectedProduct(null);
-      } else if (path === '/en/services') {
+      } else if (normalizedPath === '/en/services') {
         setCurrentPage('services');
         setSelectedProduct(null);
-      } else if (path === '/en/services/car-service' || path === '/en/helsinki/car-service') {
+      } else if (normalizedPath === '/en/services/car-service' || normalizedPath === '/en/helsinki/car-service') {
         setCurrentPage('car-service');
         setSelectedProduct(null);
-      } else if (path === '/en/services/tire-change' || path === '/en/helsinki/tire-change') {
+      } else if (normalizedPath === '/en/services/tire-change' || normalizedPath === '/en/helsinki/tire-change') {
         setCurrentPage('tire-change');
         setSelectedProduct(null);
-      } else if (path === '/en/services/tire-hotel' || path === '/en/helsinki/tire-hotel') {
+      } else if (normalizedPath === '/en/services/tire-hotel' || normalizedPath === '/en/helsinki/tire-hotel') {
         setCurrentPage('tire-hotel');
         setSelectedProduct(null);
-      } else if (path === '/en/services/diagnostics') {
+      } else if (normalizedPath === '/en/services/diagnostics') {
         setCurrentPage('diagnostics');
         setSelectedProduct(null);
-      } else if (path === '/en/services/car-wash') {
+      } else if (normalizedPath === '/en/services/car-wash') {
         setCurrentPage('car-wash');
         setSelectedProduct(null);
-      } else if (path === '/en/about') {
+      } else if (normalizedPath === '/en/about') {
         setCurrentPage('about');
         setSelectedProduct(null);
       }
       
       // Admin/CMS/Protected routes
-      else if (path === '/admin/schedule') {
+      else if (normalizedPath === '/admin/schedule') {
         setCurrentPage('admin-schedule');
         setSelectedProduct(null);
-      } else if (path === '/cms') {
+      } else if (
+        normalizedPath === '/pwa/cms' ||
+        normalizedPath === '/pwa/cms/rescue' ||
+        normalizedPath === '/pwa/cms/booking' ||
+        normalizedPath === '/pwa/cms/order' ||
+        normalizedPath === '/pwa/cms/tools'
+      ) {
+        setCurrentPage('pwa-cms');
+        setSelectedProduct(null);
+      } else if (normalizedPath === '/pwa' || normalizedPath.startsWith('/pwa/')) {
+        setCurrentPage('pwa-not-found');
+        setSelectedProduct(null);
+      } else if (normalizedPath === '/cms') {
         setCurrentPage('cms-beta');
         setSelectedProduct(null);
         setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
-      } else if (path === '/cms/orders' || path === '/cms-orders') {
+      } else if (
+        normalizedPath === '/cms/orders' ||
+        normalizedPath === '/cms-orders'
+      ) {
         setCurrentPage('cms-orders');
         setSelectedProduct(null);
       } 
       
       // Legal routes
-      else if (path === '/privacy' || path === '/legal/privacy') {
+      else if (normalizedPath === '/privacy' || normalizedPath === '/legal/privacy') {
         setCurrentPage('privacy');
         setSelectedProduct(null);
-      } else if (path === '/terms' || path === '/legal/terms') {
+      } else if (normalizedPath === '/terms' || normalizedPath === '/legal/terms') {
         setCurrentPage('terms');
         setSelectedProduct(null);
-      } else if (path === '/legal') {
+      } else if (normalizedPath === '/legal') {
         setCurrentPage('legal');
         setSelectedProduct(null);
       } 
       
       // Catalog routes
-      else if (path === '/catalog' || path === '/shop') {
+      else if (normalizedPath === '/catalog' || normalizedPath === '/shop') {
         setCurrentPage('catalog');
         setSelectedProduct(null);
-      } else if (path.startsWith('/catalog/')) {
+      } else if (normalizedPath.startsWith('/catalog/')) {
         setCurrentPage('catalog-detail');
         if (state?.selectedProduct) {
           setSelectedProduct(state.selectedProduct);
@@ -416,20 +559,20 @@ function HomePage() {
       } 
       
       // Checkout routes
-      else if (path === '/checkout/success') {
+      else if (normalizedPath === '/checkout/success') {
         setCurrentPage('checkout-success');
         setSelectedProduct(null);
-      } else if (path === '/checkout/cancel') {
+      } else if (normalizedPath === '/checkout/cancel') {
         setCurrentPage('checkout-cancel');
         setSelectedProduct(null);
-      } else if (path === '/checkout') {
+      } else if (normalizedPath === '/checkout') {
         setCurrentPage('checkout');
         setSelectedProduct(null);
       } 
       
-      // Default: Home
+      // Default: explicit 404
       else {
-        setCurrentPage('home');
+        setCurrentPage('not-found');
         setSelectedProduct(null);
       }
     },
@@ -481,7 +624,8 @@ function HomePage() {
     };
 
     const handleHashChange = () => {
-      if (window.location.pathname === '/cms') {
+      const normalizedPath = normalizeAppPath(window.location.pathname);
+      if (normalizedPath === '/cms') {
         setCmsTab(resolveCmsTabFromHash(window.location.hash));
       }
     };
@@ -507,11 +651,14 @@ function HomePage() {
     setAuthModalOpen(true);
   };
 
-    const handleCmsTabChange = (tab: CmsTab) => {
+  const handleCmsTabChange = (tab: CmsTab) => {
     setCmsTab(tab);
 
-    if (typeof window !== 'undefined' && window.location.pathname === '/cms') {
-      window.history.replaceState(window.history.state, '', `/cms#${tab}`);
+    if (typeof window !== 'undefined') {
+      const normalizedPath = normalizeAppPath(window.location.pathname);
+      if (normalizedPath === '/cms') {
+        window.history.replaceState(window.history.state, '', `${normalizedPath}#${tab}`);
+      }
     }
   };
 
@@ -523,11 +670,20 @@ function HomePage() {
   const handleAuthSuccess = (isAdmin?: boolean) => {
     setIsLoggedIn(true);
     
-    // If admin user, redirect to admin schedule
     if (isAdmin) {
-      setCurrentPage('admin-schedule');
-      // Update URL without page reload
-      window.history.pushState({}, '', '/admin/schedule');
+      const currentPath = normalizeAppPath(window.location.pathname);
+      const targetPath = requestedProtectedPathRef.current ?? (
+        currentPath === '/cms' ||
+        currentPath === '/cms/orders' ||
+        currentPath === '/cms-orders' ||
+        currentPath === '/admin/schedule'
+          ? currentPath
+          : '/cms'
+      );
+
+      requestedProtectedPathRef.current = null;
+      window.history.replaceState({}, '', targetPath);
+      updatePageFromPath(targetPath);
     }
   };
 
@@ -565,9 +721,10 @@ function HomePage() {
   };
 
   const handleLoginNeeded = () => {
-    // User tried to access CMS but not logged in
-    setCurrentPage('home');
-    window.history.pushState({}, '', '/');
+    const currentPath = normalizeAppPath(window.location.pathname);
+    if (currentPath.startsWith('/cms') || currentPath.startsWith('/admin') || currentPath.startsWith('/pwa')) {
+      requestedProtectedPathRef.current = currentPath;
+    }
     setAuthView('login');
     setAuthModalOpen(true);
   };
@@ -655,6 +812,8 @@ function HomePage() {
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
+  const isPwaRoute = currentPage === 'pwa-cms' || currentPage === 'pwa-not-found';
+
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to main content */}
@@ -665,65 +824,66 @@ function HomePage() {
         {t('ui.skipToContent')}
       </a>
 
-      <Navbar
-        isLoggedIn={isLoggedIn}
-        onLoginClick={handleLogin}
-        onSignupClick={handleSignup}
-        onLogout={handleLogout}
-        cartCount={totalItems}
-        onNavigate={navigate}
-        onCartClick={() => setIsCartOpen(true)}
-      />
+      {!isPwaRoute ? (
+        <Navbar
+          isLoggedIn={isLoggedIn}
+          onLoginClick={handleLogin}
+          onSignupClick={handleSignup}
+          onLogout={handleLogout}
+          cartCount={totalItems}
+          onNavigate={navigate}
+          onCartClick={() => setIsCartOpen(true)}
+        />
+      ) : null}
 
-      <CartDrawer onCheckout={() => setCurrentPage('checkout')} />
+      {!isPwaRoute ? <CartDrawer onCheckout={() => setCurrentPage('checkout')} /> : null}
 
-      <AuthModal
-        open={authModalOpen}
-        onOpenChange={setAuthModalOpen}
-        defaultView={authView}
-        onSuccess={handleAuthSuccess}
-      />
+      {!isPwaRoute ? (
+        <AuthModal
+          open={authModalOpen}
+          onOpenChange={setAuthModalOpen}
+          defaultView={authView}
+          onSuccess={handleAuthSuccess}
+        />
+      ) : null}
 
-      <EmergencyTowModal
-        open={emergencyModalOpen}
-        onOpenChange={setEmergencyModalOpen}
-      />
+      {!isPwaRoute ? (
+        <EmergencyTowModal
+          open={emergencyModalOpen}
+          onOpenChange={setEmergencyModalOpen}
+        />
+      ) : null}
 
-      <BookingModal
-        open={bookingModalOpen}
-        onOpenChange={setBookingModalOpen}
-        preSelectedService={preSelectedService}
-      />
+      {!isPwaRoute ? (
+        <BookingModal
+          open={bookingModalOpen}
+          onOpenChange={setBookingModalOpen}
+          preSelectedService={preSelectedService}
+        />
+      ) : null}
 
-      {/* Unified Background Gradient Blobs - Continuous Web Across Entire Scroll */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute inset-0 w-full" style={{height: '400vh'}}>
-          {/* Large overlapping blobs distributed throughout the page */}
-          <div className="absolute top-[5%] right-[10%] w-[700px] h-[700px] bg-accent/10 rounded-full blur-3xl animate-blob" />
-          <div className="absolute top-[8%] left-[5%] w-[600px] h-[600px] bg-ring/12 rounded-full blur-3xl animate-blob animation-delay-2000" />
-          
-          <div className="absolute top-[18%] left-[60%] w-[650px] h-[650px] bg-primary/8 rounded-full blur-3xl animate-blob animation-delay-4000" />
-          <div className="absolute top-[25%] right-[70%] w-[550px] h-[550px] bg-accent/8 rounded-full blur-3xl animate-blob" />
-          
-          <div className="absolute top-[35%] right-[15%] w-[600px] h-[600px] bg-ring/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
-          <div className="absolute top-[42%] left-[8%] w-[580px] h-[580px] bg-accent/7 rounded-full blur-3xl animate-blob animation-delay-4000" />
-          
-          <div className="absolute top-[52%] left-[40%] w-[620px] h-[620px] bg-primary/9 rounded-full blur-3xl animate-blob" />
-          <div className="absolute top-[58%] right-[45%] w-[540px] h-[540px] bg-ring/9 rounded-full blur-3xl animate-blob animation-delay-2000" />
-          
-          <div className="absolute top-[68%] right-[20%] w-[640px] h-[640px] bg-accent/8 rounded-full blur-3xl animate-blob animation-delay-4000" />
-          <div className="absolute top-[72%] left-[25%] w-[520px] h-[520px] bg-primary/7 rounded-full blur-3xl animate-blob" />
-          
-          <div className="absolute top-[82%] left-[15%] w-[600px] h-[600px] bg-ring/11 rounded-full blur-3xl animate-blob animation-delay-2000" />
-          <div className="absolute top-[88%] right-[30%] w-[550px] h-[550px] bg-accent/9 rounded-full blur-3xl animate-blob animation-delay-4000" />
-          <div className="absolute top-[92%] left-[50%] -translate-x-1/2 w-[500px] h-[500px] bg-primary/6 rounded-full blur-3xl animate-blob" />
-          
-          {/* Additional mid-layer blobs for more coverage */}
-          <div className="absolute top-[15%] right-[50%] w-[480px] h-[480px] bg-ring/6 rounded-full blur-3xl animate-blob animation-delay-2000" />
-          <div className="absolute top-[48%] left-[70%] w-[520px] h-[520px] bg-accent/6 rounded-full blur-3xl animate-blob animation-delay-4000" />
-          <div className="absolute top-[78%] right-[60%] w-[560px] h-[560px] bg-primary/5 rounded-full blur-3xl animate-blob" />
+      {!isPwaRoute && !isMobileViewport ? (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+          <div className="absolute inset-0 w-full" style={{height: '400vh'}}>
+            <div className="absolute top-[5%] right-[10%] w-[700px] h-[700px] bg-accent/10 rounded-full blur-3xl animate-blob" />
+            <div className="absolute top-[8%] left-[5%] w-[600px] h-[600px] bg-ring/12 rounded-full blur-3xl animate-blob animation-delay-2000" />
+            <div className="absolute top-[18%] left-[60%] w-[650px] h-[650px] bg-primary/8 rounded-full blur-3xl animate-blob animation-delay-4000" />
+            <div className="absolute top-[25%] right-[70%] w-[550px] h-[550px] bg-accent/8 rounded-full blur-3xl animate-blob" />
+            <div className="absolute top-[35%] right-[15%] w-[600px] h-[600px] bg-ring/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
+            <div className="absolute top-[42%] left-[8%] w-[580px] h-[580px] bg-accent/7 rounded-full blur-3xl animate-blob animation-delay-4000" />
+            <div className="absolute top-[52%] left-[40%] w-[620px] h-[620px] bg-primary/9 rounded-full blur-3xl animate-blob" />
+            <div className="absolute top-[58%] right-[45%] w-[540px] h-[540px] bg-ring/9 rounded-full blur-3xl animate-blob animation-delay-2000" />
+            <div className="absolute top-[68%] right-[20%] w-[640px] h-[640px] bg-accent/8 rounded-full blur-3xl animate-blob animation-delay-4000" />
+            <div className="absolute top-[72%] left-[25%] w-[520px] h-[520px] bg-primary/7 rounded-full blur-3xl animate-blob" />
+            <div className="absolute top-[82%] left-[15%] w-[600px] h-[600px] bg-ring/11 rounded-full blur-3xl animate-blob animation-delay-2000" />
+            <div className="absolute top-[88%] right-[30%] w-[550px] h-[550px] bg-accent/9 rounded-full blur-3xl animate-blob animation-delay-4000" />
+            <div className="absolute top-[92%] left-[50%] -translate-x-1/2 w-[500px] h-[500px] bg-primary/6 rounded-full blur-3xl animate-blob" />
+            <div className="absolute top-[15%] right-[50%] w-[480px] h-[480px] bg-ring/6 rounded-full blur-3xl animate-blob animation-delay-2000" />
+            <div className="absolute top-[48%] left-[70%] w-[520px] h-[520px] bg-accent/6 rounded-full blur-3xl animate-blob animation-delay-4000" />
+            <div className="absolute top-[78%] right-[60%] w-[560px] h-[560px] bg-primary/5 rounded-full blur-3xl animate-blob" />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <main id="main-content">
         {currentPage === 'services' ? (
@@ -838,10 +998,7 @@ function HomePage() {
                       <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS Beta</p>
                       <h1 className="text-3xl font-semibold text-foreground">Control Center</h1>
                     </div>
-                    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
-                      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-                      Switch tabs to access schedule and catalog tools
-                    </span>
+                    <CmsBetaHandoffControl />
                   </div>
                   <p className="text-muted-foreground max-w-3xl">
                     Navigate between booking schedule management and product catalog overrides. Additional CMS tools will be added here in future updates.
@@ -902,18 +1059,25 @@ function HomePage() {
           <LegalPage initialSection="terms" />
         ) : currentPage === 'legal' ? (
           <LegalPage />
+        ) : currentPage === 'not-found' ? (
+          <NotFoundPage
+            path={typeof window !== 'undefined' ? window.location.pathname : ''}
+            onNavigateHome={() => navigate('/')}
+          />
+        ) : currentPage === 'pwa-cms' || currentPage === 'pwa-not-found' ? (
+          <CmsPwaScreen />
         ) : (
           <>
         {/* Hero Section */}
         <section className="relative" aria-labelledby="hero-heading">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid gap-16 py-20 lg:grid-cols-2 lg:gap-20 lg:py-32 items-center">
+            <div className={`grid items-center ${isMobileViewport ? 'gap-10 py-12' : 'gap-16 py-20 lg:grid-cols-2 lg:gap-20 lg:py-32'}`}>
               <div className="text-center lg:text-left">
-                <h1 id="hero-heading" className="mb-6 text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight">
+                <h1 id="hero-heading" className={`mb-6 font-bold tracking-tight ${isMobileViewport ? 'text-4xl leading-tight' : 'text-5xl lg:text-6xl xl:text-7xl'}`}>
                   {t('hero.headline')}
                 </h1>
                 
-                <p className="mb-8 text-xl lg:text-2xl text-muted-foreground">
+                <p className={`mb-8 text-muted-foreground ${isMobileViewport ? 'text-lg' : 'text-xl lg:text-2xl'}`}>
                   {t('hero.subheadline')}
                 </p>
                 
@@ -952,7 +1116,7 @@ function HomePage() {
                 </div>
 
                 {/* Trust Badges */}
-                <div className="mt-12 flex flex-wrap gap-6 justify-center lg:justify-start">
+                <div className={`flex flex-wrap justify-center lg:justify-start ${isMobileViewport ? 'mt-8 gap-4' : 'mt-12 gap-6'}`}>
                   {trustBadges.map((badge, idx) => (
                     <div key={idx} className="flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] rounded-full px-2 py-1">
                       <div className="rounded-full bg-secondary p-2 transition-all hover:shadow-[0_0_15px_rgba(231,76,60,0.25)]">
@@ -964,26 +1128,29 @@ function HomePage() {
                 </div>
               </div>
 
-              <div className="relative">
-                <div className="aspect-[4/3] overflow-hidden rounded-3xl relative">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={currentImageIndex}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.35 }}
-                      className="absolute inset-0"
-                    >
-                      <ImageWithFallback
-                        src={heroImages[currentImageIndex].src}
-                        alt={heroImages[currentImageIndex].alt}
-                        className="h-full w-full object-cover"
-                      />
-                    </motion.div>
-                  </AnimatePresence>
+              {!isMobileViewport ? (
+                <div className="relative">
+                  <div className="aspect-[4/3] overflow-hidden rounded-3xl relative">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentImageIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.35 }}
+                        className="absolute inset-0"
+                      >
+                        <ImageWithFallback
+                          src={heroImages[currentImageIndex].src}
+                          alt={heroImages[currentImageIndex].alt}
+                          className="h-full w-full object-cover"
+                          loading="eager"
+                        />
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -1332,7 +1499,7 @@ function HomePage() {
         )}
       </main>
 
-      <Footer onNavigate={navigate} />
+      {!isPwaRoute ? <Footer onNavigate={navigate} /> : null}
     </div>
   );
 }
