@@ -1,0 +1,18 @@
+{
+  "name": "Mitra Auto",
+  "short_name": "Mitra Auto",
+  "description": "Mitra Auto mobile operations and garage services.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0E1117",
+  "theme_color": "#11141A",
+  "icons": [
+    {
+      "src": "/icons/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
