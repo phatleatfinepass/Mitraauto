@@ -1,0 +1,37 @@
+{
+  "id": "/cms",
+  "name": "Mitra Auto CMS",
+  "short_name": "Mitra CMS",
+  "description": "Mobile-first CMS workspace for Mitra Auto staff.",
+  "start_url": "/cms",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#11141A",
+  "theme_color": "#11141A",
+  "icons": [
+    {
+      "src": "/icons/cms-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/cms-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Bookings",
+      "short_name": "Bookings",
+      "url": "/cms#schedule"
+    },
+    {
+      "name": "Orders",
+      "short_name": "Orders",
+      "url": "/cms#orders"
+    }
+  ]
+}

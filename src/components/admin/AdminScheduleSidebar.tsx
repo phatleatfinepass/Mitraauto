@@ -8,14 +8,21 @@ import { Card } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 
 interface AdminScheduleSidebarProps {
+  applyManageSlotsButtonClass: string;
+  applyManageSlotsLabel: string;
+  applyManageSlotsDisabled: boolean;
   blockReason: string;
   formatDate: (date: Date) => string;
   isBatchBlockMode: boolean;
   isSunday: boolean;
   language: string;
+  manageModeHasBlockingSelection: boolean;
+  manageModeHint: string;
   mutedPanelClass: string;
   mutedTextClass: string;
   outlineButtonClass: string;
+  onApplyManageSlots: () => void;
+  onLogout?: () => void;
   panelClass: string;
   selectedBlockTimes: string[];
   selectedDate: Date;
@@ -29,14 +36,21 @@ interface AdminScheduleSidebarProps {
 }
 
 export function AdminScheduleSidebar({
+  applyManageSlotsButtonClass,
+  applyManageSlotsLabel,
+  applyManageSlotsDisabled,
   blockReason,
   formatDate,
   isBatchBlockMode,
   isSunday,
   language,
+  manageModeHasBlockingSelection,
+  manageModeHint,
   mutedPanelClass,
   mutedTextClass,
   outlineButtonClass,
+  onApplyManageSlots,
+  onLogout,
   panelClass,
   selectedBlockTimes,
   selectedDate,
@@ -84,63 +98,88 @@ export function AdminScheduleSidebar({
         <div className="mb-4">
           <h3 className={`text-sm font-semibold ${titleClass}`}>{language === 'fi' ? 'Pikatoiminnot' : 'Quick actions'}</h3>
           <p className={`mt-1 text-xs ${mutedTextClass}`}>
-            {language === 'fi' ? 'Siirry nopeasti seuraaviin vapaisiin päiviin tai aloita estojen hallinta.' : 'Jump to the next key day or start block management quickly.'}
+            {isBatchBlockMode
+              ? manageModeHint
+              : language === 'fi'
+                ? 'Siirry nopeasti seuraaviin vapaisiin päiviin tai aloita estojen hallinta.'
+                : 'Jump to the next key day or start block management quickly.'}
           </p>
         </div>
         <div className="space-y-2">
-          <Button
-            variant="ghost"
-            className={`w-full justify-start ${theme === 'dark' ? 'hover:bg-white/5 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
-            onClick={() => setSelectedDate(new Date())}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {t('today')}
-          </Button>
-          <Button
-            variant="ghost"
-            className={`w-full justify-start ${theme === 'dark' ? 'hover:bg-white/5 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
-            onClick={() => {
-              const tomorrow = new Date();
-              tomorrow.setDate(tomorrow.getDate() + 1);
-              setSelectedDate(tomorrow);
-            }}
-          >
-            <ChevronRight className="mr-2 h-4 w-4" />
-            {t('tomorrow')}
-          </Button>
-          <Button
-            variant={isBatchBlockMode ? 'default' : 'outline'}
-            onClick={() => {
-              setIsBatchBlockMode((current) => !current);
-              setSelectedBlockTimes([]);
-              setBlockReason('');
-            }}
-            className={isBatchBlockMode ? 'bg-[#E74C3C] hover:bg-[#E74C3C]/90 text-white' : outlineButtonClass}
-          >
-            <CheckSquare className="mr-2 h-4 w-4" />
-            {isBatchBlockMode ? t('cancelSelection') : t('selectSlotsToBlock')}
-          </Button>
+          {!isBatchBlockMode && (
+            <>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start ${theme === 'dark' ? 'hover:bg-white/5 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
+                onClick={() => setSelectedDate(new Date())}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {t('today')}
+              </Button>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start ${theme === 'dark' ? 'hover:bg-white/5 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}`}
+                onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  setSelectedDate(tomorrow);
+                }}
+              >
+                <ChevronRight className="mr-2 h-4 w-4" />
+                {t('tomorrow')}
+              </Button>
+            </>
+          )}
+          {!isBatchBlockMode ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsBatchBlockMode(true);
+                setSelectedBlockTimes([]);
+                setBlockReason('');
+              }}
+              className={outlineButtonClass}
+            >
+              <CheckSquare className="mr-2 h-4 w-4" />
+              {t('selectSlotsToBlock')}
+            </Button>
+          ) : (
+            <>
+              {manageModeHasBlockingSelection && (
+                <Textarea
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  placeholder={language === 'fi' ? 'Syy estolle (valinnainen)' : 'Reason for blocking (optional)'}
+                  className={theme === 'dark' ? 'bg-[#252525] border-white/10 text-white' : ''}
+                  rows={3}
+                />
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsBatchBlockMode(false);
+                    setSelectedBlockTimes([]);
+                    setBlockReason('');
+                  }}
+                  className={outlineButtonClass}
+                >
+                  {t('cancel')}
+                </Button>
+                <Button onClick={onApplyManageSlots} className={applyManageSlotsButtonClass} disabled={applyManageSlotsDisabled}>
+                  {applyManageSlotsLabel}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
-      {isBatchBlockMode && (
-        <Card className={`rounded-lg p-4 shadow-none ${panelClass}`}>
-          <div className="space-y-3">
-            <div>
-              <h3 className={`text-sm font-semibold ${titleClass}`}>{t('blockSelectedSlots')}</h3>
-              <p className={`mt-1 text-xs ${mutedTextClass}`}>
-                {selectedBlockTimes.length} {t('slotsSelected')}
-              </p>
-            </div>
-            <Textarea
-              value={blockReason}
-              onChange={(e) => setBlockReason(e.target.value)}
-              placeholder={language === 'fi' ? 'Syy estolle (valinnainen)' : 'Reason for blocking (optional)'}
-              className={theme === 'dark' ? 'bg-[#252525] border-white/10 text-white' : ''}
-              rows={3}
-            />
-          </div>
-        </Card>
+      {onLogout && (
+        <Button variant="outline" onClick={onLogout} className={outlineButtonClass}>
+          {language === 'fi' ? 'Kirjaudu ulos' : 'Logout'}
+        </Button>
       )}
     </aside>
   );

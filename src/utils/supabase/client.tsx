@@ -1,5 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseRuntimeOverrideHelp, projectId, publicAnonKey } from './info';
+import { projectId, publicAnonKey } from './info.tsx';
+
+function getSupabaseRuntimeOverrideHelp() {
+  return [
+    "window.localStorage.setItem('mitra.supabase.url', 'https://rcmmbwdebnmicrweoiyz.supabase.co')",
+    "window.localStorage.setItem('mitra.supabase.anonKey', '<SUPABASE_ANON_KEY>')",
+    'window.location.reload()',
+  ].join('\n');
+}
 
 const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||

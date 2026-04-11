@@ -37,12 +37,12 @@ import {
   SupportedBookingLanguage,
 } from '../../utils/serviceCatalog';
 import { toast } from 'sonner';
-import { AdminScheduleBookingPanel } from './schedule/AdminScheduleBookingPanel';
-import { AdminScheduleDrawer } from './schedule/AdminScheduleDrawer';
-import { AdminScheduleGrid } from './schedule/AdminScheduleGrid';
-import { AdminScheduleSearchDialog } from './schedule/AdminScheduleSearchDialog';
-import { AdminScheduleSidebar } from './schedule/AdminScheduleSidebar';
-import type { AdminBookingFormState, BookingMessageDraft } from './schedule/types';
+import { AdminScheduleBookingPanel } from './AdminScheduleBookingPanel';
+import { AdminScheduleDrawer } from './AdminScheduleDrawer';
+import { AdminScheduleGrid } from './AdminScheduleGrid';
+import { AdminScheduleSearchDialog } from './AdminScheduleSearchDialog';
+import { AdminScheduleSidebar } from './AdminScheduleSidebar';
+import type { AdminBookingFormState, BookingMessageDraft } from './AdminSchedule.types';
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;
@@ -98,7 +98,9 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [searchResults, setSearchResults] = useState<ScheduleBooking[]>([]);
   const [isSearchingBookings, setIsSearchingBookings] = useState(false);
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
+  const [activeBookingsTab, setActiveBookingsTab] = useState<'schedule' | 'reservation'>('schedule');
   const [showArchivedBookings, setShowArchivedBookings] = useState(false);
+  const [showArchivedInline, setShowArchivedInline] = useState(false);
   const [archivedBookings, setArchivedBookings] = useState<ScheduleBooking[]>([]);
   const [slotActionTime, setSlotActionTime] = useState<string | null>(null);
   const [slotActionSlot, setSlotActionSlot] = useState<ScheduleTimeSlot | null>(null);
@@ -124,6 +126,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       emptySlot: { fi: 'Vapaa', en: 'Available' },
       booked: { fi: 'Varattu', en: 'Booked' },
       blocked: { fi: 'Estetty', en: 'Blocked' },
+      timeSlots: { fi: 'Ajat', en: 'Time slots' },
       blockThisSlot: { fi: 'Estä tämä aika', en: 'Block this slot' },
       slotDetails: { fi: 'Ajanvarauksen tiedot', en: 'Slot Details' },
       bookingsList: { fi: 'Varaukset', en: 'Bookings' },
@@ -147,13 +150,17 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       notes: { fi: 'Lisätiedot', en: 'Notes' },
       status: { fi: 'Tila', en: 'Status' },
       noNotes: { fi: 'Ei lisätietoja', en: 'No notes' },
-      blockSelectedSlots: { fi: 'Estä valitut ajat', en: 'Block selected slots' },
-      selectSlotsToBlock: { fi: 'Valitse estettävät ajat', en: 'Select slots to block' },
+      blockSelectedSlots: { fi: 'Estä', en: 'Block' },
+      selectSlotsToBlock: { fi: 'Hallitse aikoja', en: 'Manage slots' },
       cancelSelection: { fi: 'Peru valinta', en: 'Cancel selection' },
       slotsSelected: { fi: 'aikaa valittu', en: 'slots selected' },
       clearSelection: { fi: 'Tyhjennä valinta', en: 'Clear selection' },
-      selectionModeHint: { fi: 'Klikkaa vapaita aikoja estääksesi ne yhdellä kertaa.', en: 'Click available slots to block them in one action.' },
-      batchBlockSuccessful: { fi: 'Valitut ajat estetty onnistuneesti', en: 'Selected slots blocked successfully' },
+      selectionModeHint: {
+        fi: 'Klikkaa vapaita aikoja estääksesi ne tai estettyjä aikoja poistaaksesi eston. Varattuja aikoja ei hallita tässä tilassa.',
+        en: 'Click available slots to block them or blocked slots to remove the block. Booked slots cannot be changed in this mode.',
+      },
+      batchBlockSuccessful: { fi: 'Valittujen aikojen muutokset tallennettiin', en: 'Selected slot changes saved' },
+      bookedSlotsNotManageable: { fi: 'Varattuja aikoja ei voi hallita tässä tilassa', en: 'Booked slots cannot be changed in this mode' },
       resendConfirmation: { fi: 'Lähetä uudelleen', en: 'Resend confirmation' },
       resendSuccessful: { fi: 'Vahvistusviesti lähetetty uudelleen', en: 'Confirmation email sent again' },
       resendFailed: { fi: 'Vahvistusviestin uudelleenlähetys epäonnistui', en: 'Failed to resend confirmation email' },
@@ -221,9 +228,9 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       bookingSummaryService: { fi: 'Palvelu', en: 'Service' },
       bookingSummaryCustomer: { fi: 'Asiakas', en: 'Customer' },
       searchBookings: { fi: 'Etsi varauksia', en: 'Search bookings' },
-      scheduleTab: { fi: 'Schedule', en: 'Schedule' },
-      reservationTab: { fi: 'Reservation', en: 'Reservation' },
-      searchBookingsPlaceholder: { fi: 'Hae rekisterinumerolla, nimellä, puhelimella, sähköpostilla tai varaustunnuksella', en: 'Search by license plate, name, phone, email, or booking ID' },
+      scheduleTab: { fi: 'Aikataulu', en: 'Schedule' },
+      reservationTab: { fi: 'Varaukset', en: 'Reservation' },
+      searchBookingsPlaceholder: { fi: 'Rekisterinumero, nimi, puhelin, sähköposti tai varaustunnus', en: 'License plate, name, phone, email or booking id' },
       search: { fi: 'Hae', en: 'Search' },
       searching: { fi: 'Haetaan...', en: 'Searching...' },
       searchResultsTitle: { fi: 'Hakutulokset', en: 'Search results' },
@@ -231,6 +238,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       startTypingToSearch: { fi: 'Aloita kirjoittaminen nähdäksesi hakutulokset.', en: 'Start typing to see matching bookings.' },
       upcomingBookings: { fi: 'Tulevat varaukset', en: 'Upcoming bookings' },
       archivedBookings: { fi: 'Arkistoidut varaukset', en: 'Archived bookings' },
+      archivedStatus: { fi: 'Arkistoitu', en: 'Archived' },
+      archivedInline: { fi: 'Arkistoidut samassa listassa', en: 'Archived inline' },
       showArchivedBookings: { fi: 'Näytä arkistoidut', en: 'Show archived' },
       hideArchivedBookings: { fi: 'Piilota arkistoidut', en: 'Hide archived' },
       noArchivedBookings: { fi: 'Ei arkistoituja varauksia', en: 'No archived bookings' },
@@ -391,6 +400,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         .from('bookings')
         .select('*')
         .gte('booking_date', todayStr)
+        .lte('booking_date', formatDateForSupabase(new Date(new Date().setDate(new Date().getDate() + 7))))
         .order('booking_date', { ascending: true })
         .order('booking_time', { ascending: true })
         .limit(250);
@@ -436,7 +446,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   }, [selectedDate]);
 
   useEffect(() => {
-    if (showArchivedBookings && !isSearchDialogOpen) {
+    if (activeBookingsTab === 'reservation' && (showArchivedBookings || showArchivedInline) && !isSearchDialogOpen) {
       if (archivedBookings.length === 0) {
         void loadArchivedBookings();
       }
@@ -456,7 +466,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
-  }, [searchQuery, showArchivedBookings, isSearchDialogOpen]);
+  }, [searchQuery, activeBookingsTab, showArchivedBookings, showArchivedInline, isSearchDialogOpen]);
 
   const getBookingLanguage = (booking: ScheduleBooking): SupportedBookingLanguage =>
     booking.booking_language === 'en' ? 'en' : 'fi';
@@ -479,22 +489,18 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       .some((value) => String(value).toLowerCase().includes(normalizedQuery));
   };
 
-  const visibleBookingList = showArchivedBookings ? archivedBookings : timelineBookings;
-
   const formatBookingGroupLabel = (dateValue: string) => {
-    const today = formatDateForSupabase(new Date());
-    const tomorrowDate = new Date();
-    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-    const tomorrow = formatDateForSupabase(tomorrowDate);
-
-    if (dateValue === today) return `---${t('today')}---`;
-    if (dateValue === tomorrow) return `---${t('tomorrow')}---`;
-
+    const bookingDate = new Date(`${dateValue}T12:00:00`);
+    const weekdayLabel = bookingDate.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+      weekday: 'long',
+    });
     const [year, month, day] = dateValue.split('-');
-    return `---${day}.${month}.${year}---`;
+    const formattedDate = `${day}.${month}.${year}`;
+
+    return `${weekdayLabel}, ${formattedDate}`;
   };
 
-  const groupedVisibleBookings = visibleBookingList.reduce<Array<{ date: string; bookings: ScheduleBooking[] }>>((groups, booking) => {
+  const groupedTimelineBookings = timelineBookings.reduce<Array<{ date: string; bookings: ScheduleBooking[] }>>((groups, booking) => {
     const currentGroup = groups[groups.length - 1];
     if (currentGroup?.date === booking.booking_date) {
       currentGroup.bookings.push(booking);
@@ -504,6 +510,58 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     groups.push({ date: booking.booking_date, bookings: [booking] });
     return groups;
   }, []);
+
+  const groupedArchivedBookings = archivedBookings.reduce<Array<{ date: string; bookings: ScheduleBooking[] }>>((groups, booking) => {
+    const currentGroup = groups[groups.length - 1];
+    if (currentGroup?.date === booking.booking_date) {
+      currentGroup.bookings.push(booking);
+      return groups;
+    }
+
+    groups.push({ date: booking.booking_date, bookings: [booking] });
+    return groups;
+  }, []);
+
+  const reservationDisplayGroups = (() => {
+    const upcomingItems = groupedTimelineBookings.map((group) => ({
+      date: group.date,
+      bookings: group.bookings.map((booking) => ({ ...booking, isArchived: false })),
+    }));
+
+    if (!showArchivedBookings) {
+      return upcomingItems;
+    }
+
+    if (!showArchivedInline) {
+      return groupedArchivedBookings.map((group) => ({
+        date: group.date,
+        bookings: group.bookings.map((booking) => ({ ...booking, isArchived: true })),
+      }));
+    }
+
+    const mergedBookings = [...timelineBookings, ...archivedBookings]
+      .map((booking) => ({
+        ...booking,
+        isArchived: (booking.status || '').toLowerCase() === 'cancelled',
+      }))
+      .sort((left, right) => {
+        if (left.booking_date !== right.booking_date) {
+          return left.booking_date.localeCompare(right.booking_date);
+        }
+        return left.booking_time.localeCompare(right.booking_time);
+      });
+
+    return mergedBookings.reduce<Array<{ date: string; bookings: typeof mergedBookings }>>((groups, booking) => {
+      const currentGroup = groups[groups.length - 1];
+      if (currentGroup?.date === booking.booking_date) {
+        currentGroup.bookings.push(booking);
+        return groups;
+      }
+
+      groups.push({ date: booking.booking_date, bookings: [booking] });
+      return groups;
+    }, []);
+  })();
 
   const isBookingExpanded = (bookingId: string) => expandedBookingIds.includes(bookingId);
 
@@ -581,7 +639,16 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     const supabase = getSupabaseClient();
 
     try {
-      const rows = selectedBlockTimes.map((time) => {
+      const selectedBlockedSlots = blockedSlots.filter((slot) =>
+        selectedBlockTimes.some((time) => time >= slot.start_time && time < slot.end_time),
+      );
+
+      const blockedSlotIdsToDelete = [...new Set(selectedBlockedSlots.map((slot) => slot.id))];
+      const timesToInsert = selectedBlockTimes.filter(
+        (time) => !selectedBlockedSlots.some((slot) => time >= slot.start_time && time < slot.end_time),
+      );
+
+      const rows = timesToInsert.map((time) => {
         const [hours, minutes] = time.split(':').map(Number);
         const endMinutes = minutes + 30;
         const endTime =
@@ -597,9 +664,20 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         };
       });
 
-      const { error } = await supabase.from('blocked_slots').insert(rows);
+      if (blockedSlotIdsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('blocked_slots')
+          .delete()
+          .in('id', blockedSlotIdsToDelete);
 
-      if (error) throw error;
+        if (deleteError) throw deleteError;
+      }
+
+      if (rows.length > 0) {
+        const { error: insertError } = await supabase.from('blocked_slots').insert(rows);
+
+        if (insertError) throw insertError;
+      }
 
       toast.success(t('batchBlockSuccessful'));
       setBlockReason('');
@@ -978,7 +1056,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         .from('bookings')
         .select('*')
         .eq('status', 'cancelled')
-        .order('created_at', { ascending: false })
+        .order('booking_date', { ascending: true })
+        .order('booking_time', { ascending: true })
         .limit(100);
 
       if (error) throw error;
@@ -990,14 +1069,15 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const refreshArchivedBookings = async () => {
-    if (!showArchivedBookings) return;
+    if (!showArchivedBookings && !showArchivedInline) return;
     try {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
         .eq('status', 'cancelled')
-        .order('created_at', { ascending: false })
+        .order('booking_date', { ascending: true })
+        .order('booking_time', { ascending: true })
         .limit(100);
       if (error) throw error;
       setArchivedBookings(data || []);
@@ -1204,7 +1284,12 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const handleSlotClick = (slot: ScheduleTimeSlot, time: string) => {
-    if (isBatchBlockMode && !slot.isBlocked && slot.bookings.length === 0) {
+    if (isBatchBlockMode) {
+      if (slot.bookings.length > 0) {
+        toast.error(t('bookedSlotsNotManageable'));
+        return;
+      }
+
       handleBatchSlotToggle(time);
       return;
     }
@@ -1235,6 +1320,17 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     });
   };
 
+  const formatGridDate = (date: Date) => {
+    const weekday = date.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+      weekday: 'short',
+    });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${weekday}, ${day}.${month}.${year}`;
+  };
+
   const getTotalBookings = () => {
     return timeSlots.reduce((acc, slot) => acc + slot.bookings.length, 0);
   };
@@ -1243,9 +1339,37 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     return timeSlots.filter((slot) => slot.isBlocked).length;
   };
 
+  const getManagedSlotIntent = (slot: ScheduleTimeSlot): 'block' | 'unblock' | 'none' => {
+    if (slot.bookings.length > 0) return 'none';
+    return slot.isBlocked ? 'unblock' : 'block';
+  };
+
+  const selectedManageIntents = timeSlots
+    .filter((slot) => selectedBlockTimes.includes(slot.time))
+    .map((slot) => getManagedSlotIntent(slot));
+  const selectedManageIntentSet = new Set(selectedManageIntents);
+  const hasBlockingSelections = selectedManageIntentSet.has('block');
+  const hasUnblockingSelections = selectedManageIntentSet.has('unblock');
+
+  let manageModeHint = t('selectionModeHint');
+  if (hasUnblockingSelections && !hasBlockingSelections) {
+    manageModeHint = language === 'fi'
+      ? 'Klikkaa estettyjä aikoja poistaaksesi eston.'
+      : 'Click blocked slots to remove the block.';
+  }
+
+  let manageActionLabel = t('blockSelectedSlots');
+  let manageActionButtonClass = 'bg-[#E74C3C] hover:bg-[#E74C3C]/90 text-white';
+
+  if (hasUnblockingSelections && !hasBlockingSelections) {
+    manageActionLabel = language === 'fi' ? 'Poista esto' : 'Unblock';
+    manageActionButtonClass = 'bg-emerald-600 hover:bg-emerald-700 text-white';
+  } else if (hasBlockingSelections && hasUnblockingSelections) {
+    manageActionLabel = language === 'fi' ? 'Tallenna muutokset' : 'Apply changes';
+    manageActionButtonClass = 'bg-amber-600 hover:bg-amber-700 text-white';
+  }
+
   const isSunday = selectedDate.getDay() === 0;
-  const totalBookings = getTotalBookings();
-  const totalBlockedSlots = getTotalBlockedSlots();
   const shellClass = theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-white';
   const panelClass = theme === 'dark' ? 'border-white/10 bg-[#1A1A1C]' : 'border-gray-200 bg-white';
   const mutedPanelClass = theme === 'dark' ? 'border-white/10 bg-[#16181D]' : 'border-gray-200 bg-[#FAFAFA]';
@@ -1254,7 +1378,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const subtleTextClass = 'text-gray-500';
   const outlineButtonClass = theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : '';
   const inputSurfaceClass = theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : 'bg-white';
-  const activeBookingsTab = showArchivedBookings ? 'archived' : 'schedule';
   const createFormPanelClass = theme === 'dark' ? 'bg-[#252525] border-white/10' : 'bg-gray-50 border-gray-200';
 
   const openCreateBookingDrawer = () => {
@@ -1271,10 +1394,15 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const handleBookingsTabChange = (value: string) => {
-    const nextIsArchived = value === 'archived';
-    setShowArchivedBookings(nextIsArchived);
+    const nextTab = value === 'reservation' ? 'reservation' : 'schedule';
+    setActiveBookingsTab(nextTab);
 
-    if (nextIsArchived && archivedBookings.length === 0) {
+    if (nextTab !== 'reservation') {
+      setShowArchivedInline(false);
+      return;
+    }
+
+    if ((showArchivedBookings || showArchivedInline) && archivedBookings.length === 0) {
       void loadArchivedBookings();
     }
   };
@@ -1288,37 +1416,23 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
   return (
     <div className={`rounded-lg border ${shellClass}`}>
-      <div className={`border-b px-5 py-4 ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className={`text-xl font-semibold ${titleClass}`}>{t('scheduling')}</h1>
-            <div className={`mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm ${mutedTextClass}`}>
-              <span>{formatDate(selectedDate)}</span>
-              <span>{totalBookings} {t('totalBookings').toLowerCase()}</span>
-              <span>{totalBlockedSlots} {t('blockedSlots').toLowerCase()}</span>
-              {isBatchBlockMode && <span>{selectedBlockTimes.length} {t('slotsSelected')}</span>}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {onLogout && (
-              <Button variant="outline" size="sm" onClick={onLogout} className={outlineButtonClass}>
-                {language === 'fi' ? 'Kirjaudu ulos' : 'Logout'}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="grid gap-0 xl:grid-cols-[340px_minmax(0,1fr)]">
         <AdminScheduleSidebar
           blockReason={blockReason}
           formatDate={formatDate}
+          applyManageSlotsButtonClass={manageActionButtonClass}
+          applyManageSlotsLabel={manageActionLabel}
+          applyManageSlotsDisabled={selectedBlockTimes.length === 0}
           isBatchBlockMode={isBatchBlockMode}
           isSunday={isSunday}
           language={language}
+          manageModeHasBlockingSelection={hasBlockingSelections}
+          manageModeHint={manageModeHint}
           mutedPanelClass={mutedPanelClass}
           mutedTextClass={mutedTextClass}
           outlineButtonClass={outlineButtonClass}
+          onApplyManageSlots={handleBlockSelectedSlots}
+          onLogout={onLogout}
           panelClass={panelClass}
           selectedBlockTimes={selectedBlockTimes}
           selectedDate={selectedDate}
@@ -1336,43 +1450,55 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
             activeBookingsTab={activeBookingsTab}
             formatBookingGroupLabel={formatBookingGroupLabel}
             getBookingServiceNameForCms={getBookingServiceNameForCms}
-            groupedVisibleBookings={groupedVisibleBookings}
+            reservationBookingGroups={reservationDisplayGroups}
             inputSurfaceClass={inputSurfaceClass}
-            isBatchBlockMode={isBatchBlockMode}
             language={language}
-            mutedPanelClass={mutedPanelClass}
             mutedTextClass={mutedTextClass}
-            onBlockSelectedSlots={handleBlockSelectedSlots}
             onBookingsTabChange={handleBookingsTabChange}
-            onClearSelectedBlockTimes={() => setSelectedBlockTimes([])}
             onCreateBooking={openCreateBookingDrawer}
             onOpenBooking={openBookingFromList}
             onOpenSearchDialog={() => setIsSearchDialogOpen(true)}
+            onToggleArchivedBookings={(checked) => {
+              setShowArchivedBookings(checked);
+              setShowArchivedInline(checked);
+              if (checked && archivedBookings.length === 0) {
+                void loadArchivedBookings();
+              }
+            }}
+            onToggleArchivedInline={(checked) => {
+              setShowArchivedInline(checked);
+              if (checked && archivedBookings.length === 0) {
+                void loadArchivedBookings();
+              }
+            }}
             outlineButtonClass={outlineButtonClass}
             panelClass={panelClass}
             searchQuery={searchQuery}
-            selectedBlockTimes={selectedBlockTimes}
+            showArchivedInline={showArchivedInline}
             showArchivedBookings={showArchivedBookings}
             subtleTextClass={subtleTextClass}
             t={t}
             theme={theme}
             titleClass={titleClass}
-            toolbarDescription={isBatchBlockMode ? t('selectionModeHint') : formatDate(selectedDate)}
-            toolbarTitle={t('scheduling')}
           />
 
-          <AdminScheduleGrid
-            handleSlotClick={handleSlotClick}
-            isSunday={isSunday}
-            loading={loading}
-            mutedTextClass={mutedTextClass}
-            panelClass={panelClass}
-            selectedBlockTimes={selectedBlockTimes}
-            t={t}
-            theme={theme}
-            timeSlots={timeSlots}
-            titleClass={titleClass}
-          />
+          {activeBookingsTab === 'schedule' && (
+            <AdminScheduleGrid
+              handleSlotClick={handleSlotClick}
+              isBatchBlockMode={isBatchBlockMode}
+              isSunday={isSunday}
+              loading={loading}
+              managedSlotIntent={getManagedSlotIntent}
+              mutedTextClass={mutedTextClass}
+              panelClass={panelClass}
+              selectedDateLabel={formatGridDate(selectedDate)}
+              selectedBlockTimes={selectedBlockTimes}
+              t={t}
+              theme={theme}
+              timeSlots={timeSlots}
+              titleClass={titleClass}
+            />
+          )}
         </section>
       </div>
 

@@ -7,10 +7,13 @@ import type { ScheduleTimeSlot } from '../../utils/schedule';
 
 interface AdminScheduleGridProps {
   handleSlotClick: (slot: ScheduleTimeSlot, time: string) => void;
+  isBatchBlockMode: boolean;
   isSunday: boolean;
   loading: boolean;
+  managedSlotIntent: (slot: ScheduleTimeSlot) => 'block' | 'unblock' | 'none';
   mutedTextClass: string;
   panelClass: string;
+  selectedDateLabel: string;
   selectedBlockTimes: string[];
   t: (key: string) => string;
   theme: string;
@@ -20,10 +23,13 @@ interface AdminScheduleGridProps {
 
 export function AdminScheduleGrid({
   handleSlotClick,
+  isBatchBlockMode,
   isSunday,
   loading,
+  managedSlotIntent,
   mutedTextClass,
   panelClass,
+  selectedDateLabel,
   selectedBlockTimes,
   t,
   theme,
@@ -32,6 +38,11 @@ export function AdminScheduleGrid({
 }: AdminScheduleGridProps) {
   return (
     <Card className={`rounded-lg p-4 shadow-none ${panelClass}`}>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <h3 className={`text-base font-semibold ${titleClass} font-bold`}>{t('timeSlots')}</h3>
+        <p className={`font-semibold ${titleClass} text-[16px]`}>{selectedDateLabel}</p>
+      </div>
+
       {isSunday ? (
         <div className="flex h-[520px] flex-col items-center justify-center">
           <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-full ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
@@ -52,21 +63,25 @@ export function AdminScheduleGrid({
               onClick={() => handleSlotClick(slot, slot.time)}
               className={`cursor-pointer rounded-lg border px-4 py-3 transition-colors ${
                 selectedBlockTimes.includes(slot.time)
-                  ? theme === 'dark'
-                    ? 'border-[#E74C3C] bg-[#E74C3C]/10'
-                    : 'border-[#E74C3C] bg-[#FFF1EE]'
+                  ? managedSlotIntent(slot) === 'unblock'
+                    ? theme === 'dark'
+                      ? 'border-emerald-500 bg-emerald-500/10'
+                      : 'border-emerald-500 bg-emerald-50'
+                    : theme === 'dark'
+                      ? 'border-[#E74C3C] bg-[#E74C3C]/10'
+                      : 'border-[#E74C3C] bg-[#FFF1EE]'
                   : slot.isBlocked
                     ? theme === 'dark'
                       ? 'border-red-900/50 bg-red-950/20 hover:bg-red-950/30'
                       : 'border-red-200 bg-red-50 hover:bg-red-100'
                     : slot.bookings.length > 0
                       ? theme === 'dark'
-                        ? 'border-emerald-900/40 bg-emerald-950/10 hover:bg-emerald-950/20'
-                        : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                        ? 'border-blue-900/40 bg-blue-950/10 hover:bg-blue-950/20'
+                        : 'border-blue-200 bg-blue-50 hover:bg-blue-100'
                       : theme === 'dark'
                         ? 'border-white/10 bg-[#16181D] hover:bg-[#202228]'
                         : 'border-gray-200 bg-[#FAFAFA] hover:bg-gray-50'
-              }`}
+              } ${isBatchBlockMode && slot.bookings.length > 0 ? 'opacity-70' : ''}`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -81,7 +96,7 @@ export function AdminScheduleGrid({
                     </Badge>
                   ) : slot.bookings.length > 0 ? (
                     <>
-                      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                      <Badge className="bg-blue-600 text-white hover:bg-blue-600">
                         {t('booked')} ({slot.bookings.length})
                       </Badge>
                       <div className="hidden gap-2 sm:flex">

@@ -39,6 +39,8 @@ export function BookingStep1({
   const [error, setError] = useState<string>('');
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +55,8 @@ export function BookingStep1({
       try {
         const supabase = getSupabaseClient();
         const dateStr = formatDateForSupabase(date);
+        const todayStr = formatDateForSupabase(new Date());
+        const currentHourStartMinutes = new Date().getHours() * 60;
 
         const [{ data: bookingsData, error: bookingsError }, { data: blockedData, error: blockedError }] = await Promise.all([
           supabase
@@ -73,13 +77,19 @@ export function BookingStep1({
           throw blockedError;
         }
 
-        const slots = buildScheduleTimeSlots(date, bookingsData || [], blockedData || []).map((slot) => ({
-          id: slot.time,
-          time: slot.time,
-          // Public booking should only respect admin blocks.
-          // Existing bookings remain visible in CMS but do not close the slot.
-          available: !slot.isBlocked,
-        }));
+        const slots = buildScheduleTimeSlots(date, bookingsData || [], blockedData || []).map((slot) => {
+          const [hours, minutes] = slot.time.split(':').map(Number);
+          const slotMinutes = hours * 60 + minutes;
+          const isPastHourForToday = dateStr === todayStr && slotMinutes < currentHourStartMinutes;
+
+          return {
+            id: slot.time,
+            time: slot.time,
+            // Public booking should only respect admin blocks and same-day cutoff.
+            // Existing bookings remain visible in CMS but do not close the slot.
+            available: !slot.isBlocked && !isPastHourForToday,
+          };
+        });
 
         if (!cancelled) {
           setTimeSlots(slots);
@@ -185,7 +195,13 @@ export function BookingStep1({
                 onDateChange(newDate);
                 setCalendarOpen(false);
               }}
-              disabled={(date) => date < new Date()}
+              today={today}
+              fromDate={today}
+              disabled={{ before: today }}
+              modifiers={{ sunday: { dayOfWeek: [0] } }}
+              modifiersClassNames={{
+                sunday: 'text-muted-foreground opacity-60',
+              }}
               initialFocus
             />
           </PopoverContent>
