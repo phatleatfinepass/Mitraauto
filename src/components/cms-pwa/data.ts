@@ -1,7 +1,7 @@
 import type { BriefingItem } from './CmsPwaBriefingCard';
 import type { CmsPwaTab } from './CmsPwaTabBar';
 import type { BookingRow, CmsPwaRoute, OrderRow, TabSection } from './types';
-import { localizeStoredServiceName } from '../../utils/serviceCatalog';
+import { detectStoredServiceLanguage, localizeStoredServiceName } from '../../utils/serviceCatalog';
 import { isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 
 export const REFRESH_INTERVAL_MS = 30_000;
@@ -335,8 +335,15 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     .map<BriefingItem>((booking) => {
       const bookingMoment = new Date(`${booking.booking_date}T${booking.booking_time}:00`).getTime();
       const soon = Number.isFinite(bookingMoment) && bookingMoment - now <= 24 * 60 * 60 * 1000;
-      const bookingLanguage = booking.booking_language === 'en' ? 'en' : 'fi';
-      const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
+      const detectedLanguage = detectStoredServiceLanguage(booking.service_name);
+      const bookingLanguage = detectedLanguage
+        ?? (booking.booking_language === 'en'
+          ? 'en'
+          : booking.booking_language === 'fi'
+            ? 'fi'
+            : null)
+        ?? 'fi';
+      const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
       return {
         id: booking.id,
         title: localizedServiceName || booking.service_name || copy.bookingFallback,
@@ -374,8 +381,15 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
       const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
       const handoffActive = normalizedStatus === BOOKING_STATUS_HANDOFF;
       const acknowledged = isBookingAcknowledged(booking);
-      const bookingLanguage = booking.booking_language === 'en' ? 'en' : 'fi';
-      const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
+      const detectedLanguage = detectStoredServiceLanguage(booking.service_name);
+      const bookingLanguage = detectedLanguage
+        ?? (booking.booking_language === 'en'
+          ? 'en'
+          : booking.booking_language === 'fi'
+            ? 'fi'
+            : null)
+        ?? 'fi';
+      const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
       const handoffTimestamp = handoffActive ? booking.updated_at ?? null : null;
 
       return {

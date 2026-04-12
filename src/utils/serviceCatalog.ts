@@ -20,6 +20,37 @@ interface ServiceCatalogEntry {
   price: number;
 }
 
+export function detectStoredServiceLanguage(
+  storedServiceName: string | null | undefined,
+): SupportedBookingLanguage | null {
+  if (!storedServiceName) return null;
+
+  const parts = storedServiceName
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return null;
+
+  let fiMatches = 0;
+  let enMatches = 0;
+
+  for (const part of parts) {
+    const normalizedPart = normalizeServiceName(part);
+    const service = SERVICE_CATALOG.find((entry) =>
+      normalizeServiceName(entry.name.fi) === normalizedPart ||
+      normalizeServiceName(entry.name.en) === normalizedPart,
+    );
+
+    if (!service) continue;
+    if (normalizeServiceName(service.name.fi) === normalizedPart) fiMatches += 1;
+    if (normalizeServiceName(service.name.en) === normalizedPart) enMatches += 1;
+  }
+
+  if (fiMatches === 0 && enMatches === 0) return null;
+  return enMatches > fiMatches ? 'en' : 'fi';
+}
+
 const CATEGORY_NAMES: Record<string, { fi: string; en: string }> = {
   'car-care': { fi: 'Autonhoitopalvelut', en: 'Car Care' },
   'tire-services': { fi: 'Rengaspalvelut', en: 'Tire Services' },
