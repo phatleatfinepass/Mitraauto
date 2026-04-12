@@ -22,17 +22,45 @@ function getEnv(name: string) {
   return value;
 }
 
+function formatDateInHelsinki(date: Date) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Helsinki',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+function isBookingAcknowledged(booking: { created_at: string | null; updated_at: string | null }) {
+  if (!booking.created_at || !booking.updated_at) {
+    return false;
+  }
+
+  const createdAt = new Date(booking.created_at).getTime();
+  const updatedAt = new Date(booking.updated_at).getTime();
+
+  if (!Number.isFinite(createdAt) || !Number.isFinite(updatedAt)) {
+    return false;
+  }
+
+  return updatedAt - createdAt > 1000;
+}
+
 async function countBookingAttentionItems() {
-  const { count, error } = await supabase
+  const startDate = formatDateInHelsinki(new Date());
+  const endDate = formatDateInHelsinki(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const { data, error } = await supabase
     .from('bookings')
-    .select('id', { count: 'exact', head: true })
+    .select('id, status, created_at, updated_at, booking_date')
+    .gte('booking_date', startDate)
+    .lte('booking_date', endDate)
     .not('status', 'in', '(cancelled,handoff)');
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return count ?? 0;
+  return (data ?? []).filter((booking) => !isBookingAcknowledged(booking)).length;
 }
 
 async function getSubscriptions() {
@@ -44,7 +72,19 @@ async function getSubscriptions() {
     throw new Error(error.message);
   }
 
-  return data ?? [];
+  const seen = new Set<string>();
+  const unique = [];
+
+  for (const entry of data ?? []) {
+    const endpoint = entry?.endpoint;
+    if (!endpoint || seen.has(endpoint)) {
+      continue;
+    }
+    seen.add(endpoint);
+    unique.push(entry);
+  }
+
+  return unique;
 }
 
 async function removeSubscription(endpoint: string) {
