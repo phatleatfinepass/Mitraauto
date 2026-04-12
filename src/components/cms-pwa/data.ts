@@ -329,6 +329,19 @@ export function isBookingAcknowledged(booking: BookingRow) {
   return updatedAt - createdAt > 1000;
 }
 
+export function isBookingAttentionItem(booking: BookingRow, now = Date.now()) {
+  const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
+  if (normalizedStatus === 'cancelled' || normalizedStatus === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
+    return false;
+  }
+  if (!booking.created_at) {
+    return false;
+  }
+
+  const createdAt = new Date(booking.created_at).getTime();
+  return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
+}
+
 function normalizeBookingLanguage(value: string | null | undefined): 'fi' | 'en' | null {
   const normalized = (value ?? '').trim().toLowerCase();
   if (normalized === 'en' || normalized === 'english') return 'en';
@@ -342,15 +355,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
   const now = Date.now();
 
   const newItems = activeRows
-    .filter((booking) => {
-      const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
-      if (normalizedStatus === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
-        return false;
-      }
-      if (!booking.created_at) return false;
-      const createdAt = new Date(booking.created_at).getTime();
-      return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
-    })
+    .filter((booking) => isBookingAttentionItem(booking, now))
     .slice(0, 8)
     .map<BriefingItem>((booking) => {
       const bookingMoment = new Date(`${booking.booking_date}T${booking.booking_time}:00`).getTime();

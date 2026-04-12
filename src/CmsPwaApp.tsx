@@ -11,7 +11,7 @@ import {
   buildBookingSections,
   buildOrderSections,
   formatShortDateTime,
-  isBookingAcknowledged,
+  isBookingAttentionItem,
   isMissingColumnError,
   REFRESH_INTERVAL_MS,
   rescueSections,
@@ -442,9 +442,19 @@ export function CmsPwaScreen() {
     () => bookingRows.filter((booking) => (booking.status ?? '').toLowerCase() === BOOKING_STATUS_HANDOFF).length,
     [bookingRows],
   );
-  const newBookingBadgeCount = useMemo(() => {
-    return liveSections.booking[0]?.items.length ?? 0;
-  }, [liveSections.booking]);
+  const bookingAttentionCount = useMemo(() => {
+    const now = Date.now();
+    return bookingRows.filter((booking) => isBookingAttentionItem(booking, now)).length;
+  }, [bookingRows]);
+  const rescueAttentionCount = useMemo(() => {
+    return 0;
+  }, []);
+  const orderAttentionCount = useMemo(() => {
+    return 0;
+  }, []);
+  const appBadgeCount = useMemo(() => {
+    return bookingAttentionCount + rescueAttentionCount + orderAttentionCount;
+  }, [bookingAttentionCount, rescueAttentionCount, orderAttentionCount]);
 
   const updateBookingBadge = useCallback((count: number) => {
     if (typeof navigator === 'undefined') {
@@ -455,44 +465,15 @@ export function CmsPwaScreen() {
       setAppBadge?: (count?: number) => Promise<void>;
       clearAppBadge?: () => Promise<void>;
     };
-    const syncRegistrationBadge = async () => {
-      if (!('serviceWorker' in navigator)) {
-        return;
-      }
-
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        const registrationWithBadge = registration as ServiceWorkerRegistration & {
-          setAppBadge?: (count?: number) => Promise<void>;
-          clearAppBadge?: () => Promise<void>;
-        };
-
-        if (count > 0 && registrationWithBadge.setAppBadge) {
-          await registrationWithBadge.setAppBadge(count);
-          return;
-        }
-
-        if (count === 0 && registrationWithBadge.clearAppBadge) {
-          await registrationWithBadge.clearAppBadge();
-        }
-      } catch {
-        // Ignore badge sync failures.
-      }
-    };
 
     if (count > 0 && navWithBadge.setAppBadge) {
       void navWithBadge.setAppBadge(count).catch(() => undefined);
-      void syncRegistrationBadge();
       return;
     }
 
     if (count === 0 && navWithBadge.clearAppBadge) {
       void navWithBadge.clearAppBadge().catch(() => undefined);
-      void syncRegistrationBadge();
-      return;
     }
-
-    void syncRegistrationBadge();
   }, []);
 
   const diagnosticsStatus = useMemo<'healthy' | 'attention'>(() => {
@@ -847,8 +828,8 @@ export function CmsPwaScreen() {
   }, []);
 
   useEffect(() => {
-    updateBookingBadge(newBookingBadgeCount);
-  }, [newBookingBadgeCount, updateBookingBadge]);
+    updateBookingBadge(appBadgeCount);
+  }, [appBadgeCount, updateBookingBadge]);
 
   useEffect(() => {
     if (authState !== 'authenticated' || notificationPermission !== 'granted' || pushSubscribed) {
@@ -936,17 +917,7 @@ export function CmsPwaScreen() {
 
     const now = Date.now();
     const targetIds = bookingRows
-      .filter((booking) => {
-      const status = (booking.status ?? 'confirmed').toLowerCase();
-        if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
-          return false;
-        }
-        if (!booking.created_at) {
-          return false;
-        }
-        const createdAt = new Date(booking.created_at).getTime();
-        return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
-      })
+      .filter((booking) => isBookingAttentionItem(booking, now))
       .map((booking) => booking.id);
 
     if (targetIds.length === 0) {
@@ -1134,7 +1105,7 @@ export function CmsPwaScreen() {
 
       <CmsPwaTabBar
         activeTab={activeTab}
-        counts={{ ...counts, booking: newBookingBadgeCount }}
+        counts={{ ...counts, booking: bookingAttentionCount }}
         onSelect={handleSelectTab}
       />
 
