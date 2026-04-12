@@ -46,10 +46,11 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     if (typeof self.registration.setAppBadge === 'function') {
       try {
-        const count = Number(payload.badgeCount ?? 0);
+        const hasExplicitBadgeCount = payload.badgeCount !== undefined && payload.badgeCount !== null;
+        const count = hasExplicitBadgeCount ? Number(payload.badgeCount) : 1;
         if (count > 0) {
           await self.registration.setAppBadge(count);
-        } else if (typeof self.registration.clearAppBadge === 'function') {
+        } else if (hasExplicitBadgeCount && typeof self.registration.clearAppBadge === 'function') {
           await self.registration.clearAppBadge();
         }
       } catch {
