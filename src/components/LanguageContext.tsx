@@ -939,17 +939,39 @@ const translations: Translations = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+function readStoredLanguage(): Language | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const stored = window.localStorage.getItem('mitra-language');
+    return stored === 'fi' || stored === 'en' ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistLanguage(language: Language) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem('mitra-language', language);
+  } catch {
+    // Ignore storage failures in restricted webview/PWA contexts.
+  }
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>(() => {
+    const stored = readStoredLanguage();
+    if (stored) return stored;
+
     if (typeof window === 'undefined') {
       return 'fi';
     }
-
-    const stored = window.localStorage.getItem('mitra-language');
-    if (stored === 'fi' || stored === 'en') {
-      return stored;
-    }
-
     const browserLanguage = window.navigator.language.toLowerCase();
     return browserLanguage.startsWith('fi') ? 'fi' : 'en';
   });
@@ -959,7 +981,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    window.localStorage.setItem('mitra-language', language);
+    persistLanguage(language);
     document.documentElement.lang = language;
   }, [language]);
 
