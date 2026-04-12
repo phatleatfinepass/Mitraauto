@@ -272,11 +272,8 @@ export function CmsPwaScreen() {
   const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
   const [pushLastError, setPushLastError] = useState('');
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
-  const [pullDistance, setPullDistance] = useState(0);
   const loadRequestIdRef = useRef(0);
   const loadInFlightRef = useRef(false);
-  const touchStartYRef = useRef<number | null>(null);
-  const pullArmedRef = useRef(false);
 
   const configError = useMemo(() => getSupabaseConfigError(), []);
 
@@ -815,39 +812,6 @@ export function CmsPwaScreen() {
     void loadLiveData(undefined, { force: true });
   };
 
-  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (window.scrollY > 0) {
-      touchStartYRef.current = null;
-      pullArmedRef.current = false;
-      return;
-    }
-
-    touchStartYRef.current = event.touches[0]?.clientY ?? null;
-    pullArmedRef.current = false;
-  };
-
-  const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (touchStartYRef.current === null || window.scrollY > 0) {
-      return;
-    }
-
-    const currentY = event.touches[0]?.clientY ?? 0;
-    const delta = Math.max(0, currentY - touchStartYRef.current);
-    const clamped = Math.min(72, delta * 0.55);
-    setPullDistance(clamped);
-    pullArmedRef.current = clamped >= 52;
-  };
-
-  const handleTouchEnd = () => {
-    if (pullArmedRef.current) {
-      handleManualRefresh();
-    }
-
-    touchStartYRef.current = null;
-    pullArmedRef.current = false;
-    setPullDistance(0);
-  };
-
   if (routeState.kind !== 'cms') {
     return <CmsPwaNotFound path={window.location.pathname} />;
   }
@@ -940,21 +904,8 @@ export function CmsPwaScreen() {
   }
 
   return (
-    <div
-      className="min-h-screen bg-[#0E1117] text-white"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
-    >
+    <div className="min-h-screen bg-[#0E1117] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-28 pt-5">
-        <div
-          className="flex items-center justify-center overflow-hidden transition-all duration-200"
-          style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }}
-          aria-hidden="true"
-        >
-          <RefreshCcw className={`h-5 w-5 ${dataLoading || pullArmedRef.current ? 'animate-spin text-[#FF6B35]' : 'text-white/45'}`} />
-        </div>
         <CmsPwaHeader
           headerMinimized={headerMinimized}
           onLogout={handleLogout}
