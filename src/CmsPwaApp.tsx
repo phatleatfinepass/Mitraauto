@@ -155,6 +155,7 @@ function CmsPwaHeader({
   setLanguage,
   diagnosticsStatus,
   onOpenDiagnostics,
+  copy,
 }: {
   headerMinimized: boolean;
   onLogout: () => void;
@@ -235,6 +236,7 @@ function CmsPwaSummary({
   handoffLoading,
   activeBookingHandoffCount,
   onRefresh,
+  copy,
 }: {
   counts: Record<CmsPwaTab, number>;
   lastUpdatedAt: string | null;
