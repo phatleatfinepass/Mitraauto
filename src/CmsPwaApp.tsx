@@ -23,7 +23,16 @@ import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import type { AuthState, BookingRow, LiveSectionsState, LoginState, OrderRow } from './components/cms-pwa/types';
 
 async function resolveAdminSession() {
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        window.setTimeout(() => reject(new Error('Admin session check timed out.')), timeoutMs);
+      }),
+    ]);
+  };
+
+  const { data: { session }, error: sessionError } = await withTimeout(supabase.auth.getSession());
 
   if (sessionError || !session?.user) {
     return { state: 'unauthenticated' as const, email: '' };
@@ -32,13 +41,22 @@ async function resolveAdminSession() {
   let isAdmin = session.user.email === 'admin@mitra-auto.fi';
 
   if (!isAdmin) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
+    try {
+      const { data: profile } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single(),
+      );
 
-    isAdmin = profile?.role === 'admin';
+      isAdmin = profile?.role === 'admin';
+    } catch {
+      return {
+        state: 'unauthenticated' as const,
+        email: '',
+      };
+    }
   }
 
   return {
@@ -422,10 +440,17 @@ export function CmsPwaScreen() {
         return;
       }
 
-      const result = await resolveAdminSession();
-      if (!active) return;
-      setAuthState(result.state);
-      setUserEmail(result.email);
+      try {
+        const result = await resolveAdminSession();
+        if (!active) return;
+        setAuthState(result.state);
+        setUserEmail(result.email);
+      } catch (sessionError: any) {
+        if (!active) return;
+        setAuthState('unauthenticated');
+        setUserEmail('');
+        setError(sessionError?.message || 'Could not verify mobile ops access.');
+      }
     };
 
     syncSession();
@@ -437,10 +462,17 @@ export function CmsPwaScreen() {
         setUserEmail('');
         return;
       }
-      const result = await resolveAdminSession();
-      if (!active) return;
-      setAuthState(result.state);
-      setUserEmail(result.email);
+      try {
+        const result = await resolveAdminSession();
+        if (!active) return;
+        setAuthState(result.state);
+        setUserEmail(result.email);
+      } catch (sessionError: any) {
+        if (!active) return;
+        setAuthState('unauthenticated');
+        setUserEmail('');
+        setError(sessionError?.message || 'Could not verify mobile ops access.');
+      }
     });
 
     return () => {
