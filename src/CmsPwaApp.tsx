@@ -127,17 +127,21 @@ function CmsPwaHeader({
 function CmsPwaSummary({
   counts,
   lastUpdatedAt,
+  dataLoading,
   activeTab,
   onBookingHandoff,
   handoffLoading,
   activeBookingHandoffCount,
+  onRefresh,
 }: {
   counts: Record<CmsPwaTab, number>;
   lastUpdatedAt: string | null;
+  dataLoading: boolean;
   activeTab: CmsPwaTab;
   onBookingHandoff: () => void;
   handoffLoading: boolean;
   activeBookingHandoffCount: number;
+  onRefresh: () => void;
 }) {
   const cards: Array<{ tab: 'rescue' | 'booking' | 'order'; label: string; count: number }> = [
     { tab: 'rescue', label: 'Rescue', count: counts.rescue },
@@ -155,6 +159,15 @@ function CmsPwaSummary({
             {lastUpdatedAt ? ` Updated ${formatShortDateTime(lastUpdatedAt)}.` : ''}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={dataLoading}
+          className="inline-flex h-10 w-10 items-center justify-center text-[#FF6B35] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Force refresh"
+        >
+          <RefreshCcw className={`h-5 w-5 ${dataLoading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2">
         {cards.map((card) => {
@@ -226,15 +239,6 @@ function CmsPwaScreenState({
                     ? 'Order queue'
                     : 'Planned tools'}
             </h2>
-            <p className="mt-1 text-sm text-white/50">
-              {activeTab === 'rescue'
-                ? 'Critical items first, then acknowledged work.'
-                : activeTab === 'booking'
-                  ? 'New and upcoming bookings requiring action.'
-                  : activeTab === 'order'
-                    ? 'Orders that need operator review or customer follow-up.'
-                    : 'Modules reserved for later rollout.'}
-            </p>
           </div>
           {userEmail ? <p className="text-[11px] text-white/35">{userEmail}</p> : null}
         </div>
@@ -456,7 +460,7 @@ export function CmsPwaScreen() {
 
       const requestId = ++loadRequestIdRef.current;
       const isStale = () => requestId !== loadRequestIdRef.current;
-      const withTimeout = async <T,>(promise: Promise<T>, label: string, timeoutMs = 12000): Promise<T> => {
+      const withTimeout = async <T,>(promise: Promise<T>, label: string, timeoutMs = 20000): Promise<T> => {
         return await Promise.race([
           promise,
           new Promise<T>((_, reject) => {
@@ -917,10 +921,12 @@ export function CmsPwaScreen() {
         <CmsPwaSummary
           counts={counts}
           lastUpdatedAt={lastUpdatedAt}
+          dataLoading={dataLoading}
           activeTab={activeTab}
           onBookingHandoff={handleBookingHandoff}
           handoffLoading={handoffLoading}
           activeBookingHandoffCount={activeBookingHandoffCount}
+          onRefresh={handleManualRefresh}
         />
         <CmsPwaScreenState
           activeTab={activeTab}
