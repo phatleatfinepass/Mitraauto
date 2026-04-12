@@ -206,7 +206,7 @@ export function BookingStep3({
                 id="name"
                 type="text"
                 name="name"
-                autoComplete="name"
+                autoComplete="section-booking name"
                 value={contactInfo.name}
                 onChange={(e) => onContactInfoChange('name', e.target.value)}
                 placeholder={t('booking.step3.fullNamePlaceholder')}
@@ -230,7 +230,7 @@ export function BookingStep3({
                 id="phone"
                 type="tel"
                 name="tel"
-                autoComplete="tel"
+                autoComplete="section-booking tel"
                 inputMode="tel"
                 value={contactInfo.phone}
                 onChange={(e) => onContactInfoChange('phone', normalizeFinnishPhoneInput(e.target.value))}
@@ -256,7 +256,7 @@ export function BookingStep3({
                 id="email"
                 type="email"
                 name="email"
-                autoComplete="email"
+                autoComplete="section-booking email"
                 inputMode="email"
                 value={contactInfo.email}
                 onChange={(e) => onContactInfoChange('email', e.target.value)}
