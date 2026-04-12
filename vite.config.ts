@@ -5,12 +5,6 @@
   import path from 'path';
   import { execSync } from 'child_process';
 
-function formatBuildStamp() {
-  const now = new Date();
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} @${pad(now.getHours())}.${pad(now.getMinutes())}`;
-}
-
 function getGitCommit() {
   try {
     return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
@@ -20,7 +14,7 @@ function getGitCommit() {
 }
 
 const appCommit = getGitCommit();
-const appBuildStamp = formatBuildStamp();
+const appBuildIso = new Date().toISOString();
 
 function figmaAssetResolver() {
   return {
@@ -89,7 +83,7 @@ export default defineConfig({
     },
     define: {
       __APP_COMMIT__: JSON.stringify(appCommit),
-      __APP_BUILD_STAMP__: JSON.stringify(appBuildStamp),
+      __APP_BUILD_ISO__: JSON.stringify(appBuildIso),
     },
     server: {
       port: 3000,

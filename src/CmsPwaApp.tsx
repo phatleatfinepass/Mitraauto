@@ -23,7 +23,7 @@ import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import type { AuthState, BookingRow, LiveSectionsState, LoginState, OrderRow } from './components/cms-pwa/types';
 
 declare const __APP_COMMIT__: string;
-declare const __APP_BUILD_STAMP__: string;
+declare const __APP_BUILD_ISO__: string;
 
 const CMS_PWA_COPY = {
   fi: {
@@ -36,7 +36,6 @@ const CMS_PWA_COPY = {
     signOut: 'Kirjaudu ulos',
     operationalSummary: 'Operatiivinen yhteenveto',
     versionLabel: 'Versio',
-    developingLabel: 'Tämä on kehitysversio',
     updateLabel: 'Päivitys',
     updated: 'Päivitetty',
     forceRefresh: 'Pakota päivitys',
@@ -80,7 +79,6 @@ const CMS_PWA_COPY = {
     signOut: 'Sign out',
     operationalSummary: 'Operational summary',
     versionLabel: 'Version',
-    developingLabel: 'This is for developing',
     updateLabel: 'Update',
     updated: 'Updated',
     forceRefresh: 'Force refresh',
@@ -115,6 +113,33 @@ const CMS_PWA_COPY = {
     rerunDiagnostics: 'Re-run diagnostics',
   },
 } as const;
+
+function formatBuildStampLocal(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const parts = new Intl.DateTimeFormat(undefined, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const byType = new Map(parts.map((part) => [part.type, part.value]));
+  const day = byType.get('day');
+  const month = byType.get('month');
+  const year = byType.get('year');
+  const hour = byType.get('hour');
+  const minute = byType.get('minute');
+
+  if (!day || !month || !year || !hour || !minute) {
+    return value;
+  }
+
+  return `${day}.${month}.${year} @${hour}.${minute}`;
+}
 
 async function resolveAdminSession() {
   const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
@@ -265,7 +290,7 @@ function CmsPwaSummary({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-white">{copy.operationalSummary}</p>
-          <p className="mt-1 text-xs text-white/55">{`${copy.versionLabel} ${__APP_COMMIT__} (${copy.developingLabel}). ${copy.updateLabel} ${__APP_BUILD_STAMP__}`}</p>
+          <p className="mt-1 text-xs text-white/55">{`${copy.versionLabel} ${__APP_COMMIT__}. ${copy.updateLabel} ${formatBuildStampLocal(__APP_BUILD_ISO__)}`}</p>
         </div>
         <button
           type="button"

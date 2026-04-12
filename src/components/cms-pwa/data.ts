@@ -318,6 +318,13 @@ export function isBookingAcknowledged(booking: BookingRow) {
   return updatedAt - createdAt > 1000;
 }
 
+function normalizeBookingLanguage(value: string | null | undefined): 'fi' | 'en' | null {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'en' || normalized === 'english') return 'en';
+  if (normalized === 'fi' || normalized === 'finnish' || normalized === 'suomi') return 'fi';
+  return null;
+}
+
 export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en'): TabSection[] {
   const copy = BOOKING_CARD_COPY[opsLanguage];
   const activeRows = rows.filter((booking) => (booking.status ?? 'confirmed').toLowerCase() !== 'cancelled');
@@ -338,12 +345,9 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
       const bookingMoment = new Date(`${booking.booking_date}T${booking.booking_time}:00`).getTime();
       const soon = Number.isFinite(bookingMoment) && bookingMoment - now <= 24 * 60 * 60 * 1000;
       const detectedLanguage = detectStoredServiceLanguage(booking.service_name);
-      const bookingLanguage = detectedLanguage
-        ?? (booking.booking_language === 'en'
-          ? 'en'
-          : booking.booking_language === 'fi'
-            ? 'fi'
-            : null)
+      const explicitBookingLanguage = normalizeBookingLanguage(booking.booking_language);
+      const bookingLanguage = explicitBookingLanguage
+        ?? detectedLanguage
         ?? 'fi';
       const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
       return {
@@ -384,12 +388,9 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
       const handoffActive = normalizedStatus === BOOKING_STATUS_HANDOFF;
       const acknowledged = isBookingAcknowledged(booking);
       const detectedLanguage = detectStoredServiceLanguage(booking.service_name);
-      const bookingLanguage = detectedLanguage
-        ?? (booking.booking_language === 'en'
-          ? 'en'
-          : booking.booking_language === 'fi'
-            ? 'fi'
-            : null)
+      const explicitBookingLanguage = normalizeBookingLanguage(booking.booking_language);
+      const bookingLanguage = explicitBookingLanguage
+        ?? detectedLanguage
         ?? 'fi';
       const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
       const handoffTimestamp = handoffActive ? booking.updated_at ?? null : null;
