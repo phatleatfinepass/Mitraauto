@@ -44,14 +44,14 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil((async () => {
-    if (typeof self.registration.setAppBadge === 'function') {
+    if (self.navigator && typeof self.navigator.setAppBadge === 'function') {
       try {
         const hasExplicitBadgeCount = payload.badgeCount !== undefined && payload.badgeCount !== null;
         const count = hasExplicitBadgeCount ? Number(payload.badgeCount) : 1;
         if (count > 0) {
-          await self.registration.setAppBadge(count);
-        } else if (hasExplicitBadgeCount && typeof self.registration.clearAppBadge === 'function') {
-          await self.registration.clearAppBadge();
+          await self.navigator.setAppBadge(count);
+        } else if (hasExplicitBadgeCount && typeof self.navigator.clearAppBadge === 'function') {
+          await self.navigator.clearAppBadge();
         }
       } catch {
         // Ignore unsupported badge update failures.
