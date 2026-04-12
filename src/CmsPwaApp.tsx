@@ -11,6 +11,7 @@ import {
   buildBookingSections,
   buildOrderSections,
   formatShortDateTime,
+  isBookingAcknowledged,
   isMissingColumnError,
   REFRESH_INTERVAL_MS,
   rescueSections,
@@ -295,8 +296,13 @@ export function CmsPwaScreen() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const loadRequestIdRef = useRef(0);
   const loadInFlightRef = useRef(false);
+  const authStateRef = useRef<AuthState>('loading');
 
   const configError = useMemo(() => getSupabaseConfigError(), []);
+
+  useEffect(() => {
+    authStateRef.current = authState;
+  }, [authState]);
 
   const counts = useMemo(() => ({
     rescue: rescueSections.reduce((sum, section) => sum + section.items.filter((item) => item.tone !== 'done').length, 0),
@@ -313,7 +319,7 @@ export function CmsPwaScreen() {
     const now = Date.now();
     return bookingRows.filter((booking) => {
       const status = (booking.status ?? 'confirmed').toLowerCase();
-      if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF) {
+      if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
         return false;
       }
       if (!booking.created_at) {
@@ -446,8 +452,10 @@ export function CmsPwaScreen() {
         setUserEmail(result.email);
       } catch (sessionError: any) {
         if (!active) return;
-        setAuthState('unauthenticated');
-        setUserEmail('');
+        if (authStateRef.current === 'loading') {
+          setAuthState('unauthenticated');
+          setUserEmail('');
+        }
         setError(sessionError?.message || 'Could not verify mobile ops access.');
       }
     };
@@ -468,8 +476,6 @@ export function CmsPwaScreen() {
         setUserEmail(result.email);
       } catch (sessionError: any) {
         if (!active) return;
-        setAuthState('unauthenticated');
-        setUserEmail('');
         setError(sessionError?.message || 'Could not verify mobile ops access.');
       }
     });
@@ -786,8 +792,8 @@ export function CmsPwaScreen() {
     const now = Date.now();
     const targetIds = bookingRows
       .filter((booking) => {
-        const status = (booking.status ?? 'confirmed').toLowerCase();
-        if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF) {
+      const status = (booking.status ?? 'confirmed').toLowerCase();
+        if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
           return false;
         }
         if (!booking.created_at) {

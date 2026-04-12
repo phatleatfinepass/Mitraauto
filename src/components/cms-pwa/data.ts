@@ -254,6 +254,21 @@ export function isMissingColumnError(error: any, column: string) {
   return text.includes('column') && text.includes(column.toLowerCase());
 }
 
+export function isBookingAcknowledged(booking: BookingRow) {
+  if (!booking.created_at || !booking.updated_at) {
+    return false;
+  }
+
+  const createdAt = new Date(booking.created_at).getTime();
+  const updatedAt = new Date(booking.updated_at).getTime();
+
+  if (!Number.isFinite(createdAt) || !Number.isFinite(updatedAt)) {
+    return false;
+  }
+
+  return updatedAt - createdAt > 1000;
+}
+
 export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en'): TabSection[] {
   const activeRows = rows.filter((booking) => (booking.status ?? 'confirmed').toLowerCase() !== 'cancelled');
   const now = Date.now();
@@ -261,7 +276,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
   const newItems = activeRows
     .filter((booking) => {
       const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
-      if (normalizedStatus === BOOKING_STATUS_HANDOFF) {
+      if (normalizedStatus === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
         return false;
       }
       if (!booking.created_at) return false;
@@ -305,6 +320,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     .map<BriefingItem>((booking) => {
       const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
       const handoffActive = normalizedStatus === BOOKING_STATUS_HANDOFF;
+      const acknowledged = isBookingAcknowledged(booking);
       const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
       const handoffTimestamp = handoffActive ? booking.updated_at ?? null : null;
 
@@ -312,10 +328,10 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
         id: `${booking.id}-upcoming`,
         title: localizedServiceName || booking.service_name || 'Upcoming booking',
         subtitle: booking.customer_name || booking.customer_email || 'Booking scheduled',
-        status: handoffActive ? 'Handoff active' : 'Scheduled',
+        status: handoffActive ? 'Handoff active' : acknowledged ? 'Confirmed' : 'Scheduled',
         secondaryStatus: handoffTimestamp ? `Handoff ${formatShortDateTime(handoffTimestamp)}` : undefined,
         time: formatCalendarDateTimeLabel(booking.booking_date, booking.booking_time),
-        tone: handoffActive ? 'warning' : 'done',
+        tone: handoffActive ? 'warning' : acknowledged ? 'done' : 'done',
         licensePlate: booking.license_plate || undefined,
         phone: booking.customer_phone || undefined,
         owner: booking.customer_name || undefined,
