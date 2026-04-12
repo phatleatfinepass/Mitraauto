@@ -48,7 +48,8 @@ export function BookingStep3({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>('');
 
-  const validateAndConfirm = async () => {
+  const validateAndConfirm = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setErrors({});
     setError('');
 
@@ -181,7 +182,7 @@ export function BookingStep3({
   };
 
   return (
-    <div className="space-y-6">
+    <form className="space-y-6" autoComplete="on" onSubmit={validateAndConfirm}>
       {/* Desktop: Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Contact Information */}
@@ -206,7 +207,7 @@ export function BookingStep3({
                 id="name"
                 type="text"
                 name="name"
-                autoComplete="section-booking name"
+                autoComplete="name"
                 value={contactInfo.name}
                 onChange={(e) => onContactInfoChange('name', e.target.value)}
                 placeholder={t('booking.step3.fullNamePlaceholder')}
@@ -229,8 +230,8 @@ export function BookingStep3({
               <Input
                 id="phone"
                 type="tel"
-                name="tel"
-                autoComplete="section-booking tel"
+                name="phone"
+                autoComplete="tel"
                 inputMode="tel"
                 value={contactInfo.phone}
                 onChange={(e) => onContactInfoChange('phone', normalizeFinnishPhoneInput(e.target.value))}
@@ -256,7 +257,7 @@ export function BookingStep3({
                 id="email"
                 type="email"
                 name="email"
-                autoComplete="section-booking email"
+                autoComplete="email"
                 inputMode="email"
                 value={contactInfo.email}
                 onChange={(e) => onContactInfoChange('email', e.target.value)}
@@ -277,11 +278,12 @@ export function BookingStep3({
               <Label htmlFor="notes" className="transition-all group-hover:text-ring">
                 {t('booking.step3.additionalNotes')} <span className="text-muted-foreground">{t('booking.step3.optional')}</span>
               </Label>
-              <Textarea
-                id="notes"
-                value={contactInfo.notes}
-                onChange={(e) => onContactInfoChange('notes', e.target.value)}
-                placeholder={t('booking.step3.notesPlaceholder')}
+            <Textarea
+              id="notes"
+              name="notes"
+              value={contactInfo.notes}
+              onChange={(e) => onContactInfoChange('notes', e.target.value)}
+              placeholder={t('booking.step3.notesPlaceholder')}
                 rows={4}
                 className="resize-none transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
               />
@@ -339,13 +341,13 @@ export function BookingStep3({
         </Button>
         <Button
           id="cta_confirm"
-          onClick={validateAndConfirm}
+          type="submit"
           className="w-full sm:flex-1"
           disabled={loading}
         >
           {loading ? t('booking.confirming') : t('booking.confirmBooking')}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
