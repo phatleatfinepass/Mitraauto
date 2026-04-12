@@ -223,8 +223,19 @@ export function formatShortDateTime(value: string | null | undefined) {
   }).format(date);
 }
 
+function normalizeBookingTimeValue(value: string) {
+  const trimmed = value.trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}:00`;
+  }
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed;
+}
+
 function formatBookingSlot(date: string, time: string) {
-  const parsed = new Date(`${date}T${time}:00`);
+  const parsed = new Date(`${date}T${normalizeBookingTimeValue(time)}`);
   if (Number.isNaN(parsed.getTime())) return `${date} ${time}`;
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
@@ -235,7 +246,7 @@ function formatBookingSlot(date: string, time: string) {
 }
 
 function formatCalendarDateTimeLabel(date: string, time: string) {
-  const parsed = new Date(`${date}T${time}:00`);
+  const parsed = new Date(`${date}T${normalizeBookingTimeValue(time)}`);
   if (Number.isNaN(parsed.getTime())) return `${date} ${time}`;
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',

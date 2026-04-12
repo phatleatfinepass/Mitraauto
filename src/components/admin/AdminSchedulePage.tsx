@@ -31,6 +31,7 @@ import { getSupabaseClient } from '../../utils/supabase/client';
 import { formatDateForSupabase } from '../../utils/date';
 import { buildScheduleTimeSlots, generateScheduleSlots, ScheduleBlockedSlot, ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
 import {
+  detectStoredServiceLanguage,
   getLocalizedServiceCategories,
   getServiceIdsFromStoredServiceName,
   localizeStoredServiceName,
@@ -304,11 +305,21 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }));
   };
 
+  const normalizeAdminBookingLanguage = (
+    bookingLanguage?: string | null,
+    serviceName?: string | null,
+  ): SupportedBookingLanguage => {
+    const normalized = (bookingLanguage ?? '').trim().toLowerCase();
+    if (normalized === 'en' || normalized === 'english') return 'en';
+    if (normalized === 'fi' || normalized === 'finnish' || normalized === 'suomi') return 'fi';
+    return detectStoredServiceLanguage(serviceName) ?? 'fi';
+  };
+
   const buildBookingFormState = (booking?: Partial<ScheduleBooking>, fallbackTime = ''): AdminBookingFormState => ({
     license_plate: booking?.license_plate || '',
     booking_date: booking?.booking_date || formatDateForSupabase(selectedDate),
     booking_time: booking?.booking_time || fallbackTime,
-    booking_language: booking?.booking_language === 'en' ? 'en' : 'fi',
+    booking_language: normalizeAdminBookingLanguage(booking?.booking_language, booking?.service_name),
     service_name: booking?.service_name || '',
     customer_name: booking?.customer_name || '',
     customer_phone: booking?.customer_phone || '',
