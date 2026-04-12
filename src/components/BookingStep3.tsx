@@ -198,13 +198,13 @@ export function BookingStep3({
             {/* Name */}
             <div className="space-y-2 group">
               <Label 
-                htmlFor="name"
+                htmlFor="booking-name"
                 className={`transition-all ${errors.name ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
                 {t('booking.step3.fullName')} *
               </Label>
               <Input
-                id="name"
+                id="booking-name"
                 type="text"
                 name="name"
                 autoComplete="name"
@@ -222,15 +222,15 @@ export function BookingStep3({
             {/* Phone */}
             <div className="space-y-2 group">
               <Label 
-                htmlFor="phone"
+                htmlFor="booking-tel"
                 className={`transition-all ${errors.phone ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
                 {t('booking.step3.phoneNumber')} *
               </Label>
               <Input
-                id="phone"
+                id="booking-tel"
                 type="tel"
-                name="phone"
+                name="tel"
                 autoComplete="tel"
                 inputMode="tel"
                 value={contactInfo.phone}
@@ -248,13 +248,13 @@ export function BookingStep3({
             {/* Email */}
             <div className="space-y-2 group">
               <Label 
-                htmlFor="email"
+                htmlFor="booking-email"
                 className={`transition-all ${errors.email ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
                 {t('booking.step3.emailLabel')}
               </Label>
               <Input
-                id="email"
+                id="booking-email"
                 type="email"
                 name="email"
                 autoComplete="email"

@@ -351,12 +351,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="given-name" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('firstName')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="firstName"
-                      name="firstName"
+                      id="given-name"
+                      name="given-name"
                       autoComplete="given-name"
                       required
                       value={formData.firstName}
@@ -370,12 +370,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   </div>
                   
                   <div>
-                    <Label htmlFor="lastName" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="family-name" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('lastName')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="lastName"
-                      name="lastName"
+                      id="family-name"
+                      name="family-name"
                       autoComplete="family-name"
                       required
                       value={formData.lastName}
@@ -410,13 +410,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   </div>
                   
                   <div>
-                    <Label htmlFor="phone" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="tel" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('phone')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="phone"
+                      id="tel"
                       type="tel"
-                      name="phone"
+                      name="tel"
                       autoComplete="tel"
                       inputMode="tel"
                       required
@@ -447,13 +447,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="shippingAddress" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="shipping-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('address')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="shippingAddress"
-                      name="shippingAddress"
-                      autoComplete="shipping street-address"
+                      id="shipping-address-line1"
+                      name="shipping address-line1"
+                      autoComplete="shipping address-line1"
                       required
                       value={formData.shippingAddress}
                       onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
@@ -467,12 +467,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="shippingCity" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                      <Label htmlFor="shipping-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                         {t('city')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="shippingCity"
-                        name="shippingCity"
+                        id="shipping-address-level2"
+                        name="shipping address-level2"
                         autoComplete="shipping address-level2"
                         required
                         value={formData.shippingCity}
@@ -486,12 +486,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     </div>
                     
                     <div>
-                      <Label htmlFor="shippingPostalCode" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                      <Label htmlFor="shipping-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                         {t('postalCode')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="shippingPostalCode"
-                        name="shippingPostalCode"
+                        id="shipping-postal-code"
+                        name="shipping postal-code"
                         autoComplete="shipping postal-code"
                         inputMode="numeric"
                         required
@@ -536,13 +536,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 {!formData.sameAsShipping && (
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="billingAddress" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                      <Label htmlFor="billing-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                         {t('address')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="billingAddress"
-                        name="billingAddress"
-                        autoComplete="billing street-address"
+                        id="billing-address-line1"
+                        name="billing address-line1"
+                        autoComplete="billing address-line1"
                         required={!formData.sameAsShipping}
                         value={formData.billingAddress}
                         onChange={(e) => handleInputChange('billingAddress', e.target.value)}
@@ -556,12 +556,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="billingCity" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                        <Label htmlFor="billing-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                           {t('city')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          id="billingCity"
-                          name="billingCity"
+                          id="billing-address-level2"
+                          name="billing address-level2"
                           autoComplete="billing address-level2"
                           required={!formData.sameAsShipping}
                           value={formData.billingCity}
@@ -575,12 +575,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       </div>
                       
                       <div>
-                        <Label htmlFor="billingPostalCode" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                        <Label htmlFor="billing-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                           {t('postalCode')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          id="billingPostalCode"
-                          name="billingPostalCode"
+                          id="billing-postal-code"
+                          name="billing postal-code"
                           autoComplete="billing postal-code"
                           inputMode="numeric"
                           required={!formData.sameAsShipping}
