@@ -442,20 +442,9 @@ export function CmsPwaScreen() {
     () => bookingRows.filter((booking) => (booking.status ?? '').toLowerCase() === BOOKING_STATUS_HANDOFF).length,
     [bookingRows],
   );
-  const unhandedNewBookingRows = useMemo(() => {
-    const now = Date.now();
-    return bookingRows.filter((booking) => {
-      const status = (booking.status ?? 'confirmed').toLowerCase();
-      if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
-        return false;
-      }
-      if (!booking.created_at) {
-        return false;
-      }
-      const createdAt = new Date(booking.created_at).getTime();
-      return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
-    });
-  }, [bookingRows]);
+  const newBookingBadgeCount = useMemo(() => {
+    return liveSections.booking[0]?.items.length ?? 0;
+  }, [liveSections.booking]);
 
   const updateBookingBadge = useCallback((count: number) => {
     if (typeof navigator === 'undefined') {
@@ -829,8 +818,8 @@ export function CmsPwaScreen() {
   }, []);
 
   useEffect(() => {
-    updateBookingBadge(unhandedNewBookingRows.length);
-  }, [unhandedNewBookingRows.length, updateBookingBadge]);
+    updateBookingBadge(newBookingBadgeCount);
+  }, [newBookingBadgeCount, updateBookingBadge]);
 
   useEffect(() => {
     if (authState !== 'authenticated' || notificationPermission !== 'granted' || pushSubscribed) {
@@ -1118,7 +1107,7 @@ export function CmsPwaScreen() {
 
       <CmsPwaTabBar
         activeTab={activeTab}
-        counts={{ ...counts, booking: unhandedNewBookingRows.length }}
+        counts={{ ...counts, booking: newBookingBadgeCount }}
         onSelect={handleSelectTab}
       />
 
