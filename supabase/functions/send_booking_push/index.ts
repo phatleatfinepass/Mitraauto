@@ -66,21 +66,23 @@ async function countBookingAttentionItems() {
 async function getSubscriptions() {
   const { data, error } = await supabase
     .from(TABLE)
-    .select('endpoint, subscription');
+    .select('user_id, user_email, endpoint, subscription, updated_at')
+    .order('updated_at', { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const seen = new Set<string>();
+  const seenUsers = new Set<string>();
   const unique = [];
 
   for (const entry of data ?? []) {
     const endpoint = entry?.endpoint;
-    if (!endpoint || seen.has(endpoint)) {
+    const userKey = entry?.user_id || entry?.user_email || endpoint;
+    if (!endpoint || seenUsers.has(userKey)) {
       continue;
     }
-    seen.add(endpoint);
+    seenUsers.add(userKey);
     unique.push(entry);
   }
 

@@ -81,6 +81,16 @@ async function upsertSubscription(userId: string, userEmail: string | null, subs
   if (error) {
     throw new Error(error.message);
   }
+
+  const { error: cleanupError } = await supabase
+    .from(TABLE)
+    .delete()
+    .eq('user_id', userId)
+    .neq('endpoint', subscription.endpoint);
+
+  if (cleanupError) {
+    throw new Error(cleanupError.message);
+  }
 }
 
 Deno.serve(async (request) => {
