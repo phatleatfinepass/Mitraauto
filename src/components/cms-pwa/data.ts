@@ -2,6 +2,7 @@ import type { BriefingItem } from './CmsPwaBriefingCard';
 import type { CmsPwaTab } from './CmsPwaTabBar';
 import type { BookingRow, CmsPwaRoute, OrderRow, TabSection } from './types';
 import { localizeStoredServiceName } from '../../utils/serviceCatalog';
+import { isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 
 export const REFRESH_INTERVAL_MS = 30_000;
 export const BOOKING_STATUS_HANDOFF = 'handoff';
@@ -17,10 +18,10 @@ function buildTelHref(phone?: string | null) {
 }
 
 export const tabPathMap: Record<CmsPwaTab, string> = {
-  rescue: '/pwa/cms',
-  booking: '/pwa/cms/booking',
-  order: '/pwa/cms/order',
-  tools: '/pwa/cms/tools',
+  rescue: pwaPath('/'),
+  booking: pwaPath('/booking'),
+  order: pwaPath('/order'),
+  tools: pwaPath('/tools'),
 };
 
 export const toolSections: Array<{
@@ -129,7 +130,23 @@ export const rescueSections: TabSection[] = [
 ];
 
 export function resolveCmsPwaRoute(pathname: string): CmsPwaRoute {
-  const normalized = pathname.replace(/\/+$/, '') || '/pwa';
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+
+  if (isStandalonePwaDeploy) {
+    if (normalized === '/cms' || normalized === '/cms/rescue') {
+      return { kind: 'cms', tab: 'rescue' };
+    }
+    if (normalized === '/cms/booking') {
+      return { kind: 'cms', tab: 'booking' };
+    }
+    if (normalized === '/cms/order') {
+      return { kind: 'cms', tab: 'order' };
+    }
+    if (normalized === '/cms/tools') {
+      return { kind: 'cms', tab: 'tools' };
+    }
+    return { kind: 'not-found' };
+  }
 
   if (normalized === '/pwa/cms' || normalized === '/pwa/cms/rescue') {
     return { kind: 'cms', tab: 'rescue' };

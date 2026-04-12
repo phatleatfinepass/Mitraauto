@@ -8,7 +8,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || '/pwa/cms/booking';
+  const targetUrl = event.notification?.data?.url || '/cms/booking';
 
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -40,7 +40,7 @@ self.addEventListener('push', (event) => {
     icon: payload.icon || '/icons/mitra-app-icon-512.png',
     badge: payload.badge || '/icons/mitra-app-icon-512.png',
     tag: payload.tag,
-    data: payload.data || { url: '/pwa/cms/booking' },
+    data: payload.data || { url: '/cms/booking' },
   };
 
   event.waitUntil((async () => {
