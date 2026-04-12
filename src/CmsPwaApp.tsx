@@ -443,8 +443,7 @@ export function CmsPwaScreen() {
     [bookingRows],
   );
   const bookingAttentionCount = useMemo(() => {
-    const now = Date.now();
-    return bookingRows.filter((booking) => isBookingAttentionItem(booking, now)).length;
+    return bookingRows.filter((booking) => isBookingAttentionItem(booking)).length;
   }, [bookingRows]);
   const rescueAttentionCount = useMemo(() => {
     return 0;
@@ -915,9 +914,8 @@ export function CmsPwaScreen() {
   const handleBookingHandoff = async () => {
     if (handoffLoading) return;
 
-    const now = Date.now();
     const targetIds = bookingRows
-      .filter((booking) => isBookingAttentionItem(booking, now))
+      .filter((booking) => isBookingAttentionItem(booking))
       .map((booking) => booking.id);
 
     if (targetIds.length === 0) {
