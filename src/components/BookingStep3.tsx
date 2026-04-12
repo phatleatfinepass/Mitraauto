@@ -8,7 +8,7 @@ import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { formatDateForSupabase } from '../utils/date';
-import { normalizeFinnishPhone } from '../utils/phone';
+import { FINNISH_PHONE_PREFIX, hasFinnishPhoneValue, normalizeFinnishPhone, normalizeFinnishPhoneInput } from '../utils/phone';
 
 interface BookingStep3Props {
   licensePlate: string;
@@ -62,7 +62,7 @@ export function BookingStep3({
     // Validate phone
     const normalizedPhone = normalizeFinnishPhone(contactInfo.phone);
 
-    if (!normalizedPhone) {
+    if (!hasFinnishPhoneValue(normalizedPhone)) {
       newErrors.phone = t('booking.error.phoneRequired');
     } else if (!/^\+?\d+$/.test(normalizedPhone.replace(/\s+/g, ''))) {
       newErrors.phone = t('booking.error.invalidPhone');
@@ -233,9 +233,9 @@ export function BookingStep3({
                 autoComplete="tel"
                 inputMode="tel"
                 value={contactInfo.phone}
-                onChange={(e) => onContactInfoChange('phone', e.target.value)}
-                onBlur={(e) => onContactInfoChange('phone', normalizeFinnishPhone(e.target.value))}
-                placeholder={t('booking.step3.phonePlaceholder')}
+                onChange={(e) => onContactInfoChange('phone', normalizeFinnishPhoneInput(e.target.value))}
+                onBlur={(e) => onContactInfoChange('phone', normalizeFinnishPhoneInput(e.target.value))}
+                placeholder={FINNISH_PHONE_PREFIX}
                 className={`transition-all ${errors.phone ? 'border-destructive' : 'hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]'}`}
                 aria-invalid={!!errors.phone}
               />

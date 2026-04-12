@@ -1,3 +1,5 @@
+export const FINNISH_PHONE_PREFIX = '+358';
+
 export function normalizeFinnishPhone(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return '';
@@ -25,4 +27,23 @@ export function normalizeFinnishPhone(value: string) {
   }
 
   return compact;
+}
+
+export function normalizeFinnishPhoneInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  const compact = trimmed.replace(/[\s()-]+/g, '');
+  const normalized = normalizeFinnishPhone(compact);
+
+  if (!normalized || normalized === '+') {
+    return '';
+  }
+
+  return normalized;
+}
+
+export function hasFinnishPhoneValue(value: string) {
+  const normalized = normalizeFinnishPhone(value);
+  return Boolean(normalized) && normalized !== FINNISH_PHONE_PREFIX;
 }

@@ -13,7 +13,7 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { calculateLinePricing } from '../utils/pricing';
-import { normalizeFinnishPhone } from '../utils/phone';
+import { FINNISH_PHONE_PREFIX, hasFinnishPhoneValue, normalizeFinnishPhone, normalizeFinnishPhoneInput } from '../utils/phone';
 
 const VAT_RATE = 0.255;
 const VAT_PERCENT = 25.5;
@@ -34,7 +34,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     firstName: '',
     lastName: '',
     email: '',
-    phone: '',
+    phone: FINNISH_PHONE_PREFIX,
     
     // Billing Address
     billingAddress: '',
@@ -140,7 +140,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     // Validate phone
     const normalizedPhone = normalizeFinnishPhone(formData.phone);
 
-    if (!normalizedPhone) {
+    if (!hasFinnishPhoneValue(normalizedPhone)) {
       toast.error(
         language === 'fi'
           ? 'Anna puhelinnumero'
@@ -295,7 +295,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const vatAmount = totalPrice * VAT_RATE;
@@ -417,7 +420,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       required
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
-                      onBlur={(e) => handleInputChange('phone', normalizeFinnishPhone(e.target.value))}
+                      onBlur={(e) => handleInputChange('phone', normalizeFinnishPhoneInput(e.target.value))}
+                      placeholder={FINNISH_PHONE_PREFIX}
                       className={`mt-1 ${
                         theme === 'dark'
                           ? 'bg-white/5 border-white/10 text-white'
