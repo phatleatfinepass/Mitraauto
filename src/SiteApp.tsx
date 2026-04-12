@@ -87,7 +87,6 @@ type ParsedTireSize = {
 
 type CmsTab = 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'future';
 const BOOKING_STATUS_HANDOFF = 'handoff';
-const BOOKING_STATUS_HANDOFF_DONE = 'handoff_done';
 
 function resolveCmsTabFromHash(hash?: string): CmsTab {
   const normalized = (hash ?? '').replace('#', '').toLowerCase();
@@ -167,17 +166,17 @@ function CmsBetaHandoffControl() {
 
       const { error: updateError } = await supabase
         .from('bookings')
-        .update({ status: BOOKING_STATUS_HANDOFF_DONE })
+        .update({ status: 'confirmed' })
         .in('id', ids);
 
       if (updateError) {
         throw updateError;
       }
 
-      toast.success('Booking handoff finished');
+      toast.success('Booking handoff cleared');
       await loadHandoffCount();
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to finish booking handoff');
+      toast.error(error?.message || 'Failed to clear booking handoff');
     } finally {
       setLoading(false);
     }
@@ -192,7 +191,7 @@ function CmsBetaHandoffControl() {
         className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
       >
         <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-        {loading ? 'Finishing handoff...' : `Finish handoff (${handoffCount})`}
+        {loading ? 'Clearing handoff...' : `Clear handoff (${handoffCount})`}
       </button>
     );
   }

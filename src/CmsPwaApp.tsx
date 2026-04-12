@@ -8,7 +8,6 @@ import { CmsPwaSectionList } from './components/cms-pwa/CmsPwaSectionList';
 import { CmsPwaToolsList } from './components/cms-pwa/CmsPwaToolsList';
 import {
   BOOKING_STATUS_HANDOFF,
-  BOOKING_STATUS_HANDOFF_DONE,
   buildBookingSections,
   buildOrderSections,
   formatShortDateTime,
@@ -314,7 +313,7 @@ export function CmsPwaScreen() {
     const now = Date.now();
     return bookingRows.filter((booking) => {
       const status = (booking.status ?? 'confirmed').toLowerCase();
-      if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || status === BOOKING_STATUS_HANDOFF_DONE) {
+      if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF) {
         return false;
       }
       if (!booking.created_at) {
@@ -788,7 +787,7 @@ export function CmsPwaScreen() {
     const targetIds = bookingRows
       .filter((booking) => {
         const status = (booking.status ?? 'confirmed').toLowerCase();
-        if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || status === BOOKING_STATUS_HANDOFF_DONE) {
+        if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF) {
           return false;
         }
         if (!booking.created_at) {

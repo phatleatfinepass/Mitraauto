@@ -6,7 +6,6 @@ import { isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 
 export const REFRESH_INTERVAL_MS = 30_000;
 export const BOOKING_STATUS_HANDOFF = 'handoff';
-export const BOOKING_STATUS_HANDOFF_DONE = 'handoff_done';
 
 function buildTelHref(phone?: string | null) {
   if (!phone) {
@@ -262,7 +261,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
   const newItems = activeRows
     .filter((booking) => {
       const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
-      if (normalizedStatus === BOOKING_STATUS_HANDOFF || normalizedStatus === BOOKING_STATUS_HANDOFF_DONE) {
+      if (normalizedStatus === BOOKING_STATUS_HANDOFF) {
         return false;
       }
       if (!booking.created_at) return false;
@@ -305,19 +304,18 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     .slice(0, 10)
     .map<BriefingItem>((booking) => {
       const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
-      const handoffFinished = normalizedStatus === BOOKING_STATUS_HANDOFF_DONE;
       const handoffActive = normalizedStatus === BOOKING_STATUS_HANDOFF;
       const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
-      const handoffTimestamp = handoffActive || handoffFinished ? booking.updated_at ?? null : null;
+      const handoffTimestamp = handoffActive ? booking.updated_at ?? null : null;
 
       return {
         id: `${booking.id}-upcoming`,
         title: localizedServiceName || booking.service_name || 'Upcoming booking',
         subtitle: booking.customer_name || booking.customer_email || 'Booking scheduled',
-        status: handoffActive ? 'Handoff active' : handoffFinished ? 'Handoff finished' : 'Scheduled',
+        status: handoffActive ? 'Handoff active' : 'Scheduled',
         secondaryStatus: handoffTimestamp ? `Handoff ${formatShortDateTime(handoffTimestamp)}` : undefined,
         time: formatCalendarDateTimeLabel(booking.booking_date, booking.booking_time),
-        tone: handoffFinished ? 'done' : handoffActive ? 'warning' : 'done',
+        tone: handoffActive ? 'warning' : 'done',
         licensePlate: booking.license_plate || undefined,
         phone: booking.customer_phone || undefined,
         owner: booking.customer_name || undefined,
