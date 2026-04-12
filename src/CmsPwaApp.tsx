@@ -335,6 +335,7 @@ export function CmsPwaScreen() {
   const [localSubscriptionReady, setLocalSubscriptionReady] = useState(false);
   const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
   const [pushLastError, setPushLastError] = useState('');
+  const loadRequestIdRef = useRef(0);
 
   const configError = useMemo(() => getSupabaseConfigError(), []);
 
@@ -500,6 +501,17 @@ export function CmsPwaScreen() {
 
   const loadLiveData = React.useCallback(async (cancelledRef?: { current: boolean }) => {
       const isCancelled = () => cancelledRef?.current === true;
+      const requestId = ++loadRequestIdRef.current;
+      const isStale = () => requestId !== loadRequestIdRef.current;
+      const withTimeout = async <T,>(promise: Promise<T>, label: string, timeoutMs = 12000): Promise<T> => {
+        return await Promise.race([
+          promise,
+          new Promise<T>((_, reject) => {
+            window.setTimeout(() => reject(new Error(`${label} timed out. Please try again.`)), timeoutMs);
+          }),
+        ]);
+      };
+
       setDataLoading(true);
       setDataError('');
 
@@ -513,34 +525,43 @@ export function CmsPwaScreen() {
         const bookingSelectFull = 'id, created_at, updated_at, status, booking_language, booking_date, booking_time, license_plate, service_name, customer_name, customer_phone, customer_email, notes';
         const bookingSelectFallback = 'id, created_at, status, booking_language, booking_date, booking_time, license_plate, service_name, customer_name, customer_phone, customer_email, notes';
 
-        let bookingsQuery = await supabase
+        let bookingsQuery = await withTimeout(
+          supabase
           .from('bookings')
           .select(bookingSelectFull)
           .gte('booking_date', todayStr)
           .lte('booking_date', endDateStr)
           .order('booking_date', { ascending: true })
           .order('booking_time', { ascending: true })
-          .limit(40);
+          .limit(40),
+          'Booking refresh',
+        );
 
         if (bookingsQuery.error && isMissingColumnError(bookingsQuery.error, 'updated_at')) {
-          bookingsQuery = await supabase
+          bookingsQuery = await withTimeout(
+            supabase
             .from('bookings')
             .select(bookingSelectFallback)
             .gte('booking_date', todayStr)
             .lte('booking_date', endDateStr)
             .order('booking_date', { ascending: true })
             .order('booking_time', { ascending: true })
-            .limit(40);
+            .limit(40),
+            'Booking refresh',
+          );
         }
 
         const orderSelectFull = 'id, created_at, status, customer_email, customer_phone, customer_first_name, customer_last_name, grand_total_cents, cart_snapshot';
         const orderSelectFallback = 'id, created_at, status, grand_total_cents, cart_snapshot';
 
-        let ordersQuery = await supabase
+        let ordersQuery = await withTimeout(
+          supabase
           .from('orders')
           .select(orderSelectFull)
           .order('created_at', { ascending: false })
-          .limit(30);
+          .limit(30),
+          'Order refresh',
+        );
 
         if (ordersQuery.error && (
           isMissingColumnError(ordersQuery.error, 'customer_email') ||
@@ -548,15 +569,18 @@ export function CmsPwaScreen() {
           isMissingColumnError(ordersQuery.error, 'customer_first_name') ||
           isMissingColumnError(ordersQuery.error, 'customer_last_name')
         )) {
-          ordersQuery = await supabase
+          ordersQuery = await withTimeout(
+            supabase
             .from('orders')
             .select(orderSelectFallback)
             .order('created_at', { ascending: false })
-            .limit(30);
+            .limit(30),
+            'Order refresh',
+          );
         }
 
         if (bookingsQuery.error) throw bookingsQuery.error;
-        if (isCancelled()) return;
+        if (isCancelled() || isStale()) return;
 
         const bookingData = (bookingsQuery.data ?? []) as BookingRow[];
         setBookingRows(bookingData);
@@ -570,14 +594,14 @@ export function CmsPwaScreen() {
           setDataError(ordersQuery.error.message || 'Order queue could not be loaded.');
         }
       } catch (fetchError: any) {
-        if (isCancelled()) return;
+        if (isCancelled() || isStale()) return;
         setDataError(fetchError?.message || 'Failed to load mobile ops data.');
       } finally {
-        if (!isCancelled()) {
+        if (!isCancelled() && !isStale()) {
           setDataLoading(false);
         }
       }
-    }, []);
+    }, [language]);
 
   useEffect(() => {
     if (authState !== 'authenticated') return;
@@ -602,22 +626,31 @@ export function CmsPwaScreen() {
 
     const refreshIfVisible = () => {
       if (document.visibilityState === 'visible') {
+        loadRequestIdRef.current += 1;
         void loadLiveData();
       }
     };
 
     const refreshOnFocus = () => {
+      loadRequestIdRef.current += 1;
+      void loadLiveData();
+    };
+
+    const refreshOnOnline = () => {
+      loadRequestIdRef.current += 1;
       void loadLiveData();
     };
 
     document.addEventListener('visibilitychange', refreshIfVisible);
     window.addEventListener('focus', refreshOnFocus);
     window.addEventListener('pageshow', refreshOnFocus);
+    window.addEventListener('online', refreshOnOnline);
 
     return () => {
       document.removeEventListener('visibilitychange', refreshIfVisible);
       window.removeEventListener('focus', refreshOnFocus);
       window.removeEventListener('pageshow', refreshOnFocus);
+      window.removeEventListener('online', refreshOnOnline);
     };
   }, [authState, loadLiveData]);
 
