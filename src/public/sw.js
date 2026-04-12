@@ -37,8 +37,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'Mitra Auto';
   const options = {
     body: payload.body || '',
-    icon: payload.icon || '/icons/app-icon.svg',
-    badge: payload.badge || '/icons/app-icon.svg',
+    icon: payload.icon || '/icons/mitra-app-icon-512.png',
+    badge: payload.badge || '/icons/mitra-app-icon-512.png',
     tag: payload.tag,
     data: payload.data || { url: '/pwa/cms/booking' },
   };
