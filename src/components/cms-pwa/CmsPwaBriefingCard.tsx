@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock3, IdCard, MapPin, Phone, User } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock3, IdCard, Mail, MapPin, Phone, User } from 'lucide-react';
 
 type BriefingTone = 'critical' | 'warning' | 'normal' | 'done';
 
@@ -23,9 +23,14 @@ export interface BriefingItem {
   secondaryStatus?: string;
   licensePlate?: string;
   createdAtLabel?: string;
+  confirmedAtLabel?: string;
   location?: string;
   phone?: string;
   owner?: string;
+  email?: string;
+  bookingLanguageLabel?: string;
+  bookingLanguageFlag?: string;
+  noteLabel?: string;
   actions: BriefingAction[];
 }
 
@@ -63,12 +68,8 @@ function ToneIcon({ tone }: { tone: BriefingTone }) {
 
 export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const metaRows = [
-    { key: 'time', icon: Clock3, value: item.time },
-    { key: 'owner', icon: User, value: item.owner },
-    { key: 'phone', icon: Phone, value: item.phone },
-    { key: 'location', icon: MapPin, value: item.location },
-  ].filter((row) => Boolean(row.value));
+  const bookingCompact = Boolean(item.licensePlate && item.bookingLanguageLabel && item.owner && item.phone);
+  const detailsText = item.details.find((detail) => detail.trim().length > 0);
 
   return (
     <article className={`rounded-2xl border p-4 shadow-[0_8px_24px_rgba(0,0,0,0.16)] ${toneClasses(item.tone)}`}>
@@ -86,26 +87,49 @@ export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
           {expanded && item.secondaryStatus ? (
             <p className="mt-1 text-xs text-[#FFD2C3]">{item.secondaryStatus}</p>
           ) : null}
-          <h3 className="mt-2 text-base font-semibold text-white">{item.title}</h3>
-          {item.licensePlate ? (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/72">
-              <IdCard className="h-3.5 w-3.5" />
-              {item.licensePlate}
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-white/65">{item.subtitle}</p>
-          )}
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/45">
-            {metaRows.map((row) => {
-              const Icon = row.icon;
-              return (
-                <span key={`${item.id}-${row.key}`} className="inline-flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" />
-                  {row.value}
+          <h3 className={`mt-2 font-semibold text-white ${expanded ? 'line-clamp-2 text-base' : 'line-clamp-1 text-base'}`}>{item.title}</h3>
+
+          {bookingCompact ? (
+            <>
+              <div className="mt-2 flex items-center justify-between gap-3 text-sm text-white/72">
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <IdCard className="h-3.5 w-3.5 flex-none" />
+                  <span className="truncate font-mono">{item.licensePlate}</span>
                 </span>
-              );
-            })}
-          </div>
+                <span className="flex-none text-xs text-white/55">{item.time}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-white/58">
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <span className="text-sm leading-none">{item.bookingLanguageFlag ?? '🌐'}</span>
+                  <span className="truncate">{item.bookingLanguageLabel}</span>
+                </span>
+                <span className="truncate">{item.owner}</span>
+                <span className="truncate">{item.phone}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-white/65">{item.subtitle}</p>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/45">
+                {[
+                  { key: 'time', icon: Clock3, value: item.time },
+                  { key: 'owner', icon: User, value: item.owner },
+                  { key: 'phone', icon: Phone, value: item.phone },
+                  { key: 'location', icon: MapPin, value: item.location },
+                ]
+                  .filter((row) => Boolean(row.value))
+                  .map((row) => {
+                    const Icon = row.icon;
+                    return (
+                      <span key={`${item.id}-${row.key}`} className="inline-flex items-center gap-1.5">
+                        <Icon className="h-3.5 w-3.5" />
+                        {row.value}
+                      </span>
+                    );
+                  })}
+              </div>
+            </>
+          )}
         </div>
         <span className="mt-1 inline-flex h-8 w-8 flex-none items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70">
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -114,16 +138,18 @@ export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
 
       {expanded ? (
         <div className="mt-4 border-t border-white/8 pt-4">
-          {item.createdAtLabel ? (
-            <p className="mb-3 text-xs text-white/45">{item.createdAtLabel}</p>
+          {item.createdAtLabel || item.confirmedAtLabel ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-white/45">
+              {item.createdAtLabel ? <p>{item.createdAtLabel}</p> : <span />}
+              {item.confirmedAtLabel ? <p>{item.confirmedAtLabel}</p> : null}
+            </div>
           ) : null}
-          <ul className="space-y-2">
-            {item.details.map((detail, index) => (
-              <li key={`${item.id}-detail-${index}`} className="text-sm leading-6 text-white/72">
-                {detail}
-              </li>
-            ))}
-          </ul>
+          {detailsText ? (
+            <div className="space-y-1">
+              {item.noteLabel ? <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-white/42">{item.noteLabel}</p> : null}
+              <p className="text-sm leading-6 text-white/72">{detailsText}</p>
+            </div>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
             {item.actions.map((action) => {
@@ -136,6 +162,8 @@ export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
               }`;
 
               if (action.href) {
+                const isTelLink = action.href.startsWith('tel:');
+                const isMailLink = action.href.startsWith('mailto:');
                 return (
                   <a
                     key={`${item.id}-${action.label}-${action.href}`}
@@ -146,11 +174,15 @@ export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
                     onClick={action.disabled ? (event) => event.preventDefault() : undefined}
                     className={`${className} ${action.disabled ? 'pointer-events-none opacity-45' : ''}`}
                   >
+                    {isTelLink ? <Phone className="mr-1.5 h-4 w-4" /> : null}
+                    {isMailLink ? <Mail className="mr-1.5 h-4 w-4" /> : null}
                     {action.label}
                   </a>
                 );
               }
 
+              const isTelAction = action.label.toLowerCase().includes('call') || action.label.toLowerCase().includes('soita');
+              const isMailAction = action.label.toLowerCase().includes('email') || action.label.toLowerCase().includes('sähkö');
               return (
                 <button
                   key={`${item.id}-${action.label}`}
@@ -158,6 +190,8 @@ export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
                   disabled={action.disabled}
                   className={`${className} ${action.disabled ? 'cursor-not-allowed opacity-45' : ''}`}
                 >
+                  {isTelAction ? <Phone className="mr-1.5 h-4 w-4" /> : null}
+                  {isMailAction ? <Mail className="mr-1.5 h-4 w-4" /> : null}
                   {action.label}
                 </button>
               );

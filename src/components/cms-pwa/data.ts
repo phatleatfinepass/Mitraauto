@@ -7,6 +7,53 @@ import { isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 export const REFRESH_INTERVAL_MS = 30_000;
 export const BOOKING_STATUS_HANDOFF = 'handoff';
 
+const BOOKING_CARD_COPY = {
+  fi: {
+    newBookingsTitle: 'Uudet varaukset',
+    newBookingsCaption: 'Luotu viimeisen 24 tunnin aikana',
+    upcomingTitle: 'Tulevat',
+    upcomingCaption: 'Seuraavat varatut ajat',
+    bookingFallback: 'Varaus',
+    upcomingFallback: 'Tuleva varaus',
+    customerBookingRequest: 'Asiakkaan varaustieto',
+    noNotes: 'Ei varausmuistiinpanoja.',
+    notHandedOff: 'Ei siirretty',
+    handoffActive: 'Siirto aktiivinen',
+    confirmed: 'Vahvistettu',
+    scheduled: 'Ajastettu',
+    handoffLabel: 'Siirretty',
+    createdLabel: 'Luotu',
+    confirmedLabel: 'Vahvistettu',
+    noteLabel: 'Varausmuistiinpano',
+    callCustomer: 'Soita asiakkaalle',
+    emailCustomer: 'Lähetä sähköposti',
+    finnish: 'Suomi',
+    english: 'Englanti',
+  },
+  en: {
+    newBookingsTitle: 'New bookings',
+    newBookingsCaption: 'Created in the last 24 hours',
+    upcomingTitle: 'Upcoming',
+    upcomingCaption: 'Next scheduled bookings',
+    bookingFallback: 'Booking',
+    upcomingFallback: 'Upcoming booking',
+    customerBookingRequest: 'Customer booking request',
+    noNotes: 'No booking notes added yet.',
+    notHandedOff: 'Not handed off',
+    handoffActive: 'Handoff active',
+    confirmed: 'Confirmed',
+    scheduled: 'Scheduled',
+    handoffLabel: 'Handoff',
+    createdLabel: 'Created',
+    confirmedLabel: 'Confirmed',
+    noteLabel: 'Booking note',
+    callCustomer: 'Call customer',
+    emailCustomer: 'Email customer',
+    finnish: 'Finnish',
+    english: 'English',
+  },
+} as const;
+
 function buildTelHref(phone?: string | null) {
   if (!phone) {
     return undefined;
@@ -270,6 +317,7 @@ export function isBookingAcknowledged(booking: BookingRow) {
 }
 
 export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en'): TabSection[] {
+  const copy = BOOKING_CARD_COPY[opsLanguage];
   const activeRows = rows.filter((booking) => (booking.status ?? 'confirmed').toLowerCase() !== 'cancelled');
   const now = Date.now();
 
@@ -287,27 +335,32 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     .map<BriefingItem>((booking) => {
       const bookingMoment = new Date(`${booking.booking_date}T${booking.booking_time}:00`).getTime();
       const soon = Number.isFinite(bookingMoment) && bookingMoment - now <= 24 * 60 * 60 * 1000;
-      const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
+      const bookingLanguage = booking.booking_language === 'en' ? 'en' : 'fi';
+      const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
       return {
         id: booking.id,
-        title: localizedServiceName || booking.service_name || 'Booking',
-        subtitle: 'Customer booking request',
-        status: 'Not handed off',
+        title: localizedServiceName || booking.service_name || copy.bookingFallback,
+        subtitle: copy.customerBookingRequest,
+        status: copy.notHandedOff,
         time: formatBookingSlot(booking.booking_date, booking.booking_time),
         tone: soon ? 'warning' : 'normal',
         licensePlate: booking.license_plate || undefined,
         phone: booking.customer_phone || undefined,
         owner: booking.customer_name || undefined,
-        createdAtLabel: booking.created_at ? `Created ${formatShortDateTime(booking.created_at)}` : undefined,
+        email: booking.customer_email || undefined,
+        bookingLanguageFlag: bookingLanguage === 'en' ? '🇬🇧' : '🇫🇮',
+        bookingLanguageLabel: bookingLanguage === 'en' ? copy.english : copy.finnish,
+        createdAtLabel: booking.created_at ? `${copy.createdLabel} ${formatShortDateTime(booking.created_at)}` : undefined,
+        noteLabel: copy.noteLabel,
         details: [
-          booking.notes?.trim() ? booking.notes.trim() : 'No booking notes added yet.',
+          booking.notes?.trim() ? booking.notes.trim() : copy.noNotes,
         ],
         actions: [
           ...(buildTelHref(booking.customer_phone)
-            ? [{ label: 'Call customer', kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
+            ? [{ label: copy.callCustomer, kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
             : []),
           {
-            label: 'Email customer',
+            label: copy.emailCustomer,
             href: booking.customer_email ? `mailto:${booking.customer_email}` : '#',
             disabled: !booking.customer_email,
           },
@@ -321,30 +374,36 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
       const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
       const handoffActive = normalizedStatus === BOOKING_STATUS_HANDOFF;
       const acknowledged = isBookingAcknowledged(booking);
-      const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
+      const bookingLanguage = booking.booking_language === 'en' ? 'en' : 'fi';
+      const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
       const handoffTimestamp = handoffActive ? booking.updated_at ?? null : null;
 
       return {
         id: `${booking.id}-upcoming`,
-        title: localizedServiceName || booking.service_name || 'Upcoming booking',
+        title: localizedServiceName || booking.service_name || copy.upcomingFallback,
         subtitle: booking.customer_name || booking.customer_email || 'Booking scheduled',
-        status: handoffActive ? 'Handoff active' : acknowledged ? 'Confirmed' : 'Scheduled',
-        secondaryStatus: handoffTimestamp ? `Handoff ${formatShortDateTime(handoffTimestamp)}` : undefined,
+        status: handoffActive ? copy.handoffActive : acknowledged ? copy.confirmed : copy.scheduled,
+        secondaryStatus: handoffTimestamp ? `${copy.handoffLabel} ${formatShortDateTime(handoffTimestamp)}` : undefined,
         time: formatCalendarDateTimeLabel(booking.booking_date, booking.booking_time),
         tone: handoffActive ? 'warning' : acknowledged ? 'done' : 'done',
         licensePlate: booking.license_plate || undefined,
         phone: booking.customer_phone || undefined,
         owner: booking.customer_name || undefined,
-        createdAtLabel: booking.created_at ? `Created ${formatShortDateTime(booking.created_at)}` : undefined,
+        email: booking.customer_email || undefined,
+        bookingLanguageFlag: bookingLanguage === 'en' ? '🇬🇧' : '🇫🇮',
+        bookingLanguageLabel: bookingLanguage === 'en' ? copy.english : copy.finnish,
+        createdAtLabel: booking.created_at ? `${copy.createdLabel} ${formatShortDateTime(booking.created_at)}` : undefined,
+        confirmedAtLabel: acknowledged && booking.updated_at ? `${copy.confirmedLabel} ${formatShortDateTime(booking.updated_at)}` : undefined,
+        noteLabel: copy.noteLabel,
         details: [
-          booking.notes?.trim() ? booking.notes.trim() : 'No booking notes added yet.',
+          booking.notes?.trim() ? booking.notes.trim() : copy.noNotes,
         ],
         actions: [
           ...(buildTelHref(booking.customer_phone)
-            ? [{ label: 'Call customer', kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
+            ? [{ label: copy.callCustomer, kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
             : []),
           {
-            label: 'Email customer',
+            label: copy.emailCustomer,
             href: booking.customer_email ? `mailto:${booking.customer_email}` : '#',
             disabled: !booking.customer_email,
           },
@@ -353,8 +412,8 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     });
 
   return [
-    { title: 'New bookings', caption: 'Created in the last 24 hours', items: newItems },
-    { title: 'Upcoming', caption: 'Next scheduled bookings', items: upcomingItems },
+    { title: copy.newBookingsTitle, caption: copy.newBookingsCaption, items: newItems },
+    { title: copy.upcomingTitle, caption: copy.upcomingCaption, items: upcomingItems },
   ];
 }
 

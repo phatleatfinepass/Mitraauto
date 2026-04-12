@@ -2,7 +2,7 @@ import React from 'react';
 import { CmsPwaBriefingCard } from './CmsPwaBriefingCard';
 import type { TabSection } from './types';
 
-export function CmsPwaSectionList({ sections }: { sections: TabSection[] }) {
+export function CmsPwaSectionList({ sections, emptyLabel }: { sections: TabSection[]; emptyLabel?: string }) {
   return (
     <>
       {sections.map((section) => (
@@ -16,7 +16,7 @@ export function CmsPwaSectionList({ sections }: { sections: TabSection[] }) {
           </div>
           {section.items.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-[#141922] px-4 py-3 text-sm text-white/50">
-              No items in this queue right now.
+              {emptyLabel ?? 'No items in this queue right now.'}
             </div>
           ) : (
             <div className="space-y-3">

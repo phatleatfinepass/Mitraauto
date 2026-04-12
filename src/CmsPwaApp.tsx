@@ -22,6 +22,89 @@ import {
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import type { AuthState, BookingRow, LiveSectionsState, LoginState, OrderRow } from './components/cms-pwa/types';
 
+const CMS_PWA_COPY = {
+  fi: {
+    mobileOps: 'Mitra Auto mobile ops',
+    briefingBoard: 'Tilannekuva',
+    briefingIntro: 'Pelastus-, varaus- ja tilaustehtävät, jotka vaativat huomiota nyt.',
+    openDiagnostics: 'Avaa diagnostiikka',
+    signOut: 'Kirjaudu ulos',
+    operationalSummary: 'Operatiivinen yhteenveto',
+    operationalSummaryBody: 'Näkyvät kohteet, jotka vaativat vielä ihmisen toimenpiteitä.',
+    updated: 'Päivitetty',
+    forceRefresh: 'Pakota päivitys',
+    rescue: 'Pelastus',
+    booking: 'Varaus',
+    order: 'Tilaus',
+    handoffWaitingOne: 'varaus odottaa, että desktop-CMS viimeistelee siirron.',
+    handoffWaitingMany: 'varausta odottaa, että desktop-CMS viimeistelee siirron.',
+    handingOff: 'Siirretään...',
+    handoffNewBookings: 'Siirrä uudet varaukset',
+    noNewBookingsToHandoff: 'Ei uusia varauksia siirrettäväksi',
+    rescueQueue: 'Pelastusjono',
+    bookingQueue: 'Varausjono',
+    orderQueue: 'Tilausjono',
+    plannedTools: 'Suunnitellut työkalut',
+    refreshingQueue: 'Päivitetään jonoa...',
+    noItems: 'Tässä jonossa ei ole kohteita juuri nyt.',
+    pushDiagnostics: 'Push-diagnostiikka',
+    pushDiagnosticsBody: 'Laitteen ilmoitus- ja tilaustilan nykyinen kunto.',
+    close: 'Sulje',
+    permission: 'Lupa',
+    serviceWorker: 'Service worker',
+    pushSupported: 'Push-tuki',
+    localSubscription: 'Paikallinen tilaus',
+    savedToBackend: 'Tallennettu taustaan',
+    ready: 'valmis',
+    notReady: 'ei valmis',
+    yes: 'kyllä',
+    no: 'ei',
+    enabling: 'Otetaan käyttöön...',
+    enableNotifications: 'Ota ilmoitukset käyttöön',
+    rerunDiagnostics: 'Suorita diagnostiikka uudelleen',
+  },
+  en: {
+    mobileOps: 'Mitra Auto mobile ops',
+    briefingBoard: 'Briefing board',
+    briefingIntro: 'Rescue, booking, and order items needing attention now.',
+    openDiagnostics: 'Open diagnostics',
+    signOut: 'Sign out',
+    operationalSummary: 'Operational summary',
+    operationalSummaryBody: 'Visible items that still need human follow-up.',
+    updated: 'Updated',
+    forceRefresh: 'Force refresh',
+    rescue: 'Rescue',
+    booking: 'Booking',
+    order: 'Order',
+    handoffWaitingOne: 'booking waiting for desktop CMS to finish handoff.',
+    handoffWaitingMany: 'bookings waiting for desktop CMS to finish handoff.',
+    handingOff: 'Handing off...',
+    handoffNewBookings: 'Handoff new bookings',
+    noNewBookingsToHandoff: 'No new bookings to hand off',
+    rescueQueue: 'Rescue queue',
+    bookingQueue: 'Booking queue',
+    orderQueue: 'Order queue',
+    plannedTools: 'Planned tools',
+    refreshingQueue: 'Refreshing queue...',
+    noItems: 'No items in this queue right now.',
+    pushDiagnostics: 'Push diagnostics',
+    pushDiagnosticsBody: 'Current notification and subscription health on this device.',
+    close: 'Close',
+    permission: 'Permission',
+    serviceWorker: 'Service worker',
+    pushSupported: 'Push supported',
+    localSubscription: 'Local subscription',
+    savedToBackend: 'Saved to backend',
+    ready: 'ready',
+    notReady: 'not ready',
+    yes: 'yes',
+    no: 'no',
+    enabling: 'Enabling...',
+    enableNotifications: 'Enable notifications',
+    rerunDiagnostics: 'Re-run diagnostics',
+  },
+} as const;
+
 async function resolveAdminSession() {
   const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
     return await Promise.race([
@@ -79,6 +162,7 @@ function CmsPwaHeader({
   setLanguage: (language: 'fi' | 'en') => void;
   diagnosticsStatus: 'healthy' | 'attention';
   onOpenDiagnostics: () => void;
+  copy: typeof CMS_PWA_COPY.fi;
 }) {
   return (
     <header
@@ -89,17 +173,17 @@ function CmsPwaHeader({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className={`font-medium tracking-[0.04em] text-white/45 transition-all duration-200 ${headerMinimized ? 'text-[10px]' : 'text-[11px]'}`}>
-            Mitra Auto mobile ops
+            {copy.mobileOps}
           </p>
           <h1 className={`font-semibold tracking-tight transition-all duration-200 ${headerMinimized ? 'mt-0.5 text-lg' : 'mt-1 text-2xl'}`}>
-            Briefing board
+            {copy.briefingBoard}
           </h1>
           <p
             className={`overflow-hidden text-white/55 transition-all duration-200 ${
               headerMinimized ? 'mt-0 max-h-0 opacity-0' : 'mt-1 max-h-12 text-sm opacity-100'
             }`}
           >
-            Rescue, booking, and order items needing attention now.
+            {copy.briefingIntro}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -109,7 +193,7 @@ function CmsPwaHeader({
             className={`inline-flex items-center justify-center transition-all duration-200 ${
               diagnosticsStatus === 'healthy' ? 'text-emerald-300' : 'text-amber-300'
             } ${headerMinimized ? 'h-9 w-9' : 'h-10 w-10'}`}
-            aria-label="Open diagnostics"
+            aria-label={copy.openDiagnostics}
           >
             <Globe className={`transition-all duration-200 ${headerMinimized ? 'h-4 w-4' : 'h-[18px] w-[18px]'}`} />
           </button>
@@ -132,7 +216,7 @@ function CmsPwaHeader({
             className={`inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-200 ${
               headerMinimized ? 'h-9 w-9' : 'h-10 w-10'
             }`}
-            aria-label="Sign out"
+            aria-label={copy.signOut}
           >
             <LogOut className={`transition-all duration-200 ${headerMinimized ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
           </button>
@@ -160,21 +244,22 @@ function CmsPwaSummary({
   handoffLoading: boolean;
   activeBookingHandoffCount: number;
   onRefresh: () => void;
+  copy: typeof CMS_PWA_COPY.fi;
 }) {
   const cards: Array<{ tab: 'rescue' | 'booking' | 'order'; label: string; count: number }> = [
-    { tab: 'rescue', label: 'Rescue', count: counts.rescue },
-    { tab: 'booking', label: 'Booking', count: counts.booking },
-    { tab: 'order', label: 'Order', count: counts.order },
+    { tab: 'rescue', label: copy.rescue, count: counts.rescue },
+    { tab: 'booking', label: copy.booking, count: counts.booking },
+    { tab: 'order', label: copy.order, count: counts.order },
   ];
 
   return (
     <section className="mt-4 rounded-2xl border border-white/10 bg-[#141922] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-white">Operational summary</p>
+          <p className="text-sm font-medium text-white">{copy.operationalSummary}</p>
           <p className="mt-1 text-xs text-white/55">
-            Visible items that still need human follow-up.
-            {lastUpdatedAt ? ` Updated ${formatShortDateTime(lastUpdatedAt)}.` : ''}
+            {copy.operationalSummaryBody}
+            {lastUpdatedAt ? ` ${copy.updated} ${formatShortDateTime(lastUpdatedAt)}.` : ''}
           </p>
         </div>
         <button
@@ -182,7 +267,7 @@ function CmsPwaSummary({
           onClick={onRefresh}
           disabled={dataLoading}
           className="inline-flex h-10 w-10 items-center justify-center text-[#FF6B35] disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Force refresh"
+          aria-label={copy.forceRefresh}
         >
           <RefreshCcw className={`h-5 w-5 ${dataLoading ? 'animate-spin' : ''}`} />
         </button>
@@ -209,7 +294,7 @@ function CmsPwaSummary({
         <div className="mt-3 space-y-2">
           {activeBookingHandoffCount > 0 ? (
             <div className="rounded-xl border border-[#FF6B35]/30 bg-[#2A1B14] px-3 py-2 text-xs text-[#FFD2C3]">
-              {activeBookingHandoffCount} booking{activeBookingHandoffCount === 1 ? '' : 's'} waiting for desktop CMS to finish handoff.
+              {activeBookingHandoffCount} {activeBookingHandoffCount === 1 ? copy.handoffWaitingOne : copy.handoffWaitingMany}
             </div>
           ) : null}
           <button
@@ -218,7 +303,7 @@ function CmsPwaSummary({
             disabled={handoffLoading || counts.booking === 0}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-[#11141A] transition hover:bg-[#ff845a] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {handoffLoading ? 'Handing off...' : counts.booking > 0 ? 'Handoff new bookings' : 'No new bookings to hand off'}
+            {handoffLoading ? copy.handingOff : counts.booking > 0 ? copy.handoffNewBookings : copy.noNewBookingsToHandoff}
           </button>
         </div>
       ) : null}
@@ -230,10 +315,12 @@ function CmsPwaScreenState({
   activeTab,
   dataError,
   userEmail,
+  copy,
 }: {
   activeTab: CmsPwaTab;
   dataError: string;
   userEmail: string;
+  copy: typeof CMS_PWA_COPY.fi;
 }) {
   return (
     <>
@@ -250,12 +337,12 @@ function CmsPwaScreenState({
           <div>
             <h2 className="text-lg font-semibold">
               {activeTab === 'rescue'
-                ? 'Rescue queue'
+                ? copy.rescueQueue
                 : activeTab === 'booking'
-                  ? 'Booking queue'
+                  ? copy.bookingQueue
                   : activeTab === 'order'
-                    ? 'Order queue'
-                    : 'Planned tools'}
+                    ? copy.orderQueue
+                    : copy.plannedTools}
             </h2>
           </div>
           {userEmail ? <p className="text-[11px] text-white/35">{userEmail}</p> : null}
@@ -267,6 +354,7 @@ function CmsPwaScreenState({
 
 export function CmsPwaScreen() {
   const { language, setLanguage } = useLanguage();
+  const copy = CMS_PWA_COPY[language];
   const route = resolveCmsPwaRoute(window.location.pathname);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [userEmail, setUserEmail] = useState('');
@@ -276,7 +364,7 @@ export function CmsPwaScreen() {
   const [activeTab, setActiveTab] = useState<CmsPwaTab>(route.kind === 'cms' ? route.tab : 'rescue');
   const [routeState, setRouteState] = useState(route);
   const [liveSections, setLiveSections] = useState<LiveSectionsState>({
-    booking: buildBookingSections([]),
+    booking: buildBookingSections([], language),
     order: buildOrderSections([]),
   });
   const [bookingRows, setBookingRows] = useState<BookingRow[]>([]);
@@ -954,6 +1042,7 @@ export function CmsPwaScreen() {
           setLanguage={setLanguage}
           diagnosticsStatus={diagnosticsStatus}
           onOpenDiagnostics={() => setDiagnosticsOpen(true)}
+          copy={copy}
         />
         <CmsPwaSummary
           counts={counts}
@@ -964,11 +1053,13 @@ export function CmsPwaScreen() {
           handoffLoading={handoffLoading}
           activeBookingHandoffCount={activeBookingHandoffCount}
           onRefresh={handleManualRefresh}
+          copy={copy}
         />
         <CmsPwaScreenState
           activeTab={activeTab}
           dataError={dataError}
           userEmail={userEmail}
+          copy={copy}
         />
 
         {activeTab === 'tools' ? (
@@ -977,10 +1068,10 @@ export function CmsPwaScreen() {
           <section className="mt-4 space-y-5" aria-live="polite">
             {dataLoading && (activeTab === 'booking' || activeTab === 'order') ? (
               <div className="rounded-2xl border border-white/10 bg-[#141922] px-4 py-3 text-sm text-white/55">
-                Refreshing {activeTab} queue...
+                {copy.refreshingQueue}
               </div>
             ) : null}
-            <CmsPwaSectionList sections={sections} />
+            <CmsPwaSectionList sections={sections} emptyLabel={copy.noItems} />
           </section>
         )}
       </div>
@@ -996,29 +1087,29 @@ export function CmsPwaScreen() {
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#141922] p-4 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-white">Push diagnostics</p>
-                <p className="mt-1 text-xs text-white/55">Current notification and subscription health on this device.</p>
+                <p className="text-sm font-medium text-white">{copy.pushDiagnostics}</p>
+                <p className="mt-1 text-xs text-white/55">{copy.pushDiagnosticsBody}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setDiagnosticsOpen(false)}
                 className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/70"
               >
-                Close
+                {copy.close}
               </button>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-white/65">
-              <span>Permission</span>
+              <span>{copy.permission}</span>
               <span className="text-right">{notificationPermission}</span>
-              <span>Service worker</span>
-              <span className="text-right">{serviceWorkerReady ? 'ready' : 'not ready'}</span>
-              <span>Push supported</span>
-              <span className="text-right">{typeof window !== 'undefined' && 'PushManager' in window ? 'yes' : 'no'}</span>
-              <span>Local subscription</span>
-              <span className="text-right">{localSubscriptionReady ? 'yes' : 'no'}</span>
-              <span>Saved to backend</span>
-              <span className="text-right">{pushSubscribed ? 'yes' : 'no'}</span>
+              <span>{copy.serviceWorker}</span>
+              <span className="text-right">{serviceWorkerReady ? copy.ready : copy.notReady}</span>
+              <span>{copy.pushSupported}</span>
+              <span className="text-right">{typeof window !== 'undefined' && 'PushManager' in window ? copy.yes : copy.no}</span>
+              <span>{copy.localSubscription}</span>
+              <span className="text-right">{localSubscriptionReady ? copy.yes : copy.no}</span>
+              <span>{copy.savedToBackend}</span>
+              <span className="text-right">{pushSubscribed ? copy.yes : copy.no}</span>
             </div>
 
             {pushLastError ? (
@@ -1035,7 +1126,7 @@ export function CmsPwaScreen() {
                   disabled={enablingNotifications}
                   className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#FF6B35] px-3 py-2 text-xs font-semibold text-[#11141A] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {enablingNotifications ? 'Enabling...' : 'Enable notifications'}
+                  {enablingNotifications ? copy.enabling : copy.enableNotifications}
                 </button>
               ) : null}
               <button
@@ -1055,7 +1146,7 @@ export function CmsPwaScreen() {
                 }}
                 className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-semibold text-white"
               >
-                Re-run diagnostics
+                {copy.rerunDiagnostics}
               </button>
             </div>
           </div>

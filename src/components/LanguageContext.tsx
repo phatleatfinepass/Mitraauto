@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 type Language = 'fi' | 'en';
 
@@ -940,7 +940,28 @@ const translations: Translations = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('fi');
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window === 'undefined') {
+      return 'fi';
+    }
+
+    const stored = window.localStorage.getItem('mitra-language');
+    if (stored === 'fi' || stored === 'en') {
+      return stored;
+    }
+
+    const browserLanguage = window.navigator.language.toLowerCase();
+    return browserLanguage.startsWith('fi') ? 'fi' : 'en';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem('mitra-language', language);
+    document.documentElement.lang = language;
+  }, [language]);
 
   const t = (key: string): string => {
     return translations[key]?.[language] || key;
