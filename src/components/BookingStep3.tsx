@@ -8,6 +8,7 @@ import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { formatDateForSupabase } from '../utils/date';
+import { normalizeFinnishPhone } from '../utils/phone';
 
 interface BookingStep3Props {
   licensePlate: string;
@@ -59,9 +60,11 @@ export function BookingStep3({
     }
 
     // Validate phone
-    if (!contactInfo.phone.trim()) {
+    const normalizedPhone = normalizeFinnishPhone(contactInfo.phone);
+
+    if (!normalizedPhone) {
       newErrors.phone = t('booking.error.phoneRequired');
-    } else if (!/^\+?[\d\s-()]+$/.test(contactInfo.phone)) {
+    } else if (!/^\+?\d+$/.test(normalizedPhone.replace(/\s+/g, ''))) {
       newErrors.phone = t('booking.error.invalidPhone');
     }
 
@@ -90,7 +93,7 @@ export function BookingStep3({
         booking_language: language,
         service_name: serviceName,
         customer_name: contactInfo.name,
-        customer_phone: contactInfo.phone,
+        customer_phone: normalizedPhone,
         customer_email: contactInfo.email || null,
         notes: contactInfo.notes || null,
         status: 'confirmed',
@@ -150,7 +153,7 @@ export function BookingStep3({
               bookingId: data[0].id,
               customerName: contactInfo.name,
               customerEmail: contactInfo.email,
-              customerPhone: contactInfo.phone,
+              customerPhone: normalizedPhone,
               licensePlate: licensePlate.toUpperCase(),
               bookingDate,
               bookingTime: timeSlot,
@@ -202,6 +205,8 @@ export function BookingStep3({
               <Input
                 id="name"
                 type="text"
+                name="name"
+                autoComplete="name"
                 value={contactInfo.name}
                 onChange={(e) => onContactInfoChange('name', e.target.value)}
                 placeholder={t('booking.step3.fullNamePlaceholder')}
@@ -224,8 +229,12 @@ export function BookingStep3({
               <Input
                 id="phone"
                 type="tel"
+                name="tel"
+                autoComplete="tel"
+                inputMode="tel"
                 value={contactInfo.phone}
                 onChange={(e) => onContactInfoChange('phone', e.target.value)}
+                onBlur={(e) => onContactInfoChange('phone', normalizeFinnishPhone(e.target.value))}
                 placeholder={t('booking.step3.phonePlaceholder')}
                 className={`transition-all ${errors.phone ? 'border-destructive' : 'hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]'}`}
                 aria-invalid={!!errors.phone}
@@ -246,6 +255,9 @@ export function BookingStep3({
               <Input
                 id="email"
                 type="email"
+                name="email"
+                autoComplete="email"
+                inputMode="email"
                 value={contactInfo.email}
                 onChange={(e) => onContactInfoChange('email', e.target.value)}
                 placeholder={t('booking.step3.emailPlaceholder')}

@@ -13,6 +13,7 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { calculateLinePricing } from '../utils/pricing';
+import { normalizeFinnishPhone } from '../utils/phone';
 
 const VAT_RATE = 0.255;
 const VAT_PERCENT = 25.5;
@@ -137,7 +138,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     }
 
     // Validate phone
-    if (!formData.phone) {
+    const normalizedPhone = normalizeFinnishPhone(formData.phone);
+
+    if (!normalizedPhone) {
       toast.error(
         language === 'fi'
           ? 'Anna puhelinnumero'
@@ -215,7 +218,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         currency: 'EUR',
         customer: {
           email: formData.email,
-          phone: formData.phone,
+          phone: normalizedPhone,
           firstName: formData.firstName,
           lastName: formData.lastName,
         },
@@ -329,7 +332,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left - Checkout Form */}
           <div className="lg:col-span-2 space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" autoComplete="on">
               {/* Contact Information */}
               <Card className={`p-6 ${
                 theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-[#E2E8F0]'
@@ -348,6 +351,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     </Label>
                     <Input
                       id="firstName"
+                      name="firstName"
+                      autoComplete="given-name"
                       required
                       value={formData.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
@@ -365,6 +370,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     </Label>
                     <Input
                       id="lastName"
+                      name="lastName"
+                      autoComplete="family-name"
                       required
                       value={formData.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
@@ -383,6 +390,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     <Input
                       id="email"
                       type="email"
+                      name="email"
+                      autoComplete="email"
+                      inputMode="email"
                       required
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
@@ -401,9 +411,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     <Input
                       id="phone"
                       type="tel"
+                      name="phone"
+                      autoComplete="tel"
+                      inputMode="tel"
                       required
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
+                      onBlur={(e) => handleInputChange('phone', normalizeFinnishPhone(e.target.value))}
                       className={`mt-1 ${
                         theme === 'dark'
                           ? 'bg-white/5 border-white/10 text-white'
@@ -432,6 +446,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     </Label>
                     <Input
                       id="shippingAddress"
+                      name="shippingAddress"
+                      autoComplete="shipping street-address"
                       required
                       value={formData.shippingAddress}
                       onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
@@ -450,6 +466,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       </Label>
                       <Input
                         id="shippingCity"
+                        name="shippingCity"
+                        autoComplete="shipping address-level2"
                         required
                         value={formData.shippingCity}
                         onChange={(e) => handleInputChange('shippingCity', e.target.value)}
@@ -467,6 +485,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       </Label>
                       <Input
                         id="shippingPostalCode"
+                        name="shippingPostalCode"
+                        autoComplete="shipping postal-code"
+                        inputMode="numeric"
                         required
                         value={formData.shippingPostalCode}
                         onChange={(e) => handleInputChange('shippingPostalCode', e.target.value)}
@@ -514,6 +535,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       </Label>
                       <Input
                         id="billingAddress"
+                        name="billingAddress"
+                        autoComplete="billing street-address"
                         required={!formData.sameAsShipping}
                         value={formData.billingAddress}
                         onChange={(e) => handleInputChange('billingAddress', e.target.value)}
@@ -532,6 +555,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                         </Label>
                         <Input
                           id="billingCity"
+                          name="billingCity"
+                          autoComplete="billing address-level2"
                           required={!formData.sameAsShipping}
                           value={formData.billingCity}
                           onChange={(e) => handleInputChange('billingCity', e.target.value)}
@@ -549,6 +574,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                         </Label>
                         <Input
                           id="billingPostalCode"
+                          name="billingPostalCode"
+                          autoComplete="billing postal-code"
+                          inputMode="numeric"
                           required={!formData.sameAsShipping}
                           value={formData.billingPostalCode}
                           onChange={(e) => handleInputChange('billingPostalCode', e.target.value)}
