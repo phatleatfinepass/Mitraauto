@@ -1,6 +1,6 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AlertCircle, Bell, LogOut, RefreshCcw } from 'lucide-react';
+import { AlertCircle, LogOut, RefreshCcw, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { supabase, getSupabaseConfigError } from './utils/supabase/client';
 import { CmsPwaTabBar, type CmsPwaTab } from './components/cms-pwa/CmsPwaTabBar';
 import { CmsPwaNotFound } from './components/cms-pwa/CmsPwaNotFound';
@@ -52,11 +52,15 @@ function CmsPwaHeader({
   onLogout,
   language,
   setLanguage,
+  diagnosticsStatus,
+  onOpenDiagnostics,
 }: {
   headerMinimized: boolean;
   onLogout: () => void;
   language: 'fi' | 'en';
   setLanguage: (language: 'fi' | 'en') => void;
+  diagnosticsStatus: 'healthy' | 'attention';
+  onOpenDiagnostics: () => void;
 }) {
   return (
     <header
@@ -81,6 +85,22 @@ function CmsPwaHeader({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenDiagnostics}
+            className={`inline-flex items-center justify-center rounded-xl border transition-all duration-200 ${
+              diagnosticsStatus === 'healthy'
+                ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
+                : 'border-amber-400/20 bg-amber-400/10 text-amber-300'
+            } ${headerMinimized ? 'h-9 w-9' : 'h-10 w-10'}`}
+            aria-label="Open diagnostics"
+          >
+            {diagnosticsStatus === 'healthy' ? (
+              <ShieldCheck className={`transition-all duration-200 ${headerMinimized ? 'h-4 w-4' : 'h-[18px] w-[18px]'}`} />
+            ) : (
+              <ShieldAlert className={`transition-all duration-200 ${headerMinimized ? 'h-4 w-4' : 'h-[18px] w-[18px]'}`} />
+            )}
+          </button>
           <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
             {(['fi', 'en'] as const).map((value) => (
               <button
@@ -118,6 +138,7 @@ function CmsPwaSummary({
   onBookingHandoff,
   handoffLoading,
   activeBookingHandoffCount,
+  onRefresh,
 }: {
   counts: Record<CmsPwaTab, number>;
   lastUpdatedAt: string | null;
@@ -126,6 +147,7 @@ function CmsPwaSummary({
   onBookingHandoff: () => void;
   handoffLoading: boolean;
   activeBookingHandoffCount: number;
+  onRefresh: () => void;
 }) {
   const cards: Array<{ tab: 'rescue' | 'booking' | 'order'; label: string; count: number }> = [
     { tab: 'rescue', label: 'Rescue', count: counts.rescue },
@@ -143,9 +165,15 @@ function CmsPwaSummary({
             {lastUpdatedAt ? ` Updated ${formatShortDateTime(lastUpdatedAt)}.` : ''}
           </p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF6B35]/12">
-          {dataLoading ? <RefreshCcw className="h-5 w-5 animate-spin text-[#FF6B35]" /> : <Bell className="h-5 w-5 text-[#FF6B35]" />}
-        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={dataLoading}
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF6B35]/12 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="Refresh operations summary"
+        >
+          <RefreshCcw className={`h-5 w-5 text-[#FF6B35] ${dataLoading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2">
         {cards.map((card) => {
@@ -190,89 +218,16 @@ function CmsPwaScreenState({
   activeTab,
   dataError,
   userEmail,
-  activeBookingHandoffCount,
-  notificationPermission,
-  onEnableNotifications,
-  enablingNotifications,
-  diagnostics,
 }: {
   activeTab: CmsPwaTab;
   dataError: string;
   userEmail: string;
-  activeBookingHandoffCount: number;
-  notificationPermission: NotificationPermission | 'unsupported';
-  onEnableNotifications: () => void;
-  enablingNotifications: boolean;
-  diagnostics: {
-    serviceWorkerReady: boolean;
-    pushSupported: boolean;
-    localSubscription: boolean;
-    remoteSubscriptionSaved: boolean;
-    lastError: string;
-  };
 }) {
   return (
     <>
       <section className="mt-4">
-        {notificationPermission !== 'granted' ? (
-          <div className="mb-3 rounded-2xl border border-white/10 bg-[#141922] px-4 py-3 text-sm text-white/75">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-medium text-white">Booking notifications</p>
-                <p className="mt-1 text-xs text-white/55">
-                  {notificationPermission === 'unsupported'
-                    ? 'This device does not support browser notifications.'
-                    : notificationPermission === 'denied'
-                      ? 'Notifications are blocked in browser settings for this app.'
-                      : 'Enable notifications to get alerted about new bookings.'}
-                </p>
-              </div>
-              {notificationPermission === 'default' ? (
-                <button
-                  type="button"
-                  onClick={onEnableNotifications}
-                  disabled={enablingNotifications}
-                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#FF6B35] px-3 py-2 text-xs font-semibold text-[#11141A] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {enablingNotifications ? 'Enabling...' : 'Enable'}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-        <div className="mb-3 rounded-2xl border border-white/10 bg-[#141922] px-4 py-3 text-xs text-white/65">
-          <p className="font-medium text-white">Push diagnostics</p>
-          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
-            <span>Permission</span>
-            <span className="text-right">{notificationPermission}</span>
-            <span>Service worker</span>
-            <span className="text-right">{diagnostics.serviceWorkerReady ? 'ready' : 'not ready'}</span>
-            <span>Push supported</span>
-            <span className="text-right">{diagnostics.pushSupported ? 'yes' : 'no'}</span>
-            <span>Local subscription</span>
-            <span className="text-right">{diagnostics.localSubscription ? 'yes' : 'no'}</span>
-            <span>Saved to backend</span>
-            <span className="text-right">{diagnostics.remoteSubscriptionSaved ? 'yes' : 'no'}</span>
-          </div>
-          {diagnostics.lastError ? (
-            <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
-              {diagnostics.lastError}
-            </p>
-          ) : null}
-        </div>
-        <div className="rounded-2xl border border-[#FF6B35]/20 bg-[#261710] px-4 py-3 text-sm text-[#FFD2C3]">
-          {activeTab === 'rescue'
-            ? 'Rescue stays first by default. Keep this queue short and acknowledged.'
-            : activeTab === 'booking'
-              ? activeBookingHandoffCount > 0
-                ? `${activeBookingHandoffCount} booking${activeBookingHandoffCount === 1 ? '' : 's'} waiting for desktop CMS to finish handoff.`
-                : 'Booking tab is for new and upcoming items only. Keep full scheduling in desktop CMS.'
-              : activeTab === 'order'
-                ? 'Order tab is for follow-up and confirmation, not full catalog handling.'
-                : 'Future Tools is a holding area for later modules, not a full feature set yet.'}
-        </div>
         {dataError ? (
-          <div className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {dataError}
           </div>
         ) : null}
@@ -335,7 +290,9 @@ export function CmsPwaScreen() {
   const [localSubscriptionReady, setLocalSubscriptionReady] = useState(false);
   const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
   const [pushLastError, setPushLastError] = useState('');
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const loadRequestIdRef = useRef(0);
+  const loadInFlightRef = useRef(false);
 
   const configError = useMemo(() => getSupabaseConfigError(), []);
 
@@ -384,6 +341,14 @@ export function CmsPwaScreen() {
       void navWithBadge.clearAppBadge().catch(() => undefined);
     }
   }, []);
+
+  const diagnosticsStatus = useMemo<'healthy' | 'attention'>(() => {
+    const permissionHealthy = notificationPermission === 'granted';
+    const pushHealthy = typeof window !== 'undefined' ? 'PushManager' in window : false;
+    return permissionHealthy && serviceWorkerReady && pushHealthy && localSubscriptionReady && pushSubscribed && !pushLastError
+      ? 'healthy'
+      : 'attention';
+  }, [localSubscriptionReady, notificationPermission, pushLastError, pushSubscribed, serviceWorkerReady]);
 
   const registerPushSubscription = useCallback(async () => {
     if (
@@ -499,8 +464,15 @@ export function CmsPwaScreen() {
     };
   }, [configError, routeState.kind]);
 
-  const loadLiveData = React.useCallback(async (cancelledRef?: { current: boolean }) => {
+  const loadLiveData = React.useCallback(async (
+      cancelledRef?: { current: boolean },
+      options?: { force?: boolean },
+    ) => {
       const isCancelled = () => cancelledRef?.current === true;
+      if (loadInFlightRef.current && !options?.force) {
+        return;
+      }
+
       const requestId = ++loadRequestIdRef.current;
       const isStale = () => requestId !== loadRequestIdRef.current;
       const withTimeout = async <T,>(promise: Promise<T>, label: string, timeoutMs = 12000): Promise<T> => {
@@ -512,6 +484,7 @@ export function CmsPwaScreen() {
         ]);
       };
 
+      loadInFlightRef.current = true;
       setDataLoading(true);
       setDataError('');
 
@@ -600,6 +573,9 @@ export function CmsPwaScreen() {
         if (!isCancelled() && !isStale()) {
           setDataLoading(false);
         }
+        if (!isStale()) {
+          loadInFlightRef.current = false;
+        }
       }
     }, [language]);
 
@@ -608,7 +584,7 @@ export function CmsPwaScreen() {
 
     const cancelledRef = { current: false };
 
-    loadLiveData(cancelledRef);
+    loadLiveData(cancelledRef, { force: true });
     const intervalId = window.setInterval(() => {
       void loadLiveData(cancelledRef);
     }, REFRESH_INTERVAL_MS);
@@ -627,18 +603,21 @@ export function CmsPwaScreen() {
     const refreshIfVisible = () => {
       if (document.visibilityState === 'visible') {
         loadRequestIdRef.current += 1;
-        void loadLiveData();
+        loadInFlightRef.current = false;
+        void loadLiveData(undefined, { force: true });
       }
     };
 
     const refreshOnFocus = () => {
       loadRequestIdRef.current += 1;
-      void loadLiveData();
+      loadInFlightRef.current = false;
+      void loadLiveData(undefined, { force: true });
     };
 
     const refreshOnOnline = () => {
       loadRequestIdRef.current += 1;
-      void loadLiveData();
+      loadInFlightRef.current = false;
+      void loadLiveData(undefined, { force: true });
     };
 
     document.addEventListener('visibilitychange', refreshIfVisible);
@@ -846,6 +825,12 @@ export function CmsPwaScreen() {
     }
   };
 
+  const handleManualRefresh = () => {
+    loadRequestIdRef.current += 1;
+    loadInFlightRef.current = false;
+    void loadLiveData(undefined, { force: true });
+  };
+
   if (routeState.kind !== 'cms') {
     return <CmsPwaNotFound path={window.location.pathname} />;
   }
@@ -945,6 +930,8 @@ export function CmsPwaScreen() {
           onLogout={handleLogout}
           language={language}
           setLanguage={setLanguage}
+          diagnosticsStatus={diagnosticsStatus}
+          onOpenDiagnostics={() => setDiagnosticsOpen(true)}
         />
         <CmsPwaSummary
           counts={counts}
@@ -954,22 +941,12 @@ export function CmsPwaScreen() {
           onBookingHandoff={handleBookingHandoff}
           handoffLoading={handoffLoading}
           activeBookingHandoffCount={activeBookingHandoffCount}
+          onRefresh={handleManualRefresh}
         />
         <CmsPwaScreenState
           activeTab={activeTab}
           dataError={dataError}
           userEmail={userEmail}
-          activeBookingHandoffCount={activeBookingHandoffCount}
-          notificationPermission={notificationPermission}
-          onEnableNotifications={handleEnableNotifications}
-          enablingNotifications={enablingNotifications}
-          diagnostics={{
-            serviceWorkerReady,
-            pushSupported: typeof window !== 'undefined' && 'PushManager' in window,
-            localSubscription: localSubscriptionReady,
-            remoteSubscriptionSaved: pushSubscribed,
-            lastError: pushLastError,
-          }}
         />
 
         {activeTab === 'tools' ? (
@@ -991,6 +968,77 @@ export function CmsPwaScreen() {
         counts={{ ...counts, booking: unhandedNewBookingRows.length }}
         onSelect={handleSelectTab}
       />
+
+      {diagnosticsOpen ? (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/55 px-4 pb-4 pt-12">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#141922] p-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-white">Push diagnostics</p>
+                <p className="mt-1 text-xs text-white/55">Current notification and subscription health on this device.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDiagnosticsOpen(false)}
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/70"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-white/65">
+              <span>Permission</span>
+              <span className="text-right">{notificationPermission}</span>
+              <span>Service worker</span>
+              <span className="text-right">{serviceWorkerReady ? 'ready' : 'not ready'}</span>
+              <span>Push supported</span>
+              <span className="text-right">{typeof window !== 'undefined' && 'PushManager' in window ? 'yes' : 'no'}</span>
+              <span>Local subscription</span>
+              <span className="text-right">{localSubscriptionReady ? 'yes' : 'no'}</span>
+              <span>Saved to backend</span>
+              <span className="text-right">{pushSubscribed ? 'yes' : 'no'}</span>
+            </div>
+
+            {pushLastError ? (
+              <p className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                {pushLastError}
+              </p>
+            ) : null}
+
+            <div className="mt-4 flex gap-2">
+              {notificationPermission === 'default' ? (
+                <button
+                  type="button"
+                  onClick={handleEnableNotifications}
+                  disabled={enablingNotifications}
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#FF6B35] px-3 py-2 text-xs font-semibold text-[#11141A] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {enablingNotifications ? 'Enabling...' : 'Enable notifications'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setPushLastError('');
+                  setPushSubscribed(false);
+                  setLocalSubscriptionReady(false);
+                  setServiceWorkerReady(false);
+                  void handleManualRefresh();
+                  if (notificationPermission === 'granted') {
+                    void registerPushSubscription().catch((error) => {
+                      const message = error instanceof Error ? error.message : String(error);
+                      setPushLastError(message);
+                    });
+                  }
+                }}
+                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-semibold text-white"
+              >
+                Re-run diagnostics
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
