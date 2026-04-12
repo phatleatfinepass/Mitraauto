@@ -73,6 +73,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+  const [confirmingBookingId, setConfirmingBookingId] = useState<string | null>(null);
   const [composeMessageBookingId, setComposeMessageBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<string[]>([]);
   const [createBookingForm, setCreateBookingForm] = useState<AdminBookingFormState>({
@@ -1011,6 +1012,30 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }
   };
 
+  const handleForceConfirmBooking = async (booking: ScheduleBooking) => {
+    setConfirmingBookingId(booking.id);
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'confirmed' })
+        .eq('id', booking.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success(language === 'fi' ? 'Varaus vahvistettu' : 'Booking confirmed');
+      fetchScheduleData(selectedDate);
+    } catch (error) {
+      console.error('Error force confirming booking:', error);
+      toast.error(language === 'fi' ? 'Varauksen vahvistus epäonnistui' : 'Failed to confirm booking');
+    } finally {
+      setConfirmingBookingId(null);
+    }
+  };
+
   const handleOpenMessageComposer = (booking: ScheduleBooking) => {
     if (!booking.customer_email) {
       toast.error(t('noEmailNoSend'));
@@ -1541,6 +1566,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       <AdminScheduleDrawer
         cancellingBookingId={cancellingBookingId}
         composeMessageBookingId={composeMessageBookingId}
+        confirmingBookingId={confirmingBookingId}
         createBookingCurrentServiceId={createBookingCurrentServiceId}
         createBookingForm={createBookingForm}
         createBookingSelectedCategory={createBookingSelectedCategory}
@@ -1555,6 +1581,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         handleBookingMessageDraftChange={handleBookingMessageDraftChange}
         handleCreateBooking={handleCreateBooking}
         handleEditBookingFieldChange={handleEditBookingFieldChange}
+        handleForceConfirmBooking={handleForceConfirmBooking}
         handleOpenCancelBookingDialog={handleOpenCancelBookingDialog}
         handleOpenMessageComposer={handleOpenMessageComposer}
         handleResendBookingConfirmation={handleResendBookingConfirmation}

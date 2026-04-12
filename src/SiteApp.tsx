@@ -124,25 +124,35 @@ function normalizeAppPath(path: string): string {
 
 function CmsBetaHandoffControl() {
   const [handoffCount, setHandoffCount] = useState(0);
+  const [forceClearCount, setForceClearCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const loadHandoffCount = useCallback(async () => {
-    const { count } = await supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', BOOKING_STATUS_HANDOFF);
+  const loadCounts = useCallback(async () => {
+    const [{ count: handoff }, forceClearQuery] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', BOOKING_STATUS_HANDOFF),
+      supabase
+        .from('bookings')
+        .select('id, status')
+        .neq('status', 'cancelled'),
+    ]);
 
-    setHandoffCount(count ?? 0);
+    setHandoffCount(handoff ?? 0);
+    setForceClearCount(
+      (forceClearQuery.data ?? []).filter((booking) => (booking.status || 'confirmed').toLowerCase() !== 'confirmed').length,
+    );
   }, []);
 
   useEffect(() => {
-    void loadHandoffCount();
+    void loadCounts();
     const intervalId = window.setInterval(() => {
-      void loadHandoffCount();
+      void loadCounts();
     }, 30000);
 
     return () => window.clearInterval(intervalId);
-  }, [loadHandoffCount]);
+  }, [loadCounts]);
 
   const handleFinishHandoff = async () => {
     if (loading || handoffCount === 0) return;
@@ -174,7 +184,7 @@ function CmsBetaHandoffControl() {
       }
 
       toast.success('Booking handoff cleared');
-      await loadHandoffCount();
+      await loadCounts();
     } catch (error: any) {
       toast.error(error?.message || 'Failed to clear booking handoff');
     } finally {
@@ -182,17 +192,74 @@ function CmsBetaHandoffControl() {
     }
   };
 
-  if (handoffCount > 0) {
+  const handleForceClearAll = async () => {
+    if (loading || forceClearCount === 0) return;
+    setLoading(true);
+
+    try {
+      const { data, error: queryError } = await supabase
+        .from('bookings')
+        .select('id, status')
+        .neq('status', 'cancelled');
+
+      if (queryError) {
+        throw queryError;
+      }
+
+      const ids = (data ?? [])
+        .filter((booking) => (booking.status || 'confirmed').toLowerCase() !== 'confirmed')
+        .map((booking) => booking.id)
+        .filter(Boolean);
+
+      if (ids.length === 0) {
+        setForceClearCount(0);
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ status: 'confirmed' })
+        .in('id', ids);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast.success('All booking statuses cleared to confirmed');
+      await loadCounts();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to force clear booking statuses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (handoffCount > 0 || forceClearCount > 0) {
     return (
-      <button
-        type="button"
-        onClick={handleFinishHandoff}
-        disabled={loading}
-        className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
-      >
-        <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-        {loading ? 'Clearing handoff...' : `Clear handoff (${handoffCount})`}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {handoffCount > 0 ? (
+          <button
+            type="button"
+            onClick={handleFinishHandoff}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
+          >
+            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+            {loading ? 'Clearing handoff...' : `Clear handoff (${handoffCount})`}
+          </button>
+        ) : null}
+        {forceClearCount > 0 ? (
+          <button
+            type="button"
+            onClick={handleForceClearAll}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
+          >
+            <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+            {loading ? 'Force clearing...' : `Force clear (${forceClearCount})`}
+          </button>
+        ) : null}
+      </div>
     );
   }
 

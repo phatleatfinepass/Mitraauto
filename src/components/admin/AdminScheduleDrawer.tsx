@@ -31,6 +31,7 @@ import type { AdminBookingFormState, BookingMessageDraft } from './AdminSchedule
 interface AdminScheduleDrawerProps {
   cancellingBookingId: string | null;
   composeMessageBookingId: string | null;
+  confirmingBookingId: string | null;
   createBookingCurrentServiceId: string;
   createBookingForm: AdminBookingFormState;
   createBookingSelectedCategory: string;
@@ -45,6 +46,7 @@ interface AdminScheduleDrawerProps {
   handleBookingMessageDraftChange: (bookingId: string, field: keyof BookingMessageDraft, value: string) => void;
   handleCreateBooking: () => void;
   handleEditBookingFieldChange: (bookingId: string, field: keyof AdminBookingFormState, value: string) => void;
+  handleForceConfirmBooking: (booking: ScheduleBooking) => Promise<void> | void;
   handleOpenCancelBookingDialog: (booking: ScheduleBooking) => void;
   handleOpenMessageComposer: (booking: ScheduleBooking) => void;
   handleResendBookingConfirmation: (booking: ScheduleBooking) => void;
@@ -280,6 +282,7 @@ function BookingDetails({
 export function AdminScheduleDrawer({
   cancellingBookingId,
   composeMessageBookingId,
+  confirmingBookingId,
   createBookingCurrentServiceId,
   createBookingForm,
   createBookingSelectedCategory,
@@ -294,6 +297,7 @@ export function AdminScheduleDrawer({
   handleBookingMessageDraftChange,
   handleCreateBooking,
   handleEditBookingFieldChange,
+  handleForceConfirmBooking,
   handleOpenCancelBookingDialog,
   handleOpenMessageComposer,
   handleResendBookingConfirmation,
@@ -585,6 +589,18 @@ export function AdminScheduleDrawer({
                               >
                                 <Send className="mr-2 h-4 w-4 shrink-0" />
                                 {resendingBookingId === booking.id ? t('sending') : t('resendConfirmation')}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleForceConfirmBooking(booking)}
+                                disabled={confirmingBookingId === booking.id}
+                                className={`justify-start rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
+                              >
+                                <Save className="mr-2 h-4 w-4 shrink-0" />
+                                {confirmingBookingId === booking.id
+                                  ? (language === 'fi' ? 'Vahvistetaan...' : 'Confirming...')
+                                  : (language === 'fi' ? 'Pakota vahvistus' : 'Force confirm')}
                               </Button>
                               <Button
                                 size="sm"
