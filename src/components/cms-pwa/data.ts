@@ -343,7 +343,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
             ? 'fi'
             : null)
         ?? 'fi';
-      const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
+      const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
       return {
         id: booking.id,
         title: localizedServiceName || booking.service_name || copy.bookingFallback,
@@ -389,7 +389,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
             ? 'fi'
             : null)
         ?? 'fi';
-      const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
+      const localizedServiceName = localizeStoredServiceName(booking.service_name, bookingLanguage);
       const handoffTimestamp = handoffActive ? booking.updated_at ?? null : null;
 
       return {

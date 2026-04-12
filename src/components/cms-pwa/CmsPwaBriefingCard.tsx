@@ -91,20 +91,20 @@ export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
 
           {bookingCompact ? (
             <>
-              <div className="mt-2 flex items-center justify-between gap-2 text-sm text-white/72">
-                <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+              <div className="mt-2 flex w-full items-center gap-2 text-sm text-white/72">
+                <span className="inline-flex min-w-0 max-w-[60%] items-center gap-1.5">
                   <IdCard className="h-3.5 w-3.5 flex-none" />
                   <span className="truncate font-mono">{item.licensePlate}</span>
                 </span>
-                <span className="min-w-0 flex-none text-right text-xs text-white/55">{item.time}</span>
+                <span className="ml-auto flex-none text-right text-xs text-white/55">{item.time}</span>
               </div>
-              <div className="mt-2 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 text-xs text-white/58">
-                <span className="inline-flex min-w-0 items-center gap-1.5">
+              <div className="mt-2 flex w-full items-center gap-2 text-xs text-white/58">
+                <span className="inline-flex min-w-0 flex-none items-center gap-1.5">
                   <span className="text-sm leading-none">{item.bookingLanguageFlag ?? '🌐'}</span>
                   <span className="truncate">{item.bookingLanguageLabel}</span>
                 </span>
-                <span className="min-w-0 truncate text-center">{item.owner}</span>
-                <span className="min-w-0 truncate text-right">{item.phone}</span>
+                <span className="min-w-0 flex-1 truncate px-2 text-center">{item.owner}</span>
+                <span className="ml-auto min-w-0 flex-none text-right">{item.phone}</span>
               </div>
             </>
           ) : (
