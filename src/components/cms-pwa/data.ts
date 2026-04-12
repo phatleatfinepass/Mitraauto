@@ -29,6 +29,7 @@ const BOOKING_CARD_COPY = {
     emailCustomer: 'Lähetä sähköposti',
     finnish: 'Suomi',
     english: 'Englanti',
+    newBookingsZeroTitle: 'Uudet varaukset: 0',
   },
   en: {
     newBookingsTitle: 'New bookings',
@@ -51,6 +52,7 @@ const BOOKING_CARD_COPY = {
     emailCustomer: 'Email customer',
     finnish: 'Finnish',
     english: 'English',
+    newBookingsZeroTitle: 'New bookings: 0',
   },
 } as const;
 
@@ -426,7 +428,12 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     });
 
   return [
-    { title: copy.newBookingsTitle, caption: copy.newBookingsCaption, items: newItems },
+    {
+      title: newItems.length === 0 ? copy.newBookingsZeroTitle : copy.newBookingsTitle,
+      caption: newItems.length === 0 ? '' : copy.newBookingsCaption,
+      items: newItems,
+      hideEmptyState: true,
+    },
     { title: copy.upcomingTitle, caption: copy.upcomingCaption, items: upcomingItems },
   ];
 }

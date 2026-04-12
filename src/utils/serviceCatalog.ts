@@ -20,6 +20,15 @@ interface ServiceCatalogEntry {
   price: number;
 }
 
+const SERVICE_ALIASES: Record<string, string> = {
+  'basic service': 'annual-maintenance',
+  'large service': 'annual-maintenance',
+  'tire storage plan': 'tire-hotel-storage',
+  'tire hotel': 'tire-hotel-storage',
+  'scheduled maintenance': 'annual-maintenance',
+  'määräaikaishuolto': 'annual-maintenance',
+};
+
 export function detectStoredServiceLanguage(
   storedServiceName: string | null | undefined,
 ): SupportedBookingLanguage | null {
@@ -132,6 +141,10 @@ function normalizeServiceName(value: string): string {
 
 function findServiceByAnyLocalizedName(name: string): ServiceCatalogEntry | null {
   const normalizedName = normalizeServiceName(name);
+  const aliasId = SERVICE_ALIASES[normalizedName];
+  if (aliasId) {
+    return SERVICE_CATALOG.find((service) => service.id === aliasId) || null;
+  }
   return (
     SERVICE_CATALOG.find((service) =>
       normalizeServiceName(service.name.fi) === normalizedName ||

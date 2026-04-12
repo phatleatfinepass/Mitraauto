@@ -12,6 +12,7 @@ export type TabSection = {
   title: string;
   caption: string;
   items: BriefingItem[];
+  hideEmptyState?: boolean;
 };
 
 export type BookingRow = {

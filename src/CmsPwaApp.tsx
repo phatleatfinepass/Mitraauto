@@ -22,15 +22,22 @@ import {
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import type { AuthState, BookingRow, LiveSectionsState, LoginState, OrderRow } from './components/cms-pwa/types';
 
+declare const __APP_COMMIT__: string;
+declare const __APP_BUILD_STAMP__: string;
+
 const CMS_PWA_COPY = {
   fi: {
     mobileOps: 'Mitra Auto mobile ops',
-    briefingBoard: 'Tilannekuva',
-    briefingIntro: 'Pelastus-, varaus- ja tilaustehtävät, jotka vaativat huomiota nyt.',
+    rescueTitle: 'Pelastus',
+    bookingTitle: 'Varaus',
+    orderTitle: 'Tilaus',
+    toolsTitle: 'Future Tools',
     openDiagnostics: 'Avaa diagnostiikka',
     signOut: 'Kirjaudu ulos',
     operationalSummary: 'Operatiivinen yhteenveto',
-    operationalSummaryBody: 'Näkyvät kohteet, jotka vaativat vielä ihmisen toimenpiteitä.',
+    versionLabel: 'Versio',
+    developingLabel: 'Tämä on kehitysversio',
+    updateLabel: 'Päivitys',
     updated: 'Päivitetty',
     forceRefresh: 'Pakota päivitys',
     rescue: 'Pelastus',
@@ -65,12 +72,16 @@ const CMS_PWA_COPY = {
   },
   en: {
     mobileOps: 'Mitra Auto mobile ops',
-    briefingBoard: 'Briefing board',
-    briefingIntro: 'Rescue, booking, and order items needing attention now.',
+    rescueTitle: 'Rescue',
+    bookingTitle: 'Booking',
+    orderTitle: 'Order',
+    toolsTitle: 'Future Tools',
     openDiagnostics: 'Open diagnostics',
     signOut: 'Sign out',
     operationalSummary: 'Operational summary',
-    operationalSummaryBody: 'Visible items that still need human follow-up.',
+    versionLabel: 'Version',
+    developingLabel: 'This is for developing',
+    updateLabel: 'Update',
     updated: 'Updated',
     forceRefresh: 'Force refresh',
     rescue: 'Rescue',
@@ -156,6 +167,7 @@ function CmsPwaHeader({
   diagnosticsStatus,
   onOpenDiagnostics,
   copy,
+  activeTitle,
 }: {
   headerMinimized: boolean;
   onLogout: () => void;
@@ -164,6 +176,7 @@ function CmsPwaHeader({
   diagnosticsStatus: 'healthy' | 'attention';
   onOpenDiagnostics: () => void;
   copy: typeof CMS_PWA_COPY.fi;
+  activeTitle: string;
 }) {
   return (
     <header
@@ -177,15 +190,8 @@ function CmsPwaHeader({
             {copy.mobileOps}
           </p>
           <h1 className={`font-semibold tracking-tight transition-all duration-200 ${headerMinimized ? 'mt-0.5 text-lg' : 'mt-1 text-2xl'}`}>
-            {copy.briefingBoard}
+            {activeTitle}
           </h1>
-          <p
-            className={`overflow-hidden text-white/55 transition-all duration-200 ${
-              headerMinimized ? 'mt-0 max-h-0 opacity-0' : 'mt-1 max-h-12 text-sm opacity-100'
-            }`}
-          >
-            {copy.briefingIntro}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -259,10 +265,7 @@ function CmsPwaSummary({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-white">{copy.operationalSummary}</p>
-          <p className="mt-1 text-xs text-white/55">
-            {copy.operationalSummaryBody}
-            {lastUpdatedAt ? ` ${copy.updated} ${formatShortDateTime(lastUpdatedAt)}.` : ''}
-          </p>
+          <p className="mt-1 text-xs text-white/55">{`${copy.versionLabel} ${__APP_COMMIT__} (${copy.developingLabel}). ${copy.updateLabel} ${__APP_BUILD_STAMP__}`}</p>
         </div>
         <button
           type="button"
@@ -387,6 +390,15 @@ export function CmsPwaScreen() {
   const loadRequestIdRef = useRef(0);
   const loadInFlightRef = useRef(false);
   const authStateRef = useRef<AuthState>('loading');
+
+  const activeTitle =
+    activeTab === 'rescue'
+      ? copy.rescueTitle
+      : activeTab === 'booking'
+        ? copy.bookingTitle
+        : activeTab === 'order'
+          ? copy.orderTitle
+          : copy.toolsTitle;
 
   const configError = useMemo(() => getSupabaseConfigError(), []);
 
@@ -1045,6 +1057,7 @@ export function CmsPwaScreen() {
           diagnosticsStatus={diagnosticsStatus}
           onOpenDiagnostics={() => setDiagnosticsOpen(true)}
           copy={copy}
+          activeTitle={activeTitle}
         />
         <CmsPwaSummary
           counts={counts}
