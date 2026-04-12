@@ -9,15 +9,15 @@
   "theme_color": "#11141A",
   "icons": [
     {
-      "src": "/icons/mitra-app-icon-512.png",
-      "sizes": "512x512",
+      "src": "/icons/mitra-app-icon-1024.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/icons/mitra-app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
