@@ -1,6 +1,6 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AlertCircle, LogOut, RefreshCcw, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { AlertCircle, Globe, LogOut, RefreshCcw } from 'lucide-react';
 import { supabase, getSupabaseConfigError } from './utils/supabase/client';
 import { CmsPwaTabBar, type CmsPwaTab } from './components/cms-pwa/CmsPwaTabBar';
 import { CmsPwaNotFound } from './components/cms-pwa/CmsPwaNotFound';
@@ -88,18 +88,12 @@ function CmsPwaHeader({
           <button
             type="button"
             onClick={onOpenDiagnostics}
-            className={`inline-flex items-center justify-center rounded-xl border transition-all duration-200 ${
-              diagnosticsStatus === 'healthy'
-                ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
-                : 'border-amber-400/20 bg-amber-400/10 text-amber-300'
+            className={`inline-flex items-center justify-center transition-all duration-200 ${
+              diagnosticsStatus === 'healthy' ? 'text-emerald-300' : 'text-amber-300'
             } ${headerMinimized ? 'h-9 w-9' : 'h-10 w-10'}`}
             aria-label="Open diagnostics"
           >
-            {diagnosticsStatus === 'healthy' ? (
-              <ShieldCheck className={`transition-all duration-200 ${headerMinimized ? 'h-4 w-4' : 'h-[18px] w-[18px]'}`} />
-            ) : (
-              <ShieldAlert className={`transition-all duration-200 ${headerMinimized ? 'h-4 w-4' : 'h-[18px] w-[18px]'}`} />
-            )}
+            <Globe className={`transition-all duration-200 ${headerMinimized ? 'h-4 w-4' : 'h-[18px] w-[18px]'}`} />
           </button>
           <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
             {(['fi', 'en'] as const).map((value) => (
@@ -133,21 +127,17 @@ function CmsPwaHeader({
 function CmsPwaSummary({
   counts,
   lastUpdatedAt,
-  dataLoading,
   activeTab,
   onBookingHandoff,
   handoffLoading,
   activeBookingHandoffCount,
-  onRefresh,
 }: {
   counts: Record<CmsPwaTab, number>;
   lastUpdatedAt: string | null;
-  dataLoading: boolean;
   activeTab: CmsPwaTab;
   onBookingHandoff: () => void;
   handoffLoading: boolean;
   activeBookingHandoffCount: number;
-  onRefresh: () => void;
 }) {
   const cards: Array<{ tab: 'rescue' | 'booking' | 'order'; label: string; count: number }> = [
     { tab: 'rescue', label: 'Rescue', count: counts.rescue },
@@ -165,15 +155,6 @@ function CmsPwaSummary({
             {lastUpdatedAt ? ` Updated ${formatShortDateTime(lastUpdatedAt)}.` : ''}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={dataLoading}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF6B35]/12 disabled:cursor-not-allowed disabled:opacity-60"
-          aria-label="Refresh operations summary"
-        >
-          <RefreshCcw className={`h-5 w-5 text-[#FF6B35] ${dataLoading ? 'animate-spin' : ''}`} />
-        </button>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2">
         {cards.map((card) => {
@@ -291,8 +272,11 @@ export function CmsPwaScreen() {
   const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
   const [pushLastError, setPushLastError] = useState('');
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
   const loadRequestIdRef = useRef(0);
   const loadInFlightRef = useRef(false);
+  const touchStartYRef = useRef<number | null>(null);
+  const pullArmedRef = useRef(false);
 
   const configError = useMemo(() => getSupabaseConfigError(), []);
 
@@ -831,6 +815,39 @@ export function CmsPwaScreen() {
     void loadLiveData(undefined, { force: true });
   };
 
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (window.scrollY > 0) {
+      touchStartYRef.current = null;
+      pullArmedRef.current = false;
+      return;
+    }
+
+    touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    pullArmedRef.current = false;
+  };
+
+  const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartYRef.current === null || window.scrollY > 0) {
+      return;
+    }
+
+    const currentY = event.touches[0]?.clientY ?? 0;
+    const delta = Math.max(0, currentY - touchStartYRef.current);
+    const clamped = Math.min(72, delta * 0.55);
+    setPullDistance(clamped);
+    pullArmedRef.current = clamped >= 52;
+  };
+
+  const handleTouchEnd = () => {
+    if (pullArmedRef.current) {
+      handleManualRefresh();
+    }
+
+    touchStartYRef.current = null;
+    pullArmedRef.current = false;
+    setPullDistance(0);
+  };
+
   if (routeState.kind !== 'cms') {
     return <CmsPwaNotFound path={window.location.pathname} />;
   }
@@ -923,8 +940,21 @@ export function CmsPwaScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E1117] text-white">
+    <div
+      className="min-h-screen bg-[#0E1117] text-white"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-28 pt-5">
+        <div
+          className="flex items-center justify-center overflow-hidden transition-all duration-200"
+          style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }}
+          aria-hidden="true"
+        >
+          <RefreshCcw className={`h-5 w-5 ${dataLoading || pullArmedRef.current ? 'animate-spin text-[#FF6B35]' : 'text-white/45'}`} />
+        </div>
         <CmsPwaHeader
           headerMinimized={headerMinimized}
           onLogout={handleLogout}
@@ -936,12 +966,10 @@ export function CmsPwaScreen() {
         <CmsPwaSummary
           counts={counts}
           lastUpdatedAt={lastUpdatedAt}
-          dataLoading={dataLoading}
           activeTab={activeTab}
           onBookingHandoff={handleBookingHandoff}
           handoffLoading={handoffLoading}
           activeBookingHandoffCount={activeBookingHandoffCount}
-          onRefresh={handleManualRefresh}
         />
         <CmsPwaScreenState
           activeTab={activeTab}
