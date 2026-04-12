@@ -455,15 +455,44 @@ export function CmsPwaScreen() {
       setAppBadge?: (count?: number) => Promise<void>;
       clearAppBadge?: () => Promise<void>;
     };
+    const syncRegistrationBadge = async () => {
+      if (!('serviceWorker' in navigator)) {
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const registrationWithBadge = registration as ServiceWorkerRegistration & {
+          setAppBadge?: (count?: number) => Promise<void>;
+          clearAppBadge?: () => Promise<void>;
+        };
+
+        if (count > 0 && registrationWithBadge.setAppBadge) {
+          await registrationWithBadge.setAppBadge(count);
+          return;
+        }
+
+        if (count === 0 && registrationWithBadge.clearAppBadge) {
+          await registrationWithBadge.clearAppBadge();
+        }
+      } catch {
+        // Ignore badge sync failures.
+      }
+    };
 
     if (count > 0 && navWithBadge.setAppBadge) {
       void navWithBadge.setAppBadge(count).catch(() => undefined);
+      void syncRegistrationBadge();
       return;
     }
 
     if (count === 0 && navWithBadge.clearAppBadge) {
       void navWithBadge.clearAppBadge().catch(() => undefined);
+      void syncRegistrationBadge();
+      return;
     }
+
+    void syncRegistrationBadge();
   }, []);
 
   const diagnosticsStatus = useMemo<'healthy' | 'attention'>(() => {
@@ -717,21 +746,27 @@ export function CmsPwaScreen() {
       }
     }, [language]);
 
+  const forceRefreshLiveData = useCallback((cancelledRef?: { current: boolean }) => {
+    loadRequestIdRef.current += 1;
+    loadInFlightRef.current = false;
+    return loadLiveData(cancelledRef, { force: true });
+  }, [loadLiveData]);
+
   useEffect(() => {
     if (authState !== 'authenticated') return;
 
     const cancelledRef = { current: false };
 
-    loadLiveData(cancelledRef, { force: true });
+    forceRefreshLiveData(cancelledRef);
     const intervalId = window.setInterval(() => {
-      void loadLiveData(cancelledRef);
+      void forceRefreshLiveData(cancelledRef);
     }, REFRESH_INTERVAL_MS);
 
     return () => {
       cancelledRef.current = true;
       window.clearInterval(intervalId);
     };
-  }, [authState, loadLiveData, language]);
+  }, [authState, forceRefreshLiveData, language]);
 
   useEffect(() => {
     if (authState !== 'authenticated') {
@@ -740,22 +775,16 @@ export function CmsPwaScreen() {
 
     const refreshIfVisible = () => {
       if (document.visibilityState === 'visible') {
-        loadRequestIdRef.current += 1;
-        loadInFlightRef.current = false;
-        void loadLiveData(undefined, { force: true });
+        void forceRefreshLiveData();
       }
     };
 
     const refreshOnFocus = () => {
-      loadRequestIdRef.current += 1;
-      loadInFlightRef.current = false;
-      void loadLiveData(undefined, { force: true });
+      void forceRefreshLiveData();
     };
 
     const refreshOnOnline = () => {
-      loadRequestIdRef.current += 1;
-      loadInFlightRef.current = false;
-      void loadLiveData(undefined, { force: true });
+      void forceRefreshLiveData();
     };
 
     document.addEventListener('visibilitychange', refreshIfVisible);
@@ -769,7 +798,7 @@ export function CmsPwaScreen() {
       window.removeEventListener('pageshow', refreshOnFocus);
       window.removeEventListener('online', refreshOnOnline);
     };
-  }, [authState, loadLiveData]);
+  }, [authState, forceRefreshLiveData]);
 
   useEffect(() => {
     if (authState !== 'authenticated') {
@@ -782,7 +811,7 @@ export function CmsPwaScreen() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings' },
         () => {
-          void loadLiveData();
+          void forceRefreshLiveData();
         },
       )
       .subscribe();
@@ -790,7 +819,7 @@ export function CmsPwaScreen() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [authState, loadLiveData]);
+  }, [authState, forceRefreshLiveData]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -938,7 +967,7 @@ export function CmsPwaScreen() {
         throw updateError;
       }
 
-      await loadLiveData();
+      await forceRefreshLiveData();
     } catch (handoffError: any) {
       setDataError(handoffError?.message || 'Booking handoff failed.');
     } finally {
@@ -964,9 +993,7 @@ export function CmsPwaScreen() {
   };
 
   const handleManualRefresh = () => {
-    loadRequestIdRef.current += 1;
-    loadInFlightRef.current = false;
-    void loadLiveData(undefined, { force: true });
+    void forceRefreshLiveData();
   };
 
   if (routeState.kind !== 'cms') {
