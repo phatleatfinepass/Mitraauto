@@ -2,7 +2,7 @@
   "name": "Mitra Auto",
   "short_name": "Mitra Auto",
   "description": "Mitra Auto mobile operations and garage services.",
-  "start_url": "/",
+  "start_url": "/pwa/cms",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0E1117",

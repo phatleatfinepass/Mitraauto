@@ -2,7 +2,6 @@ import type { BriefingItem } from './CmsPwaBriefingCard';
 import type { CmsPwaTab } from './CmsPwaTabBar';
 import type { BookingRow, CmsPwaRoute, OrderRow, TabSection } from './types';
 import { localizeStoredServiceName } from '../../utils/serviceCatalog';
-import { isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 
 export const REFRESH_INTERVAL_MS = 30_000;
 export const BOOKING_STATUS_HANDOFF = 'handoff';
@@ -18,10 +17,10 @@ function buildTelHref(phone?: string | null) {
 }
 
 export const tabPathMap: Record<CmsPwaTab, string> = {
-  rescue: pwaPath('/'),
-  booking: pwaPath('/booking'),
-  order: pwaPath('/order'),
-  tools: pwaPath('/tools'),
+  rescue: '/pwa/cms',
+  booking: '/pwa/cms/booking',
+  order: '/pwa/cms/order',
+  tools: '/pwa/cms/tools',
 };
 
 export const toolSections: Array<{
@@ -130,25 +129,19 @@ export const rescueSections: TabSection[] = [
 ];
 
 export function resolveCmsPwaRoute(pathname: string): CmsPwaRoute {
-  const normalized = pathname.replace(/\/+$/, '') || '/';
+  const normalized = pathname.replace(/\/+$/, '') || '/pwa';
 
-  if (normalized === '/pwa' || normalized === '/pwa/cms' || normalized === '/pwa/cms/rescue' || normalized === '/' || normalized === '/rescue') {
+  if (normalized === '/pwa/cms' || normalized === '/pwa/cms/rescue') {
     return { kind: 'cms', tab: 'rescue' };
   }
-  if (normalized === '/pwa/cms/booking' || normalized === '/booking') {
+  if (normalized === '/pwa/cms/booking') {
     return { kind: 'cms', tab: 'booking' };
   }
-  if (normalized === '/pwa/cms/order' || normalized === '/order') {
+  if (normalized === '/pwa/cms/order') {
     return { kind: 'cms', tab: 'order' };
   }
-  if (normalized === '/pwa/cms/tools' || normalized === '/tools') {
+  if (normalized === '/pwa/cms/tools') {
     return { kind: 'cms', tab: 'tools' };
-  }
-  if (!isStandalonePwaDeploy && normalized.startsWith('/pwa/')) {
-    return { kind: 'not-found' };
-  }
-  if (isStandalonePwaDeploy) {
-    return { kind: 'not-found' };
   }
   return { kind: 'not-found' };
 }
