@@ -98,7 +98,7 @@ export function BookingSuccess({
     const startAt = buildLocalBookingDateTime(date, timeSlot);
     const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
     const createdAt = new Date();
-    const summary = `${serviceName} - ${licensePlate}`;
+    const summary = `Mitra Auto: ${serviceName} (${licensePlate})`;
     const location = 'Hankasuontie 5, 00390, Helsinki, Finland';
     const workshopPhone = '+358407777163';
     const workshopEmail = 'contact@mitra-auto.fi';
