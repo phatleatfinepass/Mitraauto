@@ -275,6 +275,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               date={date}
               timeSlot={selectedTimeSlot || ''}
               serviceName={getServiceName()}
+              language={language}
               contactInfo={contactInfo}
               onClose={handleClose}
               t={t}

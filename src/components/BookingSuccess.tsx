@@ -8,14 +8,79 @@ interface BookingSuccessProps {
   date: Date;
   timeSlot: string;
   serviceName: string;
+  language?: 'fi' | 'en';
   contactInfo: {
     name: string;
     phone: string;
     email: string;
+    notes?: string;
   };
   onClose: () => void;
   t: (key: string) => string;
   locale?: string;
+}
+
+function padCalendarNumber(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function buildLocalBookingDateTime(date: Date, timeSlot: string) {
+  const normalizedTime = timeSlot.trim();
+  const match = normalizedTime.match(/^(\d{1,2}):(\d{2})$/);
+  const hours = match ? Number(match[1]) : 9;
+  const minutes = match ? Number(match[2]) : 0;
+
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    hours,
+    minutes,
+    0,
+    0,
+  );
+}
+
+function formatIcsUtc(date: Date) {
+  return [
+    date.getUTCFullYear(),
+    padCalendarNumber(date.getUTCMonth() + 1),
+    padCalendarNumber(date.getUTCDate()),
+    'T',
+    padCalendarNumber(date.getUTCHours()),
+    padCalendarNumber(date.getUTCMinutes()),
+    padCalendarNumber(date.getUTCSeconds()),
+    'Z',
+  ].join('');
+}
+
+function escapeIcsText(value: string) {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
+function foldIcsLine(line: string) {
+  if (line.length <= 74) {
+    return line;
+  }
+
+  const parts: string[] = [];
+  let remaining = line;
+
+  while (remaining.length > 74) {
+    parts.push(remaining.slice(0, 74));
+    remaining = ` ${remaining.slice(74)}`;
+  }
+
+  parts.push(remaining);
+  return parts.join('\r\n');
+}
+
+function buildIcsLine(key: string, value: string) {
+  return foldIcsLine(`${key}:${value}`);
 }
 
 export function BookingSuccess({
@@ -23,15 +88,111 @@ export function BookingSuccess({
   date,
   timeSlot,
   serviceName,
+  language = 'fi',
   contactInfo,
   onClose,
   t,
   locale = 'fi-FI',
 }: BookingSuccessProps) {
   const handleAddToCalendar = () => {
-    // [BOOKING ACTION] Generate calendar event
-    console.log('Add to calendar clicked');
-    // In production, generate .ics file or integrate with calendar APIs
+    const startAt = buildLocalBookingDateTime(date, timeSlot);
+    const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+    const createdAt = new Date();
+    const summary = `${serviceName} - ${licensePlate}`;
+    const location = 'Hankasuontie 5, 00390, Helsinki, Finland';
+    const workshopPhone = '+358407777163';
+    const workshopEmail = 'contact@mitra-auto.fi';
+    const copy = language === 'fi'
+      ? {
+          confirmationTitle: 'Mitra Auto varausvahvistus',
+          service: 'Palvelu',
+          licensePlate: 'Rekisterinumero',
+          date: 'Päivä',
+          time: 'Aika',
+          customer: 'Asiakas',
+          phone: 'Puhelin',
+          email: 'Sähköposti',
+          bookingNotes: 'Varausmuistiinpanot',
+          location: 'Sijainti',
+          workshopPhone: 'Korjaamon puhelin',
+          workshopEmail: 'Korjaamon sähköposti',
+          arrivalNote: 'Saavu paikalle muutama minuutti ennen varattua aikaa.',
+          reminder: 'Muistutus',
+        }
+      : {
+          confirmationTitle: 'Mitra Auto booking confirmation',
+          service: 'Service',
+          licensePlate: 'License plate',
+          date: 'Date',
+          time: 'Time',
+          customer: 'Customer',
+          phone: 'Phone',
+          email: 'Email',
+          bookingNotes: 'Booking notes',
+          location: 'Location',
+          workshopPhone: 'Workshop phone',
+          workshopEmail: 'Workshop email',
+          arrivalNote: 'Please arrive a few minutes before your booked time.',
+          reminder: 'Reminder',
+        };
+    const description = [
+      copy.confirmationTitle,
+      '',
+      `${copy.service}: ${serviceName}`,
+      `${copy.licensePlate}: ${licensePlate}`,
+      `${copy.date}: ${date.toLocaleDateString(locale, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })}`,
+      `${copy.time}: ${timeSlot}`,
+      '',
+      `${copy.customer}: ${contactInfo.name}`,
+      `${copy.phone}: ${contactInfo.phone}`,
+      ...(contactInfo.email ? [`${copy.email}: ${contactInfo.email}`] : []),
+      ...(contactInfo.notes?.trim() ? ['', `${copy.bookingNotes}: ${contactInfo.notes.trim()}`] : []),
+      '',
+      `${copy.location}: ${location}`,
+      `${copy.workshopPhone}: ${workshopPhone}`,
+      `${copy.workshopEmail}: ${workshopEmail}`,
+      copy.arrivalNote,
+    ].join('\n');
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Mitra Auto//Booking//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      buildIcsLine('UID', `booking-${licensePlate}-${startAt.getTime()}@mitra-auto.fi`),
+      buildIcsLine('DTSTAMP', formatIcsUtc(createdAt)),
+      buildIcsLine('DTSTART', formatIcsUtc(startAt)),
+      buildIcsLine('DTEND', formatIcsUtc(endAt)),
+      buildIcsLine('SUMMARY', escapeIcsText(summary)),
+      buildIcsLine('DESCRIPTION', escapeIcsText(description)),
+      buildIcsLine('LOCATION', escapeIcsText(location)),
+      buildIcsLine('ORGANIZER;CN=Mitra Auto', `mailto:${workshopEmail}`),
+      buildIcsLine('STATUS', 'CONFIRMED'),
+      buildIcsLine('TRANSP', 'OPAQUE'),
+      'BEGIN:VALARM',
+      buildIcsLine('ACTION', 'DISPLAY'),
+      buildIcsLine('DESCRIPTION', escapeIcsText(`${copy.reminder}: ${summary}`)),
+      buildIcsLine('TRIGGER', '-PT2H'),
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `mitra-auto-booking-${licensePlate.toLowerCase()}.ics`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   };
 
   return (
