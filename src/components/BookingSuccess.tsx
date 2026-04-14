@@ -83,6 +83,29 @@ function buildIcsLine(key: string, value: string) {
   return foldIcsLine(`${key}:${value}`);
 }
 
+function detectPreferredMapLink() {
+  const appleMapsUrl = 'https://maps.apple/p/dab1zsmGKhRDMI';
+  const googleMapsUrl = 'https://maps.app.goo.gl/tfX3mvdRhz7v3Q7R8';
+
+  if (typeof navigator === 'undefined') {
+    return { label: 'Google Maps', url: googleMapsUrl };
+  }
+
+  const platform = navigator.platform || '';
+  const userAgent = navigator.userAgent || '';
+  const vendor = navigator.vendor || '';
+  const appleLike =
+    /iPhone|iPad|iPod|Mac/i.test(platform) ||
+    /iPhone|iPad|iPod|Mac OS X|Macintosh/i.test(userAgent) ||
+    /Apple/i.test(vendor);
+
+  if (appleLike) {
+    return { label: 'Apple Maps', url: appleMapsUrl };
+  }
+
+  return { label: 'Google Maps', url: googleMapsUrl };
+}
+
 export function BookingSuccess({
   licensePlate,
   date,
@@ -99,9 +122,14 @@ export function BookingSuccess({
     const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
     const createdAt = new Date();
     const summary = `Mitra Auto: ${serviceName} (${licensePlate})`;
-    const location = 'Hankasuontie 5, 00390, Helsinki, Finland';
+    const locationName = 'Mitra Auto';
+    const locationAddress = 'Hankasuontie 5, 00390, Helsinki, Finland';
+    const location = `${locationName}, ${locationAddress}`;
+    const latitude = '60.247482';
+    const longitude = '24.844299';
     const workshopPhone = '+358407777163';
     const workshopEmail = 'contact@mitra-auto.fi';
+    const preferredMap = detectPreferredMapLink();
     const copy = language === 'fi'
       ? {
           confirmationTitle: 'Mitra Auto varausvahvistus',
@@ -116,6 +144,7 @@ export function BookingSuccess({
           location: 'Sijainti',
           workshopPhone: 'Korjaamon puhelin',
           workshopEmail: 'Korjaamon sähköposti',
+          map: 'Kartta',
           arrivalNote: 'Saavu paikalle muutama minuutti ennen varattua aikaa.',
           reminder: 'Muistutus',
         }
@@ -132,6 +161,7 @@ export function BookingSuccess({
           location: 'Location',
           workshopPhone: 'Workshop phone',
           workshopEmail: 'Workshop email',
+          map: 'Map',
           arrivalNote: 'Please arrive a few minutes before your booked time.',
           reminder: 'Reminder',
         };
@@ -155,6 +185,7 @@ export function BookingSuccess({
       `${copy.location}: ${location}`,
       `${copy.workshopPhone}: ${workshopPhone}`,
       `${copy.workshopEmail}: ${workshopEmail}`,
+      `${copy.map}: ${preferredMap.label} - ${preferredMap.url}`,
       copy.arrivalNote,
     ].join('\n');
 
@@ -172,6 +203,9 @@ export function BookingSuccess({
       buildIcsLine('SUMMARY', escapeIcsText(summary)),
       buildIcsLine('DESCRIPTION', escapeIcsText(description)),
       buildIcsLine('LOCATION', escapeIcsText(location)),
+      buildIcsLine('GEO', `${latitude};${longitude}`),
+      foldIcsLine(`X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-TITLE=${escapeIcsText(locationName)}:geo:${latitude},${longitude}`),
+      buildIcsLine('URL', preferredMap.url),
       buildIcsLine('ORGANIZER;CN=Mitra Auto', `mailto:${workshopEmail}`),
       buildIcsLine('STATUS', 'CONFIRMED'),
       buildIcsLine('TRANSP', 'OPAQUE'),

@@ -1,0 +1,26 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Mitra Auto//Booking//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:booking-JHF-343-1776083400000@mitra-auto.fi
+DTSTAMP:20260414T090000Z
+DTSTART:20260413T123000Z
+DTEND:20260413T133000Z
+SUMMARY:Mitra Auto: Seasonal maintenance (JHF-343)
+DESCRIPTION:Mitra Auto booking confirmation\n\nService: Seasonal maintenance\nLicense plate: JHF-343\nDate: 13.04.2026\nTime: 15:30\n\nCustomer: Le\nPhone: +358449457933\nEmail: box.ryanle@gmail.com\n\nLocation: Mitra Auto\, Hankasuontie 5\, 00390\, Helsinki\, Finland\nWorkshop phone: +358407777163\nWorkshop email: contact@mitra-auto.fi\nMap: Apple Maps - https://maps.apple/p/dab1zsmGKhRDMI\nPlease arrive a few minutes before your booked time.
+LOCATION:Mitra Auto\, Hankasuontie 5\, 00390\, Helsinki\, Finland
+GEO:60.247482;24.844299
+X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-TITLE=Mitra Auto:geo:60.247482,24.844299
+URL:https://maps.apple/p/dab1zsmGKhRDMI
+ORGANIZER;CN=Mitra Auto:mailto:contact@mitra-auto.fi
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Reminder: Mitra Auto: Seasonal maintenance (JHF-343)
+TRIGGER:-PT2H
+END:VALARM
+END:VEVENT
+END:VCALENDAR
