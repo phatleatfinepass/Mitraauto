@@ -19,6 +19,7 @@ import {
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
@@ -279,6 +280,35 @@ function BookingDetails({
   );
 }
 
+const awaitingCustomerCompletionStatus = 'awaiting_customer_completion';
+
+function normalizeBookingStatus(status?: string | null) {
+  return (status || 'confirmed').trim().toLowerCase();
+}
+
+function getMissingCompletionFields(
+  bookingLike: Partial<Pick<ScheduleBooking, 'license_plate' | 'customer_phone' | 'customer_email'>>,
+  language: string,
+) {
+  const missingFields: string[] = [];
+
+  if (!bookingLike.license_plate?.trim()) {
+    missingFields.push(language === 'fi' ? 'rekisterinumero' : 'license plate');
+  }
+  if (!bookingLike.customer_phone?.trim()) {
+    missingFields.push(language === 'fi' ? 'puhelinnumero' : 'phone number');
+  }
+  if (!bookingLike.customer_email?.trim()) {
+    missingFields.push(language === 'fi' ? 'sähköposti' : 'email');
+  }
+
+  return missingFields;
+}
+
+function isBookingAwaitingCustomerCompletion(booking: Partial<ScheduleBooking> | AdminBookingFormState, language: string) {
+  return normalizeBookingStatus(booking.status) === awaitingCustomerCompletionStatus || getMissingCompletionFields(booking, language).length > 0;
+}
+
 export function AdminScheduleDrawer({
   cancellingBookingId,
   composeMessageBookingId,
@@ -337,6 +367,9 @@ export function AdminScheduleDrawer({
   t,
   theme,
 }: AdminScheduleDrawerProps) {
+  const createBookingCompletionMode = isBookingAwaitingCustomerCompletion(createBookingForm, language);
+  const createBookingMissingFields = getMissingCompletionFields(createBookingForm, language);
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
@@ -444,6 +477,34 @@ export function AdminScheduleDrawer({
                     <Input type="email" value={createBookingForm.customer_email} onChange={(e) => setCreateBookingForm((current) => ({ ...current, customer_email: e.target.value }))} />
                   </div>
 
+                  <div className={`sm:col-span-2 rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-gray-50'}`}>
+                    <label className="flex items-start gap-3">
+                      <Checkbox
+                        checked={createBookingForm.status === awaitingCustomerCompletionStatus}
+                        onCheckedChange={(checked) => {
+                          setCreateBookingForm((current) => ({
+                            ...current,
+                            status: checked === true ? awaitingCustomerCompletionStatus : 'confirmed',
+                          }));
+                        }}
+                      />
+                      <span className="space-y-1">
+                        <span className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                          {t('awaitingCustomerCompletion')}
+                        </span>
+                        <span className={`block text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {t('completionModeDescription')}
+                        </span>
+                      </span>
+                    </label>
+
+                    {(createBookingCompletionMode || createBookingMissingFields.length > 0) && (
+                      <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                        {t('incompleteBookingWarning')}: {createBookingMissingFields.join(', ') || (language === 'fi' ? 'asiakastiedot' : 'customer details')}
+                      </p>
+                    )}
+                  </div>
+
                   <div className="space-y-2 sm:col-span-2">
                     <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('notes')}</label>
                     <Textarea
@@ -524,6 +585,8 @@ export function AdminScheduleDrawer({
                 {selectedSlot.bookings.map((booking) => {
                   const isExpanded = isBookingExpanded(booking.id);
                   const editForm = editBookingForms[booking.id];
+                  const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, language);
+                  const bookingMissingFields = getMissingCompletionFields(booking, language);
 
                   return (
                     <Card
@@ -544,7 +607,15 @@ export function AdminScheduleDrawer({
                               >
                                 {t('resendCount')}: {resendCounts[booking.id] || 0}
                               </span>
+                              <Badge variant={bookingCompletionMode ? 'secondary' : 'outline'}>
+                                {bookingCompletionMode ? t('awaitingCustomerCompletion') : (booking.status || 'confirmed')}
+                              </Badge>
                             </div>
+                            {bookingCompletionMode && bookingMissingFields.length > 0 && (
+                              <p className={`text-sm ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                                {t('incompleteBookingWarning')}: {bookingMissingFields.join(', ')}
+                              </p>
+                            )}
 
                             <div className="grid gap-3 sm:grid-cols-3">
                               <div className={`rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
@@ -588,7 +659,9 @@ export function AdminScheduleDrawer({
                                 className={`justify-start rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
                               >
                                 <Send className="mr-2 h-4 w-4 shrink-0" />
-                                {resendingBookingId === booking.id ? t('sending') : t('resendConfirmation')}
+                                {resendingBookingId === booking.id
+                                  ? t('sending')
+                                  : (isBookingAwaitingCustomerCompletion(booking, language) ? t('requestCompletion') : t('resendConfirmation'))}
                               </Button>
                               <Button
                                 size="sm"
@@ -637,6 +710,11 @@ export function AdminScheduleDrawer({
                             <BookingDetails booking={booking} getBookingServiceNameForCms={getBookingServiceNameForCms} t={t} theme={theme} />
 
                             {editingBookingId === booking.id && editForm && (
+                              (() => {
+                                const editCompletionMode = isBookingAwaitingCustomerCompletion(editForm, language);
+                                const editCompletionMissingFields = getMissingCompletionFields(editForm, language);
+
+                                return (
                               <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#18181B]' : 'border-gray-200 bg-white'}`}>
                                 <div className="mb-3 flex items-center justify-between gap-3">
                                   <h4 className={theme === 'dark' ? 'font-medium text-white' : 'font-medium text-gray-900'}>{t('editBooking')}</h4>
@@ -709,6 +787,35 @@ export function AdminScheduleDrawer({
                                     <Input type="email" value={editForm.customer_email} onChange={(e) => handleEditBookingFieldChange(booking.id, 'customer_email', e.target.value)} />
                                   </div>
 
+                                  <div className={`sm:col-span-2 rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-gray-50'}`}>
+                                    <label className="flex items-start gap-3">
+                                      <Checkbox
+                                        checked={editForm.status === awaitingCustomerCompletionStatus}
+                                        onCheckedChange={(checked) => {
+                                          handleEditBookingFieldChange(
+                                            booking.id,
+                                            'status',
+                                            checked === true ? awaitingCustomerCompletionStatus : 'confirmed',
+                                          );
+                                        }}
+                                      />
+                                      <span className="space-y-1">
+                                        <span className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                                          {t('awaitingCustomerCompletion')}
+                                        </span>
+                                        <span className={`block text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                          {t('completionModeDescription')}
+                                        </span>
+                                      </span>
+                                    </label>
+
+                                    {(editCompletionMode || editCompletionMissingFields.length > 0) && (
+                                      <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                                        {t('incompleteBookingWarning')}: {editCompletionMissingFields.join(', ') || (language === 'fi' ? 'asiakastiedot' : 'customer details')}
+                                      </p>
+                                    )}
+                                  </div>
+
                                   <div className="space-y-2 sm:col-span-2">
                                     <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('notes')}</label>
                                     <Textarea
@@ -730,6 +837,8 @@ export function AdminScheduleDrawer({
                                   </Button>
                                 </div>
                               </div>
+                                );
+                              })()
                             )}
 
                             {composeMessageBookingId === booking.id && (

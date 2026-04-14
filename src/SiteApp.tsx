@@ -32,6 +32,7 @@ import { CarServicePage } from './components/CarServicePage';
 import { TireChangePage } from './components/TireChangePage';
 import { DiagnosticsPage } from './components/DiagnosticsPage';
 import { CarWashPage } from './components/CarWashPage';
+import { CustomerBookingManagePage } from './components/CustomerBookingManagePage';
 import { NotFoundPage } from './components/NotFoundPage';
 import { CmsPwaScreen } from './CmsPwaApp';
 import { Button } from './components/ui/button';
@@ -406,7 +407,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('schedule');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -570,6 +571,9 @@ function HomePage() {
         setSelectedProduct(null);
       } else if (normalizedPath === '/en/about') {
         setCurrentPage('about');
+        setSelectedProduct(null);
+      } else if (normalizedPath === '/booking/manage' || normalizedPath === '/en/booking/manage') {
+        setCurrentPage('booking-manage');
         setSelectedProduct(null);
       }
       
@@ -1001,6 +1005,8 @@ function HomePage() {
           <CarWashPage
             onBookingClick={() => setBookingModalOpen(true)}
           />
+        ) : currentPage === 'booking-manage' ? (
+          <CustomerBookingManagePage onNavigateHome={() => navigate('/')} />
         ) : currentPage === 'catalog' ? (
           <CatalogPage onProductSelect={handleProductSelect} />
         ) : currentPage === 'catalog-detail' ? (

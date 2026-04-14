@@ -11,6 +11,7 @@ export interface AdminBookingFormState {
   customer_phone: string;
   customer_email: string;
   notes: string;
+  status: string;
 }
 
 export interface BookingMessageDraft {

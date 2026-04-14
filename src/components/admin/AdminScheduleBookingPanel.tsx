@@ -2,6 +2,7 @@ import React from 'react';
 import { Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
@@ -10,6 +11,35 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import type { ScheduleBooking } from '../../utils/schedule';
 
 import type { BookingListGroup } from './AdminSchedule.types';
+
+const awaitingCustomerCompletionStatus = 'awaiting_customer_completion';
+
+function normalizeBookingStatus(status?: string | null) {
+  return (status || 'confirmed').trim().toLowerCase();
+}
+
+function getMissingCompletionFields(
+  bookingLike: Partial<Pick<ScheduleBooking, 'license_plate' | 'customer_phone' | 'customer_email'>>,
+  language: string,
+) {
+  const missingFields: string[] = [];
+
+  if (!bookingLike.license_plate?.trim()) {
+    missingFields.push(language === 'fi' ? 'rekisterinumero' : 'license plate');
+  }
+  if (!bookingLike.customer_phone?.trim()) {
+    missingFields.push(language === 'fi' ? 'puhelinnumero' : 'phone number');
+  }
+  if (!bookingLike.customer_email?.trim()) {
+    missingFields.push(language === 'fi' ? 'sähköposti' : 'email');
+  }
+
+  return missingFields;
+}
+
+function isBookingAwaitingCustomerCompletion(booking: ScheduleBooking, language: string) {
+  return normalizeBookingStatus(booking.status) === awaitingCustomerCompletionStatus || getMissingCompletionFields(booking, language).length > 0;
+}
 
 interface AdminScheduleBookingPanelProps {
   activeBookingsTab: 'schedule' | 'reservation';
@@ -81,8 +111,10 @@ function BookingGroupSection({
 
           <AnimatePresence initial={false}>
             {group.bookings.map((booking) => {
-              const isArchived = Boolean(booking.isArchived);
+              const isArchived = Boolean(booking.isArchived) || normalizeBookingStatus(booking.status) === 'cancelled';
               const archivedAccentClass = theme === 'dark' ? 'text-amber-300' : 'text-amber-700';
+              const bookingCompletionMode = !isArchived && isBookingAwaitingCustomerCompletion(booking, language);
+              const bookingMissingFields = getMissingCompletionFields(booking, language);
 
               return (
                 <motion.button
@@ -120,9 +152,16 @@ function BookingGroupSection({
                     <p className={`text-sm ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
                       {booking.customer_phone || booking.customer_email || '—'}
                     </p>
-                    <p className={`mt-1 text-xs uppercase tracking-[0.08em] ${isArchived ? archivedAccentClass : subtleTextClass}`}>
-                      {isArchived ? t('archivedStatus') : booking.status || 'confirmed'}
-                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className={`text-xs uppercase tracking-[0.08em] ${isArchived ? archivedAccentClass : subtleTextClass}`}>
+                        {isArchived ? t('archivedStatus') : (bookingCompletionMode ? t('awaitingCustomerCompletion') : booking.status || 'confirmed')}
+                      </p>
+                      {bookingCompletionMode && bookingMissingFields.length > 0 && (
+                        <Badge variant="secondary" className="px-2 py-0.5 text-[10px] uppercase tracking-[0.08em]">
+                          {t('incompleteBookingWarning')}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </motion.button>
               );

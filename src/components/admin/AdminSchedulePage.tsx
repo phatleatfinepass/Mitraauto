@@ -87,6 +87,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     customer_phone: '',
     customer_email: '',
     notes: '',
+    status: 'confirmed',
   });
   const [createBookingSelectedCategory, setCreateBookingSelectedCategory] = useState<string>('');
   const [createBookingCurrentServiceId, setCreateBookingCurrentServiceId] = useState<string>('');
@@ -189,10 +190,19 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       saveChanges: { fi: 'Tallenna muutokset', en: 'Save changes' },
       bookingSaved: { fi: 'Varaus tallennettu', en: 'Booking saved' },
       bookingUpdated: { fi: 'Varaus päivitetty', en: 'Booking updated' },
+      bookingConfirmationEmailSent: { fi: 'Vahvistusviesti lähetetty asiakkaalle', en: 'Confirmation email sent to customer' },
       bookingUpdateEmailSent: { fi: 'Päivitysviesti lähetetty asiakkaalle', en: 'Update email sent to customer' },
       bookingSaveFailed: { fi: 'Varauksen tallennus epäonnistui', en: 'Failed to save booking' },
       bookingControls: { fi: 'Varauksen hallinta', en: 'Booking controls' },
       bookingControlsDescription: { fi: 'Lähetä vahvistus uudelleen, muokkaa varausta tai viesti asiakkaalle tästä varauksesta.', en: 'Resend confirmation, edit this booking, or contact the customer about this booking.' },
+      awaitingCustomerCompletion: { fi: 'Odottaa asiakkaan täydennystä', en: 'Awaiting customer completion' },
+      partialBooking: { fi: 'Osittainen varaus', en: 'Partial booking' },
+      requestCompletion: { fi: 'Pyydä täydennystä', en: 'Request completion' },
+      completionRequestSent: { fi: 'Täydennyspyyntö lähetetty asiakkaalle', en: 'Completion request sent to customer' },
+      completionRequestFailed: { fi: 'Täydennyspyynnön lähetys epäonnistui', en: 'Failed to send completion request' },
+      completionMode: { fi: 'Täydennyspyyntö', en: 'Completion request' },
+      completionModeDescription: { fi: 'Tallenna varaus vaikka kaikki asiakastiedot eivät vielä ole valmiit. Asiakas voi täydentää puuttuvat tiedot myöhemmin.', en: 'Save the booking even if not all customer details are known yet. The customer can complete the missing details later.' },
+      incompleteBookingWarning: { fi: 'Puuttuvia tietoja', en: 'Missing details' },
       blockingControlsDescription: { fi: 'Estä tämä aika kokonaan tai loppupäiväksi. Tämä vaikuttaa julkiseen varausnäkymään.', en: 'Block this slot completely or until end of day. This affects public booking availability.' },
       bookingLanguage: { fi: 'Varauksen kieli', en: 'Booking language' },
       finnish: { fi: 'Suomi', en: 'Finnish' },
@@ -325,7 +335,69 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     customer_phone: booking?.customer_phone || '',
     customer_email: booking?.customer_email || '',
     notes: booking?.notes || '',
+    status: (booking?.status || 'confirmed').toLowerCase(),
   });
+
+  const awaitingCustomerCompletionStatus = 'awaiting_customer_completion';
+
+  const normalizeBookingStatus = (status?: string | null) => (status || 'confirmed').trim().toLowerCase();
+
+  const isAwaitingCustomerCompletionStatus = (status?: string | null) =>
+    normalizeBookingStatus(status) === awaitingCustomerCompletionStatus;
+
+  const getMissingCompletionFields = (bookingLike: Partial<Pick<ScheduleBooking, 'license_plate' | 'customer_phone' | 'customer_email'>>) => {
+    const missingFields: string[] = [];
+
+    if (!bookingLike.license_plate?.trim()) {
+      missingFields.push(language === 'fi' ? 'rekisterinumero' : 'license plate');
+    }
+    if (!bookingLike.customer_phone?.trim()) {
+      missingFields.push(language === 'fi' ? 'puhelinnumero' : 'phone number');
+    }
+    if (!bookingLike.customer_email?.trim()) {
+      missingFields.push(language === 'fi' ? 'sähköposti' : 'email');
+    }
+
+    return missingFields;
+  };
+
+  const isBookingAwaitingCustomerCompletion = (booking: Partial<ScheduleBooking> | AdminBookingFormState) =>
+    isAwaitingCustomerCompletionStatus(booking.status) || getMissingCompletionFields(booking).length > 0;
+
+  const buildCustomerCompletionDraft = (booking: ScheduleBooking) => {
+    const missingFields = getMissingCompletionFields(booking);
+    const bookingLabel = `${booking.booking_date} ${booking.booking_time}`.trim();
+    const missingList = missingFields.length > 0
+      ? missingFields.join(language === 'fi' ? ', ' : ', ')
+      : (language === 'fi' ? 'asiakastiedot' : 'customer details');
+
+    return {
+      subject: language === 'fi'
+        ? 'Täydennä varauksen tiedot'
+        : 'Complete your booking details',
+      message: language === 'fi'
+        ? `Hei ${booking.customer_name || ''}`.trim() + `\n\nVarauksesi (${bookingLabel}) on valmis asiakkaan täydennystä varten.\nPuuttuvat tiedot: ${missingList}.\n\nVoit vastata tähän viestiin ja täydentää puuttuvat tiedot.`
+        : `Hi ${booking.customer_name || ''}`.trim() + `\n\nYour booking (${bookingLabel}) is ready for completion.\nMissing details: ${missingList}.\n\nPlease reply to this message and send the missing information.`
+    };
+  };
+
+  const buildCompletionEmailPayload = (booking: ScheduleBooking) => {
+    const draft = buildCustomerCompletionDraft(booking);
+
+    return {
+      bookingId: booking.id,
+      customerName: booking.customer_name || '',
+      customerEmail: booking.customer_email || '',
+      customerPhone: booking.customer_phone || null,
+      licensePlate: booking.license_plate,
+      bookingDate: booking.booking_date,
+      bookingTime: booking.booking_time,
+      serviceName: booking.service_name || 'Service',
+      language: getBookingLanguage(booking),
+      subject: draft.subject,
+      message: draft.message,
+    };
+  };
 
   // Fetch bookings and blocked slots
   const fetchScheduleData = async (date: Date) => {
@@ -596,6 +668,25 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     notes: booking.notes || null,
   });
 
+  const sendCustomerCompletionRequest = async (booking: ScheduleBooking) => {
+    if (!booking.customer_email) {
+      toast.error(t('noEmailAddress'));
+      return false;
+    }
+
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.functions.invoke('send_booking_message', {
+      method: 'POST',
+      body: buildCompletionEmailPayload(booking),
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return true;
+  };
+
   // Block a single slot
   const handleBlockSlot = async (time: string, untilEndOfDay: boolean = false) => {
     const dateStr = formatDateForSupabase(selectedDate);
@@ -703,34 +794,48 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const handleResendBookingConfirmation = async (booking: ScheduleBooking) => {
-    if (!booking.customer_email) {
-      toast.error(t('noEmailAddress'));
-      return;
-    }
-
     setResendingBookingId(booking.id);
     try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.functions.invoke('send_booking_confirmation', {
-        method: 'POST',
-        body: {
-          ...createBookingConfirmationPayload(booking),
-        },
-      });
+      const needsCompletion = isBookingAwaitingCustomerCompletion(booking);
 
-      if (error) {
-        throw error;
+      if (needsCompletion) {
+        const sent = await sendCustomerCompletionRequest(booking);
+        if (!sent) {
+          return;
+        }
+        setResendCounts((current) => ({
+          ...current,
+          [booking.id]: (current[booking.id] || 0) + 1,
+        }));
+        toast.success(t('completionRequestSent'));
+      } else {
+        if (!booking.customer_email) {
+          toast.error(t('noEmailAddress'));
+          return;
+        }
+
+        const supabase = getSupabaseClient();
+        const { error } = await supabase.functions.invoke('send_booking_confirmation', {
+          method: 'POST',
+          body: {
+            ...createBookingConfirmationPayload(booking),
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        setResendCounts((current) => ({
+          ...current,
+          [booking.id]: (current[booking.id] || 0) + 1,
+        }));
+
+        toast.success(t('resendSuccessful'));
       }
-
-      setResendCounts((current) => ({
-        ...current,
-        [booking.id]: (current[booking.id] || 0) + 1,
-      }));
-
-      toast.success(t('resendSuccessful'));
     } catch (error) {
       console.error('Error resending booking confirmation:', error);
-      toast.error(t('resendFailed'));
+      toast.error(isBookingAwaitingCustomerCompletion(booking) ? t('completionRequestFailed') : t('resendFailed'));
     } finally {
       setResendingBookingId(null);
     }
@@ -794,7 +899,17 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const handleCreateBooking = async () => {
-    if (!createBookingForm.license_plate.trim() || !createBookingForm.customer_name.trim() || !createBookingForm.customer_phone.trim() || !createBookingForm.service_name.trim() || !createBookingForm.booking_date || !createBookingForm.booking_time) {
+    const missingCompletionFields = getMissingCompletionFields(createBookingForm);
+    const completionMode =
+      isAwaitingCustomerCompletionStatus(createBookingForm.status) ||
+      missingCompletionFields.length > 0;
+
+    if (!createBookingForm.service_name.trim() || !createBookingForm.booking_date || !createBookingForm.booking_time) {
+      toast.error(t('bookingSaveFailed'));
+      return;
+    }
+
+    if (!completionMode && (!createBookingForm.license_plate.trim() || !createBookingForm.customer_name.trim() || !createBookingForm.customer_phone.trim())) {
       toast.error(t('bookingSaveFailed'));
       return;
     }
@@ -812,7 +927,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         customer_phone: createBookingForm.customer_phone.trim(),
         customer_email: createBookingForm.customer_email.trim() || null,
         notes: createBookingForm.notes.trim() || null,
-        status: 'confirmed',
+        status: completionMode ? awaitingCustomerCompletionStatus : 'confirmed',
       };
 
       const { data, error } = await supabase
@@ -826,13 +941,24 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       }
 
       if (data.customer_email) {
-        const { error: emailError } = await supabase.functions.invoke('send_booking_confirmation', {
-          method: 'POST',
-          body: createBookingConfirmationPayload(data),
-        });
+        if (completionMode) {
+          const { error: emailError } = await supabase.functions.invoke('send_booking_message', {
+            method: 'POST',
+            body: buildCompletionEmailPayload(data),
+          });
 
-        if (emailError) {
-          throw emailError;
+          if (emailError) {
+            throw emailError;
+          }
+        } else {
+          const { error: emailError } = await supabase.functions.invoke('send_booking_confirmation', {
+            method: 'POST',
+            body: createBookingConfirmationPayload(data),
+          });
+
+          if (emailError) {
+            throw emailError;
+          }
         }
       }
 
@@ -916,7 +1042,17 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
   const handleSaveBookingChanges = async (booking: ScheduleBooking) => {
     const form = editBookingForms[booking.id];
-    if (!form || !form.license_plate.trim() || !form.customer_name.trim() || !form.customer_phone.trim() || !form.service_name.trim() || !form.booking_date || !form.booking_time) {
+    const missingCompletionFields = form ? getMissingCompletionFields(form) : [];
+    const completionMode =
+      Boolean(form) &&
+      (isAwaitingCustomerCompletionStatus(form.status) || missingCompletionFields.length > 0);
+
+    if (!form || !form.service_name.trim() || !form.booking_date || !form.booking_time) {
+      toast.error(t('bookingSaveFailed'));
+      return;
+    }
+
+    if (!completionMode && (!form.license_plate.trim() || !form.customer_name.trim() || !form.customer_phone.trim())) {
       toast.error(t('bookingSaveFailed'));
       return;
     }
@@ -930,6 +1066,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       const normalizedCustomerPhone = form.customer_phone.trim();
       const normalizedCustomerEmail = form.customer_email.trim();
       const normalizedNotes = form.notes.trim();
+      const previousCompletionMode = isBookingAwaitingCustomerCompletion(booking);
+      const nextStatus = completionMode ? awaitingCustomerCompletionStatus : 'confirmed';
       const originalServiceIds = getServiceIdsFromStoredServiceName(booking.service_name);
       const updatedServiceIds = getServiceIdsFromStoredServiceName(normalizedServiceName);
       const sameServiceSelection =
@@ -942,6 +1080,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         : (booking.service_name || '').trim() !== normalizedServiceName;
       const shouldSendUpdateEmail =
         !!normalizedCustomerEmail &&
+        !previousCompletionMode &&
+        !completionMode &&
         (
           booking.booking_date !== form.booking_date ||
           booking.booking_time !== form.booking_time ||
@@ -960,6 +1100,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           customer_phone: normalizedCustomerPhone,
           customer_email: normalizedCustomerEmail || null,
           notes: normalizedNotes || null,
+          status: nextStatus,
         })
         .eq('id', booking.id);
 
@@ -967,7 +1108,49 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         throw error;
       }
 
-      if (shouldSendUpdateEmail) {
+      if (completionMode && normalizedCustomerEmail && !previousCompletionMode) {
+        const { error: emailError } = await supabase.functions.invoke('send_booking_message', {
+          method: 'POST',
+          body: buildCompletionEmailPayload({
+            ...booking,
+            license_plate: normalizedLicensePlate,
+            booking_date: form.booking_date,
+            booking_time: form.booking_time,
+            booking_language: form.booking_language,
+            service_name: normalizedServiceName,
+            customer_name: normalizedCustomerName,
+            customer_phone: normalizedCustomerPhone,
+            customer_email: normalizedCustomerEmail || null,
+            notes: normalizedNotes || null,
+            status: nextStatus,
+          }),
+        });
+
+        if (emailError) {
+          throw emailError;
+        }
+      } else if (previousCompletionMode && !completionMode && normalizedCustomerEmail) {
+        const { error: emailError } = await supabase.functions.invoke('send_booking_confirmation', {
+          method: 'POST',
+          body: createBookingConfirmationPayload({
+            ...booking,
+            license_plate: normalizedLicensePlate,
+            booking_date: form.booking_date,
+            booking_time: form.booking_time,
+            booking_language: form.booking_language,
+            service_name: normalizedServiceName,
+            customer_name: normalizedCustomerName,
+            customer_phone: normalizedCustomerPhone,
+            customer_email: normalizedCustomerEmail || null,
+            notes: normalizedNotes || null,
+            status: nextStatus,
+          }),
+        });
+
+        if (emailError) {
+          throw emailError;
+        }
+      } else if (shouldSendUpdateEmail) {
         const { error: emailError } = await supabase.functions.invoke('send_booking_update', {
           method: 'POST',
           body: {
@@ -990,7 +1173,11 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       }
 
       toast.success(t('bookingUpdated'));
-      if (shouldSendUpdateEmail) {
+      if (completionMode && normalizedCustomerEmail && !previousCompletionMode) {
+        toast.success(t('completionRequestSent'));
+      } else if (previousCompletionMode && !completionMode && normalizedCustomerEmail) {
+        toast.success(t('bookingConfirmationEmailSent'));
+      } else if (shouldSendUpdateEmail) {
         toast.success(t('bookingUpdateEmailSent'));
       }
       setEditingBookingId(null);
@@ -1024,6 +1211,11 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const handleForceConfirmBooking = async (booking: ScheduleBooking) => {
+    if (isBookingAwaitingCustomerCompletion(booking)) {
+      toast.error(language === 'fi' ? 'Täydennä puuttuvat tiedot ennen vahvistusta' : 'Complete the missing details before confirming');
+      return;
+    }
+
     setConfirmingBookingId(booking.id);
 
     try {
@@ -1054,14 +1246,19 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }
 
     const messageLanguage = getBookingLanguage(booking);
+    const isCompletionFlow = isBookingAwaitingCustomerCompletion(booking);
     setEditingBookingId((current) => (current === booking.id ? null : current));
     setComposeMessageBookingId((current) => (current === booking.id ? null : booking.id));
     setBookingExpanded(booking.id, true);
     setMessageDrafts((current) => ({
       ...current,
       [booking.id]: current[booking.id] || {
-        subject: messageLanguage === 'fi' ? 'Viesti varaukseesi liittyen' : 'Message regarding your booking',
-        message: '',
+        subject: isCompletionFlow
+          ? (messageLanguage === 'fi' ? 'Täydennä varauksesi tiedot' : 'Complete your booking details')
+          : (messageLanguage === 'fi' ? 'Viesti varaukseesi liittyen' : 'Message regarding your booking'),
+        message: isCompletionFlow
+          ? buildCustomerCompletionDraft(booking).message
+          : '',
       },
     }));
   };
