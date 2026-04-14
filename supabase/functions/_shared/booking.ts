@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6.10.1";
 
 export type SupportedLanguage = "fi" | "en";
 export type BookingMailType = "confirmation" | "update" | "cancellation" | "message";
@@ -150,6 +151,27 @@ function getAppleStructuredLocation() {
   return `X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-TITLE=${escapeIcsText(garageName())}:geo:${WORKSHOP_LATITUDE},${WORKSHOP_LONGITUDE}`;
 }
 
+function foldIcsLine(line: string) {
+  if (line.length <= 74) {
+    return line;
+  }
+
+  const parts: string[] = [];
+  let remaining = line;
+
+  while (remaining.length > 74) {
+    parts.push(remaining.slice(0, 74));
+    remaining = ` ${remaining.slice(74)}`;
+  }
+
+  parts.push(remaining);
+  return parts.join("\r\n");
+}
+
+function buildIcsLine(key: string, value: string) {
+  return foldIcsLine(`${key}:${value}`);
+}
+
 function getMissingCustomerFields(booking: BookingRow) {
   const missing: string[] = [];
   if (!normalizeBookingPlate(booking.license_plate)) missing.push("licensePlate");
@@ -207,17 +229,6 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
-function base64EncodeUtf8(value: string) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-
-  return btoa(binary);
-}
-
 function normalizeLanguage(value?: string | null): SupportedLanguage {
   return value?.toLowerCase() === "en" ? "en" : "fi";
 }
@@ -251,8 +262,17 @@ function garageAddress() {
   return Deno.env.get("BOOKING_GARAGE_ADDRESS") ?? "Mitra Auto, Helsinki";
 }
 
+function senderAddress() {
+  return env("EMAIL_FROM", Deno.env.get("BOOKING_FROM_EMAIL"));
+}
+
+function extractMailbox(value: string) {
+  const match = value.match(/<([^>]+)>/);
+  return (match?.[1] ?? value).trim();
+}
+
 function organizerEmail() {
-  return env("BOOKING_FROM_EMAIL");
+  return extractMailbox(senderAddress());
 }
 
 function replyToEmail() {
@@ -583,26 +603,26 @@ function buildIcsContent(booking: BookingRow, method: "REQUEST" | "CANCEL") {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Mitra Auto//Booking//EN",
+    buildIcsLine("PRODID", "-//Mitra Auto//Booking//EN"),
     "CALSCALE:GREGORIAN",
-    `METHOD:${method}`,
+    buildIcsLine("METHOD", method),
     "BEGIN:VEVENT",
-    `UID:${uid}`,
-    `SEQUENCE:${sequence}`,
-    `DTSTAMP:${new Date().toISOString().replaceAll(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}`,
-    `DTSTART;TZID=${HELSINKI_TZ}:${start}`,
-    `DTEND;TZID=${HELSINKI_TZ}:${end}`,
-    `SUMMARY:${escapeIcsText(buildBookingTitle(booking))}`,
-    `LOCATION:${escapeIcsText(garageAddress())}`,
-    `URL:${escapeIcsText(getMapUrl())}`,
-    `DESCRIPTION:${escapeIcsText(description)}`,
-    `STATUS:${method === "CANCEL" ? "CANCELLED" : "CONFIRMED"}`,
-    `ORGANIZER;CN=${escapeIcsText(garageName())}:mailto:${organizerEmail()}`,
-    `ATTENDEE;CN=${escapeIcsText(booking.customer_name ?? booking.customer_email ?? "Customer")};RSVP=TRUE:mailto:${booking.customer_email ?? replyToEmail()}`,
-    `X-MICROSOFT-CDO-BUSYSTATUS:${method === "CANCEL" ? "FREE" : "BUSY"}`,
-    `X-MICROSOFT-CDO-INTENDEDSTATUS:${method === "CANCEL" ? "FREE" : "BUSY"}`,
+    buildIcsLine("UID", uid),
+    buildIcsLine("SEQUENCE", String(sequence)),
+    buildIcsLine("DTSTAMP", new Date().toISOString().replaceAll(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")),
+    foldIcsLine(`DTSTART;TZID=${HELSINKI_TZ}:${start}`),
+    foldIcsLine(`DTEND;TZID=${HELSINKI_TZ}:${end}`),
+    buildIcsLine("SUMMARY", escapeIcsText(buildBookingTitle(booking))),
+    buildIcsLine("LOCATION", escapeIcsText(garageAddress())),
+    buildIcsLine("URL", escapeIcsText(getMapUrl())),
+    buildIcsLine("DESCRIPTION", escapeIcsText(description)),
+    buildIcsLine("STATUS", method === "CANCEL" ? "CANCELLED" : "CONFIRMED"),
+    foldIcsLine(`ORGANIZER;CN=${escapeIcsText(garageName())}:mailto:${organizerEmail()}`),
+    foldIcsLine(`ATTENDEE;CN=${escapeIcsText(booking.customer_name ?? booking.customer_email ?? "Customer")};RSVP=TRUE:mailto:${booking.customer_email ?? replyToEmail()}`),
+    buildIcsLine("X-MICROSOFT-CDO-BUSYSTATUS", method === "CANCEL" ? "FREE" : "BUSY"),
+    buildIcsLine("X-MICROSOFT-CDO-INTENDEDSTATUS", method === "CANCEL" ? "FREE" : "BUSY"),
     getAppleStructuredLocation(),
-    `GEO:${WORKSHOP_LATITUDE};${WORKSHOP_LONGITUDE}`,
+    buildIcsLine("GEO", `${WORKSHOP_LATITUDE};${WORKSHOP_LONGITUDE}`),
     "END:VEVENT",
     "END:VCALENDAR",
   ].filter(Boolean).join("\r\n");
@@ -616,34 +636,48 @@ async function sendEmail(args: {
   icsContent?: string;
   icsFilename?: string;
 }) {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${env("RESEND_API_KEY")}`,
+  const port = Number(env("SMTP_PORT"));
+  const secure = port === 465;
+  const transporter = nodemailer.createTransport({
+    host: env("SMTP_HOST"),
+    port,
+    secure,
+    auth: {
+      user: env("SMTP_USER"),
+      pass: env("SMTP_PASS"),
     },
-    body: JSON.stringify({
-      from: organizerEmail(),
-      reply_to: replyToEmail(),
-      to: [args.to],
-      subject: args.subject,
-      html: args.html,
-      text: args.text,
-      attachments: args.icsContent
-        ? [{
-            filename: args.icsFilename ?? "booking.ics",
-            content: base64EncodeUtf8(args.icsContent),
-          }]
-        : undefined,
-    }),
   });
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Resend email failed: ${response.status} ${detail}`);
-  }
+  const info = await transporter.sendMail({
+    from: senderAddress(),
+    replyTo: replyToEmail(),
+    to: args.to,
+    subject: args.subject,
+    text: args.text,
+    html: args.html,
+    icalEvent: args.icsContent
+      ? {
+          method: args.icsContent.includes("METHOD:CANCEL") ? "CANCEL" : "REQUEST",
+          filename: args.icsFilename ?? "booking.ics",
+          content: args.icsContent,
+        }
+      : undefined,
+    attachments: args.icsContent
+      ? [{
+          filename: args.icsFilename ?? "booking.ics",
+          content: args.icsContent,
+          contentType: "text/calendar; charset=utf-8; method=" +
+            (args.icsContent.includes("METHOD:CANCEL") ? "CANCEL" : "REQUEST"),
+        }]
+      : undefined,
+  });
 
-  return response.json().catch(() => ({}));
+  return {
+    id: info.messageId,
+    accepted: info.accepted,
+    rejected: info.rejected,
+    response: info.response,
+  };
 }
 
 async function recordEmailEvent(bookingId: string, eventType: string, recipientEmail: string | null, payload: Record<string, unknown>) {
@@ -733,7 +767,8 @@ export async function sendManagedBookingMail(args: {
     {
       subject,
       manage_url: manageUrl,
-      resend_id: sendResult?.id ?? null,
+      message_id: sendResult?.id ?? null,
+      provider: "smtp",
     },
   );
 
