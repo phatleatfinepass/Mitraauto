@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import nodemailer from "npm:nodemailer@6.10.1";
 
 export type SupportedLanguage = "fi" | "en";
 export type BookingMailType = "confirmation" | "update" | "cancellation" | "message";
@@ -39,6 +38,27 @@ export type BookingRow = {
   ics_last_sent_at?: string | null;
   calendar_last_sent_at?: string | null;
   cancellation_note?: string | null;
+};
+
+type GmailSyncStateRow = {
+  mailbox_email: string;
+  access_token?: string | null;
+  refresh_token?: string | null;
+  token_scope?: string | null;
+  token_type?: string | null;
+  token_expiry?: string | null;
+};
+
+type BookingEmailThreadRow = {
+  id: string;
+  booking_id: string;
+  mailbox_email: string;
+  provider_thread_id?: string | null;
+  subject?: string | null;
+  status?: string | null;
+  history_id?: string | null;
+  last_message_at?: string | null;
+  last_synced_at?: string | null;
 };
 
 const HELSINKI_TZ = "Europe/Helsinki";
@@ -243,6 +263,20 @@ function randomToken() {
   return Array.from(bytes).map((item) => item.toString(16).padStart(2, "0")).join("");
 }
 
+function toBase64Url(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll(/=+$/g, "");
+}
+
+function toBase64Utf8(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 function baseSiteUrl() {
   return DEFAULT_SITE_URL.replace(/\/+$/, "");
 }
@@ -263,7 +297,13 @@ function garageAddress() {
 }
 
 function senderAddress() {
-  return env("EMAIL_FROM", Deno.env.get("BOOKING_FROM_EMAIL"));
+  const configured = Deno.env.get("EMAIL_FROM") ?? Deno.env.get("BOOKING_FROM_EMAIL");
+  if (configured?.trim()) return configured.trim();
+
+  const mailbox = (Deno.env.get("GMAIL_MAILBOX_EMAIL") ?? "").trim();
+  if (mailbox) return `Mitra Auto <${mailbox}>`;
+
+  throw new Error("Missing environment variable EMAIL_FROM");
 }
 
 function extractMailbox(value: string) {
@@ -629,6 +669,8 @@ function buildIcsContent(booking: BookingRow, method: "REQUEST" | "CANCEL") {
 }
 
 async function sendEmail(args: {
+  booking: BookingRow;
+  type: BookingMailType;
   to: string;
   subject: string;
   html: string;
@@ -636,59 +678,419 @@ async function sendEmail(args: {
   icsContent?: string;
   icsFilename?: string;
 }) {
-  const port = Number(env("SMTP_PORT"));
-  const secure = port === 465;
-  const transporter = nodemailer.createTransport({
-    host: env("SMTP_HOST"),
-    port,
-    secure,
-    auth: {
-      user: env("SMTP_USER"),
-      pass: env("SMTP_PASS"),
+  function gmailMailboxEmail() {
+    return (Deno.env.get("GMAIL_MAILBOX_EMAIL") ?? organizerEmail()).trim().toLowerCase();
+  }
+
+  async function getGmailSyncState(mailboxEmail: string) {
+    const { data, error } = await supabaseAdmin
+      .from("gmail_sync_state")
+      .select("*")
+      .eq("mailbox_email", mailboxEmail)
+      .maybeSingle<GmailSyncStateRow>();
+
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error(`No Gmail connection found for ${mailboxEmail}`);
+    return data;
+  }
+
+  async function updateGmailSyncState(mailboxEmail: string, patch: Partial<GmailSyncStateRow> & { history_id?: string | null; last_error?: string | null }) {
+    const { error } = await supabaseAdmin
+      .from("gmail_sync_state")
+      .update(patch)
+      .eq("mailbox_email", mailboxEmail);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async function refreshGoogleAccessToken(refreshToken: string) {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: env("GMAIL_CLIENT_ID"),
+        client_secret: env("GMAIL_CLIENT_SECRET"),
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Gmail access token refresh failed: ${response.status} ${detail}`);
+    }
+
+    return await response.json() as {
+      access_token: string;
+      expires_in: number;
+      scope?: string;
+      token_type?: string;
+    };
+  }
+
+  async function getValidGmailAccessToken(mailboxEmail: string) {
+    const state = await getGmailSyncState(mailboxEmail);
+    const expiry = state.token_expiry ? new Date(state.token_expiry).getTime() : 0;
+    if (state.access_token && expiry > Date.now() + 60_000) {
+      return { accessToken: state.access_token, state };
+    }
+
+    if (!state.refresh_token) throw new Error(`No Gmail refresh token stored for ${mailboxEmail}`);
+    const refreshed = await refreshGoogleAccessToken(state.refresh_token);
+    const tokenExpiry = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
+    await updateGmailSyncState(mailboxEmail, {
+      access_token: refreshed.access_token,
+      token_expiry: tokenExpiry,
+      token_scope: refreshed.scope ?? state.token_scope ?? null,
+      token_type: refreshed.token_type ?? state.token_type ?? null,
+      last_error: null,
+    });
+
+    return {
+      accessToken: refreshed.access_token,
+      state: {
+        ...state,
+        access_token: refreshed.access_token,
+        token_expiry: tokenExpiry,
+      },
+    };
+  }
+
+  async function gmailApi<T>(mailboxEmail: string, path: string, method = "GET", body?: unknown): Promise<T> {
+    const { accessToken } = await getValidGmailAccessToken(mailboxEmail);
+    const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      await updateGmailSyncState(mailboxEmail, {
+        last_error: `Gmail API ${method} ${path} failed: ${response.status} ${detail}`,
+      });
+      throw new Error(`Gmail API ${method} ${path} failed: ${response.status} ${detail}`);
+    }
+
+    if (response.status === 204) return {} as T;
+    return await response.json() as T;
+  }
+
+  async function getThreadForBooking(bookingId: string, mailboxEmail: string) {
+    const { data, error } = await supabaseAdmin
+      .from("booking_email_threads")
+      .select("*")
+      .eq("booking_id", bookingId)
+      .eq("provider", "gmail")
+      .eq("mailbox_email", mailboxEmail)
+      .maybeSingle<BookingEmailThreadRow>();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async function getLatestConversationAnchor(bookingId: string, mailboxEmail: string) {
+    const { data: latestMessage, error: messageError } = await supabaseAdmin
+      .from("booking_email_messages")
+      .select("subject, message_id_header, references_header")
+      .eq("booking_id", bookingId)
+      .eq("mailbox_email", mailboxEmail)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ subject?: string | null; message_id_header?: string | null; references_header?: string | null }>();
+
+    if (messageError) throw new Error(messageError.message);
+    if (latestMessage?.message_id_header) {
+      return {
+        subject: latestMessage.subject ?? null,
+        messageIdHeader: latestMessage.message_id_header ?? null,
+        referencesHeader: latestMessage.references_header ?? latestMessage.message_id_header ?? null,
+      };
+    }
+    return {
+      subject: null,
+      messageIdHeader: null,
+      referencesHeader: null,
+    };
+  }
+
+  async function upsertBookingThread(args: {
+    bookingId: string;
+    mailboxEmail: string;
+    providerThreadId?: string | null;
+    subject?: string | null;
+    status?: string | null;
+    historyId?: string | null;
+    lastMessageAt?: string | null;
+  }) {
+    const existing = await getThreadForBooking(args.bookingId, args.mailboxEmail);
+    const payload = {
+      booking_id: args.bookingId,
+      provider: "gmail",
+      mailbox_email: args.mailboxEmail,
+      provider_thread_id: args.providerThreadId ?? existing?.provider_thread_id ?? null,
+      subject: args.subject ?? existing?.subject ?? null,
+      status: args.status ?? existing?.status ?? "active",
+      history_id: args.historyId ?? existing?.history_id ?? null,
+      last_message_at: args.lastMessageAt ?? existing?.last_message_at ?? null,
+      last_synced_at: new Date().toISOString(),
+    };
+
+    const query = existing
+      ? supabaseAdmin.from("booking_email_threads").update(payload).eq("id", existing.id)
+      : supabaseAdmin.from("booking_email_threads").insert(payload);
+
+    const { data, error } = await query.select("*").single<BookingEmailThreadRow>();
+    if (error || !data) throw new Error(error?.message ?? "Failed to upsert booking email thread");
+    return data;
+  }
+
+  async function upsertBookingMessage(args: {
+    bookingId: string;
+    threadId?: string | null;
+    mailboxEmail: string;
+    providerMessageId?: string | null;
+    providerThreadId?: string | null;
+    direction: "outbound";
+    messageIdHeader?: string | null;
+    inReplyTo?: string | null;
+    referencesHeader?: string | null;
+    fromEmail?: string | null;
+    toEmail?: string | null;
+    subject?: string | null;
+    snippet?: string | null;
+    bodyText?: string | null;
+    bodyHtml?: string | null;
+    sentAt?: string | null;
+    payload?: Record<string, unknown>;
+  }) {
+    const { data: existing, error: existingError } = args.providerMessageId
+      ? await supabaseAdmin
+        .from("booking_email_messages")
+        .select("id")
+        .eq("provider", "gmail")
+        .eq("mailbox_email", args.mailboxEmail)
+        .eq("provider_message_id", args.providerMessageId)
+        .maybeSingle<{ id: string }>()
+      : { data: null, error: null };
+
+    if (existingError) throw new Error(existingError.message);
+
+  const payload = {
+      thread_id: args.threadId ?? null,
+      booking_id: args.bookingId,
+      provider: "gmail",
+      direction: args.direction,
+      mailbox_email: args.mailboxEmail,
+      provider_message_id: args.providerMessageId ?? null,
+      provider_thread_id: args.providerThreadId ?? null,
+      message_id_header: args.messageIdHeader ?? null,
+      in_reply_to: args.inReplyTo ?? null,
+      references_header: args.referencesHeader ?? null,
+      from_email: args.fromEmail ?? null,
+      to_email: args.toEmail ?? null,
+      subject: args.subject ?? null,
+      snippet: args.snippet ?? null,
+      body_text: args.bodyText ?? null,
+      body_html: args.bodyHtml ?? null,
+      sent_at: args.sentAt ?? null,
+      received_at: args.sentAt ?? null,
+      payload: args.payload ?? {},
+    };
+
+    const query = existing?.id
+      ? supabaseAdmin.from("booking_email_messages").update(payload).eq("id", existing.id)
+      : supabaseAdmin.from("booking_email_messages").insert(payload);
+
+    const { error } = await query;
+    if (error) throw new Error(error.message);
+  }
+
+  function buildRawMessage(messageArgs: {
+    subject: string;
+    text: string;
+    html: string;
+    inReplyTo?: string | null;
+    referencesHeader?: string | null;
+    icsContent?: string;
+    icsFilename?: string;
+  }) {
+    const rootBoundary = `mitra-auto-${randomToken().slice(0, 12)}`;
+    const altBoundary = `mitra-auto-alt-${randomToken().slice(0, 10)}`;
+    const messageId = `<booking-${args.booking.id}-${randomToken().slice(0, 6)}@mitra-auto.fi>`;
+    const lines = [
+      `From: ${senderAddress()}`,
+      `To: ${args.to}`,
+      `Reply-To: ${replyToEmail()}`,
+      `Subject: ${messageArgs.subject}`,
+      `Date: ${new Date().toUTCString()}`,
+      `Message-ID: ${messageId}`,
+      "MIME-Version: 1.0",
+    ];
+
+    if (messageArgs.inReplyTo) lines.push(`In-Reply-To: ${messageArgs.inReplyTo}`);
+    if (messageArgs.referencesHeader) lines.push(`References: ${messageArgs.referencesHeader}`);
+
+    if (messageArgs.icsContent) {
+      const method = messageArgs.icsContent.includes("METHOD:CANCEL") ? "CANCEL" : "REQUEST";
+      lines.push(`Content-Type: multipart/mixed; boundary="${rootBoundary}"`, "");
+      lines.push(
+        `--${rootBoundary}`,
+        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+        "",
+        `--${altBoundary}`,
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        messageArgs.text,
+        `--${altBoundary}`,
+        "Content-Type: text/html; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        messageArgs.html,
+        `--${altBoundary}--`,
+        `--${rootBoundary}`,
+        `Content-Type: text/calendar; charset=UTF-8; method=${method}; name="${messageArgs.icsFilename ?? "booking.ics"}"`,
+        "Content-Transfer-Encoding: base64",
+        `Content-Disposition: attachment; filename="${messageArgs.icsFilename ?? "booking.ics"}"`,
+        "",
+        toBase64Utf8(messageArgs.icsContent),
+        `--${rootBoundary}--`,
+      );
+    } else {
+      lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`, "");
+      lines.push(
+        `--${altBoundary}`,
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        messageArgs.text,
+        `--${altBoundary}`,
+        "Content-Type: text/html; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        messageArgs.html,
+        `--${altBoundary}--`,
+      );
+    }
+
+    return { raw: lines.join("\r\n"), messageId };
+  }
+
+  const mailboxEmail = gmailMailboxEmail();
+  const existingThread = await getThreadForBooking(args.booking.id, mailboxEmail);
+  const { data: latestThreadMessage, error: latestThreadMessageError } = existingThread
+    ? await supabaseAdmin
+      .from("booking_email_messages")
+      .select("message_id_header, references_header")
+      .eq("thread_id", existingThread.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ message_id_header?: string | null; references_header?: string | null }>()
+    : { data: null, error: null };
+
+  if (latestThreadMessageError) throw new Error(latestThreadMessageError.message);
+  const anchor = latestThreadMessage?.message_id_header
+    ? {
+        subject: existingThread?.subject ?? null,
+        messageIdHeader: latestThreadMessage.message_id_header ?? null,
+        referencesHeader: latestThreadMessage.references_header ?? latestThreadMessage.message_id_header ?? null,
+      }
+    : await getLatestConversationAnchor(args.booking.id, mailboxEmail);
+
+  const finalSubject = (existingThread?.subject ?? anchor.subject ?? args.subject).trim();
+  const rawMessage = buildRawMessage({
+    subject: finalSubject,
+    text: args.text,
+    html: args.html,
+    inReplyTo: anchor.messageIdHeader ?? null,
+    referencesHeader: anchor.referencesHeader ?? anchor.messageIdHeader ?? null,
+    icsContent: args.icsContent,
+    icsFilename: args.icsFilename,
+  });
+
+  const result = await gmailApi<{ id: string; threadId: string; historyId?: string; internalDate?: string }>(
+    mailboxEmail,
+    "/messages/send",
+    "POST",
+    {
+      raw: toBase64Url(rawMessage.raw),
+      ...(existingThread?.provider_thread_id ? { threadId: existingThread.provider_thread_id } : {}),
+    },
+  );
+
+  const sentAt = result.internalDate ? new Date(Number(result.internalDate)).toISOString() : new Date().toISOString();
+  const thread = await upsertBookingThread({
+    bookingId: args.booking.id,
+    mailboxEmail,
+    providerThreadId: result.threadId,
+    subject: finalSubject,
+    historyId: result.historyId ?? null,
+    lastMessageAt: sentAt,
+  });
+
+  await upsertBookingMessage({
+    bookingId: args.booking.id,
+    threadId: thread.id,
+    mailboxEmail,
+    providerMessageId: result.id,
+    providerThreadId: result.threadId,
+    direction: "outbound",
+    messageIdHeader: rawMessage.messageId,
+    inReplyTo: anchor.messageIdHeader ?? null,
+    referencesHeader: anchor.referencesHeader ?? anchor.messageIdHeader ?? null,
+    fromEmail: senderAddress(),
+    toEmail: args.to,
+    subject: finalSubject,
+    snippet: args.text.slice(0, 255),
+    bodyText: args.text,
+    bodyHtml: args.html,
+    sentAt,
+    payload: {
+      booking_mail_type: args.type,
+      gmail_history_id: result.historyId ?? null,
     },
   });
 
-  const info = await transporter.sendMail({
-    from: senderAddress(),
-    replyTo: replyToEmail(),
-    to: args.to,
-    subject: args.subject,
-    text: args.text,
-    html: args.html,
-    icalEvent: args.icsContent
-      ? {
-          method: args.icsContent.includes("METHOD:CANCEL") ? "CANCEL" : "REQUEST",
-          filename: args.icsFilename ?? "booking.ics",
-          content: args.icsContent,
-        }
-      : undefined,
-    attachments: args.icsContent
-      ? [{
-          filename: args.icsFilename ?? "booking.ics",
-          content: args.icsContent,
-          contentType: "text/calendar; charset=utf-8; method=" +
-            (args.icsContent.includes("METHOD:CANCEL") ? "CANCEL" : "REQUEST"),
-        }]
-      : undefined,
+  await updateGmailSyncState(mailboxEmail, {
+    history_id: result.historyId ?? null,
+    last_error: null,
   });
 
   return {
-    id: info.messageId,
-    accepted: info.accepted,
-    rejected: info.rejected,
-    response: info.response,
+    id: rawMessage.messageId,
+    providerMessageId: result.id,
+    threadId: result.threadId,
   };
 }
 
 async function recordEmailEvent(bookingId: string, eventType: string, recipientEmail: string | null, payload: Record<string, unknown>) {
-  const { error } = await supabaseAdmin.from("booking_email_events").insert({
+  const primaryInsert = await supabaseAdmin.from("booking_email_events").insert({
     booking_id: bookingId,
     event_type: eventType,
     recipient_email: recipientEmail,
     payload,
   });
 
-  if (error) throw new Error(error.message);
+  if (!primaryInsert.error) return;
+  if (!primaryInsert.error.message.includes("payload")) {
+    throw new Error(primaryInsert.error.message);
+  }
+
+  const fallbackInsert = await supabaseAdmin.from("booking_email_events").insert({
+    booking_id: bookingId,
+    event_type: eventType,
+    recipient_email: recipientEmail,
+  });
+
+  if (fallbackInsert.error) {
+    throw new Error(fallbackInsert.error.message);
+  }
 }
 
 async function updateBookingAfterSend(bookingId: string, patch: Partial<BookingRow>) {
@@ -747,6 +1149,8 @@ export async function sendManagedBookingMail(args: {
   const icsContent = icsMethod ? buildIcsContent(booking, icsMethod) : undefined;
 
   const sendResult = await sendEmail({
+    booking,
+    type: args.type,
     to: recipientEmail,
     subject,
     html,
@@ -760,17 +1164,23 @@ export async function sendManagedBookingMail(args: {
     calendar_last_sent_at: new Date().toISOString(),
   });
 
-  await recordEmailEvent(
-    booking.id,
-    args.type === "confirmation" && hadPreviousInvite ? "confirmation_resent" : args.type,
-    recipientEmail,
-    {
-      subject,
-      manage_url: manageUrl,
-      message_id: sendResult?.id ?? null,
-      provider: "smtp",
-    },
-  );
+  try {
+    await recordEmailEvent(
+      booking.id,
+      args.type === "confirmation" && hadPreviousInvite ? "confirmation_resent" : args.type,
+      recipientEmail,
+      {
+        subject,
+        manage_url: manageUrl,
+        message_id: sendResult?.id ?? null,
+        provider_message_id: sendResult?.providerMessageId ?? null,
+        provider_thread_id: sendResult?.threadId ?? null,
+        provider: "gmail",
+      },
+    );
+  } catch (error) {
+    console.error("Failed to record booking email event", error);
+  }
 
   return { ok: true, booking: bookingResponse(booking), manageUrl };
 }

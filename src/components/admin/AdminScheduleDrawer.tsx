@@ -27,7 +27,11 @@ import { Textarea } from '../ui/textarea';
 import type { SupportedBookingLanguage } from '../../utils/serviceCatalog';
 import type { ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
 
-import type { AdminBookingFormState, BookingMessageDraft } from './AdminSchedule.types';
+import type {
+  AdminBookingFormState,
+  BookingConversationState,
+  BookingMessageDraft,
+} from './AdminSchedule.types';
 
 interface AdminScheduleDrawerProps {
   cancellingBookingId: string | null;
@@ -59,6 +63,8 @@ interface AdminScheduleDrawerProps {
   isCreatingBooking: boolean;
   isOpen: boolean;
   language: string;
+  loadingConversationBookingId: string | null;
+  bookingConversations: Record<string, BookingConversationState>;
   messageDrafts: Record<string, BookingMessageDraft>;
   onCloseCreateForm: () => void;
   onOpenChange: (open: boolean) => void;
@@ -339,6 +345,8 @@ export function AdminScheduleDrawer({
   isCreatingBooking,
   isOpen,
   language,
+  loadingConversationBookingId,
+  bookingConversations,
   messageDrafts,
   onCloseCreateForm,
   onOpenChange,
@@ -587,6 +595,9 @@ export function AdminScheduleDrawer({
                   const editForm = editBookingForms[booking.id];
                   const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, language);
                   const bookingMissingFields = getMissingCompletionFields(booking, language);
+                  const conversation = bookingConversations[booking.id];
+                  const conversationMessages = conversation?.messages ?? [];
+                  const isLoadingConversation = loadingConversationBookingId === booking.id;
 
                   return (
                     <Card
@@ -848,6 +859,72 @@ export function AdminScheduleDrawer({
                                   <Button size="sm" variant="ghost" onClick={() => setComposeMessageBookingId(null)}>
                                     {t('closeComposer')}
                                   </Button>
+                                </div>
+                                <div className={`mb-4 rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
+                                  <div className="mb-3 flex items-center justify-between gap-3">
+                                    <h5 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                                      {t('conversationHistory')}
+                                    </h5>
+                                    {conversation?.thread?.subject && (
+                                      <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        {conversation.thread.subject}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {isLoadingConversation ? (
+                                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {t('conversationLoading')}
+                                    </p>
+                                  ) : conversationMessages.length > 0 ? (
+                                    <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+                                      {conversationMessages.map((message) => {
+                                        const timestamp = message.receivedAt || message.sentAt || message.createdAt;
+                                        const messageLabel = message.direction === 'inbound' ? t('receivedLabel') : t('sentLabel');
+                                        return (
+                                          <div
+                                            key={message.id}
+                                            className={`rounded-md border p-3 ${
+                                              message.direction === 'inbound'
+                                                ? theme === 'dark'
+                                                  ? 'border-emerald-500/20 bg-emerald-500/5'
+                                                  : 'border-emerald-200 bg-emerald-50'
+                                                : theme === 'dark'
+                                                ? 'border-white/10 bg-[#101215]'
+                                                : 'border-gray-200 bg-white'
+                                            }`}
+                                          >
+                                            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                              <div className="min-w-0">
+                                                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                                                  {message.direction === 'inbound' ? (message.fromEmail || '—') : (message.toEmail || '—')}
+                                                </p>
+                                                {message.subject && (
+                                                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                                    {message.subject}
+                                                  </p>
+                                                )}
+                                              </div>
+                                              <div className="text-right">
+                                                <p className={`text-[11px] font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                  {messageLabel}
+                                                </p>
+                                                <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                                  {new Date(timestamp).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <p className={`whitespace-pre-wrap text-sm leading-6 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                                              {message.bodyText || message.snippet || '—'}
+                                            </p>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {t('conversationEmpty')}
+                                    </p>
+                                  )}
                                 </div>
                                 <div className="space-y-3">
                                   <div className="space-y-2">

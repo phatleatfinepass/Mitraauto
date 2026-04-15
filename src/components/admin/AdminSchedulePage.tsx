@@ -43,7 +43,11 @@ import { AdminScheduleDrawer } from './AdminScheduleDrawer';
 import { AdminScheduleGrid } from './AdminScheduleGrid';
 import { AdminScheduleSearchDialog } from './AdminScheduleSearchDialog';
 import { AdminScheduleSidebar } from './AdminScheduleSidebar';
-import type { AdminBookingFormState, BookingMessageDraft } from './AdminSchedule.types';
+import type {
+  AdminBookingFormState,
+  BookingConversationState,
+  BookingMessageDraft,
+} from './AdminSchedule.types';
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;
@@ -97,6 +101,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [editBookingCurrentServiceId, setEditBookingCurrentServiceId] = useState<Record<string, string>>({});
   const [editBookingServiceIds, setEditBookingServiceIds] = useState<Record<string, string[]>>({});
   const [messageDrafts, setMessageDrafts] = useState<Record<string, BookingMessageDraft>>({});
+  const [bookingConversations, setBookingConversations] = useState<Record<string, BookingConversationState>>({});
+  const [loadingConversationBookingId, setLoadingConversationBookingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ScheduleBooking[]>([]);
   const [isSearchingBookings, setIsSearchingBookings] = useState(false);
@@ -219,6 +225,12 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       messageBodyPlaceholder: { fi: 'Kirjoita asiakkaalle lähetettävä viesti tähän.', en: 'Write the message that will be sent to the customer here.' },
       adminMessageSent: { fi: 'Viesti lähetetty asiakkaalle', en: 'Message sent to customer' },
       adminMessageFailed: { fi: 'Viestin lähetys epäonnistui', en: 'Failed to send message' },
+      conversationHistory: { fi: 'Viestiketju', en: 'Conversation history' },
+      conversationLoading: { fi: 'Ladataan viestiketjua...', en: 'Loading conversation...' },
+      conversationLoadFailed: { fi: 'Viestiketjun lataus epäonnistui', en: 'Failed to load conversation' },
+      conversationEmpty: { fi: 'Tälle varaukselle ei ole vielä viestihistoriaa.', en: 'No conversation history exists for this booking yet.' },
+      sentLabel: { fi: 'Lähetetty', en: 'Sent' },
+      receivedLabel: { fi: 'Vastaanotettu', en: 'Received' },
       messageRequired: { fi: 'Kirjoita aihe ja viesti ennen lähettämistä', en: 'Enter both a subject and a message before sending' },
       cancel: { fi: 'Peruuta', en: 'Cancel' },
       cancelEditing: { fi: 'Peruuta muokkaus', en: 'Cancel edit' },
@@ -807,6 +819,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           ...current,
           [booking.id]: (current[booking.id] || 0) + 1,
         }));
+        await refreshBookingConversationIfLoaded(booking.id);
         toast.success(t('completionRequestSent'));
       } else {
         if (!booking.customer_email) {
@@ -831,6 +844,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           [booking.id]: (current[booking.id] || 0) + 1,
         }));
 
+        await refreshBookingConversationIfLoaded(booking.id);
         toast.success(t('resendSuccessful'));
       }
     } catch (error) {
@@ -882,6 +896,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           throw emailError;
         }
 
+        await refreshBookingConversationIfLoaded(booking.id);
         toast.success(t('cancellationEmailSent'));
       }
 
@@ -1129,6 +1144,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         if (emailError) {
           throw emailError;
         }
+        await refreshBookingConversationIfLoaded(booking.id);
       } else if (previousCompletionMode && !completionMode && normalizedCustomerEmail) {
         const { error: emailError } = await supabase.functions.invoke('send_booking_confirmation', {
           method: 'POST',
@@ -1150,6 +1166,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         if (emailError) {
           throw emailError;
         }
+        await refreshBookingConversationIfLoaded(booking.id);
       } else if (shouldSendUpdateEmail) {
         const { error: emailError } = await supabase.functions.invoke('send_booking_update', {
           method: 'POST',
@@ -1170,6 +1187,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         if (emailError) {
           throw emailError;
         }
+        await refreshBookingConversationIfLoaded(booking.id);
       }
 
       toast.success(t('bookingUpdated'));
@@ -1261,6 +1279,38 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           : '',
       },
     }));
+    void loadBookingConversation(booking.id, true);
+  };
+
+  const loadBookingConversation = async (bookingId: string, sync = false) => {
+    setLoadingConversationBookingId(bookingId);
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.functions.invoke('gmail_get_booking_conversation', {
+        method: 'POST',
+        body: {
+          bookingId,
+          sync,
+        },
+      });
+
+      if (error) throw error;
+
+      setBookingConversations((current) => ({
+        ...current,
+        [bookingId]: data as BookingConversationState,
+      }));
+    } catch (error) {
+      console.error('Error loading booking conversation:', error);
+      toast.error(t('conversationLoadFailed'));
+    } finally {
+      setLoadingConversationBookingId((current) => (current === bookingId ? null : current));
+    }
+  };
+
+  const refreshBookingConversationIfLoaded = async (bookingId: string) => {
+    if (!bookingConversations[bookingId]) return;
+    await loadBookingConversation(bookingId, true);
   };
 
   const handleSearchBookings = async (queryOverride?: string) => {
@@ -1406,6 +1456,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         });
 
         if (emailError) throw emailError;
+        await refreshBookingConversationIfLoaded(booking.id);
       }
 
       toast.success(t('restoreSuccessful'));
@@ -1491,6 +1542,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       }
 
       toast.success(t('adminMessageSent'));
+      await loadBookingConversation(booking.id, true);
       setComposeMessageBookingId(null);
       setMessageDrafts((current) => {
         const next = { ...current };
@@ -1801,6 +1853,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         isCreatingBooking={isCreatingBooking}
         isOpen={isDrawerOpen}
         language={language}
+        loadingConversationBookingId={loadingConversationBookingId}
+        bookingConversations={bookingConversations}
         messageDrafts={messageDrafts}
         onCloseCreateForm={() => setIsCreateFormOpen(false)}
         onOpenChange={setIsDrawerOpen}
