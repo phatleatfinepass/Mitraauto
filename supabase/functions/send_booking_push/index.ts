@@ -73,16 +73,15 @@ async function getSubscriptions() {
     throw new Error(error.message);
   }
 
-  const seenUsers = new Set<string>();
+  const seenEndpoints = new Set<string>();
   const unique = [];
 
   for (const entry of data ?? []) {
     const endpoint = entry?.endpoint;
-    const userKey = entry?.user_id || entry?.user_email || endpoint;
-    if (!endpoint || seenUsers.has(userKey)) {
+    if (!endpoint || seenEndpoints.has(endpoint)) {
       continue;
     }
-    seenUsers.add(userKey);
+    seenEndpoints.add(endpoint);
     unique.push(entry);
   }
 

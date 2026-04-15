@@ -26,9 +26,12 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Textarea } from '../ui/textarea';
 import type { SupportedBookingLanguage } from '../../utils/serviceCatalog';
 import type { ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
+import { AdminBookingEditPanel } from './AdminBookingEditPanel';
+import { AdminBookingConversationPanel } from './AdminBookingConversationPanel';
 
 import type {
   AdminBookingFormState,
+  BookingConversationMessage,
   BookingConversationState,
   BookingMessageDraft,
 } from './AdminSchedule.types';
@@ -53,11 +56,13 @@ interface AdminScheduleDrawerProps {
   handleEditBookingFieldChange: (bookingId: string, field: keyof AdminBookingFormState, value: string) => void;
   handleForceConfirmBooking: (booking: ScheduleBooking) => Promise<void> | void;
   handleOpenCancelBookingDialog: (booking: ScheduleBooking) => void;
-  handleOpenMessageComposer: (booking: ScheduleBooking) => void;
+  handleOpenMessageComposer: (booking: ScheduleBooking, replyTo?: BookingConversationMessage) => void;
   handleResendBookingConfirmation: (booking: ScheduleBooking) => void;
   handleSaveBookingChanges: (booking: ScheduleBooking) => Promise<void> | void;
   handleSendBookingMessage: (booking: ScheduleBooking) => Promise<void> | void;
+  handleSyncBookingConversation: (bookingId: string) => Promise<void> | void;
   handleStartEditingBooking: (booking: ScheduleBooking) => void;
+  handleToggleBookingExpanded: (booking: ScheduleBooking, expanded: boolean) => void;
   isBookingExpanded: (bookingId: string) => boolean;
   isCreateFormOpen: boolean;
   isCreatingBooking: boolean;
@@ -78,7 +83,6 @@ interface AdminScheduleDrawerProps {
   selectedSlot: ScheduleTimeSlot | null;
   selectedSlotTime: string;
   sendingMessageBookingId: string | null;
-  setBookingExpanded: (bookingId: string, expanded: boolean) => void;
   setComposeMessageBookingId: React.Dispatch<React.SetStateAction<string | null>>;
   setCreateBookingCurrentServiceId: React.Dispatch<React.SetStateAction<string>>;
   setCreateBookingForm: React.Dispatch<React.SetStateAction<AdminBookingFormState>>;
@@ -339,7 +343,9 @@ export function AdminScheduleDrawer({
   handleResendBookingConfirmation,
   handleSaveBookingChanges,
   handleSendBookingMessage,
+  handleSyncBookingConversation,
   handleStartEditingBooking,
+  handleToggleBookingExpanded,
   isBookingExpanded,
   isCreateFormOpen,
   isCreatingBooking,
@@ -360,7 +366,6 @@ export function AdminScheduleDrawer({
   selectedSlot,
   selectedSlotTime,
   sendingMessageBookingId,
-  setBookingExpanded,
   setComposeMessageBookingId,
   setCreateBookingCurrentServiceId,
   setCreateBookingForm,
@@ -596,7 +601,6 @@ export function AdminScheduleDrawer({
                   const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, language);
                   const bookingMissingFields = getMissingCompletionFields(booking, language);
                   const conversation = bookingConversations[booking.id];
-                  const conversationMessages = conversation?.messages ?? [];
                   const isLoadingConversation = loadingConversationBookingId === booking.id;
 
                   return (
@@ -651,7 +655,7 @@ export function AdminScheduleDrawer({
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setBookingExpanded(booking.id, !isExpanded)}
+                            onClick={() => handleToggleBookingExpanded(booking, !isExpanded)}
                             className={`min-w-[220px] justify-center rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
                           >
                             {isExpanded ? <ChevronUp className="mr-2 h-4 w-4" /> : <ChevronDown className="mr-2 h-4 w-4" />}
@@ -726,231 +730,49 @@ export function AdminScheduleDrawer({
                                 const editCompletionMissingFields = getMissingCompletionFields(editForm, language);
 
                                 return (
-                              <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#18181B]' : 'border-gray-200 bg-white'}`}>
-                                <div className="mb-3 flex items-center justify-between gap-3">
-                                  <h4 className={theme === 'dark' ? 'font-medium text-white' : 'font-medium text-gray-900'}>{t('editBooking')}</h4>
-                                  <Button size="sm" variant="ghost" onClick={() => setEditingBookingId(null)}>
-                                    {t('cancelEditing')}
-                                  </Button>
-                                </div>
-
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('bookingLanguage')}</label>
-                                    <Select
-                                      value={editForm.booking_language}
-                                      onValueChange={(value: SupportedBookingLanguage) => handleEditBookingFieldChange(booking.id, 'booking_language', value)}
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="fi">{t('finnish')}</SelectItem>
-                                        <SelectItem value="en">{t('english')}</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('licensePlate')}</label>
-                                    <Input value={editForm.license_plate} onChange={(e) => handleEditBookingFieldChange(booking.id, 'license_plate', e.target.value.toUpperCase())} />
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('date')}</label>
-                                    <Input type="date" value={editForm.booking_date} onChange={(e) => handleEditBookingFieldChange(booking.id, 'booking_date', e.target.value)} />
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('time')}</label>
-                                    <Input type="time" value={editForm.booking_time} onChange={(e) => handleEditBookingFieldChange(booking.id, 'booking_time', e.target.value)} />
-                                  </div>
-
-                                  <BookingServiceSelector
-                                    bookingLanguage={editForm.booking_language}
-                                    currentServiceId={editBookingCurrentServiceId[booking.id] || ''}
-                                    getSelectedServiceNames={getSelectedServiceNames}
-                                    language={language}
-                                    onCurrentServiceIdChange={(value) => setEditBookingCurrentServiceId((current) => ({ ...current, [booking.id]: value }))}
-                                    onSelectedCategoryChange={(value) => setEditBookingSelectedCategory((current) => ({ ...current, [booking.id]: value }))}
-                                    onServiceIdsChange={(serviceIds) => setEditBookingServiceIds((current) => ({ ...current, [booking.id]: serviceIds }))}
-                                    readOnlyValue={editForm.service_name}
-                                    selectedCategory={editBookingSelectedCategory[booking.id] || ''}
-                                    selectedLanguageServiceCategories={selectedLanguageServiceCategories}
-                                    serviceIds={editBookingServiceIds[booking.id] || []}
-                                    syncServiceName={(serviceIds, bookingLanguage) => syncEditBookingServiceName(booking.id, serviceIds, bookingLanguage)}
-                                    t={t}
-                                    theme={theme}
-                                  />
-
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('customerName')}</label>
-                                    <Input value={editForm.customer_name} onChange={(e) => handleEditBookingFieldChange(booking.id, 'customer_name', e.target.value)} />
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('customerPhone')}</label>
-                                    <Input value={editForm.customer_phone} onChange={(e) => handleEditBookingFieldChange(booking.id, 'customer_phone', e.target.value)} />
-                                  </div>
-
-                                  <div className="space-y-2 sm:col-span-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('customerEmail')}</label>
-                                    <Input type="email" value={editForm.customer_email} onChange={(e) => handleEditBookingFieldChange(booking.id, 'customer_email', e.target.value)} />
-                                  </div>
-
-                                  <div className={`sm:col-span-2 rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-gray-50'}`}>
-                                    <label className="flex items-start gap-3">
-                                      <Checkbox
-                                        checked={editForm.status === awaitingCustomerCompletionStatus}
-                                        onCheckedChange={(checked) => {
-                                          handleEditBookingFieldChange(
-                                            booking.id,
-                                            'status',
-                                            checked === true ? awaitingCustomerCompletionStatus : 'confirmed',
-                                          );
-                                        }}
-                                      />
-                                      <span className="space-y-1">
-                                        <span className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-                                          {t('awaitingCustomerCompletion')}
-                                        </span>
-                                        <span className={`block text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                          {t('completionModeDescription')}
-                                        </span>
-                                      </span>
-                                    </label>
-
-                                    {(editCompletionMode || editCompletionMissingFields.length > 0) && (
-                                      <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
-                                        {t('incompleteBookingWarning')}: {editCompletionMissingFields.join(', ') || (language === 'fi' ? 'asiakastiedot' : 'customer details')}
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  <div className="space-y-2 sm:col-span-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('notes')}</label>
-                                    <Textarea
-                                      value={editForm.notes}
-                                      onChange={(e) => handleEditBookingFieldChange(booking.id, 'notes', e.target.value)}
-                                      rows={3}
-                                      className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="mt-4 flex gap-2">
-                                  <Button onClick={() => handleSaveBookingChanges(booking)} disabled={savingBookingId === booking.id} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90">
-                                    <Save className="mr-2 h-4 w-4" />
-                                    {savingBookingId === booking.id ? t('saving') : t('saveChanges')}
-                                  </Button>
-                                  <Button variant="outline" onClick={() => setEditingBookingId(null)} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
-                                    {t('cancel')}
-                                  </Button>
-                                </div>
-                              </div>
+                              <AdminBookingEditPanel
+                                awaitingCustomerCompletionStatus={awaitingCustomerCompletionStatus}
+                                booking={booking}
+                                currentServiceId={editBookingCurrentServiceId[booking.id] || ''}
+                                editCompletionMissingFields={editCompletionMissingFields}
+                                editCompletionMode={editCompletionMode}
+                                form={editForm}
+                                getSelectedServiceNames={getSelectedServiceNames}
+                                language={language}
+                                saving={savingBookingId === booking.id}
+                                selectedCategory={editBookingSelectedCategory[booking.id] || ''}
+                                selectedLanguageServiceCategories={selectedLanguageServiceCategories}
+                                serviceIds={editBookingServiceIds[booking.id] || []}
+                                setCurrentServiceId={(value) => setEditBookingCurrentServiceId((current) => ({ ...current, [booking.id]: value }))}
+                                setSelectedCategory={(value) => setEditBookingSelectedCategory((current) => ({ ...current, [booking.id]: value }))}
+                                setServiceIds={(serviceIds) => setEditBookingServiceIds((current) => ({ ...current, [booking.id]: serviceIds }))}
+                                setEditingBookingId={setEditingBookingId}
+                                syncServiceName={(serviceIds, bookingLanguage) => syncEditBookingServiceName(booking.id, serviceIds, bookingLanguage)}
+                                t={t}
+                                theme={theme}
+                                onFieldChange={handleEditBookingFieldChange}
+                                onSave={handleSaveBookingChanges}
+                              />
                                 );
                               })()
                             )}
 
                             {composeMessageBookingId === booking.id && (
-                              <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#18181B]' : 'border-gray-200 bg-white'}`}>
-                                <div className="mb-3 flex items-center justify-between gap-3">
-                                  <h4 className={theme === 'dark' ? 'font-medium text-white' : 'font-medium text-gray-900'}>{t('sendMessage')}</h4>
-                                  <Button size="sm" variant="ghost" onClick={() => setComposeMessageBookingId(null)}>
-                                    {t('closeComposer')}
-                                  </Button>
-                                </div>
-                                <div className={`mb-4 rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
-                                  <div className="mb-3 flex items-center justify-between gap-3">
-                                    <h5 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-                                      {t('conversationHistory')}
-                                    </h5>
-                                    {conversation?.thread?.subject && (
-                                      <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                        {conversation.thread.subject}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isLoadingConversation ? (
-                                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                      {t('conversationLoading')}
-                                    </p>
-                                  ) : conversationMessages.length > 0 ? (
-                                    <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
-                                      {conversationMessages.map((message) => {
-                                        const timestamp = message.receivedAt || message.sentAt || message.createdAt;
-                                        const messageLabel = message.direction === 'inbound' ? t('receivedLabel') : t('sentLabel');
-                                        return (
-                                          <div
-                                            key={message.id}
-                                            className={`rounded-md border p-3 ${
-                                              message.direction === 'inbound'
-                                                ? theme === 'dark'
-                                                  ? 'border-emerald-500/20 bg-emerald-500/5'
-                                                  : 'border-emerald-200 bg-emerald-50'
-                                                : theme === 'dark'
-                                                ? 'border-white/10 bg-[#101215]'
-                                                : 'border-gray-200 bg-white'
-                                            }`}
-                                          >
-                                            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                                              <div className="min-w-0">
-                                                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-                                                  {message.direction === 'inbound' ? (message.fromEmail || '—') : (message.toEmail || '—')}
-                                                </p>
-                                                {message.subject && (
-                                                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                                    {message.subject}
-                                                  </p>
-                                                )}
-                                              </div>
-                                              <div className="text-right">
-                                                <p className={`text-[11px] font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                                  {messageLabel}
-                                                </p>
-                                                <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                                  {new Date(timestamp).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}
-                                                </p>
-                                              </div>
-                                            </div>
-                                            <p className={`whitespace-pre-wrap text-sm leading-6 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
-                                              {message.bodyText || message.snippet || '—'}
-                                            </p>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                      {t('conversationEmpty')}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="space-y-3">
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('messageSubject')}</label>
-                                    <Input
-                                      value={messageDrafts[booking.id]?.subject || ''}
-                                      onChange={(e) => handleBookingMessageDraftChange(booking.id, 'subject', e.target.value)}
-                                      placeholder={t('messageSubjectPlaceholder')}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('messageBody')}</label>
-                                    <Textarea
-                                      value={messageDrafts[booking.id]?.message || ''}
-                                      onChange={(e) => handleBookingMessageDraftChange(booking.id, 'message', e.target.value)}
-                                      placeholder={t('messageBodyPlaceholder')}
-                                      rows={5}
-                                      className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}
-                                    />
-                                  </div>
-                                  <Button onClick={() => handleSendBookingMessage(booking)} disabled={sendingMessageBookingId === booking.id} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90">
-                                    <MailPlus className="mr-2 h-4 w-4" />
-                                    {sendingMessageBookingId === booking.id ? t('sendingMessage') : t('sendMessage')}
-                                  </Button>
-                                </div>
-                              </div>
+                              <AdminBookingConversationPanel
+                                booking={booking}
+                                conversation={conversation}
+                                isLoadingConversation={isLoadingConversation}
+                                language={language}
+                                messageDraft={messageDrafts[booking.id]}
+                                sending={sendingMessageBookingId === booking.id}
+                                theme={theme}
+                                t={t}
+                                onClose={() => setComposeMessageBookingId(null)}
+                                onDraftChange={handleBookingMessageDraftChange}
+                                onReply={handleOpenMessageComposer}
+                                onSend={handleSendBookingMessage}
+                                onSync={(bookingId) => void handleSyncBookingConversation(bookingId)}
+                              />
                             )}
                           </div>
                         )}

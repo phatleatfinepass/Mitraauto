@@ -5,20 +5,20 @@ import { Card } from './ui/card';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5 } from './legal/PrivacyPolicyVersions';
-import { TermsV1, TermsV2, TermsV3, TermsV4, TermsV5 } from './legal/TermsVersions';
+import { TermsV1, TermsV2, TermsV3, TermsV4, TermsV5, TermsV6 } from './legal/TermsVersions';
 
 interface LegalPageProps {
   initialSection?: 'privacy' | 'terms';
 }
 
-interface PrivacyVersion {
+interface LegalVersion {
   version: string;
   date: string;
   dateKey: string;
   descriptionKey: string;
 }
 
-const privacyVersions: PrivacyVersion[] = [
+const privacyVersions: LegalVersion[] = [
   { 
     version: 'v1.0', 
     date: '2023-12-01',
@@ -51,10 +51,20 @@ const privacyVersions: PrivacyVersion[] = [
   },
 ];
 
+const termsVersions: LegalVersion[] = [
+  ...privacyVersions,
+  {
+    version: 'v6.0',
+    date: '2026-04-15',
+    dateKey: 'legal.timeline.v6.date',
+    descriptionKey: 'legal.timeline.v6.description'
+  },
+];
+
 export function LegalPage({ initialSection }: LegalPageProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
-  const [selectedVersion, setSelectedVersion] = useState<number>(4); // Default to latest version (v5.0)
+  const [selectedTermsVersion, setSelectedTermsVersion] = useState<number>(termsVersions.length - 1);
 
   useEffect(() => {
     if (initialSection) {
@@ -67,32 +77,32 @@ export function LegalPage({ initialSection }: LegalPageProps) {
     }
   }, [initialSection]);
 
-  const handleVersionSelect = (index: number) => {
-    setSelectedVersion(index);
-    // Smooth scroll to privacy section on version change
+  const handleTermsVersionSelect = (index: number) => {
+    setSelectedTermsVersion(index);
+    // Smooth scroll to terms section on version change
     setTimeout(() => {
-      const element = document.getElementById('privacy');
+      const element = document.getElementById('terms');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
   };
 
-  const handlePreviousVersion = () => {
-    if (selectedVersion > 0) {
-      handleVersionSelect(selectedVersion - 1);
+  const handlePreviousTermsVersion = () => {
+    if (selectedTermsVersion > 0) {
+      handleTermsVersionSelect(selectedTermsVersion - 1);
     }
   };
 
-  const handleNextVersion = () => {
-    if (selectedVersion < privacyVersions.length - 1) {
-      handleVersionSelect(selectedVersion + 1);
+  const handleNextTermsVersion = () => {
+    if (selectedTermsVersion < termsVersions.length - 1) {
+      handleTermsVersionSelect(selectedTermsVersion + 1);
     }
   };
 
   // Render the appropriate Privacy Policy version
   const renderPrivacyVersion = () => {
-    switch (selectedVersion) {
+    switch (privacyVersions.length - 1) {
       case 0:
         return <PrivacyPolicyV1 t={t} />;
       case 1:
@@ -109,7 +119,7 @@ export function LegalPage({ initialSection }: LegalPageProps) {
 
   // Render the appropriate Terms version
   const renderTermsVersion = () => {
-    switch (selectedVersion) {
+    switch (selectedTermsVersion) {
       case 0:
         return <TermsV1 t={t} />;
       case 1:
@@ -119,8 +129,10 @@ export function LegalPage({ initialSection }: LegalPageProps) {
       case 3:
         return <TermsV4 t={t} />;
       case 4:
-      default:
         return <TermsV5 t={t} />;
+      case 5:
+      default:
+        return <TermsV6 t={t} />;
     }
   };
 
@@ -139,12 +151,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
             <div className="flex items-center gap-4">
               {/* Left Chevron */}
               <button
-                onClick={handlePreviousVersion}
-                disabled={selectedVersion === 0}
+                onClick={handlePreviousTermsVersion}
+                disabled={selectedTermsVersion === 0}
                 className={`
                   flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full 
                   flex items-center justify-center transition-all duration-300
-                  ${selectedVersion === 0
+                  ${selectedTermsVersion === 0
                     ? 'bg-muted/50 text-muted-foreground/30 cursor-not-allowed'
                     : 'bg-[#FF6B35]/10 text-[#FF6B35] hover:bg-[#FF6B35]/20 hover:scale-110 active:scale-95'
                   }
@@ -160,25 +172,25 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                 <div 
                   className="absolute top-0 left-0 h-full bg-[#FF6B35]/30 transition-all duration-700 ease-in-out"
                   style={{ 
-                    width: `${(selectedVersion / (privacyVersions.length - 1)) * 100}%` 
+                    width: `${(selectedTermsVersion / (termsVersions.length - 1)) * 100}%` 
                   }}
                 />
                 
                 {/* Timeline Markers */}
                 <div className="absolute inset-0 flex justify-between items-start">
-                  {privacyVersions.map((version, index) => (
+                  {termsVersions.map((version, index) => (
                     <button
                       key={version.date}
-                      onClick={() => handleVersionSelect(index)}
+                      onClick={() => handleTermsVersionSelect(index)}
                       className="group relative flex flex-col items-center min-w-0 flex-1"
                     >
                       {/* Vertical Marker */}
                       <div 
                         className={`
                           w-px transition-all duration-300
-                          ${selectedVersion === index 
+                          ${selectedTermsVersion === index 
                             ? 'h-4 bg-[#FF6B35]' 
-                            : selectedVersion > index
+                            : selectedTermsVersion > index
                               ? 'h-2.5 bg-[#FF6B35]/40 group-hover:h-4 group-hover:bg-[#FF6B35]/60'
                               : 'h-2.5 bg-border/60 group-hover:h-4 group-hover:bg-[#FF6B35]/30'
                           }
@@ -189,7 +201,7 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                       <span 
                         className={`
                           mt-2 text-[10px] sm:text-xs transition-all duration-300 text-center px-1
-                          ${selectedVersion === index 
+                          ${selectedTermsVersion === index 
                             ? 'text-[#FF6B35]' 
                             : 'text-muted-foreground/70 group-hover:text-muted-foreground'
                           }
@@ -208,12 +220,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
 
               {/* Right Chevron */}
               <button
-                onClick={handleNextVersion}
-                disabled={selectedVersion === privacyVersions.length - 1}
+                onClick={handleNextTermsVersion}
+                disabled={selectedTermsVersion === termsVersions.length - 1}
                 className={`
                   flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full 
                   flex items-center justify-center transition-all duration-300
-                  ${selectedVersion === privacyVersions.length - 1
+                  ${selectedTermsVersion === termsVersions.length - 1
                     ? 'bg-muted/50 text-muted-foreground/30 cursor-not-allowed'
                     : 'bg-[#FF6B35]/10 text-[#FF6B35] hover:bg-[#FF6B35]/20 hover:scale-110 active:scale-95'
                   }
@@ -243,12 +255,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                   {t('legal.privacy.title')}
                 </h1>
                 <motion.span
-                  key={selectedVersion}
+                  key="privacy-v5"
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
                 >
-                  {privacyVersions[selectedVersion].version}
+                  {privacyVersions[privacyVersions.length - 1].version}
                 </motion.span>
               </div>
               <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
@@ -256,15 +268,15 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                 {t('legal.privacy.subtitle')}
               </p>
               <motion.div
-                key={selectedVersion}
+                key="privacy-v5-meta"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-sm text-muted-foreground space-y-1"
               >
-                <p><strong>{t('legal.privacy.effective')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
-                <p><strong>{t('legal.privacy.lastUpdated')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
+                <p><strong>{t('legal.privacy.effective')}:</strong> {t(privacyVersions[privacyVersions.length - 1].dateKey)}</p>
+                <p><strong>{t('legal.privacy.lastUpdated')}:</strong> {t(privacyVersions[privacyVersions.length - 1].dateKey)}</p>
                 <p className="mt-3 text-xs italic text-[#FF6B35]">
-                  {t(privacyVersions[selectedVersion].descriptionKey)}
+                  {t(privacyVersions[privacyVersions.length - 1].descriptionKey)}
                 </p>
               </motion.div>
             </div>
@@ -296,12 +308,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                   {t('legal.terms.title')}
                 </h1>
                 <motion.span
-                  key={selectedVersion}
+                  key={selectedTermsVersion}
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
                 >
-                  {privacyVersions[selectedVersion].version}
+                  {termsVersions[selectedTermsVersion].version}
                 </motion.span>
               </div>
               <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
@@ -309,21 +321,21 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                 {t('legal.terms.subtitle')}
               </p>
               <motion.div
-                key={selectedVersion}
+                key={selectedTermsVersion}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-sm text-muted-foreground space-y-1"
               >
-                <p><strong>{t('legal.terms.effective')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
-                <p><strong>{t('legal.terms.lastUpdated')}:</strong> {t(privacyVersions[selectedVersion].dateKey)}</p>
+                <p><strong>{t('legal.terms.effective')}:</strong> {t(termsVersions[selectedTermsVersion].dateKey)}</p>
+                <p><strong>{t('legal.terms.lastUpdated')}:</strong> {t(termsVersions[selectedTermsVersion].dateKey)}</p>
                 <p className="mt-3 text-xs italic text-[#FF6B35]">
-                  {t(privacyVersions[selectedVersion].descriptionKey)}
+                  {t(termsVersions[selectedTermsVersion].descriptionKey)}
                 </p>
               </motion.div>
             </div>
 
             <motion.div
-              key={selectedVersion}
+              key={selectedTermsVersion}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}

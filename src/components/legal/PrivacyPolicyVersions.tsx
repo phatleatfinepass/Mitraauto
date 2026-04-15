@@ -561,3 +561,8 @@ export function PrivacyPolicyV5({ t }: { t: (key: string) => string }) {
     </Card>
   );
 }
+
+// Version 6.0 - April 2026 legal refresh
+export function PrivacyPolicyV6({ t }: { t: (key: string) => string }) {
+  return <PrivacyPolicyV5 t={t} />;
+}

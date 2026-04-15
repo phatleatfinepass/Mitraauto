@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter } from '../ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,23 +28,21 @@ import { getSupabaseClient } from '../../utils/supabase/client';
 import { formatDateForSupabase } from '../../utils/date';
 import { buildScheduleTimeSlots, generateScheduleSlots, ScheduleBlockedSlot, ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
 import {
-  detectStoredServiceLanguage,
   getLocalizedServiceCategories,
-  getServiceIdsFromStoredServiceName,
   localizeStoredServiceName,
   SupportedBookingLanguage,
 } from '../../utils/serviceCatalog';
 import { toast } from 'sonner';
 import { AdminScheduleBookingPanel } from './AdminScheduleBookingPanel';
+import { AdminArchivedBookingDialog } from './AdminArchivedBookingDialog';
 import { AdminScheduleDrawer } from './AdminScheduleDrawer';
 import { AdminScheduleGrid } from './AdminScheduleGrid';
 import { AdminScheduleSearchDialog } from './AdminScheduleSearchDialog';
 import { AdminScheduleSidebar } from './AdminScheduleSidebar';
-import type {
-  AdminBookingFormState,
-  BookingConversationState,
-  BookingMessageDraft,
-} from './AdminSchedule.types';
+import { buildCustomerCompletionDraft, getMissingCompletionFields } from './bookingCompletion';
+import { useBookingConversation } from './useBookingConversation';
+import { useBookingEditorState } from './useBookingEditorState';
+import { useBookingReservationState } from './useBookingReservationState';
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;
@@ -72,45 +67,9 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [selectedBlockTimes, setSelectedBlockTimes] = useState<string[]>([]);
   const [resendingBookingId, setResendingBookingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
-  const [savingBookingId, setSavingBookingId] = useState<string | null>(null);
-  const [sendingMessageBookingId, setSendingMessageBookingId] = useState<string | null>(null);
   const [resendCounts, setResendCounts] = useState<Record<string, number>>({});
-  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
-  const [isCreatingBooking, setIsCreatingBooking] = useState(false);
-  const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [confirmingBookingId, setConfirmingBookingId] = useState<string | null>(null);
-  const [composeMessageBookingId, setComposeMessageBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<string[]>([]);
-  const [createBookingForm, setCreateBookingForm] = useState<AdminBookingFormState>({
-    license_plate: '',
-    booking_date: formatDateForSupabase(new Date()),
-    booking_time: '',
-    booking_language: language,
-    service_name: '',
-    customer_name: '',
-    customer_phone: '',
-    customer_email: '',
-    notes: '',
-    status: 'confirmed',
-  });
-  const [createBookingSelectedCategory, setCreateBookingSelectedCategory] = useState<string>('');
-  const [createBookingCurrentServiceId, setCreateBookingCurrentServiceId] = useState<string>('');
-  const [createBookingServiceIds, setCreateBookingServiceIds] = useState<string[]>([]);
-  const [editBookingForms, setEditBookingForms] = useState<Record<string, AdminBookingFormState>>({});
-  const [editBookingSelectedCategory, setEditBookingSelectedCategory] = useState<Record<string, string>>({});
-  const [editBookingCurrentServiceId, setEditBookingCurrentServiceId] = useState<Record<string, string>>({});
-  const [editBookingServiceIds, setEditBookingServiceIds] = useState<Record<string, string[]>>({});
-  const [messageDrafts, setMessageDrafts] = useState<Record<string, BookingMessageDraft>>({});
-  const [bookingConversations, setBookingConversations] = useState<Record<string, BookingConversationState>>({});
-  const [loadingConversationBookingId, setLoadingConversationBookingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<ScheduleBooking[]>([]);
-  const [isSearchingBookings, setIsSearchingBookings] = useState(false);
-  const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
-  const [activeBookingsTab, setActiveBookingsTab] = useState<'schedule' | 'reservation'>('schedule');
-  const [showArchivedBookings, setShowArchivedBookings] = useState(false);
-  const [showArchivedInline, setShowArchivedInline] = useState(false);
-  const [archivedBookings, setArchivedBookings] = useState<ScheduleBooking[]>([]);
   const [slotActionTime, setSlotActionTime] = useState<string | null>(null);
   const [slotActionSlot, setSlotActionSlot] = useState<ScheduleTimeSlot | null>(null);
   const [isSlotActionDialogOpen, setIsSlotActionDialogOpen] = useState(false);
@@ -119,7 +78,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [sendRestoreEmail, setSendRestoreEmail] = useState(true);
   const [restoringBookingId, setRestoringBookingId] = useState<string | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
-  const searchRequestIdRef = useRef(0);
 
   const t = (key: string) => {
     const translations: Record<string, { fi: string; en: string }> = {
@@ -231,6 +189,12 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       conversationEmpty: { fi: 'Tälle varaukselle ei ole vielä viestihistoriaa.', en: 'No conversation history exists for this booking yet.' },
       sentLabel: { fi: 'Lähetetty', en: 'Sent' },
       receivedLabel: { fi: 'Vastaanotettu', en: 'Received' },
+      syncConversation: { fi: 'Synkronoi', en: 'Sync' },
+      syncingConversation: { fi: 'Synkronoidaan...', en: 'Syncing...' },
+      replyToMessage: { fi: 'Vastaa viestiin', en: 'Reply to message' },
+      threadConnected: { fi: 'Ketju yhdistetty', en: 'Thread connected' },
+      noThreadYet: { fi: 'Ei aktiivista ketjua vielä', en: 'No active thread yet' },
+      lastSyncedLabel: { fi: 'Synkronoitu', en: 'Last synced' },
       messageRequired: { fi: 'Kirjoita aihe ja viesti ennen lähettämistä', en: 'Enter both a subject and a message before sending' },
       cancel: { fi: 'Peruuta', en: 'Cancel' },
       cancelEditing: { fi: 'Peruuta muokkaus', en: 'Cancel edit' },
@@ -301,114 +265,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       .filter((service) => serviceIds.includes(service.id));
 
     return services.map((service) => service.name);
-  };
-
-  const syncCreateBookingServiceName = (serviceIds: string[], selectedLanguage: SupportedBookingLanguage) => {
-    const serviceNames = getSelectedServiceNames(serviceIds, selectedLanguage);
-    setCreateBookingForm((current) => ({
-      ...current,
-      service_name: serviceNames.join(', '),
-    }));
-  };
-
-  const syncEditBookingServiceName = (
-    bookingId: string,
-    serviceIds: string[],
-    selectedLanguage: SupportedBookingLanguage,
-  ) => {
-    const serviceNames = getSelectedServiceNames(serviceIds, selectedLanguage);
-    setEditBookingForms((current) => ({
-      ...current,
-      [bookingId]: {
-        ...(current[bookingId] || buildBookingFormState(undefined, selectedSlotTime)),
-        booking_language: selectedLanguage,
-        service_name: serviceNames.join(', '),
-      },
-    }));
-  };
-
-  const normalizeAdminBookingLanguage = (
-    bookingLanguage?: string | null,
-    serviceName?: string | null,
-  ): SupportedBookingLanguage => {
-    const normalized = (bookingLanguage ?? '').trim().toLowerCase();
-    if (normalized === 'en' || normalized === 'english') return 'en';
-    if (normalized === 'fi' || normalized === 'finnish' || normalized === 'suomi') return 'fi';
-    return detectStoredServiceLanguage(serviceName) ?? 'fi';
-  };
-
-  const buildBookingFormState = (booking?: Partial<ScheduleBooking>, fallbackTime = ''): AdminBookingFormState => ({
-    license_plate: booking?.license_plate || '',
-    booking_date: booking?.booking_date || formatDateForSupabase(selectedDate),
-    booking_time: booking?.booking_time || fallbackTime,
-    booking_language: normalizeAdminBookingLanguage(booking?.booking_language, booking?.service_name),
-    service_name: booking?.service_name || '',
-    customer_name: booking?.customer_name || '',
-    customer_phone: booking?.customer_phone || '',
-    customer_email: booking?.customer_email || '',
-    notes: booking?.notes || '',
-    status: (booking?.status || 'confirmed').toLowerCase(),
-  });
-
-  const awaitingCustomerCompletionStatus = 'awaiting_customer_completion';
-
-  const normalizeBookingStatus = (status?: string | null) => (status || 'confirmed').trim().toLowerCase();
-
-  const isAwaitingCustomerCompletionStatus = (status?: string | null) =>
-    normalizeBookingStatus(status) === awaitingCustomerCompletionStatus;
-
-  const getMissingCompletionFields = (bookingLike: Partial<Pick<ScheduleBooking, 'license_plate' | 'customer_phone' | 'customer_email'>>) => {
-    const missingFields: string[] = [];
-
-    if (!bookingLike.license_plate?.trim()) {
-      missingFields.push(language === 'fi' ? 'rekisterinumero' : 'license plate');
-    }
-    if (!bookingLike.customer_phone?.trim()) {
-      missingFields.push(language === 'fi' ? 'puhelinnumero' : 'phone number');
-    }
-    if (!bookingLike.customer_email?.trim()) {
-      missingFields.push(language === 'fi' ? 'sähköposti' : 'email');
-    }
-
-    return missingFields;
-  };
-
-  const isBookingAwaitingCustomerCompletion = (booking: Partial<ScheduleBooking> | AdminBookingFormState) =>
-    isAwaitingCustomerCompletionStatus(booking.status) || getMissingCompletionFields(booking).length > 0;
-
-  const buildCustomerCompletionDraft = (booking: ScheduleBooking) => {
-    const missingFields = getMissingCompletionFields(booking);
-    const bookingLabel = `${booking.booking_date} ${booking.booking_time}`.trim();
-    const missingList = missingFields.length > 0
-      ? missingFields.join(language === 'fi' ? ', ' : ', ')
-      : (language === 'fi' ? 'asiakastiedot' : 'customer details');
-
-    return {
-      subject: language === 'fi'
-        ? 'Täydennä varauksen tiedot'
-        : 'Complete your booking details',
-      message: language === 'fi'
-        ? `Hei ${booking.customer_name || ''}`.trim() + `\n\nVarauksesi (${bookingLabel}) on valmis asiakkaan täydennystä varten.\nPuuttuvat tiedot: ${missingList}.\n\nVoit vastata tähän viestiin ja täydentää puuttuvat tiedot.`
-        : `Hi ${booking.customer_name || ''}`.trim() + `\n\nYour booking (${bookingLabel}) is ready for completion.\nMissing details: ${missingList}.\n\nPlease reply to this message and send the missing information.`
-    };
-  };
-
-  const buildCompletionEmailPayload = (booking: ScheduleBooking) => {
-    const draft = buildCustomerCompletionDraft(booking);
-
-    return {
-      bookingId: booking.id,
-      customerName: booking.customer_name || '',
-      customerEmail: booking.customer_email || '',
-      customerPhone: booking.customer_phone || null,
-      licensePlate: booking.license_plate,
-      bookingDate: booking.booking_date,
-      bookingTime: booking.booking_time,
-      serviceName: booking.service_name || 'Service',
-      language: getBookingLanguage(booking),
-      subject: draft.subject,
-      message: draft.message,
-    };
   };
 
   // Fetch bookings and blocked slots
@@ -521,143 +377,48 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }
   };
 
+  const {
+    activeBookingsTab,
+    archivedBookings,
+    formatBookingGroupLabel,
+    handleBookingsTabChange,
+    handleSearchBookings,
+    isSearchDialogOpen,
+    isSearchingBookings,
+    loadArchivedBookings,
+    refreshArchivedBookings,
+    reservationDisplayGroups,
+    searchQuery,
+    searchResults,
+    setArchivedBookings,
+    setIsSearchDialogOpen,
+    setSearchQuery,
+    setShowArchivedBookings,
+    setShowArchivedInline,
+    showArchivedBookings,
+    showArchivedInline,
+  } = useBookingReservationState({
+    language,
+    t,
+    timelineBookings,
+  });
+
   useEffect(() => {
     setSelectedBlockTimes([]);
     setIsBatchBlockMode(false);
     setCancelBookingTarget(null);
     setCancelBookingNote('');
-    setIsCreateFormOpen(false);
-    setEditingBookingId(null);
     setComposeMessageBookingId(null);
-    setEditBookingForms({});
-    setEditBookingSelectedCategory({});
-    setEditBookingCurrentServiceId({});
-    setEditBookingServiceIds({});
     setMessageDrafts({});
-    setCreateBookingForm(buildBookingFormState(undefined, ''));
-    setCreateBookingSelectedCategory('');
-    setCreateBookingCurrentServiceId('');
-    setCreateBookingServiceIds([]);
+    resetBookingEditorState('');
     fetchScheduleData(selectedDate);
   }, [selectedDate]);
-
-  useEffect(() => {
-    if (activeBookingsTab === 'reservation' && (showArchivedBookings || showArchivedInline) && !isSearchDialogOpen) {
-      if (archivedBookings.length === 0) {
-        void loadArchivedBookings();
-      }
-      return;
-    }
-
-    const query = searchQuery.trim();
-    if (!query) {
-      setSearchResults([]);
-      setIsSearchingBookings(false);
-      searchRequestIdRef.current += 1;
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void handleSearchBookings(query);
-    }, 250);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [searchQuery, activeBookingsTab, showArchivedBookings, showArchivedInline, isSearchDialogOpen]);
 
   const getBookingLanguage = (booking: ScheduleBooking): SupportedBookingLanguage =>
     booking.booking_language === 'en' ? 'en' : 'fi';
 
   const getBookingServiceNameForCms = (serviceName?: string | null) =>
     localizeStoredServiceName(serviceName, language);
-
-  const searchMatchesBooking = (booking: ScheduleBooking, query: string) => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return true;
-
-    return [
-      booking.license_plate,
-      booking.customer_name,
-      booking.customer_phone,
-      booking.customer_email,
-      booking.id,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(normalizedQuery));
-  };
-
-  const formatBookingGroupLabel = (dateValue: string) => {
-    const bookingDate = new Date(`${dateValue}T12:00:00`);
-    const weekdayLabel = bookingDate.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
-      weekday: 'long',
-    });
-    const [year, month, day] = dateValue.split('-');
-    const formattedDate = `${day}.${month}.${year}`;
-
-    return `${weekdayLabel}, ${formattedDate}`;
-  };
-
-  const groupedTimelineBookings = timelineBookings.reduce<Array<{ date: string; bookings: ScheduleBooking[] }>>((groups, booking) => {
-    const currentGroup = groups[groups.length - 1];
-    if (currentGroup?.date === booking.booking_date) {
-      currentGroup.bookings.push(booking);
-      return groups;
-    }
-
-    groups.push({ date: booking.booking_date, bookings: [booking] });
-    return groups;
-  }, []);
-
-  const groupedArchivedBookings = archivedBookings.reduce<Array<{ date: string; bookings: ScheduleBooking[] }>>((groups, booking) => {
-    const currentGroup = groups[groups.length - 1];
-    if (currentGroup?.date === booking.booking_date) {
-      currentGroup.bookings.push(booking);
-      return groups;
-    }
-
-    groups.push({ date: booking.booking_date, bookings: [booking] });
-    return groups;
-  }, []);
-
-  const reservationDisplayGroups = (() => {
-    const upcomingItems = groupedTimelineBookings.map((group) => ({
-      date: group.date,
-      bookings: group.bookings.map((booking) => ({ ...booking, isArchived: false })),
-    }));
-
-    if (!showArchivedBookings) {
-      return upcomingItems;
-    }
-
-    if (!showArchivedInline) {
-      return groupedArchivedBookings.map((group) => ({
-        date: group.date,
-        bookings: group.bookings.map((booking) => ({ ...booking, isArchived: true })),
-      }));
-    }
-
-    const mergedBookings = [...timelineBookings, ...archivedBookings]
-      .map((booking) => ({
-        ...booking,
-        isArchived: (booking.status || '').toLowerCase() === 'cancelled',
-      }))
-      .sort((left, right) => {
-        if (left.booking_date !== right.booking_date) {
-          return left.booking_date.localeCompare(right.booking_date);
-        }
-        return left.booking_time.localeCompare(right.booking_time);
-      });
-
-    return mergedBookings.reduce<Array<{ date: string; bookings: typeof mergedBookings }>>((groups, booking) => {
-      const currentGroup = groups[groups.length - 1];
-      if (currentGroup?.date === booking.booking_date) {
-        currentGroup.bookings.push(booking);
-        return groups;
-      }
-
-      groups.push({ date: booking.booking_date, bookings: [booking] });
-      return groups;
-    }, []);
-  })();
 
   const isBookingExpanded = (bookingId: string) => expandedBookingIds.includes(bookingId);
 
@@ -679,6 +440,103 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     language: getBookingLanguage(booking),
     notes: booking.notes || null,
   });
+
+  const {
+    bookingConversations,
+    composeMessageBookingId,
+    handleBookingMessageDraftChange,
+    handleOpenMessageComposer: rawHandleOpenMessageComposer,
+    handleSendBookingMessage,
+    handleSyncBookingConversation,
+    handleToggleBookingExpanded,
+    loadBookingConversation,
+    loadingConversationBookingId,
+    messageDrafts,
+    refreshBookingConversationIfLoaded,
+    sendingMessageBookingId,
+    setComposeMessageBookingId,
+  } = useBookingConversation({
+    buildCustomerCompletionDraft: (booking) => buildCustomerCompletionDraft(booking, language),
+    getBookingLanguage,
+    language,
+    setBookingExpanded,
+    t,
+  });
+
+  const {
+    buildCompletionEmailPayload,
+    closeCreateBookingForm,
+    createBookingCurrentServiceId,
+    createBookingForm,
+    createBookingSelectedCategory,
+    createBookingServiceIds,
+    editBookingCurrentServiceId,
+    editBookingForms,
+    editBookingSelectedCategory,
+    editBookingServiceIds,
+    editingBookingId,
+    handleCreateBooking,
+    handleEditBookingFieldChange,
+    handleSaveBookingChanges,
+    handleStartEditingBooking: rawHandleStartEditingBooking,
+    isBookingAwaitingCustomerCompletion,
+    isCreateFormOpen,
+    isCreatingBooking,
+    openCreateBookingForm,
+    resetBookingEditorState,
+    resetCreateBookingForm,
+    savingBookingId,
+    setCreateBookingCurrentServiceId,
+    setCreateBookingForm,
+    setCreateBookingSelectedCategory,
+    setCreateBookingServiceIds,
+    setEditBookingCurrentServiceId,
+    setEditingBookingId,
+    setEditBookingSelectedCategory,
+    setEditBookingServiceIds,
+    syncCreateBookingServiceName: syncCreateBookingServiceNameInternal,
+    syncEditBookingServiceName: syncEditBookingServiceNameInternal,
+    toggleCreateBookingForm,
+  } = useBookingEditorState({
+    createBookingConfirmationPayload,
+    fetchScheduleData,
+    getBookingLanguage,
+    language,
+    refreshBookingConversationIfLoaded,
+    selectedDate,
+    selectedSlotTime,
+    setBookingExpanded,
+    t,
+  });
+
+  const syncCreateBookingServiceName = (serviceIds: string[], selectedLanguage: SupportedBookingLanguage) =>
+    syncCreateBookingServiceNameInternal(serviceIds, selectedLanguage, getSelectedServiceNames);
+
+  const syncEditBookingServiceName = (
+    bookingId: string,
+    serviceIds: string[],
+    selectedLanguage: SupportedBookingLanguage,
+  ) => syncEditBookingServiceNameInternal(bookingId, serviceIds, selectedLanguage, getSelectedServiceNames);
+
+  const handleOpenMessageComposer = (booking: ScheduleBooking, replyTo?: Parameters<typeof rawHandleOpenMessageComposer>[1]) => {
+    setEditingBookingId((current) => (current === booking.id ? null : current));
+    rawHandleOpenMessageComposer(booking, replyTo);
+  };
+
+  const handleStartEditingBooking = (booking: ScheduleBooking) => {
+    setComposeMessageBookingId((current) => (current === booking.id ? null : current));
+    rawHandleStartEditingBooking(booking);
+  };
+
+  const handleOpenCreateBookingForm = (fallbackTime = '') => {
+    setComposeMessageBookingId(null);
+    openCreateBookingForm(fallbackTime);
+  };
+
+  const handleToggleCreateBookingForm = (fallbackTime = '') => {
+    setComposeMessageBookingId(null);
+    toggleCreateBookingForm(fallbackTime);
+  };
 
   const sendCustomerCompletionRequest = async (booking: ScheduleBooking) => {
     if (!booking.customer_email) {
@@ -864,6 +722,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     setCancellingBookingId(booking.id);
     try {
       const supabase = getSupabaseClient();
+      let emailFailureMessage: string | null = null;
 
       const { error: updateError } = await supabase
         .from('bookings')
@@ -876,355 +735,50 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       const cancellationNote = cancelBookingNote;
 
       if (booking.customer_email) {
-        const { error: emailError } = await supabase.functions.invoke('send_booking_cancellation', {
-          method: 'POST',
-          body: {
-            bookingId: booking.id,
-            customerName: booking.customer_name || '',
-            customerEmail: booking.customer_email,
-            customerPhone: booking.customer_phone || null,
-            licensePlate: booking.license_plate,
-            bookingDate: booking.booking_date,
-            bookingTime: booking.booking_time,
-            serviceName: booking.service_name || 'Service',
-            language: getBookingLanguage(booking),
-            cancellationNote: cancellationNote.trim() || null,
-          },
-        });
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send_booking_cancellation', {
+            method: 'POST',
+            body: {
+              bookingId: booking.id,
+              customerName: booking.customer_name || '',
+              customerEmail: booking.customer_email,
+              customerPhone: booking.customer_phone || null,
+              licensePlate: booking.license_plate,
+              bookingDate: booking.booking_date,
+              bookingTime: booking.booking_time,
+              serviceName: booking.service_name || 'Service',
+              language: getBookingLanguage(booking),
+              cancellationNote: cancellationNote.trim() || null,
+            },
+          });
 
-        if (emailError) {
-          throw emailError;
+          if (emailError) {
+            throw emailError;
+          }
+
+          await refreshBookingConversationIfLoaded(booking.id);
+          toast.success(t('cancellationEmailSent'));
+        } catch (emailError) {
+          console.error('Booking cancelled but cancellation email failed:', emailError);
+          emailFailureMessage = language === 'fi'
+            ? 'Varaus peruttiin, mutta asiakkaan peruutusviestiä ei voitu lähettää.'
+            : 'The booking was cancelled, but the customer cancellation email could not be sent.';
         }
-
-        await refreshBookingConversationIfLoaded(booking.id);
-        toast.success(t('cancellationEmailSent'));
       }
 
       toast.success(t('cancelSuccessful'));
       setCancelBookingTarget(null);
       setCancelBookingNote('');
       setIsDrawerOpen(false);
-      fetchScheduleData(selectedDate);
+      await Promise.resolve(fetchScheduleData(selectedDate));
+      if (emailFailureMessage) {
+        toast(emailFailureMessage);
+      }
     } catch (error) {
       console.error('Error cancelling booking:', error);
       toast.error(t('cancelFailed'));
     } finally {
       setCancellingBookingId(null);
-    }
-  };
-
-  const handleCreateBooking = async () => {
-    const missingCompletionFields = getMissingCompletionFields(createBookingForm);
-    const completionMode =
-      isAwaitingCustomerCompletionStatus(createBookingForm.status) ||
-      missingCompletionFields.length > 0;
-
-    if (!createBookingForm.service_name.trim() || !createBookingForm.booking_date || !createBookingForm.booking_time) {
-      toast.error(t('bookingSaveFailed'));
-      return;
-    }
-
-    if (!completionMode && (!createBookingForm.license_plate.trim() || !createBookingForm.customer_name.trim() || !createBookingForm.customer_phone.trim())) {
-      toast.error(t('bookingSaveFailed'));
-      return;
-    }
-
-    setIsCreatingBooking(true);
-    try {
-      const supabase = getSupabaseClient();
-      const bookingPayload = {
-        license_plate: createBookingForm.license_plate.trim().toUpperCase(),
-        booking_date: createBookingForm.booking_date,
-        booking_time: createBookingForm.booking_time,
-        booking_language: createBookingForm.booking_language,
-        service_name: createBookingForm.service_name.trim(),
-        customer_name: createBookingForm.customer_name.trim(),
-        customer_phone: createBookingForm.customer_phone.trim(),
-        customer_email: createBookingForm.customer_email.trim() || null,
-        notes: createBookingForm.notes.trim() || null,
-        status: completionMode ? awaitingCustomerCompletionStatus : 'confirmed',
-      };
-
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert([bookingPayload])
-        .select('*')
-        .single();
-
-      if (error || !data) {
-        throw error;
-      }
-
-      if (data.customer_email) {
-        if (completionMode) {
-          const { error: emailError } = await supabase.functions.invoke('send_booking_message', {
-            method: 'POST',
-            body: buildCompletionEmailPayload(data),
-          });
-
-          if (emailError) {
-            throw emailError;
-          }
-        } else {
-          const { error: emailError } = await supabase.functions.invoke('send_booking_confirmation', {
-            method: 'POST',
-            body: createBookingConfirmationPayload(data),
-          });
-
-          if (emailError) {
-            throw emailError;
-          }
-        }
-      }
-
-      const { error: pushError } = await supabase.functions.invoke('send_booking_push', {
-        method: 'POST',
-        body: {
-          booking: {
-            id: data.id,
-            license_plate: data.license_plate,
-            customer_name: data.customer_name,
-            booking_date: data.booking_date,
-            booking_time: data.booking_time,
-          },
-        },
-      });
-
-      if (pushError) {
-        console.error('Booking saved but push notification failed:', pushError);
-      }
-
-      toast.success(t('bookingSaved'));
-      setIsCreateFormOpen(false);
-      setCreateBookingForm(buildBookingFormState(undefined, selectedSlotTime));
-      setCreateBookingSelectedCategory('');
-      setCreateBookingCurrentServiceId('');
-      setCreateBookingServiceIds([]);
-      setSelectedSlotTime(data.booking_time);
-      fetchScheduleData(selectedDate);
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      toast.error(t('bookingSaveFailed'));
-    } finally {
-      setIsCreatingBooking(false);
-    }
-  };
-
-  const handleStartEditingBooking = (booking: ScheduleBooking) => {
-    const initialServiceIds = getServiceIdsFromStoredServiceName(booking.service_name);
-    setComposeMessageBookingId((current) => (current === booking.id ? null : current));
-    setEditingBookingId(booking.id);
-    setBookingExpanded(booking.id, true);
-    setEditBookingForms((current) => ({
-      ...current,
-      [booking.id]: buildBookingFormState(booking),
-    }));
-    setEditBookingSelectedCategory((current) => ({ ...current, [booking.id]: '' }));
-    setEditBookingCurrentServiceId((current) => ({ ...current, [booking.id]: '' }));
-    setEditBookingServiceIds((current) => ({ ...current, [booking.id]: initialServiceIds }));
-  };
-
-  const handleEditBookingFieldChange = (
-    bookingId: string,
-    field: keyof AdminBookingFormState,
-    value: string,
-  ) => {
-    if (field === 'booking_language') {
-      const nextLanguage = value as SupportedBookingLanguage;
-      const currentServiceIds = editBookingServiceIds[bookingId] || [];
-      if (currentServiceIds.length > 0) {
-        syncEditBookingServiceName(bookingId, currentServiceIds, nextLanguage);
-      } else {
-        setEditBookingForms((current) => ({
-          ...current,
-          [bookingId]: {
-            ...(current[bookingId] || buildBookingFormState(undefined, selectedSlotTime)),
-            booking_language: nextLanguage,
-          },
-        }));
-      }
-      return;
-    }
-
-    setEditBookingForms((current) => ({
-      ...current,
-      [bookingId]: {
-        ...(current[bookingId] || buildBookingFormState(undefined, selectedSlotTime)),
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleSaveBookingChanges = async (booking: ScheduleBooking) => {
-    const form = editBookingForms[booking.id];
-    const missingCompletionFields = form ? getMissingCompletionFields(form) : [];
-    const completionMode =
-      Boolean(form) &&
-      (isAwaitingCustomerCompletionStatus(form.status) || missingCompletionFields.length > 0);
-
-    if (!form || !form.service_name.trim() || !form.booking_date || !form.booking_time) {
-      toast.error(t('bookingSaveFailed'));
-      return;
-    }
-
-    if (!completionMode && (!form.license_plate.trim() || !form.customer_name.trim() || !form.customer_phone.trim())) {
-      toast.error(t('bookingSaveFailed'));
-      return;
-    }
-
-    setSavingBookingId(booking.id);
-    try {
-      const supabase = getSupabaseClient();
-      const normalizedLicensePlate = form.license_plate.trim().toUpperCase();
-      const normalizedServiceName = form.service_name.trim();
-      const normalizedCustomerName = form.customer_name.trim();
-      const normalizedCustomerPhone = form.customer_phone.trim();
-      const normalizedCustomerEmail = form.customer_email.trim();
-      const normalizedNotes = form.notes.trim();
-      const previousCompletionMode = isBookingAwaitingCustomerCompletion(booking);
-      const nextStatus = completionMode ? awaitingCustomerCompletionStatus : 'confirmed';
-      const originalServiceIds = getServiceIdsFromStoredServiceName(booking.service_name);
-      const updatedServiceIds = getServiceIdsFromStoredServiceName(normalizedServiceName);
-      const sameServiceSelection =
-        originalServiceIds.length > 0 &&
-        updatedServiceIds.length > 0 &&
-        originalServiceIds.length === updatedServiceIds.length &&
-        originalServiceIds.every((serviceId, index) => serviceId === updatedServiceIds[index]);
-      const serviceActuallyChanged = sameServiceSelection
-        ? false
-        : (booking.service_name || '').trim() !== normalizedServiceName;
-      const shouldSendUpdateEmail =
-        !!normalizedCustomerEmail &&
-        !previousCompletionMode &&
-        !completionMode &&
-        (
-          booking.booking_date !== form.booking_date ||
-          booking.booking_time !== form.booking_time ||
-          serviceActuallyChanged
-        );
-
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          license_plate: normalizedLicensePlate,
-          booking_date: form.booking_date,
-          booking_time: form.booking_time,
-          booking_language: form.booking_language,
-          service_name: normalizedServiceName,
-          customer_name: normalizedCustomerName,
-          customer_phone: normalizedCustomerPhone,
-          customer_email: normalizedCustomerEmail || null,
-          notes: normalizedNotes || null,
-          status: nextStatus,
-        })
-        .eq('id', booking.id);
-
-      if (error) {
-        throw error;
-      }
-
-      if (completionMode && normalizedCustomerEmail && !previousCompletionMode) {
-        const { error: emailError } = await supabase.functions.invoke('send_booking_message', {
-          method: 'POST',
-          body: buildCompletionEmailPayload({
-            ...booking,
-            license_plate: normalizedLicensePlate,
-            booking_date: form.booking_date,
-            booking_time: form.booking_time,
-            booking_language: form.booking_language,
-            service_name: normalizedServiceName,
-            customer_name: normalizedCustomerName,
-            customer_phone: normalizedCustomerPhone,
-            customer_email: normalizedCustomerEmail || null,
-            notes: normalizedNotes || null,
-            status: nextStatus,
-          }),
-        });
-
-        if (emailError) {
-          throw emailError;
-        }
-        await refreshBookingConversationIfLoaded(booking.id);
-      } else if (previousCompletionMode && !completionMode && normalizedCustomerEmail) {
-        const { error: emailError } = await supabase.functions.invoke('send_booking_confirmation', {
-          method: 'POST',
-          body: createBookingConfirmationPayload({
-            ...booking,
-            license_plate: normalizedLicensePlate,
-            booking_date: form.booking_date,
-            booking_time: form.booking_time,
-            booking_language: form.booking_language,
-            service_name: normalizedServiceName,
-            customer_name: normalizedCustomerName,
-            customer_phone: normalizedCustomerPhone,
-            customer_email: normalizedCustomerEmail || null,
-            notes: normalizedNotes || null,
-            status: nextStatus,
-          }),
-        });
-
-        if (emailError) {
-          throw emailError;
-        }
-        await refreshBookingConversationIfLoaded(booking.id);
-      } else if (shouldSendUpdateEmail) {
-        const { error: emailError } = await supabase.functions.invoke('send_booking_update', {
-          method: 'POST',
-          body: {
-            bookingId: booking.id,
-            customerName: normalizedCustomerName,
-            customerEmail: normalizedCustomerEmail,
-            customerPhone: normalizedCustomerPhone || null,
-            licensePlate: normalizedLicensePlate,
-            bookingDate: form.booking_date,
-            bookingTime: form.booking_time,
-            serviceName: normalizedServiceName,
-            language: form.booking_language,
-            notes: normalizedNotes || null,
-          },
-        });
-
-        if (emailError) {
-          throw emailError;
-        }
-        await refreshBookingConversationIfLoaded(booking.id);
-      }
-
-      toast.success(t('bookingUpdated'));
-      if (completionMode && normalizedCustomerEmail && !previousCompletionMode) {
-        toast.success(t('completionRequestSent'));
-      } else if (previousCompletionMode && !completionMode && normalizedCustomerEmail) {
-        toast.success(t('bookingConfirmationEmailSent'));
-      } else if (shouldSendUpdateEmail) {
-        toast.success(t('bookingUpdateEmailSent'));
-      }
-      setEditingBookingId(null);
-      setEditBookingForms((current) => {
-        const next = { ...current };
-        delete next[booking.id];
-        return next;
-      });
-      setEditBookingSelectedCategory((current) => {
-        const next = { ...current };
-        delete next[booking.id];
-        return next;
-      });
-      setEditBookingCurrentServiceId((current) => {
-        const next = { ...current };
-        delete next[booking.id];
-        return next;
-      });
-      setEditBookingServiceIds((current) => {
-        const next = { ...current };
-        delete next[booking.id];
-        return next;
-      });
-      fetchScheduleData(selectedDate);
-    } catch (error) {
-      console.error('Error updating booking:', error);
-      toast.error(t('bookingSaveFailed'));
-    } finally {
-      setSavingBookingId(null);
     }
   };
 
@@ -1257,135 +811,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }
   };
 
-  const handleOpenMessageComposer = (booking: ScheduleBooking) => {
-    if (!booking.customer_email) {
-      toast.error(t('noEmailNoSend'));
-      return;
-    }
-
-    const messageLanguage = getBookingLanguage(booking);
-    const isCompletionFlow = isBookingAwaitingCustomerCompletion(booking);
-    setEditingBookingId((current) => (current === booking.id ? null : current));
-    setComposeMessageBookingId((current) => (current === booking.id ? null : booking.id));
-    setBookingExpanded(booking.id, true);
-    setMessageDrafts((current) => ({
-      ...current,
-      [booking.id]: current[booking.id] || {
-        subject: isCompletionFlow
-          ? (messageLanguage === 'fi' ? 'Täydennä varauksesi tiedot' : 'Complete your booking details')
-          : (messageLanguage === 'fi' ? 'Viesti varaukseesi liittyen' : 'Message regarding your booking'),
-        message: isCompletionFlow
-          ? buildCustomerCompletionDraft(booking).message
-          : '',
-      },
-    }));
-    void loadBookingConversation(booking.id, true);
-  };
-
-  const loadBookingConversation = async (bookingId: string, sync = false) => {
-    setLoadingConversationBookingId(bookingId);
-    try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.functions.invoke('gmail_get_booking_conversation', {
-        method: 'POST',
-        body: {
-          bookingId,
-          sync,
-        },
-      });
-
-      if (error) throw error;
-
-      setBookingConversations((current) => ({
-        ...current,
-        [bookingId]: data as BookingConversationState,
-      }));
-    } catch (error) {
-      console.error('Error loading booking conversation:', error);
-      toast.error(t('conversationLoadFailed'));
-    } finally {
-      setLoadingConversationBookingId((current) => (current === bookingId ? null : current));
-    }
-  };
-
-  const refreshBookingConversationIfLoaded = async (bookingId: string) => {
-    if (!bookingConversations[bookingId]) return;
-    await loadBookingConversation(bookingId, true);
-  };
-
-  const handleSearchBookings = async (queryOverride?: string) => {
-    const query = (queryOverride ?? searchQuery).trim();
-    if (!query) {
-      setSearchResults([]);
-      return;
-    }
-
-    const requestId = ++searchRequestIdRef.current;
-
-    try {
-      setIsSearchingBookings(true);
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
-
-      if (error) throw error;
-
-      const matches = (data || []).filter((booking) => searchMatchesBooking(booking, query));
-      if (requestId === searchRequestIdRef.current) {
-        setSearchResults(matches.slice(0, 25));
-      }
-    } catch (error) {
-      console.error('Error searching bookings:', error);
-      if (requestId === searchRequestIdRef.current) {
-        toast.error(language === 'fi' ? 'Varauksien haku epäonnistui' : 'Failed to search bookings');
-      }
-    } finally {
-      if (requestId === searchRequestIdRef.current) {
-        setIsSearchingBookings(false);
-      }
-    }
-  };
-
-  const loadArchivedBookings = async () => {
-    try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('status', 'cancelled')
-        .order('booking_date', { ascending: true })
-        .order('booking_time', { ascending: true })
-        .limit(100);
-
-      if (error) throw error;
-      setArchivedBookings(data || []);
-    } catch (error) {
-      console.error('Error loading archived bookings:', error);
-      toast.error(language === 'fi' ? 'Arkistoitujen varausten lataus epäonnistui' : 'Failed to load archived bookings');
-    }
-  };
-
-  const refreshArchivedBookings = async () => {
-    if (!showArchivedBookings && !showArchivedInline) return;
-    try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('status', 'cancelled')
-        .order('booking_date', { ascending: true })
-        .order('booking_time', { ascending: true })
-        .limit(100);
-      if (error) throw error;
-      setArchivedBookings(data || []);
-    } catch (error) {
-      console.error('Error refreshing archived bookings:', error);
-    }
-  };
-
   const openBookingFromList = (booking: ScheduleBooking) => {
     setSelectedDate(new Date(`${booking.booking_date}T12:00:00`));
 
@@ -1414,13 +839,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     if (!slotActionTime) return;
     setSelectedSlot(slotActionSlot);
     setSelectedSlotTime(slotActionTime);
-    setCreateBookingForm(buildBookingFormState(undefined, slotActionTime));
-    setCreateBookingSelectedCategory('');
-    setCreateBookingCurrentServiceId('');
-    setCreateBookingServiceIds([]);
-    setIsCreateFormOpen(true);
-    setEditingBookingId(null);
-    setComposeMessageBookingId(null);
+    handleOpenCreateBookingForm(slotActionTime);
     setIsSlotActionDialogOpen(false);
     setIsDrawerOpen(true);
   };
@@ -1493,70 +912,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     }
   };
 
-  const handleBookingMessageDraftChange = (
-    bookingId: string,
-    field: keyof BookingMessageDraft,
-    value: string,
-  ) => {
-    setMessageDrafts((current) => ({
-      ...current,
-      [bookingId]: {
-        ...(current[bookingId] || { subject: '', message: '' }),
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleSendBookingMessage = async (booking: ScheduleBooking) => {
-    const draft = messageDrafts[booking.id];
-    if (!booking.customer_email) {
-      toast.error(t('noEmailNoSend'));
-      return;
-    }
-    if (!draft?.subject.trim() || !draft?.message.trim()) {
-      toast.error(t('messageRequired'));
-      return;
-    }
-
-    setSendingMessageBookingId(booking.id);
-    try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.functions.invoke('send_booking_message', {
-        method: 'POST',
-        body: {
-          bookingId: booking.id,
-          customerName: booking.customer_name || '',
-          customerEmail: booking.customer_email,
-          licensePlate: booking.license_plate,
-          bookingDate: booking.booking_date,
-          bookingTime: booking.booking_time,
-          serviceName: booking.service_name || 'Service',
-          language: getBookingLanguage(booking),
-          subject: draft.subject.trim(),
-          message: draft.message.trim(),
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success(t('adminMessageSent'));
-      await loadBookingConversation(booking.id, true);
-      setComposeMessageBookingId(null);
-      setMessageDrafts((current) => {
-        const next = { ...current };
-        delete next[booking.id];
-        return next;
-      });
-    } catch (error) {
-      console.error('Error sending booking message:', error);
-      toast.error(t('adminMessageFailed'));
-    } finally {
-      setSendingMessageBookingId(null);
-    }
-  };
-
   // Unblock a slot
   const handleUnblockSlot = async (time: string) => {
     const dateStr = formatDateForSupabase(selectedDate);
@@ -1603,13 +958,10 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
     setSelectedSlot(slot);
     setSelectedSlotTime(time);
-    setIsCreateFormOpen(false);
+    closeCreateBookingForm();
     setEditingBookingId(null);
     setComposeMessageBookingId(null);
-    setCreateBookingForm(buildBookingFormState(undefined, time));
-    setCreateBookingSelectedCategory('');
-    setCreateBookingCurrentServiceId('');
-    setCreateBookingServiceIds([]);
+    resetCreateBookingForm(time);
     setIsDrawerOpen(true);
   };
 
@@ -1685,35 +1037,12 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const openCreateBookingDrawer = () => {
     setSelectedSlot(null);
     setSelectedSlotTime('');
-    setIsCreateFormOpen(true);
-    setEditingBookingId(null);
-    setComposeMessageBookingId(null);
-    setCreateBookingForm(buildBookingFormState(undefined, ''));
-    setCreateBookingSelectedCategory('');
-    setCreateBookingCurrentServiceId('');
-    setCreateBookingServiceIds([]);
+    handleOpenCreateBookingForm('');
     setIsDrawerOpen(true);
   };
 
-  const handleBookingsTabChange = (value: string) => {
-    const nextTab = value === 'reservation' ? 'reservation' : 'schedule';
-    setActiveBookingsTab(nextTab);
-
-    if (nextTab !== 'reservation') {
-      setShowArchivedInline(false);
-      return;
-    }
-
-    if ((showArchivedBookings || showArchivedInline) && archivedBookings.length === 0) {
-      void loadArchivedBookings();
-    }
-  };
-
   const handleToggleCreateFormForSelectedSlot = () => {
-    setIsCreateFormOpen((current) => !current);
-    setEditingBookingId(null);
-    setComposeMessageBookingId(null);
-    setCreateBookingForm(buildBookingFormState(undefined, selectedSlotTime));
+    handleToggleCreateBookingForm(selectedSlotTime);
   };
 
   return (
@@ -1847,7 +1176,9 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         handleResendBookingConfirmation={handleResendBookingConfirmation}
         handleSaveBookingChanges={handleSaveBookingChanges}
         handleSendBookingMessage={handleSendBookingMessage}
+        handleSyncBookingConversation={handleSyncBookingConversation}
         handleStartEditingBooking={handleStartEditingBooking}
+        handleToggleBookingExpanded={handleToggleBookingExpanded}
         isBookingExpanded={isBookingExpanded}
         isCreateFormOpen={isCreateFormOpen}
         isCreatingBooking={isCreatingBooking}
@@ -1856,7 +1187,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         loadingConversationBookingId={loadingConversationBookingId}
         bookingConversations={bookingConversations}
         messageDrafts={messageDrafts}
-        onCloseCreateForm={() => setIsCreateFormOpen(false)}
+        onCloseCreateForm={closeCreateBookingForm}
         onOpenChange={setIsDrawerOpen}
         onToggleCreateFormForSelectedSlot={handleToggleCreateFormForSelectedSlot}
         panelSurfaceClass={createFormPanelClass}
@@ -1868,7 +1199,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         selectedSlot={selectedSlot}
         selectedSlotTime={selectedSlotTime}
         sendingMessageBookingId={sendingMessageBookingId}
-        setBookingExpanded={setBookingExpanded}
         setComposeMessageBookingId={setComposeMessageBookingId}
         setCreateBookingCurrentServiceId={setCreateBookingCurrentServiceId}
         setCreateBookingForm={setCreateBookingForm}
@@ -1950,116 +1280,26 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(archivedBookingModal)} onOpenChange={(open) => !open && setArchivedBookingModal(null)}>
-        <DialogContent className={`max-w-3xl ${theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}`}>
-          <DialogHeader>
-            <DialogTitle>{t('archivedBookingDetails')}</DialogTitle>
-            <DialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
-              {archivedBookingModal ? `${archivedBookingModal.booking_date} ${archivedBookingModal.booking_time}` : ''}
-            </DialogDescription>
-          </DialogHeader>
-
-          {archivedBookingModal && (
-            <div className="space-y-5">
-              <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-gray-50'}`}>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className={`font-mono text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {archivedBookingModal.license_plate}
-                  </span>
-                  <Badge variant="destructive">{archivedBookingModal.status || 'cancelled'}</Badge>
-                </div>
-                <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {getBookingServiceNameForCms(archivedBookingModal.service_name)}
-                </p>
-              </div>
-
-              <dl className="grid gap-3 sm:grid-cols-2">
-                <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-white'}`}>
-                  <dt className={`text-xs uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{t('customerName')}</dt>
-                  <dd className={`mt-2 text-base font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{archivedBookingModal.customer_name || '—'}</dd>
-                </div>
-                <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-white'}`}>
-                  <dt className={`text-xs uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{t('customerPhone')}</dt>
-                  <dd className={`mt-2 text-base font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{archivedBookingModal.customer_phone || '—'}</dd>
-                </div>
-                <div className={`rounded-md border p-4 sm:col-span-2 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-white'}`}>
-                  <dt className={`text-xs uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{t('customerEmail')}</dt>
-                  <dd className={`mt-2 break-all text-base font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{archivedBookingModal.customer_email || '—'}</dd>
-                </div>
-                <div className={`rounded-md border p-4 sm:col-span-2 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-white'}`}>
-                  <dt className={`text-xs uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>{t('notes')}</dt>
-                  <dd className={`mt-2 text-base ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{archivedBookingModal.notes || t('noNotes')}</dd>
-                </div>
-              </dl>
-
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => handleStartEditingBooking(archivedBookingModal)} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  {t('editBooking')}
-                </Button>
-                <Button onClick={() => {
-                  setSendRestoreEmail(true);
-                  setRestoreArchivedBookingTarget(archivedBookingModal);
-                }} className="bg-emerald-600 hover:bg-emerald-700">
-                  {t('restoreBooking')}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    const confirmed = window.confirm(t('deleteBookingConfirmDescription'));
-                    if (confirmed) void handleDeleteArchivedBooking(archivedBookingModal);
-                  }}
-                  disabled={deletingBookingId === archivedBookingModal.id}
-                >
-                  {deletingBookingId === archivedBookingModal.id ? t('deleting') : t('deleteBookingPermanently')}
-                </Button>
-              </div>
-
-              {editingBookingId === archivedBookingModal.id && editBookingForms[archivedBookingModal.id] && (
-                <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#18181B]' : 'border-gray-200 bg-white'}`}>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('editBooking')}</h4>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingBookingId(null)}>{t('cancelEditing')}</Button>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('licensePlate')}</label>
-                      <Input value={editBookingForms[archivedBookingModal.id].license_plate} onChange={(e) => handleEditBookingFieldChange(archivedBookingModal.id, 'license_plate', e.target.value.toUpperCase())} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('customerName')}</label>
-                      <Input value={editBookingForms[archivedBookingModal.id].customer_name} onChange={(e) => handleEditBookingFieldChange(archivedBookingModal.id, 'customer_name', e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('date')}</label>
-                      <Input type="date" value={editBookingForms[archivedBookingModal.id].booking_date} onChange={(e) => handleEditBookingFieldChange(archivedBookingModal.id, 'booking_date', e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('time')}</label>
-                      <Input type="time" value={editBookingForms[archivedBookingModal.id].booking_time} onChange={(e) => handleEditBookingFieldChange(archivedBookingModal.id, 'booking_time', e.target.value)} />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('customerEmail')}</label>
-                      <Input type="email" value={editBookingForms[archivedBookingModal.id].customer_email} onChange={(e) => handleEditBookingFieldChange(archivedBookingModal.id, 'customer_email', e.target.value)} />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('notes')}</label>
-                      <Textarea value={editBookingForms[archivedBookingModal.id].notes} onChange={(e) => handleEditBookingFieldChange(archivedBookingModal.id, 'notes', e.target.value)} rows={3} className={theme === 'dark' ? 'bg-[#11141A] border-white/10 text-white' : ''} />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button onClick={() => void handleSaveBookingChanges(archivedBookingModal)} disabled={savingBookingId === archivedBookingModal.id} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90">
-                      <Save className="w-4 h-4 mr-2" />
-                      {savingBookingId === archivedBookingModal.id ? t('saving') : t('saveChanges')}
-                    </Button>
-                    <Button variant="outline" onClick={() => setEditingBookingId(null)}>{t('cancel')}</Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AdminArchivedBookingDialog
+        archivedBookingModal={archivedBookingModal}
+        deletingBookingId={deletingBookingId}
+        editBookingForms={editBookingForms}
+        editingBookingId={editingBookingId}
+        getBookingServiceNameForCms={getBookingServiceNameForCms}
+        handleDeleteArchivedBooking={handleDeleteArchivedBooking}
+        handleEditBookingFieldChange={handleEditBookingFieldChange}
+        handleSaveBookingChanges={handleSaveBookingChanges}
+        handleStartEditingBooking={handleStartEditingBooking}
+        onOpenChange={(open) => !open && setArchivedBookingModal(null)}
+        onRequestRestore={(booking) => {
+          setSendRestoreEmail(true);
+          setRestoreArchivedBookingTarget(booking);
+        }}
+        savingBookingId={savingBookingId}
+        setEditingBookingId={setEditingBookingId}
+        t={t}
+        theme={theme}
+      />
 
       <AlertDialog
         open={Boolean(cancelBookingTarget)}

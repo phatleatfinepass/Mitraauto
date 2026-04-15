@@ -89,7 +89,7 @@ const SERVICE_CATALOG: ServiceCatalogEntry[] = [
   { id: 'tire-work-up-to-17', categoryId: 'tire-services', name: { fi: 'Rengastyö – Henkilöauto max. 17"', en: 'Tire work – Passenger car up to 17"' }, price: 80 },
   { id: 'tire-work-18-19', categoryId: 'tire-services', name: { fi: 'Rengastyö – Henkilöauto 18"–19"', en: 'Tire work – Passenger car 18"–19"' }, price: 90 },
   { id: 'tire-work-20-21', categoryId: 'tire-services', name: { fi: 'Rengastyö – Henkilöauto 20"–21"', en: 'Tire work – Passenger car 20"–21"' }, price: 100 },
-  { id: 'tire-hotel-storage', categoryId: 'tire-services', name: { fi: 'Rengashotelli', en: 'Tire hotel storage' }, price: 90 },
+  { id: 'tire-hotel-storage', categoryId: 'tire-services', name: { fi: 'Rengashotelli', en: 'Tire hotel storage' }, price: 60 },
   { id: 'error-code-reading', categoryId: 'diagnostics-maintenance', name: { fi: 'Vikakoodien luku', en: 'Error code reading' }, price: 20 },
   { id: 'troubleshooting', categoryId: 'diagnostics-maintenance', name: { fi: 'Vianetsintä', en: 'Troubleshooting' }, price: 80 },
   { id: 'engine-oil-change', categoryId: 'diagnostics-maintenance', name: { fi: 'Moottoriöljynvaihto', en: 'Engine oil change' }, price: 80 },

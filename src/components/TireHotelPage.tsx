@@ -9,6 +9,7 @@ import { ContactSection } from './ContactSection';
 import { motion } from 'motion/react';
 import { 
   Calendar,
+  Cloud,
   Thermometer,
   FileText,
   Lock,
@@ -20,7 +21,7 @@ import {
   Package,
   ArrowRight,
   Check,
-  Sun
+  Umbrella
 } from 'lucide-react';
 import facilityImage from 'figma:asset/7a4460f78adaeb7811f555061adc7a3eb129dbf1.png';
 
@@ -40,24 +41,24 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   // Benefits data
   const benefits = [
     {
-      icon: Sun,
-      title: language === 'fi' ? 'Sisäsäilytys' : 'Indoor storage',
-      description: language === 'fi' ? 'Renkaat säilytetään sisätiloissa, poissa UV-valosta ja ankarista sääolosuhteista' : 'Tires stored indoor, away from UV light and harsh weather condition'
+      icon: Umbrella,
+      title: language === 'fi' ? 'Turvallinen säilytys' : 'Secure storage',
+      description: language === 'fi' ? 'Renkaat säilytetään suojassa UV-valolta ja vaihtelevilta sääolosuhteilta' : 'Tires kept away from UV light and harsh weather'
     },
     {
       icon: FileText,
       title: language === 'fi' ? 'Merkitty & seurattu' : 'Labeled & tracked',
-      description: language === 'fi' ? 'Jokainen rengassarja merkitään ja seurataan asiakaskohtaisesti' : 'Each tire set is labeled and tracked per customer'
+      description: language === 'fi' ? 'Jokainen rengassarja merkitään ja seurataan asiakaskohtaisesti' : 'Every tire set is labeled and tracked by customer'
     },
     {
       icon: Lock,
-      title: language === 'fi' ? 'Turvallinen & vakuutettu' : 'Secure & insured',
-      description: language === 'fi' ? 'Valvottu tila kattavalla vakuutusturvalla' : 'Monitored facility with comprehensive insurance'
+      title: language === 'fi' ? 'Suojattu & vakuutettu' : 'Protect & insured',
+      description: language === 'fi' ? 'Valvottu säilytystila kattavalla vakuutusturvalla' : 'Monitored storage with comprehensive insurance'
     },
     {
       icon: RefreshCw,
       title: language === 'fi' ? 'Kausivaihtoa saatavilla' : 'Seasonal swap available',
-      description: language === 'fi' ? 'Tilaa rengasvaihto ja asennus milloin tahansa' : 'Schedule tire change and installation anytime'
+      description: language === 'fi' ? 'Varaa vaihto ja asennus silloin kun sinulle sopii' : 'Book tire change and installation when it suits you'
     }
   ];
 
@@ -85,9 +86,10 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
     {
       id: tireHotelServiceIds.storage,
       name: language === 'fi' ? 'Säilytys' : 'Storage',
-      price: '50',
+      price: '60',
       period: language === 'fi' ? 'kausi' : 'season',
       description: language === 'fi' ? 'Perussäilytys kaudeksi' : 'Basic storage for the season',
+      priceNote: language === 'fi' ? 'Pelkkä säilytys' : 'Storage only',
       features: [
         language === 'fi' ? 'Turvallinen säilytys' : 'Safe storage',
         language === 'fi' ? 'Kulutuspinnan tarkastus' : 'Tread inspection',
@@ -99,9 +101,10 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
     {
       id: tireHotelServiceIds.seasonalSwap,
       name: language === 'fi' ? 'Kausivaihtopaketti' : 'Seasonal Swap',
-      price: '45',
+      price: '35',
       period: language === 'fi' ? 'vaihto' : 'swap',
       description: language === 'fi' ? 'Ammattimainen rengasvaihto' : 'Professional tire change',
+      priceNote: language === 'fi' ? '* Normaaleille renkaille alkaen 35 €' : '* Normal tires from €35',
       features: [
         language === 'fi' ? 'Renkaiden asennus' : 'Tire mounting',
         language === 'fi' ? 'Teknikko tarkastus' : 'Technician inspection',
@@ -115,7 +118,8 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
       name: language === 'fi' ? 'Hotellipaketti' : 'Hotel Package',
       price: '90',
       period: language === 'fi' ? 'kausi' : 'season',
-      description: language === 'fi' ? 'Säilytys + kausivaihtopaketti' : 'Storage + seasonal swap',
+      description: language === 'fi' ? 'Yhdistelmähinta: säilytys + kausivaihtopaketti' : 'Combo price: storage + seasonal swap',
+      priceNote: language === 'fi' ? 'Sisältää säilytyksen ja vaihdon' : 'Includes both storage and swap',
       features: [
         language === 'fi' ? 'Kaikki säilytysedut' : 'All storage benefits',
         language === 'fi' ? 'Kausivaihtopaketti sisältyy' : 'Seasonal swap included',
@@ -348,6 +352,11 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
                         <span className="text-5xl font-bold">€{plan.price}</span>
                         <span className="text-muted-foreground">/ {plan.period}</span>
                       </div>
+                      {'priceNote' in plan && plan.priceNote ? (
+                        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                          {plan.priceNote}
+                        </p>
+                      ) : null}
                     </div>
 
                     <Button
@@ -428,7 +437,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
             {/* UV Protection */}
             <div className="flex flex-col items-center text-center group">
               <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
-                <Sun className="size-6 text-accent" aria-hidden="true" />
+                <Umbrella className="size-6 text-accent" aria-hidden="true" />
               </div>
               <h3 className="text-base mb-2">
                 {t('trustSignals.uvProtection')}

@@ -102,6 +102,7 @@ export function CmsPwaScreen() {
   const loadRequestIdRef = useRef(0);
   const loadInFlightRef = useRef(false);
   const authStateRef = useRef<AuthState>('loading');
+  const hadAuthenticatedSessionRef = useRef(false);
 
   const activeTitle =
     activeTab === 'rescue'
@@ -116,6 +117,9 @@ export function CmsPwaScreen() {
 
   useEffect(() => {
     authStateRef.current = authState;
+    if (authState === 'authenticated') {
+      hadAuthenticatedSessionRef.current = true;
+    }
   }, [authState]);
 
   const counts = useMemo(() => ({
@@ -279,6 +283,10 @@ export function CmsPwaScreen() {
       if (!session?.user) {
         setAuthState('unauthenticated');
         setUserEmail('');
+        setPushSubscribed(false);
+        if (hadAuthenticatedSessionRef.current) {
+          setError('Your session ended on this device. It may have been replaced by another login or revoked. Please sign in again.');
+        }
         return;
       }
       try {
