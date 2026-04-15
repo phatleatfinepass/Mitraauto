@@ -1,9 +1,9 @@
 import React from 'react';
 import { Search } from 'lucide-react';
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
-import type { ScheduleBooking } from '../../utils/schedule';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog';
+import { Input } from '../../ui/input';
+import type { ScheduleBooking } from '../../../utils/schedule';
 
 interface AdminScheduleSearchDialogProps {
   getBookingServiceNameForCms: (serviceName?: string | null) => string;

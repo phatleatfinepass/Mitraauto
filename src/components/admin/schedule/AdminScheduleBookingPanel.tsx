@@ -2,13 +2,13 @@ import React from 'react';
 import { Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { Checkbox } from '../ui/checkbox';
-import { Switch } from '../ui/switch';
-import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
-import type { ScheduleBooking } from '../../utils/schedule';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Card } from '../../ui/card';
+import { Checkbox } from '../../ui/checkbox';
+import { Switch } from '../../ui/switch';
+import { Tabs, TabsList, TabsTrigger } from '../../ui/tabs';
+import type { ScheduleBooking } from '../../../utils/schedule';
 
 import type { BookingListGroup } from './AdminSchedule.types';
 

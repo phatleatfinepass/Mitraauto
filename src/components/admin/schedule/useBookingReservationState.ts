@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { getSupabaseClient } from '../../utils/supabase/client';
-import type { ScheduleBooking } from '../../utils/schedule';
+import { getSupabaseClient } from '../../../utils/supabase/client';
+import type { ScheduleBooking } from '../../../utils/schedule';
 
 interface UseBookingReservationStateArgs {
   language: string;

@@ -1,13 +1,13 @@
 import React from 'react';
 
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog';
+import { Input } from '../../ui/input';
+import { Textarea } from '../../ui/textarea';
 import { Pencil, Save } from 'lucide-react';
 
-import type { ScheduleBooking } from '../../utils/schedule';
+import type { ScheduleBooking } from '../../../utils/schedule';
 import type { AdminBookingFormState } from './AdminSchedule.types';
 
 interface AdminArchivedBookingDialogProps {

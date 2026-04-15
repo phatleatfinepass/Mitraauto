@@ -1,9 +1,9 @@
 import React from 'react';
 import { AlertCircle, Clock, Lock } from 'lucide-react';
 
-import { Badge } from '../ui/badge';
-import { Card } from '../ui/card';
-import type { ScheduleTimeSlot } from '../../utils/schedule';
+import { Badge } from '../../ui/badge';
+import { Card } from '../../ui/card';
+import type { ScheduleTimeSlot } from '../../../utils/schedule';
 
 interface AdminScheduleGridProps {
   handleSlotClick: (slot: ScheduleTimeSlot, time: string) => void;

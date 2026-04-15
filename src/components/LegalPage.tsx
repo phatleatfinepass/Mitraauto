@@ -282,7 +282,7 @@ export function LegalPage({ initialSection }: LegalPageProps) {
             </div>
 
             <motion.div
-              key={selectedVersion}
+              key="privacy-v5-content"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}

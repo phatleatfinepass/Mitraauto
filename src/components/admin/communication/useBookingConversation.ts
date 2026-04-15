@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
-import { getSupabaseClient } from '../../utils/supabase/client';
-import type { ScheduleBooking } from '../../utils/schedule';
+import { getSupabaseClient } from '../../../utils/supabase/client';
+import type { ScheduleBooking } from '../../../utils/schedule';
 import type {
   BookingConversationMessage,
   BookingConversationState,
   BookingMessageDraft,
-} from './AdminSchedule.types';
+} from './types';
 
 interface UseBookingConversationArgs {
   buildCustomerCompletionDraft: (booking: ScheduleBooking) => { subject: string; message: string };
@@ -189,8 +189,14 @@ export function useBookingConversation({
     }
   }, [getBookingLanguage, loadBookingConversation, messageDrafts, t]);
 
+  const clearConversationComposerState = useCallback(() => {
+    setComposeMessageBookingId(null);
+    setMessageDrafts({});
+  }, []);
+
   return {
     bookingConversations,
+    clearConversationComposerState,
     composeMessageBookingId,
     handleBookingMessageDraftChange,
     handleOpenMessageComposer,

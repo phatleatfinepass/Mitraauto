@@ -1,5 +1,5 @@
 import type { ScheduleBooking } from '../../utils/schedule';
-import type { AdminBookingFormState } from './AdminSchedule.types';
+import type { AdminBookingFormState } from './schedule/AdminSchedule.types';
 
 export const awaitingCustomerCompletionStatus = 'awaiting_customer_completion';
 

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import type { SupportedBookingLanguage } from '../../utils/serviceCatalog';
 import type { ScheduleBooking } from '../../utils/schedule';
-import type { AdminBookingFormState } from './AdminSchedule.types';
+import type { AdminBookingFormState } from './schedule/AdminSchedule.types';
 
 interface BookingServiceSelectorProps {
   bookingLanguage: SupportedBookingLanguage;

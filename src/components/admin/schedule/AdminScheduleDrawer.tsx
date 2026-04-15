@@ -16,29 +16,22 @@ import {
   X,
 } from 'lucide-react';
 
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { Checkbox } from '../ui/checkbox';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
-import { Textarea } from '../ui/textarea';
-import type { SupportedBookingLanguage } from '../../utils/serviceCatalog';
-import type { ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
-import { AdminBookingEditPanel } from './AdminBookingEditPanel';
-import { AdminBookingConversationPanel } from './AdminBookingConversationPanel';
-
-import type {
-  AdminBookingFormState,
-  BookingConversationMessage,
-  BookingConversationState,
-  BookingMessageDraft,
-} from './AdminSchedule.types';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Card } from '../../ui/card';
+import { Checkbox } from '../../ui/checkbox';
+import { Input } from '../../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../ui/sheet';
+import { Textarea } from '../../ui/textarea';
+import type { SupportedBookingLanguage } from '../../../utils/serviceCatalog';
+import type { ScheduleBooking, ScheduleTimeSlot } from '../../../utils/schedule';
+import { AdminBookingEditPanel } from '../AdminBookingEditPanel';
+import type { BookingConversationMessage } from '../communication/types';
+import type { AdminBookingFormState } from './AdminSchedule.types';
 
 interface AdminScheduleDrawerProps {
   cancellingBookingId: string | null;
-  composeMessageBookingId: string | null;
   confirmingBookingId: string | null;
   createBookingCurrentServiceId: string;
   createBookingForm: AdminBookingFormState;
@@ -51,7 +44,6 @@ interface AdminScheduleDrawerProps {
   editingBookingId: string | null;
   getBookingServiceNameForCms: (serviceName?: string | null) => string;
   getSelectedServiceNames: (serviceIds: string[], bookingLanguage: SupportedBookingLanguage) => string[];
-  handleBookingMessageDraftChange: (bookingId: string, field: keyof BookingMessageDraft, value: string) => void;
   handleCreateBooking: () => void;
   handleEditBookingFieldChange: (bookingId: string, field: keyof AdminBookingFormState, value: string) => void;
   handleForceConfirmBooking: (booking: ScheduleBooking) => Promise<void> | void;
@@ -59,8 +51,6 @@ interface AdminScheduleDrawerProps {
   handleOpenMessageComposer: (booking: ScheduleBooking, replyTo?: BookingConversationMessage) => void;
   handleResendBookingConfirmation: (booking: ScheduleBooking) => void;
   handleSaveBookingChanges: (booking: ScheduleBooking) => Promise<void> | void;
-  handleSendBookingMessage: (booking: ScheduleBooking) => Promise<void> | void;
-  handleSyncBookingConversation: (bookingId: string) => Promise<void> | void;
   handleStartEditingBooking: (booking: ScheduleBooking) => void;
   handleToggleBookingExpanded: (booking: ScheduleBooking, expanded: boolean) => void;
   isBookingExpanded: (bookingId: string) => boolean;
@@ -68,9 +58,6 @@ interface AdminScheduleDrawerProps {
   isCreatingBooking: boolean;
   isOpen: boolean;
   language: string;
-  loadingConversationBookingId: string | null;
-  bookingConversations: Record<string, BookingConversationState>;
-  messageDrafts: Record<string, BookingMessageDraft>;
   onCloseCreateForm: () => void;
   onOpenChange: (open: boolean) => void;
   onToggleCreateFormForSelectedSlot: () => void;
@@ -79,11 +66,10 @@ interface AdminScheduleDrawerProps {
   resendCounts: Record<string, number>;
   savingBookingId: string | null;
   selectedDate: Date;
-  selectedLanguageServiceCategories: (bookingLanguage: SupportedBookingLanguage) => ReturnType<typeof import('../../utils/serviceCatalog').getLocalizedServiceCategories>;
+  selectedLanguageServiceCategories: (bookingLanguage: SupportedBookingLanguage) => ReturnType<typeof import('../../../utils/serviceCatalog').getLocalizedServiceCategories>;
   selectedSlot: ScheduleTimeSlot | null;
   selectedSlotTime: string;
   sendingMessageBookingId: string | null;
-  setComposeMessageBookingId: React.Dispatch<React.SetStateAction<string | null>>;
   setCreateBookingCurrentServiceId: React.Dispatch<React.SetStateAction<string>>;
   setCreateBookingForm: React.Dispatch<React.SetStateAction<AdminBookingFormState>>;
   setCreateBookingSelectedCategory: React.Dispatch<React.SetStateAction<string>>;
@@ -111,7 +97,7 @@ interface BookingServiceSelectorProps {
   theme: string;
   bookingLanguage: SupportedBookingLanguage;
   getSelectedServiceNames: (serviceIds: string[], bookingLanguage: SupportedBookingLanguage) => string[];
-  selectedLanguageServiceCategories: (bookingLanguage: SupportedBookingLanguage) => ReturnType<typeof import('../../utils/serviceCatalog').getLocalizedServiceCategories>;
+  selectedLanguageServiceCategories: (bookingLanguage: SupportedBookingLanguage) => ReturnType<typeof import('../../../utils/serviceCatalog').getLocalizedServiceCategories>;
   syncServiceName: (serviceIds: string[], bookingLanguage: SupportedBookingLanguage) => void;
 }
 
@@ -321,7 +307,6 @@ function isBookingAwaitingCustomerCompletion(booking: Partial<ScheduleBooking> |
 
 export function AdminScheduleDrawer({
   cancellingBookingId,
-  composeMessageBookingId,
   confirmingBookingId,
   createBookingCurrentServiceId,
   createBookingForm,
@@ -334,7 +319,6 @@ export function AdminScheduleDrawer({
   editingBookingId,
   getBookingServiceNameForCms,
   getSelectedServiceNames,
-  handleBookingMessageDraftChange,
   handleCreateBooking,
   handleEditBookingFieldChange,
   handleForceConfirmBooking,
@@ -342,8 +326,6 @@ export function AdminScheduleDrawer({
   handleOpenMessageComposer,
   handleResendBookingConfirmation,
   handleSaveBookingChanges,
-  handleSendBookingMessage,
-  handleSyncBookingConversation,
   handleStartEditingBooking,
   handleToggleBookingExpanded,
   isBookingExpanded,
@@ -351,9 +333,6 @@ export function AdminScheduleDrawer({
   isCreatingBooking,
   isOpen,
   language,
-  loadingConversationBookingId,
-  bookingConversations,
-  messageDrafts,
   onCloseCreateForm,
   onOpenChange,
   onToggleCreateFormForSelectedSlot,
@@ -366,7 +345,6 @@ export function AdminScheduleDrawer({
   selectedSlot,
   selectedSlotTime,
   sendingMessageBookingId,
-  setComposeMessageBookingId,
   setCreateBookingCurrentServiceId,
   setCreateBookingForm,
   setCreateBookingSelectedCategory,
@@ -600,8 +578,6 @@ export function AdminScheduleDrawer({
                   const editForm = editBookingForms[booking.id];
                   const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, language);
                   const bookingMissingFields = getMissingCompletionFields(booking, language);
-                  const conversation = bookingConversations[booking.id];
-                  const isLoadingConversation = loadingConversationBookingId === booking.id;
 
                   return (
                     <Card
@@ -757,22 +733,32 @@ export function AdminScheduleDrawer({
                               })()
                             )}
 
-                            {composeMessageBookingId === booking.id && (
-                              <AdminBookingConversationPanel
-                                booking={booking}
-                                conversation={conversation}
-                                isLoadingConversation={isLoadingConversation}
-                                language={language}
-                                messageDraft={messageDrafts[booking.id]}
-                                sending={sendingMessageBookingId === booking.id}
-                                theme={theme}
-                                t={t}
-                                onClose={() => setComposeMessageBookingId(null)}
-                                onDraftChange={handleBookingMessageDraftChange}
-                                onReply={handleOpenMessageComposer}
-                                onSend={handleSendBookingMessage}
-                                onSync={(bookingId) => void handleSyncBookingConversation(bookingId)}
-                              />
+                            {booking.customer_email && (
+                              <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#18181B]' : 'border-gray-200 bg-white'}`}>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <h4 className={theme === 'dark' ? 'font-medium text-white' : 'font-medium text-gray-900'}>
+                                      {language === 'fi' ? 'Viestintä' : 'Communication'}
+                                    </h4>
+                                    <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {language === 'fi'
+                                        ? 'Avaa viestintäkeskus nähdäksesi ketjun ja vastataksesi asiakkaalle.'
+                                        : 'Open the communication hub to review the thread and reply to the customer.'}
+                                    </p>
+                                  </div>
+
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenMessageComposer(booking)}
+                                    disabled={sendingMessageBookingId === booking.id}
+                                    className={`justify-start rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
+                                  >
+                                    <MailPlus className="mr-2 h-4 w-4 shrink-0" />
+                                    {language === 'fi' ? 'Avaa viestit' : 'Open messages'}
+                                  </Button>
+                                </div>
+                              </div>
                             )}
                           </div>
                         )}

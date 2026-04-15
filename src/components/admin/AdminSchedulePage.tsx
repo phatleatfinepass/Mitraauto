@@ -4,7 +4,8 @@ import { useLanguage } from '../LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Textarea } from '../ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,16 +34,17 @@ import {
   SupportedBookingLanguage,
 } from '../../utils/serviceCatalog';
 import { toast } from 'sonner';
-import { AdminScheduleBookingPanel } from './AdminScheduleBookingPanel';
-import { AdminArchivedBookingDialog } from './AdminArchivedBookingDialog';
-import { AdminScheduleDrawer } from './AdminScheduleDrawer';
-import { AdminScheduleGrid } from './AdminScheduleGrid';
-import { AdminScheduleSearchDialog } from './AdminScheduleSearchDialog';
-import { AdminScheduleSidebar } from './AdminScheduleSidebar';
+import { AdminScheduleBookingPanel } from './schedule/AdminScheduleBookingPanel';
+import { AdminArchivedBookingDialog } from './schedule/AdminArchivedBookingDialog';
+import { AdminScheduleDrawer } from './schedule/AdminScheduleDrawer';
+import { AdminScheduleGrid } from './schedule/AdminScheduleGrid';
+import { AdminScheduleSearchDialog } from './schedule/AdminScheduleSearchDialog';
+import { AdminScheduleSidebar } from './schedule/AdminScheduleSidebar';
 import { buildCustomerCompletionDraft, getMissingCompletionFields } from './bookingCompletion';
-import { useBookingConversation } from './useBookingConversation';
-import { useBookingEditorState } from './useBookingEditorState';
-import { useBookingReservationState } from './useBookingReservationState';
+import { BookingCommunicationModal } from './communication/BookingCommunicationModal';
+import { useBookingConversation } from './communication/useBookingConversation';
+import { useBookingEditorState } from './schedule/useBookingEditorState';
+import { useBookingReservationState } from './schedule/useBookingReservationState';
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;
@@ -403,17 +405,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     timelineBookings,
   });
 
-  useEffect(() => {
-    setSelectedBlockTimes([]);
-    setIsBatchBlockMode(false);
-    setCancelBookingTarget(null);
-    setCancelBookingNote('');
-    setComposeMessageBookingId(null);
-    setMessageDrafts({});
-    resetBookingEditorState('');
-    fetchScheduleData(selectedDate);
-  }, [selectedDate]);
-
   const getBookingLanguage = (booking: ScheduleBooking): SupportedBookingLanguage =>
     booking.booking_language === 'en' ? 'en' : 'fi';
 
@@ -443,6 +434,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
   const {
     bookingConversations,
+    clearConversationComposerState,
     composeMessageBookingId,
     handleBookingMessageDraftChange,
     handleOpenMessageComposer: rawHandleOpenMessageComposer,
@@ -509,6 +501,16 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     t,
   });
 
+  useEffect(() => {
+    setSelectedBlockTimes([]);
+    setIsBatchBlockMode(false);
+    setCancelBookingTarget(null);
+    setCancelBookingNote('');
+    clearConversationComposerState();
+    resetBookingEditorState('');
+    fetchScheduleData(selectedDate);
+  }, [clearConversationComposerState, resetBookingEditorState, selectedDate]);
+
   const syncCreateBookingServiceName = (serviceIds: string[], selectedLanguage: SupportedBookingLanguage) =>
     syncCreateBookingServiceNameInternal(serviceIds, selectedLanguage, getSelectedServiceNames);
 
@@ -537,6 +539,11 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     setComposeMessageBookingId(null);
     toggleCreateBookingForm(fallbackTime);
   };
+
+  const activeCommunicationBooking =
+    bookings.find((booking) => booking.id === composeMessageBookingId) ||
+    timelineBookings.find((booking) => booking.id === composeMessageBookingId) ||
+    null;
 
   const sendCustomerCompletionRequest = async (booking: ScheduleBooking) => {
     if (!booking.customer_email) {
@@ -1154,7 +1161,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
       <AdminScheduleDrawer
         cancellingBookingId={cancellingBookingId}
-        composeMessageBookingId={composeMessageBookingId}
         confirmingBookingId={confirmingBookingId}
         createBookingCurrentServiceId={createBookingCurrentServiceId}
         createBookingForm={createBookingForm}
@@ -1167,7 +1173,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         editingBookingId={editingBookingId}
         getBookingServiceNameForCms={getBookingServiceNameForCms}
         getSelectedServiceNames={getSelectedServiceNames}
-        handleBookingMessageDraftChange={handleBookingMessageDraftChange}
         handleCreateBooking={handleCreateBooking}
         handleEditBookingFieldChange={handleEditBookingFieldChange}
         handleForceConfirmBooking={handleForceConfirmBooking}
@@ -1175,8 +1180,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         handleOpenMessageComposer={handleOpenMessageComposer}
         handleResendBookingConfirmation={handleResendBookingConfirmation}
         handleSaveBookingChanges={handleSaveBookingChanges}
-        handleSendBookingMessage={handleSendBookingMessage}
-        handleSyncBookingConversation={handleSyncBookingConversation}
         handleStartEditingBooking={handleStartEditingBooking}
         handleToggleBookingExpanded={handleToggleBookingExpanded}
         isBookingExpanded={isBookingExpanded}
@@ -1184,9 +1187,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         isCreatingBooking={isCreatingBooking}
         isOpen={isDrawerOpen}
         language={language}
-        loadingConversationBookingId={loadingConversationBookingId}
-        bookingConversations={bookingConversations}
-        messageDrafts={messageDrafts}
         onCloseCreateForm={closeCreateBookingForm}
         onOpenChange={setIsDrawerOpen}
         onToggleCreateFormForSelectedSlot={handleToggleCreateFormForSelectedSlot}
@@ -1199,7 +1199,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         selectedSlot={selectedSlot}
         selectedSlotTime={selectedSlotTime}
         sendingMessageBookingId={sendingMessageBookingId}
-        setComposeMessageBookingId={setComposeMessageBookingId}
         setCreateBookingCurrentServiceId={setCreateBookingCurrentServiceId}
         setCreateBookingForm={setCreateBookingForm}
         setCreateBookingSelectedCategory={setCreateBookingSelectedCategory}
@@ -1212,6 +1211,25 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         syncEditBookingServiceName={syncEditBookingServiceName}
         t={t}
         theme={theme}
+      />
+
+      <BookingCommunicationModal
+        booking={activeCommunicationBooking}
+        conversation={activeCommunicationBooking ? bookingConversations[activeCommunicationBooking.id] : undefined}
+        isLoadingConversation={activeCommunicationBooking ? loadingConversationBookingId === activeCommunicationBooking.id : false}
+        language={language}
+        messageDraft={activeCommunicationBooking ? messageDrafts[activeCommunicationBooking.id] : undefined}
+        open={Boolean(composeMessageBookingId)}
+        sending={activeCommunicationBooking ? sendingMessageBookingId === activeCommunicationBooking.id : false}
+        theme={theme}
+        t={t}
+        onDraftChange={handleBookingMessageDraftChange}
+        onOpenChange={(open) => {
+          if (!open) setComposeMessageBookingId(null);
+        }}
+        onReply={handleOpenMessageComposer}
+        onSend={handleSendBookingMessage}
+        onSync={(bookingId) => void handleSyncBookingConversation(bookingId)}
       />
 
       <Dialog open={isSlotActionDialogOpen} onOpenChange={setIsSlotActionDialogOpen}>

@@ -11,7 +11,7 @@ interface CmsGuardProps {
   onNeedLogin: () => void;
 }
 
-type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'not-admin';
+type AuthState = 'loading' | 'verifying' | 'authenticated' | 'unauthenticated' | 'not-admin';
 
 export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   const { language } = useLanguage();
@@ -21,6 +21,10 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
+
+  const beginVerification = () => {
+    setAuthState((current) => (current === 'unauthenticated' ? 'verifying' : 'loading'));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -93,7 +97,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        if (isMounted) setAuthState('loading');
+        if (isMounted) beginVerification();
         checkAuth();
       } else {
         if (isMounted) setAuthState('unauthenticated');
@@ -136,7 +140,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
         } catch {
           // Non-blocking.
         }
-        setAuthState('loading');
+        beginVerification();
       }
     } catch (error) {
       console.error('CMS inline login error:', error);
@@ -172,7 +176,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   }
 
   // User not logged in - trigger login modal
-  if (authState === 'unauthenticated') {
+  if (authState === 'unauthenticated' || authState === 'verifying') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#11141A] px-4">
         <div className="max-w-md w-full bg-[#1A1D26] rounded-2xl p-8 border border-gray-800">
@@ -185,9 +189,13 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
           </h1>
           
           <p className="text-gray-400 mb-6 text-center">
-            {language === 'fi' 
-              ? 'Sinun täytyy kirjautua sisään päästäksesi CMS-hallintapaneeliin.'
-              : 'You need to log in to access the CMS admin panel.'}
+            {authState === 'verifying'
+              ? (language === 'fi'
+                  ? 'Vahvistetaan käyttöoikeuksiasi...'
+                  : 'Verifying your access...')
+              : (language === 'fi'
+                  ? 'Sinun täytyy kirjautua sisään päästäksesi CMS-hallintapaneeliin.'
+                  : 'You need to log in to access the CMS admin panel.')}
           </p>
 
           <form onSubmit={handleInlineLogin} className="space-y-4">
@@ -205,6 +213,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
                   if (loginError) setLoginError('');
                 }}
                 className="border-gray-700 bg-[#0D1016] text-white"
+                disabled={authState === 'verifying'}
                 required
               />
             </div>
@@ -223,6 +232,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
                   if (loginError) setLoginError('');
                 }}
                 className="border-gray-700 bg-[#0D1016] text-white"
+                disabled={authState === 'verifying'}
                 required
               />
             </div>
@@ -235,10 +245,12 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
 
             <Button
               type="submit"
-              disabled={loggingIn}
+              disabled={loggingIn || authState === 'verifying'}
               className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
             >
-              {loggingIn
+              {authState === 'verifying'
+                ? (language === 'fi' ? 'Vahvistetaan...' : 'Verifying...')
+                : loggingIn
                 ? (language === 'fi' ? 'Kirjaudutaan...' : 'Signing in...')
                 : (language === 'fi' ? 'Kirjaudu sisään' : 'Log In')}
             </Button>
@@ -247,6 +259,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
           <button
             type="button"
             onClick={onNeedLogin}
+            disabled={authState === 'verifying'}
             className="mt-4 w-full text-sm text-gray-400 hover:text-white transition-colors"
           >
             {language === 'fi' ? 'Avaa tavallinen kirjautumisikkuna' : 'Open standard login modal'}

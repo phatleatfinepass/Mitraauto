@@ -1,11 +1,11 @@
 import React from 'react';
 import { Calendar as CalendarIcon, CheckSquare, ChevronRight } from 'lucide-react';
 
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Calendar } from '../ui/calendar';
-import { Card } from '../ui/card';
-import { Textarea } from '../ui/textarea';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Calendar } from '../../ui/calendar';
+import { Card } from '../../ui/card';
+import { Textarea } from '../../ui/textarea';
 
 interface AdminScheduleSidebarProps {
   applyManageSlotsButtonClass: string;

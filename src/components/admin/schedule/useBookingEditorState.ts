@@ -1,21 +1,21 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
-import { formatDateForSupabase } from '../../utils/date';
+import { formatDateForSupabase } from '../../../utils/date';
 import {
   detectStoredServiceLanguage,
   getServiceIdsFromStoredServiceName,
   SupportedBookingLanguage,
-} from '../../utils/serviceCatalog';
-import type { ScheduleBooking } from '../../utils/schedule';
-import { getSupabaseClient } from '../../utils/supabase/client';
+} from '../../../utils/serviceCatalog';
+import type { ScheduleBooking } from '../../../utils/schedule';
+import { getSupabaseClient } from '../../../utils/supabase/client';
 import type { AdminBookingFormState } from './AdminSchedule.types';
 import {
   awaitingCustomerCompletionStatus,
   buildCustomerCompletionDraft,
   getMissingCompletionFields,
   isBookingAwaitingCustomerCompletion,
-} from './bookingCompletion';
+} from '../bookingCompletion';
 
 interface UseBookingEditorStateArgs {
   createBookingConfirmationPayload: (booking: ScheduleBooking) => {
