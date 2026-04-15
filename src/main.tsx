@@ -1,21 +1,22 @@
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
+import SiteApp from "./SiteApp.tsx";
+import { mountCmsPwaApp } from "./CmsPwaApp.tsx";
 import "./index.css";
+import { isStandalonePwaDeploy } from "./config/runtime";
 
 const root = document.getElementById("root");
 
-async function bootstrap() {
+function bootstrap() {
   if (!root) {
     throw new Error("Root element not found");
   }
 
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
 
-  if (path === '/pwa' || path.startsWith('/pwa/')) {
-    const { mountCmsPwaApp } = await import("./CmsPwaApp.tsx");
+  if (isStandalonePwaDeploy || path === '/pwa' || path.startsWith('/pwa/')) {
     mountCmsPwaApp(root);
   } else {
-    createRoot(root).render(<App />);
+    createRoot(root).render(<SiteApp />);
   }
 
   const bootElement = document.getElementById("app-boot");
@@ -37,6 +38,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-bootstrap().catch((error) => {
+try {
+  bootstrap();
+} catch (error) {
   console.error("App bootstrap failed:", error);
-});
+}

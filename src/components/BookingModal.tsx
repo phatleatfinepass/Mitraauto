@@ -6,6 +6,7 @@ import { BookingStep2 } from './BookingStep2';
 import { BookingStep3 } from './BookingStep3';
 import { BookingSuccess } from './BookingSuccess';
 import { useLanguage } from './LanguageContext';
+import { FINNISH_PHONE_PREFIX, normalizeFinnishPhoneInput } from '../utils/phone';
 
 type BookingStep = 'step1' | 'step2' | 'step3' | 'success';
 
@@ -31,7 +32,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [contactInfo, setContactInfo] = useState({
     name: '',
-    phone: '',
+    phone: FINNISH_PHONE_PREFIX,
     email: '',
     notes: '',
   });
@@ -66,7 +67,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
         setSelectedServiceIds([]);
         setContactInfo({
           name: '',
-          phone: '',
+          phone: FINNISH_PHONE_PREFIX,
           email: '',
           notes: '',
         });
@@ -76,7 +77,10 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
   }, [open]);
 
   const handleContactInfoChange = (field: string, value: string) => {
-    setContactInfo(prev => ({ ...prev, [field]: value }));
+    setContactInfo(prev => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleClose = () => {
@@ -271,6 +275,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               date={date}
               timeSlot={selectedTimeSlot || ''}
               serviceName={getServiceName()}
+              language={language}
               contactInfo={contactInfo}
               onClose={handleClose}
               t={t}

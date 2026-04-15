@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrokenCar404 } from '../BrokenCar404';
 import { useLanguage } from '../LanguageContext';
+import { publicSiteUrl, pwaPath } from '../../config/runtime';
 
 export function CmsPwaNotFound({ path }: { path: string }) {
   const { t } = useLanguage();
@@ -23,13 +24,13 @@ export function CmsPwaNotFound({ path }: { path: string }) {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
-              href="/pwa/cms"
+              href={pwaPath('/')}
               className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#FF6B35] px-5 py-2 text-sm font-medium text-[#11141A]"
             >
               {t('notFound.backCmsPwa')}
             </a>
             <a
-              href="/"
+              href={publicSiteUrl}
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 px-5 py-2 text-sm font-medium text-white"
             >
               {t('notFound.goWebsite')}

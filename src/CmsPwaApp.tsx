@@ -1,17 +1,21 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AlertCircle, Bell, LogOut, RefreshCcw } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { supabase, getSupabaseConfigError } from './utils/supabase/client';
 import { CmsPwaTabBar, type CmsPwaTab } from './components/cms-pwa/CmsPwaTabBar';
 import { CmsPwaNotFound } from './components/cms-pwa/CmsPwaNotFound';
 import { CmsPwaSectionList } from './components/cms-pwa/CmsPwaSectionList';
 import { CmsPwaToolsList } from './components/cms-pwa/CmsPwaToolsList';
+import { CmsPwaHeader } from './components/cms-pwa/CmsPwaHeader';
+import { CmsPwaSummary } from './components/cms-pwa/CmsPwaSummary';
+import { CmsPwaScreenState } from './components/cms-pwa/CmsPwaScreenState';
+import { CmsPwaDiagnosticsSheet } from './components/cms-pwa/CmsPwaDiagnosticsSheet';
+import { CMS_PWA_COPY } from './components/cms-pwa/copy';
 import {
   BOOKING_STATUS_HANDOFF,
-  BOOKING_STATUS_HANDOFF_DONE,
   buildBookingSections,
   buildOrderSections,
-  formatShortDateTime,
+  isBookingAttentionItem,
   isMissingColumnError,
   REFRESH_INTERVAL_MS,
   rescueSections,
@@ -23,7 +27,16 @@ import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import type { AuthState, BookingRow, LiveSectionsState, LoginState, OrderRow } from './components/cms-pwa/types';
 
 async function resolveAdminSession() {
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        window.setTimeout(() => reject(new Error('Admin session check timed out.')), timeoutMs);
+      }),
+    ]);
+  };
+
+  const { data: { session }, error: sessionError } = await withTimeout(supabase.auth.getSession());
 
   if (sessionError || !session?.user) {
     return { state: 'unauthenticated' as const, email: '' };
@@ -32,13 +45,22 @@ async function resolveAdminSession() {
   let isAdmin = session.user.email === 'admin@mitra-auto.fi';
 
   if (!isAdmin) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
+    try {
+      const { data: profile } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single(),
+      );
 
-    isAdmin = profile?.role === 'admin';
+      isAdmin = profile?.role === 'admin';
+    } catch {
+      return {
+        state: 'unauthenticated' as const,
+        email: '',
+      };
+    }
   }
 
   return {
@@ -47,268 +69,9 @@ async function resolveAdminSession() {
   };
 }
 
-function CmsPwaHeader({
-  headerMinimized,
-  onLogout,
-  language,
-  setLanguage,
-}: {
-  headerMinimized: boolean;
-  onLogout: () => void;
-  language: 'fi' | 'en';
-  setLanguage: (language: 'fi' | 'en') => void;
-}) {
-  return (
-    <header
-      className={`sticky top-0 z-20 -mx-4 border-b border-white/8 bg-[#0E1117]/92 px-4 backdrop-blur transition-all duration-200 ${
-        headerMinimized ? 'pb-2 pt-0.5' : 'pb-4 pt-1'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className={`font-medium tracking-[0.04em] text-white/45 transition-all duration-200 ${headerMinimized ? 'text-[10px]' : 'text-[11px]'}`}>
-            Mitra Auto mobile ops
-          </p>
-          <h1 className={`font-semibold tracking-tight transition-all duration-200 ${headerMinimized ? 'mt-0.5 text-lg' : 'mt-1 text-2xl'}`}>
-            Briefing board
-          </h1>
-          <p
-            className={`overflow-hidden text-white/55 transition-all duration-200 ${
-              headerMinimized ? 'mt-0 max-h-0 opacity-0' : 'mt-1 max-h-12 text-sm opacity-100'
-            }`}
-          >
-            Rescue, booking, and order items needing attention now.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
-            {(['fi', 'en'] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setLanguage(value)}
-                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold uppercase transition ${
-                  language === value ? 'bg-[#FF6B35] text-[#11141A]' : 'text-white/60'
-                }`}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={onLogout}
-            className={`inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-200 ${
-              headerMinimized ? 'h-9 w-9' : 'h-10 w-10'
-            }`}
-            aria-label="Sign out"
-          >
-            <LogOut className={`transition-all duration-200 ${headerMinimized ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function CmsPwaSummary({
-  counts,
-  lastUpdatedAt,
-  dataLoading,
-  activeTab,
-  onBookingHandoff,
-  handoffLoading,
-  activeBookingHandoffCount,
-}: {
-  counts: Record<CmsPwaTab, number>;
-  lastUpdatedAt: string | null;
-  dataLoading: boolean;
-  activeTab: CmsPwaTab;
-  onBookingHandoff: () => void;
-  handoffLoading: boolean;
-  activeBookingHandoffCount: number;
-}) {
-  const cards: Array<{ tab: 'rescue' | 'booking' | 'order'; label: string; count: number }> = [
-    { tab: 'rescue', label: 'Rescue', count: counts.rescue },
-    { tab: 'booking', label: 'Booking', count: counts.booking },
-    { tab: 'order', label: 'Order', count: counts.order },
-  ];
-
-  return (
-    <section className="mt-4 rounded-2xl border border-white/10 bg-[#141922] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-white">Operational summary</p>
-          <p className="mt-1 text-xs text-white/55">
-            Visible items that still need human follow-up.
-            {lastUpdatedAt ? ` Updated ${formatShortDateTime(lastUpdatedAt)}.` : ''}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF6B35]/12">
-          {dataLoading ? <RefreshCcw className="h-5 w-5 animate-spin text-[#FF6B35]" /> : <Bell className="h-5 w-5 text-[#FF6B35]" />}
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {cards.map((card) => {
-          const selected = activeTab === card.tab;
-          return (
-            <div
-              key={card.tab}
-              className={`rounded-xl border px-3 py-3 text-left transition ${
-                selected
-                  ? 'border-[#FF6B35]/50 bg-[#2A1B14] shadow-[0_12px_24px_rgba(255,107,53,0.12)]'
-                  : 'border-white/8 bg-[#1B202A]'
-              }`}
-            >
-              <p className={`text-[11px] ${selected ? 'text-[#FFD2C3]' : 'text-white/50'}`}>{card.label}</p>
-              <p className="mt-1 font-mono text-xl font-semibold">{card.count}</p>
-            </div>
-          );
-        })}
-      </div>
-      {activeTab === 'booking' ? (
-        <div className="mt-3 space-y-2">
-          {activeBookingHandoffCount > 0 ? (
-            <div className="rounded-xl border border-[#FF6B35]/30 bg-[#2A1B14] px-3 py-2 text-xs text-[#FFD2C3]">
-              {activeBookingHandoffCount} booking{activeBookingHandoffCount === 1 ? '' : 's'} waiting for desktop CMS to finish handoff.
-            </div>
-          ) : null}
-          <button
-            type="button"
-            onClick={onBookingHandoff}
-            disabled={handoffLoading || counts.booking === 0}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-[#11141A] transition hover:bg-[#ff845a] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {handoffLoading ? 'Handing off...' : counts.booking > 0 ? 'Handoff new bookings' : 'No new bookings to hand off'}
-          </button>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function CmsPwaScreenState({
-  activeTab,
-  dataError,
-  userEmail,
-  activeBookingHandoffCount,
-  notificationPermission,
-  onEnableNotifications,
-  enablingNotifications,
-  diagnostics,
-}: {
-  activeTab: CmsPwaTab;
-  dataError: string;
-  userEmail: string;
-  activeBookingHandoffCount: number;
-  notificationPermission: NotificationPermission | 'unsupported';
-  onEnableNotifications: () => void;
-  enablingNotifications: boolean;
-  diagnostics: {
-    serviceWorkerReady: boolean;
-    pushSupported: boolean;
-    localSubscription: boolean;
-    remoteSubscriptionSaved: boolean;
-    lastError: string;
-  };
-}) {
-  return (
-    <>
-      <section className="mt-4">
-        {notificationPermission !== 'granted' ? (
-          <div className="mb-3 rounded-2xl border border-white/10 bg-[#141922] px-4 py-3 text-sm text-white/75">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-medium text-white">Booking notifications</p>
-                <p className="mt-1 text-xs text-white/55">
-                  {notificationPermission === 'unsupported'
-                    ? 'This device does not support browser notifications.'
-                    : notificationPermission === 'denied'
-                      ? 'Notifications are blocked in browser settings for this app.'
-                      : 'Enable notifications to get alerted about new bookings.'}
-                </p>
-              </div>
-              {notificationPermission === 'default' ? (
-                <button
-                  type="button"
-                  onClick={onEnableNotifications}
-                  disabled={enablingNotifications}
-                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#FF6B35] px-3 py-2 text-xs font-semibold text-[#11141A] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {enablingNotifications ? 'Enabling...' : 'Enable'}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-        <div className="mb-3 rounded-2xl border border-white/10 bg-[#141922] px-4 py-3 text-xs text-white/65">
-          <p className="font-medium text-white">Push diagnostics</p>
-          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
-            <span>Permission</span>
-            <span className="text-right">{notificationPermission}</span>
-            <span>Service worker</span>
-            <span className="text-right">{diagnostics.serviceWorkerReady ? 'ready' : 'not ready'}</span>
-            <span>Push supported</span>
-            <span className="text-right">{diagnostics.pushSupported ? 'yes' : 'no'}</span>
-            <span>Local subscription</span>
-            <span className="text-right">{diagnostics.localSubscription ? 'yes' : 'no'}</span>
-            <span>Saved to backend</span>
-            <span className="text-right">{diagnostics.remoteSubscriptionSaved ? 'yes' : 'no'}</span>
-          </div>
-          {diagnostics.lastError ? (
-            <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
-              {diagnostics.lastError}
-            </p>
-          ) : null}
-        </div>
-        <div className="rounded-2xl border border-[#FF6B35]/20 bg-[#261710] px-4 py-3 text-sm text-[#FFD2C3]">
-          {activeTab === 'rescue'
-            ? 'Rescue stays first by default. Keep this queue short and acknowledged.'
-            : activeTab === 'booking'
-              ? activeBookingHandoffCount > 0
-                ? `${activeBookingHandoffCount} booking${activeBookingHandoffCount === 1 ? '' : 's'} waiting for desktop CMS to finish handoff.`
-                : 'Booking tab is for new and upcoming items only. Keep full scheduling in desktop CMS.'
-              : activeTab === 'order'
-                ? 'Order tab is for follow-up and confirmation, not full catalog handling.'
-                : 'Future Tools is a holding area for later modules, not a full feature set yet.'}
-        </div>
-        {dataError ? (
-          <div className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {dataError}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="mt-5">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {activeTab === 'rescue'
-                ? 'Rescue queue'
-                : activeTab === 'booking'
-                  ? 'Booking queue'
-                  : activeTab === 'order'
-                    ? 'Order queue'
-                    : 'Planned tools'}
-            </h2>
-            <p className="mt-1 text-sm text-white/50">
-              {activeTab === 'rescue'
-                ? 'Critical items first, then acknowledged work.'
-                : activeTab === 'booking'
-                  ? 'New and upcoming bookings requiring action.'
-                  : activeTab === 'order'
-                    ? 'Orders that need operator review or customer follow-up.'
-                    : 'Modules reserved for later rollout.'}
-            </p>
-          </div>
-          {userEmail ? <p className="text-[11px] text-white/35">{userEmail}</p> : null}
-        </div>
-      </section>
-    </>
-  );
-}
-
 export function CmsPwaScreen() {
   const { language, setLanguage } = useLanguage();
+  const copy = CMS_PWA_COPY[language];
   const route = resolveCmsPwaRoute(window.location.pathname);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [userEmail, setUserEmail] = useState('');
@@ -318,7 +81,7 @@ export function CmsPwaScreen() {
   const [activeTab, setActiveTab] = useState<CmsPwaTab>(route.kind === 'cms' ? route.tab : 'rescue');
   const [routeState, setRouteState] = useState(route);
   const [liveSections, setLiveSections] = useState<LiveSectionsState>({
-    booking: buildBookingSections([]),
+    booking: buildBookingSections([], language),
     order: buildOrderSections([]),
   });
   const [bookingRows, setBookingRows] = useState<BookingRow[]>([]);
@@ -335,8 +98,29 @@ export function CmsPwaScreen() {
   const [localSubscriptionReady, setLocalSubscriptionReady] = useState(false);
   const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
   const [pushLastError, setPushLastError] = useState('');
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const loadRequestIdRef = useRef(0);
+  const loadInFlightRef = useRef(false);
+  const authStateRef = useRef<AuthState>('loading');
+  const hadAuthenticatedSessionRef = useRef(false);
+
+  const activeTitle =
+    activeTab === 'rescue'
+      ? copy.rescueTitle
+      : activeTab === 'booking'
+        ? copy.bookingTitle
+        : activeTab === 'order'
+          ? copy.orderTitle
+          : copy.toolsTitle;
 
   const configError = useMemo(() => getSupabaseConfigError(), []);
+
+  useEffect(() => {
+    authStateRef.current = authState;
+    if (authState === 'authenticated') {
+      hadAuthenticatedSessionRef.current = true;
+    }
+  }, [authState]);
 
   const counts = useMemo(() => ({
     rescue: rescueSections.reduce((sum, section) => sum + section.items.filter((item) => item.tone !== 'done').length, 0),
@@ -349,20 +133,18 @@ export function CmsPwaScreen() {
     () => bookingRows.filter((booking) => (booking.status ?? '').toLowerCase() === BOOKING_STATUS_HANDOFF).length,
     [bookingRows],
   );
-  const unhandedNewBookingRows = useMemo(() => {
-    const now = Date.now();
-    return bookingRows.filter((booking) => {
-      const status = (booking.status ?? 'confirmed').toLowerCase();
-      if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || status === BOOKING_STATUS_HANDOFF_DONE) {
-        return false;
-      }
-      if (!booking.created_at) {
-        return false;
-      }
-      const createdAt = new Date(booking.created_at).getTime();
-      return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
-    });
+  const bookingAttentionCount = useMemo(() => {
+    return bookingRows.filter((booking) => isBookingAttentionItem(booking)).length;
   }, [bookingRows]);
+  const rescueAttentionCount = useMemo(() => {
+    return 0;
+  }, []);
+  const orderAttentionCount = useMemo(() => {
+    return 0;
+  }, []);
+  const appBadgeCount = useMemo(() => {
+    return bookingAttentionCount + rescueAttentionCount + orderAttentionCount;
+  }, [bookingAttentionCount, rescueAttentionCount, orderAttentionCount]);
 
   const updateBookingBadge = useCallback((count: number) => {
     if (typeof navigator === 'undefined') {
@@ -383,6 +165,14 @@ export function CmsPwaScreen() {
       void navWithBadge.clearAppBadge().catch(() => undefined);
     }
   }, []);
+
+  const diagnosticsStatus = useMemo<'healthy' | 'attention'>(() => {
+    const permissionHealthy = notificationPermission === 'granted';
+    const pushHealthy = typeof window !== 'undefined' ? 'PushManager' in window : false;
+    return permissionHealthy && serviceWorkerReady && pushHealthy && localSubscriptionReady && pushSubscribed && !pushLastError
+      ? 'healthy'
+      : 'attention';
+  }, [localSubscriptionReady, notificationPermission, pushLastError, pushSubscribed, serviceWorkerReady]);
 
   const registerPushSubscription = useCallback(async () => {
     if (
@@ -471,10 +261,19 @@ export function CmsPwaScreen() {
         return;
       }
 
-      const result = await resolveAdminSession();
-      if (!active) return;
-      setAuthState(result.state);
-      setUserEmail(result.email);
+      try {
+        const result = await resolveAdminSession();
+        if (!active) return;
+        setAuthState(result.state);
+        setUserEmail(result.email);
+      } catch (sessionError: any) {
+        if (!active) return;
+        if (authStateRef.current === 'loading') {
+          setAuthState('unauthenticated');
+          setUserEmail('');
+        }
+        setError(sessionError?.message || 'Could not verify mobile ops access.');
+      }
     };
 
     syncSession();
@@ -484,12 +283,21 @@ export function CmsPwaScreen() {
       if (!session?.user) {
         setAuthState('unauthenticated');
         setUserEmail('');
+        setPushSubscribed(false);
+        if (hadAuthenticatedSessionRef.current) {
+          setError('Your session ended on this device. It may have been replaced by another login or revoked. Please sign in again.');
+        }
         return;
       }
-      const result = await resolveAdminSession();
-      if (!active) return;
-      setAuthState(result.state);
-      setUserEmail(result.email);
+      try {
+        const result = await resolveAdminSession();
+        if (!active) return;
+        setAuthState(result.state);
+        setUserEmail(result.email);
+      } catch (sessionError: any) {
+        if (!active) return;
+        setError(sessionError?.message || 'Could not verify mobile ops access.');
+      }
     });
 
     return () => {
@@ -498,8 +306,27 @@ export function CmsPwaScreen() {
     };
   }, [configError, routeState.kind]);
 
-  const loadLiveData = React.useCallback(async (cancelledRef?: { current: boolean }) => {
+  const loadLiveData = React.useCallback(async (
+      cancelledRef?: { current: boolean },
+      options?: { force?: boolean },
+    ) => {
       const isCancelled = () => cancelledRef?.current === true;
+      if (loadInFlightRef.current && !options?.force) {
+        return;
+      }
+
+      const requestId = ++loadRequestIdRef.current;
+      const isStale = () => requestId !== loadRequestIdRef.current;
+      const withTimeout = async <T,>(promise: Promise<T>, label: string, timeoutMs = 20000): Promise<T> => {
+        return await Promise.race([
+          promise,
+          new Promise<T>((_, reject) => {
+            window.setTimeout(() => reject(new Error(`${label} timed out. Please try again.`)), timeoutMs);
+          }),
+        ]);
+      };
+
+      loadInFlightRef.current = true;
       setDataLoading(true);
       setDataError('');
 
@@ -513,34 +340,43 @@ export function CmsPwaScreen() {
         const bookingSelectFull = 'id, created_at, updated_at, status, booking_language, booking_date, booking_time, license_plate, service_name, customer_name, customer_phone, customer_email, notes';
         const bookingSelectFallback = 'id, created_at, status, booking_language, booking_date, booking_time, license_plate, service_name, customer_name, customer_phone, customer_email, notes';
 
-        let bookingsQuery = await supabase
+        let bookingsQuery = await withTimeout(
+          supabase
           .from('bookings')
           .select(bookingSelectFull)
           .gte('booking_date', todayStr)
           .lte('booking_date', endDateStr)
           .order('booking_date', { ascending: true })
           .order('booking_time', { ascending: true })
-          .limit(40);
+          .limit(40),
+          'Booking refresh',
+        );
 
         if (bookingsQuery.error && isMissingColumnError(bookingsQuery.error, 'updated_at')) {
-          bookingsQuery = await supabase
+          bookingsQuery = await withTimeout(
+            supabase
             .from('bookings')
             .select(bookingSelectFallback)
             .gte('booking_date', todayStr)
             .lte('booking_date', endDateStr)
             .order('booking_date', { ascending: true })
             .order('booking_time', { ascending: true })
-            .limit(40);
+            .limit(40),
+            'Booking refresh',
+          );
         }
 
         const orderSelectFull = 'id, created_at, status, customer_email, customer_phone, customer_first_name, customer_last_name, grand_total_cents, cart_snapshot';
         const orderSelectFallback = 'id, created_at, status, grand_total_cents, cart_snapshot';
 
-        let ordersQuery = await supabase
+        let ordersQuery = await withTimeout(
+          supabase
           .from('orders')
           .select(orderSelectFull)
           .order('created_at', { ascending: false })
-          .limit(30);
+          .limit(30),
+          'Order refresh',
+        );
 
         if (ordersQuery.error && (
           isMissingColumnError(ordersQuery.error, 'customer_email') ||
@@ -548,15 +384,18 @@ export function CmsPwaScreen() {
           isMissingColumnError(ordersQuery.error, 'customer_first_name') ||
           isMissingColumnError(ordersQuery.error, 'customer_last_name')
         )) {
-          ordersQuery = await supabase
+          ordersQuery = await withTimeout(
+            supabase
             .from('orders')
             .select(orderSelectFallback)
             .order('created_at', { ascending: false })
-            .limit(30);
+            .limit(30),
+            'Order refresh',
+          );
         }
 
         if (bookingsQuery.error) throw bookingsQuery.error;
-        if (isCancelled()) return;
+        if (isCancelled() || isStale()) return;
 
         const bookingData = (bookingsQuery.data ?? []) as BookingRow[];
         setBookingRows(bookingData);
@@ -570,30 +409,39 @@ export function CmsPwaScreen() {
           setDataError(ordersQuery.error.message || 'Order queue could not be loaded.');
         }
       } catch (fetchError: any) {
-        if (isCancelled()) return;
+        if (isCancelled() || isStale()) return;
         setDataError(fetchError?.message || 'Failed to load mobile ops data.');
       } finally {
-        if (!isCancelled()) {
+        if (!isCancelled() && !isStale()) {
           setDataLoading(false);
         }
+        if (!isStale()) {
+          loadInFlightRef.current = false;
+        }
       }
-    }, []);
+    }, [language]);
+
+  const forceRefreshLiveData = useCallback((cancelledRef?: { current: boolean }) => {
+    loadRequestIdRef.current += 1;
+    loadInFlightRef.current = false;
+    return loadLiveData(cancelledRef, { force: true });
+  }, [loadLiveData]);
 
   useEffect(() => {
     if (authState !== 'authenticated') return;
 
     const cancelledRef = { current: false };
 
-    loadLiveData(cancelledRef);
+    forceRefreshLiveData(cancelledRef);
     const intervalId = window.setInterval(() => {
-      void loadLiveData(cancelledRef);
+      void forceRefreshLiveData(cancelledRef);
     }, REFRESH_INTERVAL_MS);
 
     return () => {
       cancelledRef.current = true;
       window.clearInterval(intervalId);
     };
-  }, [authState, loadLiveData, language]);
+  }, [authState, forceRefreshLiveData, language]);
 
   useEffect(() => {
     if (authState !== 'authenticated') {
@@ -602,24 +450,30 @@ export function CmsPwaScreen() {
 
     const refreshIfVisible = () => {
       if (document.visibilityState === 'visible') {
-        void loadLiveData();
+        void forceRefreshLiveData();
       }
     };
 
     const refreshOnFocus = () => {
-      void loadLiveData();
+      void forceRefreshLiveData();
+    };
+
+    const refreshOnOnline = () => {
+      void forceRefreshLiveData();
     };
 
     document.addEventListener('visibilitychange', refreshIfVisible);
     window.addEventListener('focus', refreshOnFocus);
     window.addEventListener('pageshow', refreshOnFocus);
+    window.addEventListener('online', refreshOnOnline);
 
     return () => {
       document.removeEventListener('visibilitychange', refreshIfVisible);
       window.removeEventListener('focus', refreshOnFocus);
       window.removeEventListener('pageshow', refreshOnFocus);
+      window.removeEventListener('online', refreshOnOnline);
     };
-  }, [authState, loadLiveData]);
+  }, [authState, forceRefreshLiveData]);
 
   useEffect(() => {
     if (authState !== 'authenticated') {
@@ -632,7 +486,7 @@ export function CmsPwaScreen() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings' },
         () => {
-          void loadLiveData();
+          void forceRefreshLiveData();
         },
       )
       .subscribe();
@@ -640,7 +494,7 @@ export function CmsPwaScreen() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [authState, loadLiveData]);
+  }, [authState, forceRefreshLiveData]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -668,8 +522,8 @@ export function CmsPwaScreen() {
   }, []);
 
   useEffect(() => {
-    updateBookingBadge(unhandedNewBookingRows.length);
-  }, [unhandedNewBookingRows.length, updateBookingBadge]);
+    updateBookingBadge(appBadgeCount);
+  }, [appBadgeCount, updateBookingBadge]);
 
   useEffect(() => {
     if (authState !== 'authenticated' || notificationPermission !== 'granted' || pushSubscribed) {
@@ -755,19 +609,8 @@ export function CmsPwaScreen() {
   const handleBookingHandoff = async () => {
     if (handoffLoading) return;
 
-    const now = Date.now();
     const targetIds = bookingRows
-      .filter((booking) => {
-        const status = (booking.status ?? 'confirmed').toLowerCase();
-        if (status === 'cancelled' || status === BOOKING_STATUS_HANDOFF || status === BOOKING_STATUS_HANDOFF_DONE) {
-          return false;
-        }
-        if (!booking.created_at) {
-          return false;
-        }
-        const createdAt = new Date(booking.created_at).getTime();
-        return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
-      })
+      .filter((booking) => isBookingAttentionItem(booking))
       .map((booking) => booking.id);
 
     if (targetIds.length === 0) {
@@ -788,7 +631,7 @@ export function CmsPwaScreen() {
         throw updateError;
       }
 
-      await loadLiveData();
+      await forceRefreshLiveData();
     } catch (handoffError: any) {
       setDataError(handoffError?.message || 'Booking handoff failed.');
     } finally {
@@ -811,6 +654,10 @@ export function CmsPwaScreen() {
     } finally {
       setEnablingNotifications(false);
     }
+  };
+
+  const handleManualRefresh = () => {
+    void forceRefreshLiveData();
   };
 
   if (routeState.kind !== 'cms') {
@@ -912,6 +759,10 @@ export function CmsPwaScreen() {
           onLogout={handleLogout}
           language={language}
           setLanguage={setLanguage}
+          diagnosticsStatus={diagnosticsStatus}
+          onOpenDiagnostics={() => setDiagnosticsOpen(true)}
+          copy={copy}
+          activeTitle={activeTitle}
         />
         <CmsPwaSummary
           counts={counts}
@@ -921,22 +772,14 @@ export function CmsPwaScreen() {
           onBookingHandoff={handleBookingHandoff}
           handoffLoading={handoffLoading}
           activeBookingHandoffCount={activeBookingHandoffCount}
+          onRefresh={handleManualRefresh}
+          copy={copy}
         />
         <CmsPwaScreenState
           activeTab={activeTab}
           dataError={dataError}
           userEmail={userEmail}
-          activeBookingHandoffCount={activeBookingHandoffCount}
-          notificationPermission={notificationPermission}
-          onEnableNotifications={handleEnableNotifications}
-          enablingNotifications={enablingNotifications}
-          diagnostics={{
-            serviceWorkerReady,
-            pushSupported: typeof window !== 'undefined' && 'PushManager' in window,
-            localSubscription: localSubscriptionReady,
-            remoteSubscriptionSaved: pushSubscribed,
-            lastError: pushLastError,
-          }}
+          copy={copy}
         />
 
         {activeTab === 'tools' ? (
@@ -945,18 +788,45 @@ export function CmsPwaScreen() {
           <section className="mt-4 space-y-5" aria-live="polite">
             {dataLoading && (activeTab === 'booking' || activeTab === 'order') ? (
               <div className="rounded-2xl border border-white/10 bg-[#141922] px-4 py-3 text-sm text-white/55">
-                Refreshing {activeTab} queue...
+                {copy.refreshingQueue}
               </div>
             ) : null}
-            <CmsPwaSectionList sections={sections} />
+            <CmsPwaSectionList sections={sections} emptyLabel={copy.noItems} />
           </section>
         )}
       </div>
 
       <CmsPwaTabBar
         activeTab={activeTab}
-        counts={{ ...counts, booking: unhandedNewBookingRows.length }}
+        counts={{ ...counts, booking: bookingAttentionCount }}
         onSelect={handleSelectTab}
+      />
+
+      <CmsPwaDiagnosticsSheet
+        open={diagnosticsOpen}
+        copy={copy}
+        notificationPermission={notificationPermission}
+        serviceWorkerReady={serviceWorkerReady}
+        localSubscriptionReady={localSubscriptionReady}
+        pushSubscribed={pushSubscribed}
+        pushLastError={pushLastError}
+        enablingNotifications={enablingNotifications}
+        pushSupported={typeof window !== 'undefined' && 'PushManager' in window}
+        onClose={() => setDiagnosticsOpen(false)}
+        onEnableNotifications={handleEnableNotifications}
+        onRerunDiagnostics={() => {
+          setPushLastError('');
+          setPushSubscribed(false);
+          setLocalSubscriptionReady(false);
+          setServiceWorkerReady(false);
+          void handleManualRefresh();
+          if (notificationPermission === 'granted') {
+            void registerPushSubscription().catch((error) => {
+              const message = error instanceof Error ? error.message : String(error);
+              setPushLastError(message);
+            });
+          }
+        }}
       />
     </div>
   );

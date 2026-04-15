@@ -8,6 +8,7 @@ import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { formatDateForSupabase } from '../utils/date';
+import { FINNISH_PHONE_PREFIX, hasFinnishPhoneValue, normalizeFinnishPhone, normalizeFinnishPhoneInput } from '../utils/phone';
 
 interface BookingStep3Props {
   licensePlate: string;
@@ -47,7 +48,8 @@ export function BookingStep3({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>('');
 
-  const validateAndConfirm = async () => {
+  const validateAndConfirm = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setErrors({});
     setError('');
 
@@ -59,9 +61,11 @@ export function BookingStep3({
     }
 
     // Validate phone
-    if (!contactInfo.phone.trim()) {
+    const normalizedPhone = normalizeFinnishPhone(contactInfo.phone);
+
+    if (!hasFinnishPhoneValue(normalizedPhone)) {
       newErrors.phone = t('booking.error.phoneRequired');
-    } else if (!/^\+?[\d\s-()]+$/.test(contactInfo.phone)) {
+    } else if (!/^\+?\d+$/.test(normalizedPhone.replace(/\s+/g, ''))) {
       newErrors.phone = t('booking.error.invalidPhone');
     }
 
@@ -90,7 +94,7 @@ export function BookingStep3({
         booking_language: language,
         service_name: serviceName,
         customer_name: contactInfo.name,
-        customer_phone: contactInfo.phone,
+        customer_phone: normalizedPhone,
         customer_email: contactInfo.email || null,
         notes: contactInfo.notes || null,
         status: 'confirmed',
@@ -150,7 +154,7 @@ export function BookingStep3({
               bookingId: data[0].id,
               customerName: contactInfo.name,
               customerEmail: contactInfo.email,
-              customerPhone: contactInfo.phone,
+              customerPhone: normalizedPhone,
               licensePlate: licensePlate.toUpperCase(),
               bookingDate,
               bookingTime: timeSlot,
@@ -178,7 +182,7 @@ export function BookingStep3({
   };
 
   return (
-    <div className="space-y-6">
+    <form className="space-y-6" autoComplete="on" onSubmit={validateAndConfirm}>
       {/* Desktop: Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Contact Information */}
@@ -194,14 +198,16 @@ export function BookingStep3({
             {/* Name */}
             <div className="space-y-2 group">
               <Label 
-                htmlFor="name"
+                htmlFor="booking-name"
                 className={`transition-all ${errors.name ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
                 {t('booking.step3.fullName')} *
               </Label>
               <Input
-                id="name"
+                id="booking-name"
                 type="text"
+                name="name"
+                autoComplete="name"
                 value={contactInfo.name}
                 onChange={(e) => onContactInfoChange('name', e.target.value)}
                 placeholder={t('booking.step3.fullNamePlaceholder')}
@@ -216,17 +222,21 @@ export function BookingStep3({
             {/* Phone */}
             <div className="space-y-2 group">
               <Label 
-                htmlFor="phone"
+                htmlFor="booking-tel"
                 className={`transition-all ${errors.phone ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
                 {t('booking.step3.phoneNumber')} *
               </Label>
               <Input
-                id="phone"
+                id="booking-tel"
                 type="tel"
+                name="tel"
+                autoComplete="tel"
+                inputMode="tel"
                 value={contactInfo.phone}
-                onChange={(e) => onContactInfoChange('phone', e.target.value)}
-                placeholder={t('booking.step3.phonePlaceholder')}
+                onChange={(e) => onContactInfoChange('phone', normalizeFinnishPhoneInput(e.target.value))}
+                onBlur={(e) => onContactInfoChange('phone', normalizeFinnishPhoneInput(e.target.value))}
+                placeholder={FINNISH_PHONE_PREFIX}
                 className={`transition-all ${errors.phone ? 'border-destructive' : 'hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]'}`}
                 aria-invalid={!!errors.phone}
               />
@@ -238,14 +248,17 @@ export function BookingStep3({
             {/* Email */}
             <div className="space-y-2 group">
               <Label 
-                htmlFor="email"
+                htmlFor="booking-email"
                 className={`transition-all ${errors.email ? 'text-destructive' : 'group-hover:text-ring'}`}
               >
                 {t('booking.step3.emailLabel')}
               </Label>
               <Input
-                id="email"
+                id="booking-email"
                 type="email"
+                name="email"
+                autoComplete="email"
+                inputMode="email"
                 value={contactInfo.email}
                 onChange={(e) => onContactInfoChange('email', e.target.value)}
                 placeholder={t('booking.step3.emailPlaceholder')}
@@ -265,11 +278,12 @@ export function BookingStep3({
               <Label htmlFor="notes" className="transition-all group-hover:text-ring">
                 {t('booking.step3.additionalNotes')} <span className="text-muted-foreground">{t('booking.step3.optional')}</span>
               </Label>
-              <Textarea
-                id="notes"
-                value={contactInfo.notes}
-                onChange={(e) => onContactInfoChange('notes', e.target.value)}
-                placeholder={t('booking.step3.notesPlaceholder')}
+            <Textarea
+              id="notes"
+              name="notes"
+              value={contactInfo.notes}
+              onChange={(e) => onContactInfoChange('notes', e.target.value)}
+              placeholder={t('booking.step3.notesPlaceholder')}
                 rows={4}
                 className="resize-none transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
               />
@@ -327,13 +341,13 @@ export function BookingStep3({
         </Button>
         <Button
           id="cta_confirm"
-          onClick={validateAndConfirm}
+          type="submit"
           className="w-full sm:flex-1"
           disabled={loading}
         >
           {loading ? t('booking.confirming') : t('booking.confirmBooking')}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

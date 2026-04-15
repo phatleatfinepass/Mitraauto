@@ -1,11 +1,60 @@
 import type { BriefingItem } from './CmsPwaBriefingCard';
 import type { CmsPwaTab } from './CmsPwaTabBar';
 import type { BookingRow, CmsPwaRoute, OrderRow, TabSection } from './types';
-import { localizeStoredServiceName } from '../../utils/serviceCatalog';
+import { detectStoredServiceLanguage, localizeStoredServiceName } from '../../utils/serviceCatalog';
+import { isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 
 export const REFRESH_INTERVAL_MS = 30_000;
 export const BOOKING_STATUS_HANDOFF = 'handoff';
-export const BOOKING_STATUS_HANDOFF_DONE = 'handoff_done';
+
+const BOOKING_CARD_COPY = {
+  fi: {
+    newBookingsTitle: 'Uudet varaukset',
+    newBookingsCaption: 'Ei vielä siirretty desktop-CMS:ään',
+    upcomingTitle: 'Tulevat',
+    upcomingCaption: 'Seuraavat varatut ajat',
+    bookingFallback: 'Varaus',
+    upcomingFallback: 'Tuleva varaus',
+    customerBookingRequest: 'Asiakkaan varaustieto',
+    noNotes: 'Ei varausmuistiinpanoja.',
+    notHandedOff: 'Ei siirretty',
+    handoffActive: 'Siirto aktiivinen',
+    confirmed: 'Vahvistettu',
+    scheduled: 'Ajastettu',
+    handoffLabel: 'Siirretty',
+    createdLabel: 'Luotu',
+    confirmedLabel: 'Vahvistettu',
+    noteLabel: 'Varausmuistiinpano',
+    callCustomer: 'Soita asiakkaalle',
+    emailCustomer: 'Lähetä sähköposti',
+    finnish: 'Suomi',
+    english: 'Englanti',
+    newBookingsZeroTitle: 'Uudet varaukset: 0',
+  },
+  en: {
+    newBookingsTitle: 'New bookings',
+    newBookingsCaption: 'Not yet handed off to desktop CMS',
+    upcomingTitle: 'Upcoming',
+    upcomingCaption: 'Next scheduled bookings',
+    bookingFallback: 'Booking',
+    upcomingFallback: 'Upcoming booking',
+    customerBookingRequest: 'Customer booking request',
+    noNotes: 'No booking notes added yet.',
+    notHandedOff: 'Not handed off',
+    handoffActive: 'Handoff active',
+    confirmed: 'Confirmed',
+    scheduled: 'Scheduled',
+    handoffLabel: 'Handoff',
+    createdLabel: 'Created',
+    confirmedLabel: 'Confirmed',
+    noteLabel: 'Booking note',
+    callCustomer: 'Call customer',
+    emailCustomer: 'Email customer',
+    finnish: 'Finnish',
+    english: 'English',
+    newBookingsZeroTitle: 'New bookings: 0',
+  },
+} as const;
 
 function buildTelHref(phone?: string | null) {
   if (!phone) {
@@ -17,10 +66,10 @@ function buildTelHref(phone?: string | null) {
 }
 
 export const tabPathMap: Record<CmsPwaTab, string> = {
-  rescue: '/pwa/cms',
-  booking: '/pwa/cms/booking',
-  order: '/pwa/cms/order',
-  tools: '/pwa/cms/tools',
+  rescue: pwaPath('/'),
+  booking: pwaPath('/booking'),
+  order: pwaPath('/order'),
+  tools: pwaPath('/tools'),
 };
 
 export const toolSections: Array<{
@@ -129,7 +178,23 @@ export const rescueSections: TabSection[] = [
 ];
 
 export function resolveCmsPwaRoute(pathname: string): CmsPwaRoute {
-  const normalized = pathname.replace(/\/+$/, '') || '/pwa';
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+
+  if (isStandalonePwaDeploy) {
+    if (normalized === '/cms' || normalized === '/cms/rescue') {
+      return { kind: 'cms', tab: 'rescue' };
+    }
+    if (normalized === '/cms/booking') {
+      return { kind: 'cms', tab: 'booking' };
+    }
+    if (normalized === '/cms/order') {
+      return { kind: 'cms', tab: 'order' };
+    }
+    if (normalized === '/cms/tools') {
+      return { kind: 'cms', tab: 'tools' };
+    }
+    return { kind: 'not-found' };
+  }
 
   if (normalized === '/pwa/cms' || normalized === '/pwa/cms/rescue') {
     return { kind: 'cms', tab: 'rescue' };
@@ -158,8 +223,19 @@ export function formatShortDateTime(value: string | null | undefined) {
   }).format(date);
 }
 
+function normalizeBookingTimeValue(value: string) {
+  const trimmed = value.trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}:00`;
+  }
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed;
+}
+
 function formatBookingSlot(date: string, time: string) {
-  const parsed = new Date(`${date}T${time}:00`);
+  const parsed = new Date(`${date}T${normalizeBookingTimeValue(time)}`);
   if (Number.isNaN(parsed.getTime())) return `${date} ${time}`;
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
@@ -170,7 +246,7 @@ function formatBookingSlot(date: string, time: string) {
 }
 
 function formatCalendarDateTimeLabel(date: string, time: string) {
-  const parsed = new Date(`${date}T${time}:00`);
+  const parsed = new Date(`${date}T${normalizeBookingTimeValue(time)}`);
   if (Number.isNaN(parsed.getTime())) return `${date} ${time}`;
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
@@ -238,45 +314,77 @@ export function isMissingColumnError(error: any, column: string) {
   return text.includes('column') && text.includes(column.toLowerCase());
 }
 
+export function isBookingAcknowledged(booking: BookingRow) {
+  if (!booking.created_at || !booking.updated_at) {
+    return false;
+  }
+
+  const createdAt = new Date(booking.created_at).getTime();
+  const updatedAt = new Date(booking.updated_at).getTime();
+
+  if (!Number.isFinite(createdAt) || !Number.isFinite(updatedAt)) {
+    return false;
+  }
+
+  return updatedAt - createdAt > 1000;
+}
+
+export function isBookingAttentionItem(booking: BookingRow) {
+  const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
+  if (normalizedStatus === 'cancelled' || normalizedStatus === BOOKING_STATUS_HANDOFF || isBookingAcknowledged(booking)) {
+    return false;
+  }
+  return true;
+}
+
+function normalizeBookingLanguage(value: string | null | undefined): 'fi' | 'en' | null {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'en' || normalized === 'english') return 'en';
+  if (normalized === 'fi' || normalized === 'finnish' || normalized === 'suomi') return 'fi';
+  return null;
+}
+
 export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en'): TabSection[] {
+  const copy = BOOKING_CARD_COPY[opsLanguage];
   const activeRows = rows.filter((booking) => (booking.status ?? 'confirmed').toLowerCase() !== 'cancelled');
   const now = Date.now();
 
   const newItems = activeRows
-    .filter((booking) => {
-      const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
-      if (normalizedStatus === BOOKING_STATUS_HANDOFF || normalizedStatus === BOOKING_STATUS_HANDOFF_DONE) {
-        return false;
-      }
-      if (!booking.created_at) return false;
-      const createdAt = new Date(booking.created_at).getTime();
-      return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
-    })
+    .filter((booking) => isBookingAttentionItem(booking))
     .slice(0, 8)
     .map<BriefingItem>((booking) => {
       const bookingMoment = new Date(`${booking.booking_date}T${booking.booking_time}:00`).getTime();
       const soon = Number.isFinite(bookingMoment) && bookingMoment - now <= 24 * 60 * 60 * 1000;
+      const detectedLanguage = detectStoredServiceLanguage(booking.service_name);
+      const explicitBookingLanguage = normalizeBookingLanguage(booking.booking_language);
+      const bookingLanguage = explicitBookingLanguage
+        ?? detectedLanguage
+        ?? 'fi';
       const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
       return {
         id: booking.id,
-        title: localizedServiceName || booking.service_name || 'Booking',
-        subtitle: 'Customer booking request',
-        status: 'Not handed off',
+        title: localizedServiceName || booking.service_name || copy.bookingFallback,
+        subtitle: copy.customerBookingRequest,
+        status: copy.notHandedOff,
         time: formatBookingSlot(booking.booking_date, booking.booking_time),
         tone: soon ? 'warning' : 'normal',
         licensePlate: booking.license_plate || undefined,
         phone: booking.customer_phone || undefined,
         owner: booking.customer_name || undefined,
-        createdAtLabel: booking.created_at ? `Created ${formatShortDateTime(booking.created_at)}` : undefined,
+        email: booking.customer_email || undefined,
+        bookingLanguageFlag: bookingLanguage === 'en' ? '🇬🇧' : '🇫🇮',
+        bookingLanguageLabel: bookingLanguage === 'en' ? copy.english : copy.finnish,
+        createdAtLabel: booking.created_at ? `${copy.createdLabel} ${formatShortDateTime(booking.created_at)}` : undefined,
+        noteLabel: copy.noteLabel,
         details: [
-          booking.notes?.trim() ? booking.notes.trim() : 'No booking notes added yet.',
+          booking.notes?.trim() ? booking.notes.trim() : copy.noNotes,
         ],
         actions: [
           ...(buildTelHref(booking.customer_phone)
-            ? [{ label: 'Call customer', kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
+            ? [{ label: copy.callCustomer, kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
             : []),
           {
-            label: 'Email customer',
+            label: copy.emailCustomer,
             href: booking.customer_email ? `mailto:${booking.customer_email}` : '#',
             disabled: !booking.customer_email,
           },
@@ -288,32 +396,42 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     .slice(0, 10)
     .map<BriefingItem>((booking) => {
       const normalizedStatus = (booking.status ?? 'confirmed').toLowerCase();
-      const handoffFinished = normalizedStatus === BOOKING_STATUS_HANDOFF_DONE;
       const handoffActive = normalizedStatus === BOOKING_STATUS_HANDOFF;
+      const acknowledged = isBookingAcknowledged(booking);
+      const detectedLanguage = detectStoredServiceLanguage(booking.service_name);
+      const explicitBookingLanguage = normalizeBookingLanguage(booking.booking_language);
+      const bookingLanguage = explicitBookingLanguage
+        ?? detectedLanguage
+        ?? 'fi';
       const localizedServiceName = localizeStoredServiceName(booking.service_name, opsLanguage);
-      const handoffTimestamp = handoffActive || handoffFinished ? booking.updated_at ?? null : null;
+      const handoffTimestamp = handoffActive ? booking.updated_at ?? null : null;
 
       return {
         id: `${booking.id}-upcoming`,
-        title: localizedServiceName || booking.service_name || 'Upcoming booking',
+        title: localizedServiceName || booking.service_name || copy.upcomingFallback,
         subtitle: booking.customer_name || booking.customer_email || 'Booking scheduled',
-        status: handoffActive ? 'Handoff active' : handoffFinished ? 'Handoff finished' : 'Scheduled',
-        secondaryStatus: handoffTimestamp ? `Handoff ${formatShortDateTime(handoffTimestamp)}` : undefined,
+        status: handoffActive ? copy.handoffActive : acknowledged ? copy.confirmed : copy.scheduled,
+        secondaryStatus: handoffTimestamp ? `${copy.handoffLabel} ${formatShortDateTime(handoffTimestamp)}` : undefined,
         time: formatCalendarDateTimeLabel(booking.booking_date, booking.booking_time),
-        tone: handoffFinished ? 'done' : handoffActive ? 'warning' : 'done',
+        tone: handoffActive ? 'warning' : acknowledged ? 'done' : 'done',
         licensePlate: booking.license_plate || undefined,
         phone: booking.customer_phone || undefined,
         owner: booking.customer_name || undefined,
-        createdAtLabel: booking.created_at ? `Created ${formatShortDateTime(booking.created_at)}` : undefined,
+        email: booking.customer_email || undefined,
+        bookingLanguageFlag: bookingLanguage === 'en' ? '🇬🇧' : '🇫🇮',
+        bookingLanguageLabel: bookingLanguage === 'en' ? copy.english : copy.finnish,
+        createdAtLabel: booking.created_at ? `${copy.createdLabel} ${formatShortDateTime(booking.created_at)}` : undefined,
+        confirmedAtLabel: acknowledged && booking.updated_at ? `${copy.confirmedLabel} ${formatShortDateTime(booking.updated_at)}` : undefined,
+        noteLabel: copy.noteLabel,
         details: [
-          booking.notes?.trim() ? booking.notes.trim() : 'No booking notes added yet.',
+          booking.notes?.trim() ? booking.notes.trim() : copy.noNotes,
         ],
         actions: [
           ...(buildTelHref(booking.customer_phone)
-            ? [{ label: 'Call customer', kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
+            ? [{ label: copy.callCustomer, kind: 'primary' as const, href: buildTelHref(booking.customer_phone) }]
             : []),
           {
-            label: 'Email customer',
+            label: copy.emailCustomer,
             href: booking.customer_email ? `mailto:${booking.customer_email}` : '#',
             disabled: !booking.customer_email,
           },
@@ -322,8 +440,13 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
     });
 
   return [
-    { title: 'New bookings', caption: 'Created in the last 24 hours', items: newItems },
-    { title: 'Upcoming', caption: 'Next scheduled bookings', items: upcomingItems },
+    {
+      title: newItems.length === 0 ? copy.newBookingsZeroTitle : copy.newBookingsTitle,
+      caption: newItems.length === 0 ? '' : copy.newBookingsCaption,
+      items: newItems,
+      hideEmptyState: true,
+    },
+    { title: copy.upcomingTitle, caption: copy.upcomingCaption, items: upcomingItems },
   ];
 }
 

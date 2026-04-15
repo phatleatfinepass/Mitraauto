@@ -33,6 +33,14 @@ export interface ScheduleTimeSlot {
 const WEEKDAY_HOURS = { start: 9, end: 18 };
 const SATURDAY_HOURS = { start: 10, end: 17 };
 
+function normalizeBookingTimeValue(time: string): string {
+  const trimmed = time.trim();
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed.slice(0, 5);
+  }
+  return trimmed;
+}
+
 function timeToMinutes(time: string): number {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
@@ -64,7 +72,7 @@ export function buildScheduleTimeSlots(
   return generateScheduleSlots(date).map((time) => {
     const slotBookings = bookings.filter((booking) => {
       const status = (booking.status || 'confirmed').toLowerCase();
-      return booking.booking_time === time && status !== 'cancelled';
+      return normalizeBookingTimeValue(booking.booking_time) === time && status !== 'cancelled';
     });
 
     const blockedSlot = blockedSlots.find((slot) => {

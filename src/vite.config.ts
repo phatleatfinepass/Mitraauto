@@ -1,7 +1,20 @@
+
   import { defineConfig } from 'vite';
   import react from '@vitejs/plugin-react';
   import tailwindcss from '@tailwindcss/vite';
   import path from 'path';
+  import { execSync } from 'child_process';
+
+function getGitCommit() {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+const appCommit = getGitCommit();
+const appBuildIso = new Date().toISOString();
 
 function figmaAssetResolver() {
   return {
@@ -15,8 +28,8 @@ function figmaAssetResolver() {
   }
 }
 
-  export default defineConfig({
-    publicDir: 'public',
+export default defineConfig({
+    publicDir: 'src/public',
     plugins: [react(), tailwindcss(), figmaAssetResolver()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -67,6 +80,10 @@ function figmaAssetResolver() {
     build: {
       target: 'esnext',
       outDir: 'build',
+    },
+    define: {
+      __APP_COMMIT__: JSON.stringify(appCommit),
+      __APP_BUILD_ISO__: JSON.stringify(appBuildIso),
     },
     server: {
       port: 3000,

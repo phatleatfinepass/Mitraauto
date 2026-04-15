@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 type Language = 'fi' | 'en';
 
@@ -14,6 +14,15 @@ interface LanguageContextType {
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
 }
+
+const fallbackLanguage: Language = 'en';
+const fallbackLanguageContext: LanguageContextType = {
+  language: fallbackLanguage,
+  setLanguage: () => {
+    // Ignore language changes when previewed without the provider.
+  },
+  t: (key: string) => translations[key]?.[fallbackLanguage] || key,
+};
 
 const translations: Translations = {
   // Navigation
@@ -438,6 +447,8 @@ const translations: Translations = {
   'legal.timeline.v4.description': { fi: 'ALV-päivitys 25.5%', en: 'VAT update 25.5%' },
   'legal.timeline.v5.date': { fi: 'Marraskuu 2025', en: 'Nov 2025' },
   'legal.timeline.v5.description': { fi: 'GDPR 13 artikla', en: 'GDPR Article 13' },
+  'legal.timeline.v6.date': { fi: 'Huhtikuu 2026', en: 'Apr 2026' },
+  'legal.timeline.v6.description': { fi: 'Varaus- ja sopimusehtojen päivitys', en: 'Booking and service terms refresh' },
   
   // Privacy Policy
   'legal.privacy.title': { fi: 'Tietosuojaseloste', en: 'Privacy Policy' },
@@ -585,9 +596,10 @@ const translations: Translations = {
   'legal.terms.title': { fi: 'Käyttöehdot ja sopimusehdot', en: 'Terms & Conditions of Service' },
   'legal.terms.subtitle': { fi: 'Yleiset sopimusehdot, joilla Mitra Auto Oy tarjoaa autohuolto-, rengaspalvelu-, katsastus- ja rengashotellipalveluja Suomessa.', en: 'General terms and conditions under which Mitra Auto Oy provides automotive service, tire services, inspection, and tire hotel services in Finland.' },
   'legal.terms.version': { fi: 'Versio', en: 'Version' },
-  'legal.terms.versionNumber': { fi: '1.0', en: '1.0' },
+  'legal.terms.versionNumber': { fi: '6.0', en: '6.0' },
   'legal.terms.effective': { fi: 'Voimaantulopäivä', en: 'Effective Date' },
-  'legal.terms.effectiveDate': { fi: '5. marraskuuta 2025', en: 'November 5, 2025' },
+  'legal.terms.effectiveDate': { fi: '15. huhtikuuta 2026', en: 'April 15, 2026' },
+  'legal.terms.lastUpdated': { fi: 'Viimeksi päivitetty', en: 'Last Updated' },
   
   'legal.terms.acceptance.title': { fi: '1. Sopimusehtojen hyväksyminen', en: '1. Acceptance of Terms' },
   'legal.terms.acceptance.intro': { fi: 'Nämä yleiset sopimusehdot ("Ehdot") koskevat kaikkia Mitra Auto Oy:n (Y-tunnus 3408833-8) tarjoamia palveluja ja tuotteita. Käyttämällä palveluitamme, tekemällä varauksen tai ostamalla tuotteita sitoudut noudattamaan näitä ehtoja.', en: 'These General Terms and Conditions ("Terms") apply to all services and products provided by Mitra Auto Oy (Business ID 3408833-8). By using our services, making a booking, or purchasing products, you agree to comply with these Terms.' },
@@ -700,8 +712,16 @@ const translations: Translations = {
   'legal.terms.booking.modificationsTitle': { fi: 'Muutokset', en: 'Modifications' },
   'legal.terms.booking.modifications': { fi: 'Varauksen tietoihin voidaan tehdä muutoksia 12 tuntia ennen sovittua aikaa, saatavuuden mukaan.', en: 'Changes to booking details can be made up to 12 hours before the scheduled time, subject to availability.' },
   'legal.terms.booking.consumerRights': { fi: 'Kuluttajansuojalain mukaiset kuluttajan oikeudet ohittavat peruutusmaksut sovellettaessa. Arvioimme aina peruutuspyynnöt tapauskohtaisesti.', en: 'Consumer rights under the Finnish Consumer Protection Act override cancellation fees where applicable. We will always assess cancellation requests on a case-by-case basis.' },
+  'legal.terms.v6.booking.title': { fi: '6. Varaukset, peruutukset ja muutokset', en: '6. Booking, Cancellation, and Modifications' },
+  'legal.terms.v6.booking.intro': { fi: 'Varauksen tehdessäsi sitoudut antamaan mahdollisimman oikeat tiedot ajoneuvostasi ja palvelutarpeestasi. Kannustamme asiakkaita pitämään varauksensa ja saapumaan sovittuun aikaan. Jos et pääse paikalle, ilmoitathan siitä meille mahdollisimman pian.', en: 'When making a booking, you agree to provide accurate information about your vehicle and service needs. We encourage customers to keep their booking and arrive as planned. If you cannot make it, please let us know as early as possible.' },
+  'legal.terms.v6.booking.cancellationTitle': { fi: 'Peruutukset ja ilmoitukset', en: 'Cancellations and notice' },
+  'legal.terms.v6.booking.item1': { fi: 'Voit peruuttaa tai siirtää varauksen maksutta, kun ilmoitat siitä hyvissä ajoin ennen sovittua aikaa.', en: 'You can cancel or move your booking free of charge when you let us know in good time before the appointment.' },
+  'legal.terms.v6.booking.item2': { fi: 'Jos aikataulusi muuttuu viime hetkellä, pyydämme vain ilmoittamaan siitä meille mahdollisimman pian, jotta voimme tarjota ajan toiselle asiakkaalle.', en: 'If your plans change at the last minute, we simply ask that you tell us as soon as possible so we can offer the slot to another customer.' },
+  'legal.terms.v6.booking.item3': { fi: 'Jos varauksia jätetään toistuvasti käyttämättä ilman ilmoitusta tai järjestelmää käytetään väärin, Mitra Auto voi rajoittaa tai estää tulevien varausten tekemisen.', en: 'If bookings are repeatedly missed without notice or the system is abused, Mitra Auto may restrict or block future bookings.' },
+  'legal.terms.v6.booking.modifications': { fi: 'Varauksen tietoja voidaan muuttaa ennen sovittua aikaa saatavuuden mukaan. Pyrimme auttamaan joustavasti aina kun se on käytännössä mahdollista.', en: 'Booking details may be adjusted before the appointment subject to availability. We aim to handle changes flexibly whenever reasonably possible.' },
+  'legal.terms.v6.booking.consumerRights': { fi: 'Emme käytä automaattisia sakkomaksuja tavallisissa peruutustilanteissa. Kuluttajansuojalain mukaiset oikeudet ovat aina voimassa, ja arvioimme poikkeustilanteet tapauskohtaisesti.', en: 'We do not apply automatic penalty fees for ordinary cancellations. Your rights under the Finnish Consumer Protection Act always apply, and exceptional situations are reviewed case by case.' },
   
-  'legal.terms.withdrawal.title': { fi: '7. Kuluttajan peruuttamisoikeus (etä- ja kotimyyntisopimukset)', en: '7. Consumer Right of Withdrawal (Distance and Off-Premises Contracts)' },
+  'legal.terms.withdrawal.title': { fi: '9. Kuluttajan peruuttamisoikeus (etä- ja kotimyyntisopimukset)', en: '9. Consumer Right of Withdrawal (Distance and Off-Premises Contracts)' },
   'legal.terms.withdrawal.intro': { fi: 'Kuluttajilla on oikeus peruuttaa etäsopimukset (verkkovaraukset) 14 päivän kuluessa kuluttajansuojalain 6 luvun mukaisesti.', en: 'Consumers have the right to withdraw from distance contracts (online bookings) within 14 days in accordance with Chapter 6 of the Consumer Protection Act.' },
   'legal.terms.withdrawal.item1': { fi: 'Peruuttamisaika alkaa sopimuksen tekopäivänä', en: 'The withdrawal period begins on the day the contract is concluded' },
   'legal.terms.withdrawal.item2': { fi: 'Peruuttamisoikeus ei koske palvelua, jonka suoritus on alkanut kuluttajan nimenomaisella suostumuksella', en: 'Withdrawal right does not apply if service performance has begun with the consumer\'s express consent' },
@@ -709,7 +729,7 @@ const translations: Translations = {
   'legal.terms.withdrawal.item4': { fi: 'Peruuttamisoikeuden käyttämiseksi ota yhteyttä: contact@mitra-auto.fi', en: 'To exercise withdrawal, contact us at: contact@mitra-auto.fi' },
   'legal.terms.withdrawal.request': { fi: 'Peruuttamispyynnöissä ilmoita varauksesi viitenumero ja yhteystietosi.', en: 'For withdrawal requests, please provide your booking reference number and contact information.' },
   
-  'legal.terms.consumer.title': { fi: '8. Kuluttajansuojaoikeudet', en: '8. Consumer Protection Rights' },
+  'legal.terms.consumer.title': { fi: '10. Kuluttajansuojaoikeudet', en: '10. Consumer Protection Rights' },
   'legal.terms.consumer.intro': { fi: 'Kuluttajana Suomessa sinulla on oikeus kattavaan suojaan Suomen ja EU:n lain mukaisesti:', en: 'As a consumer in Finland, you are entitled to comprehensive protection under Finnish and EU law:' },
   'legal.terms.consumer.defectFree': { fi: 'Oikeus virheettömiin palveluihin ja tuotteisiin', en: 'Right to defect-free services and products' },
   'legal.terms.consumer.defectFreeDesc': { fi: 'Kaikkien palveluiden ja tuotteiden on oltava tyydyttävää laatua ja sopiva käyttötarkoitukseensa', en: 'All services and products must be of satisfactory quality and fit for purpose' },
@@ -742,7 +762,7 @@ const translations: Translations = {
   'legal.terms.delivery.item5': { fi: 'Tuotteiden vastaanotto: Asiakas tarkastaa tuotteet vastaanotettaessa ja ilmoittaa mahdollisista vaurioista tai virheistä välittömästi.', en: 'Product receipt: Customer inspects products upon receipt and reports any damages or errors immediately.' },
   'legal.terms.delivery.item6': { fi: 'Palautusoikeus: Kuluttaja-asiakkailla on 14 päivän palautusoikeus kuluttajansuojalain (38/1978) mukaisesti käyttämättömiin tuotteisiin alkuperäispakkauksessa.', en: 'Right of return: Consumer customers have 14-day right of return according to Consumer Protection Act (38/1978) for unused products in original packaging.' },
   
-  'legal.terms.tireHotel.title': { fi: '8. Rengashotellipalvelu', en: '8. Tire Hotel Service' },
+  'legal.terms.tireHotel.title': { fi: '7. Rengashotellipalvelu', en: '7. Tire Hotel Service' },
   'legal.terms.tireHotel.intro': { fi: 'Rengashotellisäilytystä koskevat erityisehdot:', en: 'Special terms for tire hotel storage:' },
   'legal.terms.tireHotel.item1': { fi: 'Säilytysolosuhteet: Renkaat ja vanteet säilytetään kuivassa, pimeässä ja viileässä tilassa renkaiden valmistajan suositusten mukaisesti. Lämpötila +5 - +20°C.', en: 'Storage conditions: Tires and rims are stored in dry, dark, and cool space according to tire manufacturer recommendations. Temperature +5 - +20°C.' },
   'legal.terms.tireHotel.item2': { fi: 'Säilytysaika: Tyypillinen säilytyskausi on lokakuusta huhtikuuhun (talvirenkaat) tai toukokuusta syyskuuhun (kesärenkaat). Vuosisopimukset mahdollisia.', en: 'Storage period: Typical storage season is October to April (winter tires) or May to September (summer tires). Annual agreements possible.' },
@@ -768,7 +788,7 @@ const translations: Translations = {
   'legal.terms.inspection.item2': { fi: 'Katsastuksen hylkääminen: Mikäli ajoneuvo hylätään katsastuksessa, Mitra Auto tarjoaa korjauspalvelut havaittujen puutteiden korjaamiseksi. Uusintakatsastus tehdään erillisellä varauksella.', en: 'Inspection rejection: If vehicle fails inspection, Mitra Auto offers repair services to fix identified deficiencies. Re-inspection is done with separate booking.' },
   'legal.terms.inspection.item3': { fi: 'Katsastusmaksut: Katsastusmaksut määräytyvät Trafin vahvistamien hintojen mukaan. Korjauskustannukset arvio tutetaan erikseen ennen töiden aloittamista.', en: 'Inspection fees: Inspection fees are determined according to rates confirmed by Traficom. Repair costs are estimated separately before work begins.' },
   
-  'legal.terms.rescue.title': { fi: '13. Hätäpalvelu (Rescue 24/7) ehdot', en: '13. Emergency Service (Rescue 24/7) Terms' },
+  'legal.terms.rescue.title': { fi: '8. Hätäpalvelu (Rescue 24/7) ehdot', en: '8. Emergency Service (Rescue 24/7) Terms' },
   'legal.terms.rescue.intro': { fi: 'Rescue 24/7 hätätien päällä apu- ja hinauspalvelumme toimii seuraavilla ehdoilla:', en: 'Our Rescue 24/7 emergency roadside assistance and towing service operates under the following conditions:' },
   'legal.terms.rescue.availability': { fi: 'Saatavuus', en: 'Availability' },
   'legal.terms.rescue.availabilityDesc': { fi: '24 tuntia vuorokaudessa, 7 päivää viikossa, 365 päivää vuodessa', en: '24 hours a day, 7 days a week, 365 days a year' },
@@ -816,7 +836,7 @@ const translations: Translations = {
   'legal.terms.warranty.claim': { fi: 'Ota meihin yhteyttä heti vian havaittuasi. Arvioimme vaatimuksen ja tarjoamme korjauksen, vaihdon tai muun asianmukaisen hyvityksen ilman lisäkustannuksia, jos vika kuuluu takuuaikaan.', en: 'Contact us immediately upon discovering any defect. We will assess the claim and provide repair, replacement, or other appropriate remedy at no additional cost if the defect falls within the warranty period.' },
   'legal.terms.warranty.exclusions': { fi: 'Takuu ei kata normaalia kulumista, väärinkäyttöä, onnettomuuksia tai kolmansien osapuolten aiheuttamia vahinkoja.', en: 'Warranty does not cover normal wear and tear, misuse, accidents, or damage caused by third parties.' },
   
-  'legal.terms.liability.title': { fi: '10. Vastuunrajoitus', en: '10. Limitation of Liability' },
+  'legal.terms.liability.title': { fi: '12. Vastuunrajoitus', en: '12. Limitation of Liability' },
   'legal.terms.liability.intro': { fi: 'Mitra Auto Oy on Suomen lain mukaan vastuussa seuraavista:', en: 'Mitra Auto Oy is liable under Finnish law for:' },
   'legal.terms.liability.item1': { fi: 'Virheet meidän toimittamissa palveluissa tai tuotteissa', en: 'Defects in services or products provided by us' },
   'legal.terms.liability.item2': { fi: 'Ajoneuvollesi huollon aikana laiminlyönnistämme aiheutuneet vahingot', en: 'Damage to your vehicle caused by our negligence during service' },
@@ -896,8 +916,8 @@ const translations: Translations = {
   'legal.terms.amendments.title': { fi: '17. Ehtojen muutokset', en: '17. Amendments to Terms' },
   'legal.terms.amendments.intro': { fi: 'Pidätämme oikeuden päivittää tai muuttaa näitä käyttöehtoja milloin tahansa. Olennaisista muutoksista ilmoitetaan asiakkaille sähköpostitse tai näkyvällä ilmoituksella verkkosivustollamme vähintään 30 päivää ennen voimaantulopäivää.', en: 'We reserve the right to update or modify these Terms and Conditions at any time. Material changes will be communicated to customers via email or prominent notice on our website at least 30 days prior to the effective date.' },
   'legal.terms.amendments.continued': { fi: 'Palveluidemme jatkuva käyttö muutosten voimaantulon jälkeen merkitsee muutettujen ehtojen hyväksymistä.', en: 'Continued use of our services after the effective date of changes constitutes acceptance of the modified terms.' },
-  'legal.terms.amendments.currentVersion': { fi: 'Nykyinen versio: 5.0', en: 'Current Version: 5.0' },
-  'legal.terms.amendments.effectiveDate': { fi: 'Voimaantulopäivä: 5. marraskuuta 2025', en: 'Effective Date: November 5, 2025' },
+  'legal.terms.amendments.currentVersion': { fi: 'Nykyinen versio: 6.0', en: 'Current Version: 6.0' },
+  'legal.terms.amendments.effectiveDate': { fi: 'Voimaantulopäivä: 15. huhtikuuta 2026', en: 'Effective Date: April 15, 2026' },
   'legal.terms.amendments.previousVersions': { fi: 'Edelliset versiot ovat saatavilla pyynnöstä viitetarkoituksessa.', en: 'Previous versions are available upon request for reference purposes.' },
   
   'legal.terms.amendment.title': { fi: '17. Sopimusehtojen muuttaminen', en: '17. Amendment of Terms and Conditions' },
@@ -937,10 +957,53 @@ const translations: Translations = {
   'notFound.goWebsite': { fi: 'Siirry sivustolle', en: 'Go to website' },
 };
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType>(fallbackLanguageContext);
+
+function readStoredLanguage(): Language | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const stored = window.localStorage.getItem('mitra-language');
+    return stored === 'fi' || stored === 'en' ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistLanguage(language: Language) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem('mitra-language', language);
+  } catch {
+    // Ignore storage failures in restricted webview/PWA contexts.
+  }
+}
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('fi');
+  const [language, setLanguage] = useState<Language>(() => {
+    const stored = readStoredLanguage();
+    if (stored) return stored;
+
+    if (typeof window === 'undefined') {
+      return 'fi';
+    }
+    const browserLanguage = window.navigator.language.toLowerCase();
+    return browserLanguage.startsWith('fi') ? 'fi' : 'en';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    persistLanguage(language);
+    document.documentElement.lang = language;
+  }, [language]);
 
   const t = (key: string): string => {
     return translations[key]?.[language] || key;
@@ -955,8 +1018,5 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
 export function useLanguage() {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
   return context;
 }

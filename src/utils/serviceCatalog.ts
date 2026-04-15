@@ -20,6 +20,46 @@ interface ServiceCatalogEntry {
   price: number;
 }
 
+const SERVICE_ALIASES: Record<string, string> = {
+  'basic service': 'annual-maintenance',
+  'large service': 'annual-maintenance',
+  'tire storage plan': 'tire-hotel-storage',
+  'tire hotel': 'tire-hotel-storage',
+  'scheduled maintenance': 'annual-maintenance',
+  'määräaikaishuolto': 'annual-maintenance',
+};
+
+export function detectStoredServiceLanguage(
+  storedServiceName: string | null | undefined,
+): SupportedBookingLanguage | null {
+  if (!storedServiceName) return null;
+
+  const parts = storedServiceName
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return null;
+
+  let fiMatches = 0;
+  let enMatches = 0;
+
+  for (const part of parts) {
+    const normalizedPart = normalizeServiceName(part);
+    const service = SERVICE_CATALOG.find((entry) =>
+      normalizeServiceName(entry.name.fi) === normalizedPart ||
+      normalizeServiceName(entry.name.en) === normalizedPart,
+    );
+
+    if (!service) continue;
+    if (normalizeServiceName(service.name.fi) === normalizedPart) fiMatches += 1;
+    if (normalizeServiceName(service.name.en) === normalizedPart) enMatches += 1;
+  }
+
+  if (fiMatches === 0 && enMatches === 0) return null;
+  return enMatches > fiMatches ? 'en' : 'fi';
+}
+
 const CATEGORY_NAMES: Record<string, { fi: string; en: string }> = {
   'car-care': { fi: 'Autonhoitopalvelut', en: 'Car Care' },
   'tire-services': { fi: 'Rengaspalvelut', en: 'Tire Services' },
@@ -49,7 +89,7 @@ const SERVICE_CATALOG: ServiceCatalogEntry[] = [
   { id: 'tire-work-up-to-17', categoryId: 'tire-services', name: { fi: 'Rengastyö – Henkilöauto max. 17"', en: 'Tire work – Passenger car up to 17"' }, price: 80 },
   { id: 'tire-work-18-19', categoryId: 'tire-services', name: { fi: 'Rengastyö – Henkilöauto 18"–19"', en: 'Tire work – Passenger car 18"–19"' }, price: 90 },
   { id: 'tire-work-20-21', categoryId: 'tire-services', name: { fi: 'Rengastyö – Henkilöauto 20"–21"', en: 'Tire work – Passenger car 20"–21"' }, price: 100 },
-  { id: 'tire-hotel-storage', categoryId: 'tire-services', name: { fi: 'Rengashotelli', en: 'Tire hotel storage' }, price: 90 },
+  { id: 'tire-hotel-storage', categoryId: 'tire-services', name: { fi: 'Rengashotelli', en: 'Tire hotel storage' }, price: 60 },
   { id: 'error-code-reading', categoryId: 'diagnostics-maintenance', name: { fi: 'Vikakoodien luku', en: 'Error code reading' }, price: 20 },
   { id: 'troubleshooting', categoryId: 'diagnostics-maintenance', name: { fi: 'Vianetsintä', en: 'Troubleshooting' }, price: 80 },
   { id: 'engine-oil-change', categoryId: 'diagnostics-maintenance', name: { fi: 'Moottoriöljynvaihto', en: 'Engine oil change' }, price: 80 },
@@ -101,6 +141,10 @@ function normalizeServiceName(value: string): string {
 
 function findServiceByAnyLocalizedName(name: string): ServiceCatalogEntry | null {
   const normalizedName = normalizeServiceName(name);
+  const aliasId = SERVICE_ALIASES[normalizedName];
+  if (aliasId) {
+    return SERVICE_CATALOG.find((service) => service.id === aliasId) || null;
+  }
   return (
     SERVICE_CATALOG.find((service) =>
       normalizeServiceName(service.name.fi) === normalizedName ||

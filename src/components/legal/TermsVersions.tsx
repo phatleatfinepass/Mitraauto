@@ -582,6 +582,19 @@ export function TermsV5({ t }: { t: (key: string) => string }) {
 
         {/* 9. Warranty and Defect Liability */}
         <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.consumer.title')}</h2>
+          <p className="mb-3">{t('legal.terms.consumer.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li><strong>{t('legal.terms.consumer.defectFree')}:</strong> {t('legal.terms.consumer.defectFreeDesc')}</li>
+            <li><strong>{t('legal.terms.consumer.warranty')}:</strong> {t('legal.terms.consumer.warrantyDesc')}</li>
+            <li><strong>{t('legal.terms.consumer.remedy')}:</strong> {t('legal.terms.consumer.remedyDesc')}</li>
+            <li><strong>{t('legal.terms.consumer.complain')}:</strong> {t('legal.terms.consumer.complainDesc')}</li>
+            <li><strong>{t('legal.terms.consumer.clearInfo')}:</strong> {t('legal.terms.consumer.clearInfoDesc')}</li>
+          </ul>
+          <p className="mt-4 font-medium text-foreground">{t('legal.terms.consumer.advisory')}: <a href="https://www.kkv.fi/en/" className="text-[#FF6B35] hover:underline" target="_blank" rel="noopener noreferrer">Finnish Competition and Consumer Authority (kkv.fi/en)</a></p>
+        </div>
+
+        <div>
           <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.warranty.title')}</h2>
           <p className="mb-3"><strong className="text-foreground">{t('legal.terms.warranty.coverageTitle')}:</strong></p>
           <ul className="space-y-2 ml-6 list-disc">
@@ -691,6 +704,227 @@ export function TermsV5({ t }: { t: (key: string) => string }) {
         </div>
 
         {/* 17. Amendments to Terms */}
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.amendments.title')}</h2>
+          <p className="mb-3">{t('legal.terms.amendments.intro')}</p>
+          <p className="mt-3">{t('legal.terms.amendments.continued')}</p>
+          <p className="mt-3 font-semibold text-foreground">{t('legal.terms.amendments.currentVersion')}</p>
+          <p className="font-semibold text-foreground">{t('legal.terms.amendments.effectiveDate')}</p>
+          <p className="mt-3 italic text-sm">{t('legal.terms.amendments.previousVersions')}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Version 6.0 - Booking policy refinement (Apr 2026)
+export function TermsV6({ t }: { t: (key: string) => string }) {
+  return (
+    <Card className="border rounded-2xl p-8 lg:p-12">
+      <div className="space-y-8 text-muted-foreground">
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.acceptance.title')}</h2>
+          <p className="mb-3">{t('legal.terms.acceptance.intro')}</p>
+          <p className="mb-3"><strong className="text-foreground">{t('legal.terms.acceptance.provider')}:</strong></p>
+          <ul className="space-y-1 ml-6 list-none">
+            <li>Mitra Auto Oy</li>
+            <li>{t('legal.terms.acceptance.businessId')}: 3408833-8</li>
+            <li>{t('legal.terms.acceptance.address')}: Hankasuontie 5, 00390 Helsinki, Finland</li>
+            <li>{t('legal.terms.acceptance.email')}: <a href="mailto:contact@mitra-auto.fi" className="text-[#FF6B35] hover:underline">contact@mitra-auto.fi</a></li>
+            <li>{t('legal.terms.acceptance.phone')}: <a href="tel:+358407777163" className="text-[#FF6B35] hover:underline">+358 40 777 7163</a></li>
+            <li>{t('legal.terms.acceptance.emergency')}</li>
+          </ul>
+          <p className="mt-3 italic text-sm font-medium text-foreground">{t('legal.terms.acceptance.language')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.definitions.title')}</h2>
+          <p className="mb-3">{t('legal.terms.definitions.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li><strong>{t('legal.terms.definitions.consumer')}:</strong> {t('legal.terms.definitions.consumerDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.businessCustomer')}:</strong> {t('legal.terms.definitions.businessCustomerDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.customer')}:</strong> {t('legal.terms.definitions.customerDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.vehicle')}:</strong> {t('legal.terms.definitions.vehicleDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.service')}:</strong> {t('legal.terms.definitions.serviceDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.product')}:</strong> {t('legal.terms.definitions.productDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.booking')}:</strong> {t('legal.terms.definitions.bookingDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.serviceHistory')}:</strong> {t('legal.terms.definitions.serviceHistoryDesc')}</li>
+            <li><strong>{t('legal.terms.definitions.tireHotel')}:</strong> {t('legal.terms.definitions.tireHotelDesc')}</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.services.title')}</h2>
+          <p className="mb-3">{t('legal.terms.services.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.services.item1')}</li>
+            <li>{t('legal.terms.services.item2')}</li>
+            <li>{t('legal.terms.services.item3')}</li>
+            <li>{t('legal.terms.services.item4')}</li>
+            <li>{t('legal.terms.services.item5')}</li>
+            <li>{t('legal.terms.services.item6')}</li>
+          </ul>
+          <p className="mt-3 italic text-sm">{t('legal.terms.services.qualification')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.pricing.title')}</h2>
+          <p className="mb-3 font-semibold text-foreground">{t('legal.terms.pricing.vat')}</p>
+          <p className="mb-3">{t('legal.terms.pricing.validityIntro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.pricing.item1')}</li>
+            <li>{t('legal.terms.pricing.item2')}</li>
+            <li>{t('legal.terms.pricing.item3')}</li>
+            <li>{t('legal.terms.pricing.item4')}</li>
+          </ul>
+          <p className="mt-3 italic text-sm">{t('legal.terms.pricing.business')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.payment.title')}</h2>
+          <p className="mb-3"><strong className="text-foreground">{t('legal.terms.payment.consumerTitle')}:</strong></p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.payment.consumerItem1')}</li>
+            <li>{t('legal.terms.payment.consumerItem2')}</li>
+            <li>{t('legal.terms.payment.consumerItem3')}</li>
+          </ul>
+          <p className="mt-3"><strong className="text-foreground">{t('legal.terms.payment.businessTitle')}:</strong></p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.payment.businessItem1')}</li>
+            <li>{t('legal.terms.payment.businessItem2')}</li>
+            <li>{t('legal.terms.payment.businessItem3')}</li>
+            <li>{t('legal.terms.payment.businessItem4')}</li>
+          </ul>
+          <p className="mt-3 font-medium text-foreground">{t('legal.terms.payment.invoiceCompliance')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.v6.booking.title')}</h2>
+          <p className="mb-3">{t('legal.terms.v6.booking.intro')}</p>
+          <p className="mt-3"><strong className="text-foreground">{t('legal.terms.v6.booking.cancellationTitle')}</strong></p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.v6.booking.item1')}</li>
+            <li>{t('legal.terms.v6.booking.item2')}</li>
+            <li>{t('legal.terms.v6.booking.item3')}</li>
+          </ul>
+          <p className="mt-3">{t('legal.terms.v6.booking.modifications')}</p>
+          <p className="mt-3 italic text-sm">{t('legal.terms.v6.booking.consumerRights')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.tireHotel.title')}</h2>
+          <p className="mb-3">{t('legal.terms.tireHotel.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li><strong>{t('legal.terms.tireHotel.storagePeriod')}:</strong> {t('legal.terms.tireHotel.storagePeriodDesc')}</li>
+            <li><strong>{t('legal.terms.tireHotel.payment')}:</strong> {t('legal.terms.tireHotel.paymentDesc')}</li>
+            <li><strong>{t('legal.terms.tireHotel.insurance')}:</strong> {t('legal.terms.tireHotel.insuranceDesc')}</li>
+            <li><strong>{t('legal.terms.tireHotel.inspection')}:</strong> {t('legal.terms.tireHotel.inspectionDesc')}</li>
+            <li><strong>{t('legal.terms.tireHotel.unclaimed')}:</strong> {t('legal.terms.tireHotel.unclaimedDesc')}</li>
+            <li><strong>{t('legal.terms.tireHotel.liability')}:</strong> {t('legal.terms.tireHotel.liabilityDesc')}</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.rescue.title')}</h2>
+          <p className="mb-3">{t('legal.terms.rescue.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li><strong>{t('legal.terms.rescue.availability')}:</strong> {t('legal.terms.rescue.availabilityDesc')}</li>
+            <li><strong>{t('legal.terms.rescue.responseTime')}:</strong> {t('legal.terms.rescue.responseTimeDesc')}</li>
+            <li><strong>{t('legal.terms.rescue.servicesIncluded')}:</strong> {t('legal.terms.rescue.servicesIncludedDesc')}</li>
+            <li><strong>{t('legal.terms.rescue.payment')}:</strong> {t('legal.terms.rescue.paymentDesc')}</li>
+            <li><strong>{t('legal.terms.rescue.coverage')}:</strong> {t('legal.terms.rescue.coverageDesc')}</li>
+          </ul>
+          <p className="mt-3 font-medium text-foreground">{t('legal.terms.rescue.contact')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.withdrawal.title')}</h2>
+          <p className="mb-3">{t('legal.terms.withdrawal.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.withdrawal.item1')}</li>
+            <li>{t('legal.terms.withdrawal.item2')}</li>
+            <li>{t('legal.terms.withdrawal.item3')}</li>
+            <li>{t('legal.terms.withdrawal.item4')}</li>
+          </ul>
+          <p className="mt-3 font-medium text-foreground">{t('legal.terms.withdrawal.request')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.warranty.title')}</h2>
+          <p className="mb-3"><strong className="text-foreground">{t('legal.terms.warranty.coverageTitle')}:</strong></p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li><strong>{t('legal.terms.warranty.parts')}:</strong> {t('legal.terms.warranty.partsDesc')}</li>
+            <li><strong>{t('legal.terms.warranty.labor')}:</strong> {t('legal.terms.warranty.laborDesc')}</li>
+            <li><strong>{t('legal.terms.warranty.manufacturer')}:</strong> {t('legal.terms.warranty.manufacturerDesc')}</li>
+            <li><strong>{t('legal.terms.warranty.defectPresumption')}:</strong> {t('legal.terms.warranty.defectPresumptionDesc')}</li>
+          </ul>
+          <p className="mt-4"><strong className="text-foreground">{t('legal.terms.warranty.claimTitle')}:</strong> {t('legal.terms.warranty.claim')}</p>
+          <p className="mt-3 italic text-sm">{t('legal.terms.warranty.exclusions')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.liability.title')}</h2>
+          <p className="mb-3">{t('legal.terms.liability.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.liability.item1')}</li>
+            <li>{t('legal.terms.liability.item2')}</li>
+            <li>{t('legal.terms.liability.item3')}</li>
+          </ul>
+          <p className="mt-4"><strong className="text-foreground">{t('legal.terms.liability.notLiableTitle')}:</strong></p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.liability.notLiableItem1')}</li>
+            <li>{t('legal.terms.liability.notLiableItem2')}</li>
+            <li>{t('legal.terms.liability.notLiableItem3')}</li>
+            <li>{t('legal.terms.liability.notLiableItem4')}</li>
+            <li>{t('legal.terms.liability.notLiableItem5')}</li>
+          </ul>
+          <p className="mt-3 italic text-sm">{t('legal.terms.liability.mandatory')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.ip.title')}</h2>
+          <p className="mb-3">{t('legal.terms.ip.intro')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li><strong>{t('legal.terms.ip.trademarks')}:</strong> {t('legal.terms.ip.trademarksDesc')}</li>
+            <li><strong>{t('legal.terms.ip.copyright')}:</strong> {t('legal.terms.ip.copyrightDesc')}</li>
+            <li><strong>{t('legal.terms.ip.serviceMarks')}:</strong> {t('legal.terms.ip.serviceMarksDesc')}</li>
+          </ul>
+          <p className="mt-3">{t('legal.terms.ip.unauthorized')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.dispute.title')}</h2>
+          <p className="mb-3"><strong className="text-foreground">{t('legal.terms.dispute.consumerTitle')}:</strong></p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li><strong>{t('legal.terms.dispute.step1')}:</strong> {t('legal.terms.dispute.step1Desc')}</li>
+            <li><strong>{t('legal.terms.dispute.step2')}:</strong> {t('legal.terms.dispute.step2Desc')} <a href="https://www.kuluttajariita.fi/en/" className="text-[#FF6B35] hover:underline" target="_blank" rel="noopener noreferrer">kuluttajariita.fi/en</a></li>
+            <li><strong>{t('legal.terms.dispute.step3')}:</strong> {t('legal.terms.dispute.step3Desc')} <a href="https://www.kkv.fi/en/" className="text-[#FF6B35] hover:underline" target="_blank" rel="noopener noreferrer">kkv.fi/en</a></li>
+            <li><strong>{t('legal.terms.dispute.step4')}:</strong> {t('legal.terms.dispute.step4Desc')}</li>
+          </ul>
+          <p className="mt-3"><strong className="text-foreground">{t('legal.terms.dispute.businessTitle')}:</strong> {t('legal.terms.dispute.business')}</p>
+          <p className="mt-4 italic text-sm">{t('legal.terms.dispute.euOdr')}: <a href="https://ec.europa.eu/consumers/odr" className="text-[#FF6B35] hover:underline" target="_blank" rel="noopener noreferrer">ec.europa.eu/consumers/odr</a></p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.governing.title')}</h2>
+          <p className="mb-3">{t('legal.terms.governing.intro')}</p>
+          <p className="mb-3">{t('legal.terms.governing.legislation')}</p>
+          <ul className="space-y-2 ml-6 list-disc">
+            <li>{t('legal.terms.governing.item1')}</li>
+            <li>{t('legal.terms.governing.item2')}</li>
+            <li>{t('legal.terms.governing.item3')}</li>
+            <li>{t('legal.terms.governing.item4')}</li>
+            <li>{t('legal.terms.governing.item5')}</li>
+            <li>{t('legal.terms.governing.item6')}</li>
+          </ul>
+          <p className="mt-3 italic text-sm">{t('legal.terms.governing.consumerRights')}</p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.force.title')}</h2>
+          <p>{t('legal.terms.force.description')}</p>
+        </div>
+
         <div>
           <h2 className="text-2xl text-foreground mb-4">{t('legal.terms.amendments.title')}</h2>
           <p className="mb-3">{t('legal.terms.amendments.intro')}</p>

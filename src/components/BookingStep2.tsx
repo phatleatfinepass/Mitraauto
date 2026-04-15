@@ -81,7 +81,7 @@ export function BookingStep2({
         { id: 'tire-work-up-to-17', name: t('service.tireWorkUpTo17'), price: 80.00 },
         { id: 'tire-work-18-19', name: t('service.tireWork18To19'), price: 90.00 },
         { id: 'tire-work-20-21', name: t('service.tireWork20To21'), price: 100.00 },
-        { id: 'tire-hotel-storage', name: t('service.tireHotelStorage'), price: 90.00 },
+        { id: 'tire-hotel-storage', name: t('service.tireHotelStorage'), price: 60.00 },
       ],
     },
     {

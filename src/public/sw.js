@@ -8,7 +8,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || '/pwa/cms/booking';
+  const targetUrl = event.notification?.data?.url || '/cms/booking';
 
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -40,17 +40,18 @@ self.addEventListener('push', (event) => {
     icon: payload.icon || '/icons/mitra-app-icon-512.png',
     badge: payload.badge || '/icons/mitra-app-icon-512.png',
     tag: payload.tag,
-    data: payload.data || { url: '/pwa/cms/booking' },
+    data: payload.data || { url: '/cms/booking' },
   };
 
   event.waitUntil((async () => {
-    if (typeof self.registration.setAppBadge === 'function') {
+    if (self.navigator && typeof self.navigator.setAppBadge === 'function') {
       try {
-        const count = Number(payload.badgeCount ?? 0);
+        const hasExplicitBadgeCount = payload.badgeCount !== undefined && payload.badgeCount !== null;
+        const count = hasExplicitBadgeCount ? Number(payload.badgeCount) : 1;
         if (count > 0) {
-          await self.registration.setAppBadge(count);
-        } else if (typeof self.registration.clearAppBadge === 'function') {
-          await self.registration.clearAppBadge();
+          await self.navigator.setAppBadge(count);
+        } else if (hasExplicitBadgeCount && typeof self.navigator.clearAppBadge === 'function') {
+          await self.navigator.clearAppBadge();
         }
       } catch {
         // Ignore unsupported badge update failures.

@@ -13,6 +13,7 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { calculateLinePricing } from '../utils/pricing';
+import { FINNISH_PHONE_PREFIX, hasFinnishPhoneValue, normalizeFinnishPhone, normalizeFinnishPhoneInput } from '../utils/phone';
 
 const VAT_RATE = 0.255;
 const VAT_PERCENT = 25.5;
@@ -33,7 +34,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     firstName: '',
     lastName: '',
     email: '',
-    phone: '',
+    phone: FINNISH_PHONE_PREFIX,
     
     // Billing Address
     billingAddress: '',
@@ -137,7 +138,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     }
 
     // Validate phone
-    if (!formData.phone) {
+    const normalizedPhone = normalizeFinnishPhone(formData.phone);
+
+    if (!hasFinnishPhoneValue(normalizedPhone)) {
       toast.error(
         language === 'fi'
           ? 'Anna puhelinnumero'
@@ -215,7 +218,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         currency: 'EUR',
         customer: {
           email: formData.email,
-          phone: formData.phone,
+          phone: normalizedPhone,
           firstName: formData.firstName,
           lastName: formData.lastName,
         },
@@ -292,7 +295,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const vatAmount = totalPrice * VAT_RATE;
@@ -329,7 +335,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left - Checkout Form */}
           <div className="lg:col-span-2 space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" autoComplete="on">
+              <input type="hidden" name="shippingCountry" autoComplete="shipping country-name" value={formData.shippingCountry} readOnly />
+              <input type="hidden" name="billingCountry" autoComplete="billing country-name" value={formData.sameAsShipping ? formData.shippingCountry : formData.billingCountry} readOnly />
               {/* Contact Information */}
               <Card className={`p-6 ${
                 theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-[#E2E8F0]'
@@ -343,11 +351,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="given-name" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('firstName')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="firstName"
+                      id="given-name"
+                      name="given-name"
+                      autoComplete="given-name"
                       required
                       value={formData.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
@@ -360,11 +370,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   </div>
                   
                   <div>
-                    <Label htmlFor="lastName" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="family-name" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('lastName')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="lastName"
+                      id="family-name"
+                      name="family-name"
+                      autoComplete="family-name"
                       required
                       value={formData.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
@@ -383,6 +395,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     <Input
                       id="email"
                       type="email"
+                      name="email"
+                      autoComplete="email"
+                      inputMode="email"
                       required
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
@@ -395,15 +410,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   </div>
                   
                   <div>
-                    <Label htmlFor="phone" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="tel" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('phone')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="phone"
+                      id="tel"
                       type="tel"
+                      name="tel"
+                      autoComplete="tel"
+                      inputMode="tel"
                       required
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
+                      onBlur={(e) => handleInputChange('phone', normalizeFinnishPhoneInput(e.target.value))}
+                      placeholder={FINNISH_PHONE_PREFIX}
                       className={`mt-1 ${
                         theme === 'dark'
                           ? 'bg-white/5 border-white/10 text-white'
@@ -427,11 +447,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="shippingAddress" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                    <Label htmlFor="shipping-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                       {t('address')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="shippingAddress"
+                      id="shipping-address-line1"
+                      name="shipping address-line1"
+                      autoComplete="shipping address-line1"
                       required
                       value={formData.shippingAddress}
                       onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
@@ -445,11 +467,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="shippingCity" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                      <Label htmlFor="shipping-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                         {t('city')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="shippingCity"
+                        id="shipping-address-level2"
+                        name="shipping address-level2"
+                        autoComplete="shipping address-level2"
                         required
                         value={formData.shippingCity}
                         onChange={(e) => handleInputChange('shippingCity', e.target.value)}
@@ -462,11 +486,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     </div>
                     
                     <div>
-                      <Label htmlFor="shippingPostalCode" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                      <Label htmlFor="shipping-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                         {t('postalCode')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="shippingPostalCode"
+                        id="shipping-postal-code"
+                        name="shipping postal-code"
+                        autoComplete="shipping postal-code"
+                        inputMode="numeric"
                         required
                         value={formData.shippingPostalCode}
                         onChange={(e) => handleInputChange('shippingPostalCode', e.target.value)}
@@ -509,11 +536,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 {!formData.sameAsShipping && (
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="billingAddress" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                      <Label htmlFor="billing-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                         {t('address')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="billingAddress"
+                        id="billing-address-line1"
+                        name="billing address-line1"
+                        autoComplete="billing address-line1"
                         required={!formData.sameAsShipping}
                         value={formData.billingAddress}
                         onChange={(e) => handleInputChange('billingAddress', e.target.value)}
@@ -527,11 +556,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="billingCity" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                        <Label htmlFor="billing-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                           {t('city')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          id="billingCity"
+                          id="billing-address-level2"
+                          name="billing address-level2"
+                          autoComplete="billing address-level2"
                           required={!formData.sameAsShipping}
                           value={formData.billingCity}
                           onChange={(e) => handleInputChange('billingCity', e.target.value)}
@@ -544,11 +575,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       </div>
                       
                       <div>
-                        <Label htmlFor="billingPostalCode" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                        <Label htmlFor="billing-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
                           {t('postalCode')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          id="billingPostalCode"
+                          id="billing-postal-code"
+                          name="billing postal-code"
+                          autoComplete="billing postal-code"
+                          inputMode="numeric"
                           required={!formData.sameAsShipping}
                           value={formData.billingPostalCode}
                           onChange={(e) => handleInputChange('billingPostalCode', e.target.value)}

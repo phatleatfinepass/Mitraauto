@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getSupabaseConfigError, supabase } from '../../utils/supabase/client';
 import { useLanguage } from '../LanguageContext';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { Shield, AlertCircle } from 'lucide-react';
 
 interface CmsGuardProps {
@@ -15,9 +17,22 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   const { language } = useLanguage();
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [userEmail, setUserEmail] = useState<string>('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+
+    const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          window.setTimeout(() => reject(new Error('CMS auth check timed out.')), timeoutMs);
+        }),
+      ]);
+    };
 
     const checkAuth = async () => {
       try {
@@ -28,8 +43,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
           return;
         }
 
-        // 1. Check if user has a session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await withTimeout(supabase.auth.getSession());
 
         if (sessionError) {
           console.error('Session error:', sessionError);
@@ -47,12 +61,13 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
           setUserEmail(session.user.email || '');
         }
 
-        // 2. Check if user has admin role in profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
+        const { data: profile, error: profileError } = await withTimeout(
+          supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .maybeSingle(),
+        );
 
         if (profileError) {
           console.error('Profile fetch error:', profileError);
@@ -78,7 +93,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        // Re-check admin status when auth state changes
+        if (isMounted) setAuthState('loading');
         checkAuth();
       } else {
         if (isMounted) setAuthState('unauthenticated');
@@ -90,6 +105,57 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleInlineLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (loggingIn) return;
+
+    setLoggingIn(true);
+    setLoginError('');
+
+    try {
+      const configError = getSupabaseConfigError();
+      if (configError) {
+        setLoginError(configError);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+
+      if (error) {
+        setLoginError(error.message || (language === 'fi' ? 'Kirjautuminen epäonnistui' : 'Login failed'));
+        return;
+      }
+
+      if (data.user) {
+        try {
+          await supabase.rpc('account_profile_bootstrap');
+        } catch {
+          // Non-blocking.
+        }
+        setAuthState('loading');
+      }
+    } catch (error) {
+      console.error('CMS inline login error:', error);
+      setLoginError(language === 'fi' ? 'Kirjautuminen epäonnistui' : 'Login failed');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('CMS guard sign out failed:', error);
+    } finally {
+      setAuthState('unauthenticated');
+      setUserEmail('');
+    }
+  };
 
   // Show loading spinner while checking
   if (authState === 'loading') {
@@ -109,27 +175,82 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   if (authState === 'unauthenticated') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#11141A] px-4">
-        <div className="max-w-md w-full bg-[#1A1D26] rounded-2xl p-8 text-center border border-gray-800">
+        <div className="max-w-md w-full bg-[#1A1D26] rounded-2xl p-8 border border-gray-800">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FF6B35]/10 mb-6">
             <Shield className="w-8 h-8 text-[#FF6B35]" />
           </div>
           
-          <h1 className="text-2xl font-bold text-white mb-3">
+          <h1 className="text-2xl font-bold text-white mb-3 text-center">
             {language === 'fi' ? 'Kirjautuminen vaaditaan' : 'Login Required'}
           </h1>
           
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-400 mb-6 text-center">
             {language === 'fi' 
               ? 'Sinun täytyy kirjautua sisään päästäksesi CMS-hallintapaneeliin.'
               : 'You need to log in to access the CMS admin panel.'}
           </p>
-          
-          <Button
+
+          <form onSubmit={handleInlineLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="cms-login-email" className="text-gray-300">
+                {language === 'fi' ? 'Sähköposti' : 'Email'}
+              </Label>
+              <Input
+                id="cms-login-email"
+                type="email"
+                autoComplete="username"
+                value={loginEmail}
+                onChange={(event) => {
+                  setLoginEmail(event.target.value);
+                  if (loginError) setLoginError('');
+                }}
+                className="border-gray-700 bg-[#0D1016] text-white"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cms-login-password" className="text-gray-300">
+                {language === 'fi' ? 'Salasana' : 'Password'}
+              </Label>
+              <Input
+                id="cms-login-password"
+                type="password"
+                autoComplete="current-password"
+                value={loginPassword}
+                onChange={(event) => {
+                  setLoginPassword(event.target.value);
+                  if (loginError) setLoginError('');
+                }}
+                className="border-gray-700 bg-[#0D1016] text-white"
+                required
+              />
+            </div>
+
+            {loginError ? (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {loginError}
+              </div>
+            ) : null}
+
+            <Button
+              type="submit"
+              disabled={loggingIn}
+              className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
+            >
+              {loggingIn
+                ? (language === 'fi' ? 'Kirjaudutaan...' : 'Signing in...')
+                : (language === 'fi' ? 'Kirjaudu sisään' : 'Log In')}
+            </Button>
+          </form>
+
+          <button
+            type="button"
             onClick={onNeedLogin}
-            className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
+            className="mt-4 w-full text-sm text-gray-400 hover:text-white transition-colors"
           >
-            {language === 'fi' ? 'Kirjaudu sisään' : 'Log In'}
-          </Button>
+            {language === 'fi' ? 'Avaa tavallinen kirjautumisikkuna' : 'Open standard login modal'}
+          </button>
         </div>
       </div>
     );
@@ -161,11 +282,11 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
           )}
           
           <Button
-            onClick={() => window.location.href = '/'}
+            onClick={handleSignOut}
             variant="outline"
             className="w-full border-gray-700 text-gray-300 hover:bg-gray-800"
           >
-            {language === 'fi' ? 'Palaa etusivulle' : 'Return to Home'}
+            {language === 'fi' ? 'Kirjaudu ulos' : 'Sign out'}
           </Button>
         </div>
       </div>
