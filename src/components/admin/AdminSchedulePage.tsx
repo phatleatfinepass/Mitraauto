@@ -4,8 +4,7 @@ import { useLanguage } from '../LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Textarea } from '../ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,14 +15,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../ui/alert-dialog';
+import { Textarea } from '../ui/textarea';
 import {
-  Lock,
   Unlock,
-  CheckSquare,
   Square,
   Pencil,
-  PlusCircle,
   Save,
+  CheckSquare,
+  Lock,
+  PlusCircle,
 } from 'lucide-react';
 import { getSupabaseClient } from '../../utils/supabase/client';
 import { formatDateForSupabase } from '../../utils/date';
@@ -48,6 +48,251 @@ import { useBookingReservationState } from './schedule/useBookingReservationStat
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;
+}
+
+interface AdminSlotActionDialogProps {
+  blockReason: string;
+  formatDate: (date: Date) => string;
+  language: string;
+  onBlockReasonChange: (value: string) => void;
+  onCreateBooking: () => void;
+  onOpenChange: (open: boolean) => void;
+  onStartBatchBlock: () => void;
+  onBlockSlot: () => void;
+  open: boolean;
+  selectedDate: Date;
+  slot: ScheduleTimeSlot | null;
+  slotTime: string | null;
+  t: (key: string) => string;
+  theme: string;
+}
+
+function AdminSlotActionDialog({
+  blockReason,
+  formatDate,
+  language,
+  onBlockReasonChange,
+  onCreateBooking,
+  onOpenChange,
+  onStartBatchBlock,
+  onBlockSlot,
+  open,
+  selectedDate,
+  slot,
+  slotTime,
+  t,
+  theme,
+}: AdminSlotActionDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}>
+        <DialogHeader>
+          <DialogTitle>{t('slotActions')}</DialogTitle>
+          <DialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+            {t('slotActionsDescription')}
+          </DialogDescription>
+        </DialogHeader>
+
+        {slotTime && (
+          <div className="space-y-4">
+            <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-gray-50'}`}>
+              <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{t('slotSummary')}</p>
+              <p className={`mt-2 text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {formatDate(selectedDate)} — {slotTime}
+              </p>
+              {slot?.isBlocked && (
+                <p className="mt-2 text-sm text-red-500">{slot.blockReason || t('slotBlocked')}</p>
+              )}
+            </div>
+
+            {!slot?.isBlocked && (
+              <div className="space-y-2">
+                <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {t('reasonOptional')}
+                </label>
+                <Textarea
+                  value={blockReason}
+                  onChange={(event) => onBlockReasonChange(event.target.value)}
+                  placeholder={language === 'fi' ? 'Esim. Huoltokatko' : 'e.g. Maintenance'}
+                  className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}
+                  rows={3}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Button variant="outline" onClick={onCreateBooking} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {t('createInThisSlot')}
+          </Button>
+          <Button
+            onClick={onBlockSlot}
+            disabled={Boolean(slot?.isBlocked)}
+            className="bg-[#FF6B35] hover:bg-[#FF6B35]/90"
+          >
+            <Lock className="mr-2 h-4 w-4" />
+            {t('blockThisSlot')}
+          </Button>
+          <Button variant="outline" onClick={onStartBatchBlock} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
+            <CheckSquare className="mr-2 h-4 w-4" />
+            {t('blockMultipleTimeSlots')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface AdminCancelBookingDialogProps {
+  booking: ScheduleBooking | null;
+  cancellingBookingId: string | null;
+  cancellationNote: string;
+  getBookingServiceNameForCms: (serviceName?: string | null) => string;
+  onCancellationNoteChange: (value: string) => void;
+  onConfirm: (booking: ScheduleBooking) => void;
+  onOpenChange: (open: boolean) => void;
+  t: (key: string) => string;
+  theme: string;
+}
+
+function AdminCancelBookingDialog({
+  booking,
+  cancellingBookingId,
+  cancellationNote,
+  getBookingServiceNameForCms,
+  onCancellationNoteChange,
+  onConfirm,
+  onOpenChange,
+  t,
+  theme,
+}: AdminCancelBookingDialogProps) {
+  return (
+    <AlertDialog open={Boolean(booking)} onOpenChange={onOpenChange}>
+      <AlertDialogContent className={theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('cancelBookingConfirmTitle')}</AlertDialogTitle>
+          <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+            {t('cancelBookingConfirmDescription')}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        {booking && (
+          <div className="space-y-4">
+            <div className={`rounded-xl border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-gray-50'}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`font-mono text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {booking.license_plate}
+                </span>
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {booking.booking_date} {booking.booking_time}
+                </span>
+              </div>
+              {booking.service_name && (
+                <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {getBookingServiceNameForCms(booking.service_name)}
+                </p>
+              )}
+              {booking.customer_name && (
+                <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {booking.customer_name}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                {t('cancellationNote')}
+              </label>
+              <Textarea
+                value={cancellationNote}
+                onChange={(event) => onCancellationNoteChange(event.target.value)}
+                placeholder={t('cancellationNotePlaceholder')}
+                className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}
+                rows={4}
+              />
+            </div>
+          </div>
+        )}
+
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            disabled={Boolean(cancellingBookingId)}
+            className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}
+          >
+            {t('keepBooking')}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              if (booking) onConfirm(booking);
+            }}
+            className="bg-red-600 text-white hover:bg-red-700"
+          >
+            {cancellingBookingId ? t('cancelling') : t('confirmCancelBooking')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+interface AdminRestoreBookingDialogProps {
+  booking: ScheduleBooking | null;
+  restoringBookingId: string | null;
+  sendRestoreEmail: boolean;
+  onConfirm: (booking: ScheduleBooking) => void;
+  onOpenChange: (open: boolean) => void;
+  onSendRestoreEmailChange: (checked: boolean) => void;
+  t: (key: string) => string;
+  theme: string;
+}
+
+function AdminRestoreBookingDialog({
+  booking,
+  restoringBookingId,
+  sendRestoreEmail,
+  onConfirm,
+  onOpenChange,
+  onSendRestoreEmailChange,
+  t,
+  theme,
+}: AdminRestoreBookingDialogProps) {
+  return (
+    <AlertDialog open={Boolean(booking)} onOpenChange={onOpenChange}>
+      <AlertDialogContent className={theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('restoreBookingConfirmTitle')}</AlertDialogTitle>
+          <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+            {t('restoreBookingConfirmDescription')}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="flex items-start gap-3">
+          <Checkbox checked={sendRestoreEmail} onCheckedChange={(checked) => onSendRestoreEmailChange(Boolean(checked))} />
+          <label className={`text-sm leading-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            {t('sendRestoreEmail')}
+          </label>
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
+            {t('cancel')}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              if (booking) onConfirm(booking);
+            }}
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            {restoringBookingId ? t('saving') : t('restoreBooking')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }) => {
@@ -1232,71 +1477,27 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         onSync={(bookingId) => void handleSyncBookingConversation(bookingId)}
       />
 
-      <Dialog open={isSlotActionDialogOpen} onOpenChange={setIsSlotActionDialogOpen}>
-        <DialogContent className={theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}>
-          <DialogHeader>
-            <DialogTitle>{t('slotActions')}</DialogTitle>
-            <DialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
-              {t('slotActionsDescription')}
-            </DialogDescription>
-          </DialogHeader>
-
-          {slotActionTime && (
-            <div className="space-y-4">
-              <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-gray-50'}`}>
-                <p className={`text-xs uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                  {t('slotSummary')}
-                </p>
-                <p className={`mt-2 text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {formatDate(selectedDate)} — {slotActionTime}
-                </p>
-                {slotActionSlot?.isBlocked && (
-                  <p className="mt-2 text-sm text-red-500">{slotActionSlot.blockReason || t('slotBlocked')}</p>
-                )}
-              </div>
-
-              {!slotActionSlot?.isBlocked && (
-                <div className="space-y-2">
-                  <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('reasonOptional')}
-                  </label>
-                  <Textarea
-                    value={blockReason}
-                    onChange={(e) => setBlockReason(e.target.value)}
-                    placeholder={language === 'fi' ? 'Esim. Huoltokatko' : 'e.g. Maintenance'}
-                    className={theme === 'dark' ? 'bg-[#11141A] border-white/10 text-white' : ''}
-                    rows={3}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter className="sm:grid sm:grid-cols-3">
-            <Button variant="outline" onClick={handleStartCreateBookingFromSlotAction} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
-              <PlusCircle className="w-4 h-4 mr-2" />
-              {t('createInThisSlot')}
-            </Button>
-            <Button
-              onClick={() => {
-                if (slotActionTime) {
-                  void handleBlockSlot(slotActionTime, false);
-                  setIsSlotActionDialogOpen(false);
-                }
-              }}
-              disabled={Boolean(slotActionSlot?.isBlocked)}
-              className="bg-[#FF6B35] hover:bg-[#FF6B35]/90"
-            >
-              <Lock className="w-4 h-4 mr-2" />
-              {t('blockThisSlot')}
-            </Button>
-            <Button variant="outline" onClick={handleStartBatchBlockFromSlotAction} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
-              <CheckSquare className="w-4 h-4 mr-2" />
-              {t('blockMultipleTimeSlots')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AdminSlotActionDialog
+        blockReason={blockReason}
+        formatDate={formatDate}
+        language={language}
+        onBlockReasonChange={setBlockReason}
+        onCreateBooking={handleStartCreateBookingFromSlotAction}
+        onOpenChange={setIsSlotActionDialogOpen}
+        onStartBatchBlock={handleStartBatchBlockFromSlotAction}
+        onBlockSlot={() => {
+          if (slotActionTime) {
+            void handleBlockSlot(slotActionTime, false);
+            setIsSlotActionDialogOpen(false);
+          }
+        }}
+        open={isSlotActionDialogOpen}
+        selectedDate={selectedDate}
+        slot={slotActionSlot}
+        slotTime={slotActionTime}
+        t={t}
+        theme={theme}
+      />
 
       <AdminArchivedBookingDialog
         archivedBookingModal={archivedBookingModal}
@@ -1319,115 +1520,39 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         theme={theme}
       />
 
-      <AlertDialog
-        open={Boolean(cancelBookingTarget)}
+      <AdminCancelBookingDialog
+        booking={cancelBookingTarget}
+        cancellingBookingId={cancellingBookingId}
+        cancellationNote={cancelBookingNote}
+        getBookingServiceNameForCms={getBookingServiceNameForCms}
+        onCancellationNoteChange={setCancelBookingNote}
+        onConfirm={(booking) => {
+          void handleCancelBooking(booking);
+        }}
         onOpenChange={(open) => {
           if (!open && cancellingBookingId !== cancelBookingTarget?.id) {
             setCancelBookingTarget(null);
             setCancelBookingNote('');
           }
         }}
-      >
-        <AlertDialogContent className={theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('cancelBookingConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
-              {t('cancelBookingConfirmDescription')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+        t={t}
+        theme={theme}
+      />
 
-          {cancelBookingTarget && (
-            <div className="space-y-4">
-              <div className={`rounded-xl border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-gray-50'}`}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`font-mono text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {cancelBookingTarget.license_plate}
-                  </span>
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {cancelBookingTarget.booking_date} {cancelBookingTarget.booking_time}
-                  </span>
-                </div>
-                {cancelBookingTarget.service_name && (
-                  <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {getBookingServiceNameForCms(cancelBookingTarget.service_name)}
-                  </p>
-                )}
-                {cancelBookingTarget.customer_name && (
-                  <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {cancelBookingTarget.customer_name}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {t('cancellationNote')}
-                </label>
-                <Textarea
-                  value={cancelBookingNote}
-                  onChange={(e) => setCancelBookingNote(e.target.value)}
-                  placeholder={t('cancellationNotePlaceholder')}
-                  className={theme === 'dark' ? 'bg-[#11141A] border-white/10 text-white' : ''}
-                  rows={4}
-                />
-              </div>
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={Boolean(cancellingBookingId)}
-              className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}
-            >
-              {t('keepBooking')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault();
-                if (cancelBookingTarget) {
-                  void handleCancelBooking(cancelBookingTarget);
-                }
-              }}
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
-              {cancellingBookingId ? t('cancelling') : t('confirmCancelBooking')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={Boolean(restoreArchivedBookingTarget)} onOpenChange={(open) => !open && setRestoreArchivedBookingTarget(null)}>
-        <AlertDialogContent className={theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('restoreBookingConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
-              {t('restoreBookingConfirmDescription')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="flex items-start gap-3">
-            <Checkbox checked={sendRestoreEmail} onCheckedChange={(checked) => setSendRestoreEmail(Boolean(checked))} />
-            <label className={`text-sm leading-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              {t('sendRestoreEmail')}
-            </label>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
-              {t('cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault();
-                if (restoreArchivedBookingTarget) {
-                  void handleRestoreBooking(restoreArchivedBookingTarget, sendRestoreEmail);
-                }
-              }}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {restoringBookingId ? t('saving') : t('restoreBooking')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AdminRestoreBookingDialog
+        booking={restoreArchivedBookingTarget}
+        restoringBookingId={restoringBookingId}
+        sendRestoreEmail={sendRestoreEmail}
+        onConfirm={(booking) => {
+          void handleRestoreBooking(booking, sendRestoreEmail);
+        }}
+        onOpenChange={(open) => {
+          if (!open) setRestoreArchivedBookingTarget(null);
+        }}
+        onSendRestoreEmailChange={setSendRestoreEmail}
+        t={t}
+        theme={theme}
+      />
     </div>
   );
 };

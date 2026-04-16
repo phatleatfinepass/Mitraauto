@@ -63,6 +63,736 @@ const DB_STATUS_CANDIDATES: Record<OrderMarkStatus, string[]> = {
   done: ['done', 'completed'],
 };
 
+interface SelectedOrderModalProps {
+  formatCustomerName: (order: OrderRow) => string;
+  formatDate: (value: string | null) => string;
+  formatMoney: (cents: number | null) => string;
+  formatStatusLabel: (value: string | null | undefined) => string;
+  getCustomerEmail: (order: OrderRow) => string;
+  getCustomerPhone: (order: OrderRow) => string;
+  getDisplayStatus: (order: OrderRow) => OrderMarkStatus;
+  getItemEan: (item: any) => string | null;
+  getItemSku: (item: any) => string | null;
+  getItemTitle: (item: any) => string;
+  getStatusBadgeClass: (status: string) => string;
+  getStatusMeta: (status: string) => { icon: React.ComponentType<{ className?: string }>; tone: 'gray' | 'purple' | 'green' | 'blue' | 'red' | 'orange' };
+  isDark: boolean;
+  language: string;
+  markOrderStatus: (orderId: string, nextStatus: OrderMarkStatus) => void;
+  order: OrderRow | null;
+  orderMarkStatuses: readonly OrderMarkStatus[];
+  orderTotals: { subtotalCents: number | null; vatCents: number | null; totalCents: number | null; vatPercent: number | null } | null;
+  selectedItems: any[];
+  updatingStatusId: string | null;
+  onClose: () => void;
+}
+
+function SelectedOrderModal({
+  formatCustomerName,
+  formatDate,
+  formatMoney,
+  formatStatusLabel,
+  getCustomerEmail,
+  getCustomerPhone,
+  getDisplayStatus,
+  getItemEan,
+  getItemSku,
+  getItemTitle,
+  getStatusBadgeClass,
+  getStatusMeta,
+  isDark,
+  language,
+  markOrderStatus,
+  order,
+  orderMarkStatuses,
+  orderTotals,
+  selectedItems,
+  updatingStatusId,
+  onClose,
+}: SelectedOrderModalProps) {
+  if (!order) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <button
+        aria-label="Close modal overlay"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60"
+      />
+      <div className={`relative z-[101] max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border p-5 ${
+        isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
+      }`}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className={`text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {language === 'fi' ? 'Tilauksen tiedot' : 'Order details'}
+          </h2>
+          <button
+            onClick={onClose}
+            className={`rounded-lg border px-3 py-1.5 text-sm ${
+              isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            {language === 'fi' ? 'Sulje' : 'Close'}
+          </button>
+        </div>
+
+        <div className={`mb-5 grid grid-cols-1 gap-3 text-sm md:grid-cols-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+            <p><strong>ID:</strong> {order.id}</p>
+            <p><strong>{language === 'fi' ? 'Päivä' : 'Date'}:</strong> {formatDate(order.created_at)}</p>
+            <p className="mt-1">
+              <strong>{language === 'fi' ? 'Maksun tila' : 'Payment status'}:</strong>{' '}
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${getStatusBadgeClass(getDisplayStatus(order))}`}>
+                {(() => {
+                  const Icon = getStatusMeta(getDisplayStatus(order)).icon;
+                  return <Icon className="h-3 w-3" />;
+                })()}
+                {formatStatusLabel(getDisplayStatus(order))}
+              </span>
+            </p>
+            <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> {formatMoney(orderTotals?.subtotalCents ?? null)}</p>
+            <p>
+              <strong>{language === 'fi' ? 'ALV' : 'VAT'} ({orderTotals?.vatPercent !== null && orderTotals?.vatPercent !== undefined ? orderTotals.vatPercent.toFixed(1) : '-' }%):</strong>{' '}
+              {formatMoney(orderTotals?.vatCents ?? null)}
+            </p>
+            <p><strong>{language === 'fi' ? 'Yhteensä' : 'Total'}:</strong> {formatMoney(orderTotals?.totalCents ?? order.grand_total_cents)}</p>
+          </div>
+          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+            <p><strong>{language === 'fi' ? 'Asiakas' : 'Customer'}:</strong> {formatCustomerName(order)}</p>
+            <p><strong>Email:</strong> {getCustomerEmail(order)}</p>
+            <p><strong>{language === 'fi' ? 'Puhelin' : 'Phone'}:</strong> {getCustomerPhone(order)}</p>
+          </div>
+        </div>
+
+        <div className={`mb-5 rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+          <p className={`mb-2 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {language === 'fi' ? 'Päivitä toimituksen tila' : 'Update fulfillment status'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {orderMarkStatuses.map((status) => {
+              const active = getDisplayStatus(order) === status;
+              return (
+                <button
+                  key={`modal-${order.id}-${status}`}
+                  onClick={() => markOrderStatus(order.id, status)}
+                  disabled={updatingStatusId === order.id}
+                  className={`rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
+                    active
+                      ? getStatusBadgeClass(status)
+                      : (isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100')
+                  }`}
+                >
+                  {formatStatusLabel(status)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <h3 className={`mb-3 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {language === 'fi' ? 'Tilatut tuotteet' : 'Ordered items'}
+          </h3>
+          {selectedItems.length === 0 ? (
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>-</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {selectedItems.map((item: any, index: number) => {
+                const qty = Number(item?.qty ?? item?.quantity ?? 1);
+                const unitCents = Number(item?.client_unit_price_cents ?? Math.round(Number(item?.price ?? 0) * 100));
+                const lineTotal = (unitCents * qty) / 100;
+                const ean = getItemEan(item);
+                const sku = getItemSku(item);
+                const size = item?.size ?? item?.size_string ?? item?.dimension ?? item?.product?.size_string ?? '';
+                const title = getItemTitle(item);
+
+                return (
+                  <div
+                    key={`${order.id}-item-${index}`}
+                    className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}
+                  >
+                    <p className={`mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</p>
+                    <div className={`space-y-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <p><strong>EAN:</strong> {ean || '-'}</p>
+                      <p><strong>SKU:</strong> {sku || '-'}</p>
+                      <p><strong>{language === 'fi' ? 'Koko' : 'Size'}:</strong> {size || '-'}</p>
+                      <p><strong>{language === 'fi' ? 'Määrä' : 'Qty'}:</strong> {qty}</p>
+                      <p><strong>{language === 'fi' ? 'Yksikköhinta' : 'Unit price'}:</strong> EUR {(unitCents / 100).toFixed(2)}</p>
+                      <p><strong>{language === 'fi' ? 'Rivin summa' : 'Line total'}:</strong> EUR {lineTotal.toFixed(2)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CreateOrderModalProps {
+  createForm: OrderCreateForm;
+  createOrderError: string | null;
+  creatingOrder: boolean;
+  eanLookupLoading: boolean;
+  eanLookupMessage: string | null;
+  handleCreateOrder: () => void;
+  isDark: boolean;
+  language: string;
+  lookupItemByEan: (eanRaw: string) => Promise<void>;
+  open: boolean;
+  setCreateForm: React.Dispatch<React.SetStateAction<OrderCreateForm>>;
+  setCreateOrderOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setEanLookupMessage: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
+function CreateOrderModal({
+  createForm,
+  createOrderError,
+  creatingOrder,
+  eanLookupLoading,
+  eanLookupMessage,
+  handleCreateOrder,
+  isDark,
+  language,
+  lookupItemByEan,
+  open,
+  setCreateForm,
+  setCreateOrderOpen,
+  setEanLookupMessage,
+}: CreateOrderModalProps) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <button
+        aria-label="Close create order modal"
+        onClick={() => setCreateOrderOpen(false)}
+        className="absolute inset-0 bg-black/60"
+      />
+      <div className={`relative z-[111] w-full max-w-2xl rounded-2xl border p-5 ${
+        isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
+      }`}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className={`text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {language === 'fi' ? 'Luo tilaus' : 'Create order'}
+          </h2>
+          <button
+            onClick={() => setCreateOrderOpen(false)}
+            className={`rounded-lg border px-3 py-1.5 text-sm ${
+              isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            {language === 'fi' ? 'Sulje' : 'Close'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input
+            type="text"
+            placeholder={language === 'fi' ? 'Etunimi' : 'First name'}
+            value={createForm.firstName}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, firstName: e.target.value }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="text"
+            placeholder={language === 'fi' ? 'Sukunimi' : 'Last name'}
+            value={createForm.lastName}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, lastName: e.target.value }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={createForm.email}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="text"
+            placeholder={language === 'fi' ? 'Puhelin' : 'Phone'}
+            value={createForm.phone}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, phone: e.target.value }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="text"
+            placeholder={language === 'fi' ? 'Tuotteen nimi' : 'Item name'}
+            value={createForm.itemName}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, itemName: e.target.value }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="text"
+            placeholder="EAN"
+            value={createForm.itemEan}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCreateForm((prev) => ({
+                ...prev,
+                itemEan: value,
+                variantId: null,
+                baseUnitPriceEur: null,
+                pricingRules: null,
+              }));
+              if (eanLookupMessage) setEanLookupMessage(null);
+            }}
+            onBlur={() => void lookupItemByEan(createForm.itemEan)}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="number"
+            min={1}
+            placeholder={language === 'fi' ? 'Määrä' : 'Qty'}
+            value={createForm.qty}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCreateForm((prev) => {
+                const nextQty = Math.max(1, Number.parseInt(value, 10) || 1);
+                const next: OrderCreateForm = { ...prev, qty: value };
+
+                if (!prev.unitPriceManuallyEdited && prev.baseUnitPriceEur !== null) {
+                  const autoPricing = calculateLinePricing(
+                    prev.baseUnitPriceEur,
+                    nextQty,
+                    prev.pricingRules,
+                  );
+                  next.unitPriceEur = autoPricing.effectiveUnitPriceEur.toFixed(2);
+                }
+
+                return next;
+              });
+            }}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder={language === 'fi' ? 'Yksikköhinta EUR' : 'Unit price EUR'}
+            value={createForm.unitPriceEur}
+            onChange={(e) => setCreateForm((prev) => ({
+              ...prev,
+              unitPriceEur: e.target.value,
+              unitPriceManuallyEdited: true,
+            }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step="0.1"
+            placeholder={language === 'fi' ? 'ALV %' : 'VAT %'}
+            value={createForm.vatPercent}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, vatPercent: e.target.value }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          />
+          <select
+            value={createForm.paymentMethod}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, paymentMethod: e.target.value as PaymentMethod }))}
+            className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          >
+            <option value="cash">{language === 'fi' ? 'Käteinen' : 'Cash'}</option>
+            <option value="card">{language === 'fi' ? 'Kortti' : 'Card'}</option>
+          </select>
+          <select
+            value={createForm.status}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, status: e.target.value as OrderMarkStatus }))}
+            className={`rounded-lg border px-3 py-2 md:col-span-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+          >
+            {ORDER_MARK_STATUSES.map((status) => (
+              <option key={`create-${status}`} value={status}>{status.charAt(0).toUpperCase() + status.slice(1).replaceAll('_', ' ')}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className={`mt-3 rounded-lg border p-3 text-sm ${isDark ? 'border-white/10 bg-white/5 text-gray-200' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
+          {(() => {
+            const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
+            const unit = Number.parseFloat(createForm.unitPriceEur || '0');
+            const vatPercent = Number.parseFloat(createForm.vatPercent || '0');
+            const baseUnit = createForm.baseUnitPriceEur ?? (Number.isFinite(unit) ? unit : 0);
+            const autoPricing = calculateLinePricing(baseUnit, qty, createForm.pricingRules);
+            const usingAutoPricing = !createForm.unitPriceManuallyEdited && createForm.baseUnitPriceEur !== null;
+            const subtotal = Number.isFinite(unit) ? unit * qty : 0;
+            const vat = Number.isFinite(vatPercent) ? subtotal * (vatPercent / 100) : 0;
+            const total = subtotal + vat;
+
+            return (
+              <>
+                {usingAutoPricing && autoPricing.savingsEur > 0 && (
+                  <p>
+                    <strong>{language === 'fi' ? 'Pakettialennus' : 'Bundle discount'}:</strong>{' '}
+                    EUR {autoPricing.savingsEur.toFixed(2)}
+                  </p>
+                )}
+                <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> EUR {subtotal.toFixed(2)}</p>
+                <p><strong>{language === 'fi' ? 'ALV' : 'VAT'} ({Number.isFinite(vatPercent) ? vatPercent.toFixed(1) : '0.0'}%):</strong> EUR {vat.toFixed(2)}</p>
+                <p><strong>{language === 'fi' ? 'Kokonaissumma' : 'Total'}:</strong> EUR {total.toFixed(2)}</p>
+              </>
+            );
+          })()}
+          {eanLookupLoading && (
+            <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fi' ? 'Haetaan EAN-tuotetta...' : 'Looking up EAN item...'}
+            </p>
+          )}
+          {eanLookupMessage && (
+            <p className={`mt-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{eanLookupMessage}</p>
+          )}
+        </div>
+
+        {createOrderError && (
+          <p className={`mt-3 text-sm ${isDark ? 'text-red-300' : 'text-red-700'}`}>{createOrderError}</p>
+        )}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={() => setCreateOrderOpen(false)}
+            disabled={creatingOrder}
+            className={`rounded-lg border px-4 py-2 text-sm ${
+              isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            {language === 'fi' ? 'Peruuta' : 'Cancel'}
+          </button>
+          <button
+            onClick={handleCreateOrder}
+            disabled={creatingOrder}
+            className={`rounded-lg px-4 py-2 text-sm ${
+              isDark ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30' : 'bg-green-100 text-green-700 hover:bg-green-200'
+            }`}
+          >
+            {creatingOrder
+              ? (language === 'fi' ? 'Luodaan...' : 'Creating...')
+              : (language === 'fi' ? 'Luo tilaus' : 'Create order')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface OrdersToolbarProps {
+  fetchOrders: () => void;
+  isDark: boolean;
+  language: string;
+  purchasedOnly: boolean;
+  resetCreateForm: () => void;
+  searchTerm: string;
+  setCreateOrderOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setPurchasedOnly: React.Dispatch<React.SetStateAction<boolean>>;
+  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+  setStatusFilter: React.Dispatch<React.SetStateAction<StatusFilter>>;
+  statusFilter: StatusFilter;
+}
+
+function OrdersToolbar({
+  fetchOrders,
+  isDark,
+  language,
+  purchasedOnly,
+  resetCreateForm,
+  searchTerm,
+  setCreateOrderOpen,
+  setPurchasedOnly,
+  setSearchTerm,
+  setStatusFilter,
+  statusFilter,
+}: OrdersToolbarProps) {
+  return (
+    <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'} px-8 py-4`}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full lg:max-w-md">
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+          <input
+            type="text"
+            placeholder={language === 'fi' ? 'Hae tilausta, sähköpostia tai puhelinta...' : 'Search order, email, or phone...'}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full rounded-lg border py-2 pl-10 pr-4 ${
+              isDark
+                ? 'border-white/20 bg-[#1C1C1E] text-white placeholder-gray-500'
+                : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
+            }`}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'
+            }`}
+          >
+            <option value="all">{language === 'fi' ? 'Kaikki tilat' : 'All statuses'}</option>
+            <option value="receive">{language === 'fi' ? 'Vastaanotettu' : 'Receive'}</option>
+            <option value="sent">{language === 'fi' ? 'Lähetetty' : 'Sent'}</option>
+            <option value="ready">{language === 'fi' ? 'Valmis noudettavaksi' : 'Ready'}</option>
+            <option value="delivered">{language === 'fi' ? 'Toimitettu' : 'Delivered'}</option>
+            <option value="cancelled">{language === 'fi' ? 'Peruttu' : 'Cancelled'}</option>
+            <option value="returned">{language === 'fi' ? 'Palautettu' : 'Returned'}</option>
+            <option value="done">{language === 'fi' ? 'Valmis' : 'Done'}</option>
+          </select>
+
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={purchasedOnly}
+              onChange={(e) => setPurchasedOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {language === 'fi' ? 'Näytä vain ostetut' : 'Show purchased only'}
+            </span>
+          </label>
+
+          <button
+            onClick={fetchOrders}
+            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+              isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            <RefreshCcw className="h-4 w-4" />
+            {language === 'fi' ? 'Päivitä' : 'Refresh'}
+          </button>
+          <button
+            onClick={() => {
+              resetCreateForm();
+              setCreateOrderOpen(true);
+            }}
+            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+              isDark ? 'border-green-500/40 text-green-300 hover:bg-green-500/15' : 'border-green-300 text-green-700 hover:bg-green-50'
+            }`}
+          >
+            <Package className="h-4 w-4" />
+            {language === 'fi' ? 'Luo tilaus' : 'Create order'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface OrdersTableSectionProps {
+  endItem: number;
+  formatCustomerName: (order: OrderRow) => string;
+  formatDate: (value: string | null) => string;
+  formatMoney: (cents: number | null) => string;
+  formatStatusLabel: (value: string | null | undefined) => string;
+  getCustomerEmail: (order: OrderRow) => string;
+  getCustomerPhone: (order: OrderRow) => string;
+  getDisplayStatus: (order: OrderRow) => OrderMarkStatus;
+  getItemCount: (order: OrderRow) => number;
+  getNextStatus: (status: OrderMarkStatus) => OrderMarkStatus;
+  getPaymentInfo: (order: OrderRow) => { method: PaymentMethod; result: PaymentResult };
+  getRowStatusClass: (status: string) => string;
+  getScheduledDeletionInfo: (order: OrderRow) => { isExpired: boolean; daysLeft: number } | null;
+  getStatusBadgeClass: (status: string) => string;
+  getStatusMeta: (status: string) => { icon: React.ComponentType<{ className?: string }>; tone: 'gray' | 'purple' | 'green' | 'blue' | 'red' | 'orange' };
+  isDark: boolean;
+  language: string;
+  loading: boolean;
+  markOrderStatus: (orderId: string, nextStatus: OrderMarkStatus) => void;
+  orders: OrderRow[];
+  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedOrder: React.Dispatch<React.SetStateAction<OrderRow | null>>;
+  startItem: number;
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  updatingStatusId: string | null;
+}
+
+function OrdersTableSection({
+  currentPage,
+  endItem,
+  formatCustomerName,
+  formatDate,
+  formatMoney,
+  formatStatusLabel,
+  getCustomerEmail,
+  getCustomerPhone,
+  getDisplayStatus,
+  getItemCount,
+  getNextStatus,
+  getPaymentInfo,
+  getRowStatusClass,
+  getScheduledDeletionInfo,
+  getStatusBadgeClass,
+  getStatusMeta,
+  isDark,
+  language,
+  loading,
+  markOrderStatus,
+  orders,
+  setCurrentPage,
+  setSelectedOrder,
+  startItem,
+  totalCount,
+  totalPages,
+  updatingStatusId,
+}: OrdersTableSectionProps) {
+  if (loading) {
+    return (
+      <div className="py-20 text-center">
+        <div className={`mx-auto h-12 w-12 animate-spin rounded-full border-b-2 ${isDark ? 'border-white' : 'border-gray-900'}`} />
+        <p className={`mt-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          {language === 'fi' ? 'Ladataan tilauksia...' : 'Loading orders...'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className={`overflow-hidden rounded-lg border ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px]">
+            <thead className={isDark ? 'bg-white/5' : 'bg-gray-50'}>
+              <tr>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Päivä' : 'Date'}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Tilaus' : 'Order'}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Asiakas' : 'Customer'}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Tuotteet' : 'Items'}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Yhteensä' : 'Total'}</th>
+                <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Toiminto' : 'Action'}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10">
+              {orders.map((order) => {
+                const displayStatus = getDisplayStatus(order);
+                const statusMeta = getStatusMeta(displayStatus);
+                const StatusIcon = statusMeta.icon;
+                const payment = getPaymentInfo(order);
+                const deletionInfo = getScheduledDeletionInfo(order);
+                const PaymentIcon = payment.method === 'cash' ? Banknote : payment.method === 'paytrail' ? Globe : CreditCard;
+                const methodLabel = payment.method === 'paytrail' ? 'Paytrail' : payment.method === 'card' ? 'Card' : 'Cash';
+
+                return (
+                  <tr key={order.id} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${getRowStatusClass(displayStatus)}`}>
+                    <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{formatDate(order.created_at)}</td>
+                    <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>{order.id}</td>
+                    <td className={`${isDark ? 'text-white' : 'text-gray-900'} px-4 py-3`}>
+                      <div className="flex flex-col gap-1">
+                        <span>{formatCustomerName(order)}</span>
+                        <span className={`inline-flex items-center gap-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <Mail className="h-3 w-3" />
+                          {getCustomerEmail(order)}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <Phone className="h-3 w-3" />
+                          {getCustomerPhone(order)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className={`${isDark ? 'text-gray-300' : 'text-gray-700'} px-4 py-3`}>
+                      <span className="inline-flex items-center gap-1 text-sm">
+                        <Package className="h-4 w-4" />
+                        {getItemCount(order)}
+                      </span>
+                    </td>
+                    <td className={`${isDark ? 'text-white' : 'text-gray-900'} px-4 py-3`}>
+                      <p>{formatMoney(order.grand_total_cents)}</p>
+                      <span
+                        className={`mt-1 inline-flex items-center gap-1 text-xs ${
+                          payment.result === 'purchased'
+                            ? (isDark ? 'text-green-300' : 'text-green-700')
+                            : (isDark ? 'text-red-300' : 'text-red-700')
+                        } ${deletionInfo ? 'line-through' : ''}`}
+                      >
+                        <PaymentIcon className="h-3 w-3" />
+                        {methodLabel} · {payment.result === 'purchased' ? 'Purchased' : 'Fail'}
+                      </span>
+                      {deletionInfo && (
+                        <p className={`mt-1 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                          {deletionInfo.isExpired
+                            ? (language === 'fi' ? 'Poistettavissa nyt' : 'Scheduled for deletion now')
+                            : (language === 'fi'
+                                ? `Poistuu ${deletionInfo.daysLeft} päivän kuluttua`
+                                : `Scheduled deletion in ${deletionInfo.daysLeft} day(s)`)}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => markOrderStatus(order.id, getNextStatus(displayStatus))}
+                          disabled={updatingStatusId === order.id}
+                          title={language === 'fi' ? 'Päivitä seuraavaan tilaan' : 'Move to next status'}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${getStatusBadgeClass(displayStatus)} ${
+                            isDark ? 'hover:bg-white/10' : 'hover:opacity-90'
+                          }`}
+                        >
+                          <StatusIcon className="h-3 w-3" />
+                          {formatStatusLabel(displayStatus)}
+                        </button>
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm ${
+                            isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+                          }`}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {orders.length === 0 && (
+        <div className="py-10 text-center">
+          <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>
+            {language === 'fi' ? 'Tilauksia ei löytynyt' : 'No orders found'}
+          </p>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            {language === 'fi'
+              ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
+              : `Showing ${startItem}-${endItem} of ${totalCount}`}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage <= 1}
+              className={`rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50 ${
+                isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              {language === 'fi' ? 'Edellinen' : 'Previous'}
+            </button>
+            <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage >= totalPages}
+              className={`rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50 ${
+                isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              {language === 'fi' ? 'Seuraava' : 'Next'}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function OrdersCMSPage() {
   const { theme } = useTheme();
   const { language } = useLanguage();
@@ -1048,77 +1778,19 @@ export function OrdersCMSPage() {
         </div>
       </div>
 
-      <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'} px-8 py-4`}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-md">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-            <input
-              type="text"
-              placeholder={language === 'fi' ? 'Hae tilausta, sähköpostia tai puhelinta...' : 'Search order, email, or phone...'}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-                isDark
-                  ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-              }`}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className={`px-3 py-2 rounded-lg border text-sm ${
-                isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-              }`}
-            >
-              <option value="all">{language === 'fi' ? 'Kaikki tilat' : 'All statuses'}</option>
-              <option value="receive">{language === 'fi' ? 'Vastaanotettu' : 'Receive'}</option>
-              <option value="sent">{language === 'fi' ? 'Lähetetty' : 'Sent'}</option>
-              <option value="ready">{language === 'fi' ? 'Valmis noudettavaksi' : 'Ready'}</option>
-              <option value="delivered">{language === 'fi' ? 'Toimitettu' : 'Delivered'}</option>
-              <option value="cancelled">{language === 'fi' ? 'Peruttu' : 'Cancelled'}</option>
-              <option value="returned">{language === 'fi' ? 'Palautettu' : 'Returned'}</option>
-              <option value="done">{language === 'fi' ? 'Valmis' : 'Done'}</option>
-            </select>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={purchasedOnly}
-                onChange={(e) => setPurchasedOnly(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300"
-              />
-              <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Näytä vain ostetut' : 'Show purchased only'}
-              </span>
-            </label>
-
-            <button
-              onClick={fetchOrders}
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
-                isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              <RefreshCcw className="w-4 h-4" />
-              {language === 'fi' ? 'Päivitä' : 'Refresh'}
-            </button>
-            <button
-              onClick={() => {
-                resetCreateForm();
-                setCreateOrderOpen(true);
-              }}
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
-                isDark ? 'border-green-500/40 text-green-300 hover:bg-green-500/15' : 'border-green-300 text-green-700 hover:bg-green-50'
-              }`}
-            >
-              <Package className="w-4 h-4" />
-              {language === 'fi' ? 'Luo tilaus' : 'Create order'}
-            </button>
-          </div>
-        </div>
-      </div>
+      <OrdersToolbar
+        fetchOrders={fetchOrders}
+        isDark={isDark}
+        language={language}
+        purchasedOnly={purchasedOnly}
+        resetCreateForm={resetCreateForm}
+        searchTerm={searchTerm}
+        setCreateOrderOpen={setCreateOrderOpen}
+        setPurchasedOnly={setPurchasedOnly}
+        setSearchTerm={setSearchTerm}
+        setStatusFilter={setStatusFilter}
+        statusFilter={statusFilter}
+      />
 
       <div className="px-8 py-6">
         <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -1150,509 +1822,75 @@ export function OrdersCMSPage() {
           </div>
         )}
 
-        {loading ? (
-          <div className="py-20 text-center">
-            <div className={`mx-auto h-12 w-12 animate-spin rounded-full border-b-2 ${isDark ? 'border-white' : 'border-gray-900'}`} />
-            <p className={`mt-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Ladataan tilauksia...' : 'Loading orders...'}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className={`rounded-lg border overflow-hidden ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1100px]">
-                  <thead className={isDark ? 'bg-white/5' : 'bg-gray-50'}>
-                    <tr>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Päivä' : 'Date'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Tilaus' : 'Order'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Asiakas' : 'Customer'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Tuotteet' : 'Items'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Yhteensä' : 'Total'}
-                      </th>
-                      <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Toiminto' : 'Action'}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {orders.map((order) => {
-                      const displayStatus = getDisplayStatus(order);
-                      const statusMeta = getStatusMeta(displayStatus);
-                      const StatusIcon = statusMeta.icon;
-                      return (
-                        <tr key={order.id} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${getRowStatusClass(displayStatus)}`}>
-                          <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{formatDate(order.created_at)}</td>
-                          <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>{order.id}</td>
-                          <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            <div className="flex flex-col gap-1">
-                              <span>{formatCustomerName(order)}</span>
-                              <span className={`inline-flex items-center gap-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                                <Mail className="w-3 h-3" />
-                                {getCustomerEmail(order)}
-                              </span>
-                              <span className={`inline-flex items-center gap-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                                <Phone className="w-3 h-3" />
-                                {getCustomerPhone(order)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <span className="inline-flex items-center gap-1 text-sm">
-                              <Package className="w-4 h-4" />
-                              {getItemCount(order)}
-                            </span>
-                          </td>
-                          <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            <p>{formatMoney(order.grand_total_cents)}</p>
-                            {(() => {
-                              const payment = getPaymentInfo(order);
-                              const deletionInfo = getScheduledDeletionInfo(order);
-                              const PaymentIcon = payment.method === 'cash'
-                                ? Banknote
-                                : payment.method === 'paytrail'
-                                  ? Globe
-                                  : CreditCard;
-                              const methodLabel = payment.method === 'paytrail'
-                                ? 'Paytrail'
-                                : (payment.method === 'card' ? 'Card' : 'Cash');
-                              return (
-                                <span className={`mt-1 inline-flex items-center gap-1 text-xs ${
-                                  payment.result === 'purchased'
-                                    ? (isDark ? 'text-green-300' : 'text-green-700')
-                                    : (isDark ? 'text-red-300' : 'text-red-700')
-                                } ${deletionInfo ? 'line-through' : ''}`}>
-                                  <PaymentIcon className="w-3 h-3" />
-                                  {methodLabel} · {payment.result === 'purchased' ? 'Purchased' : 'Fail'}
-                                </span>
-                              );
-                            })()}
-                            {(() => {
-                              const deletionInfo = getScheduledDeletionInfo(order);
-                              if (!deletionInfo) return null;
-                              return (
-                                <p className={`mt-1 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                                  {deletionInfo.isExpired
-                                    ? (language === 'fi' ? 'Poistettavissa nyt' : 'Scheduled for deletion now')
-                                    : (language === 'fi'
-                                        ? `Poistuu ${deletionInfo.daysLeft} päivän kuluttua`
-                                        : `Scheduled deletion in ${deletionInfo.daysLeft} day(s)`)}
-                                </p>
-                              );
-                            })()}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => markOrderStatus(order.id, getNextStatus(displayStatus))}
-                                disabled={updatingStatusId === order.id}
-                                title={language === 'fi' ? 'Päivitä seuraavaan tilaan' : 'Move to next status'}
-                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${getStatusBadgeClass(displayStatus)} ${
-                                  isDark ? 'hover:bg-white/10' : 'hover:opacity-90'
-                                }`}
-                              >
-                                <StatusIcon className="w-3 h-3" />
-                                {formatStatusLabel(displayStatus)}
-                              </button>
-                              <button
-                                onClick={() => setSelectedOrder(order)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm ${
-                                  isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-                                }`}
-                              >
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <OrdersTableSection
+          currentPage={currentPage}
+          endItem={endItem}
+          formatCustomerName={formatCustomerName}
+          formatDate={formatDate}
+          formatMoney={formatMoney}
+          formatStatusLabel={formatStatusLabel}
+          getCustomerEmail={getCustomerEmail}
+          getCustomerPhone={getCustomerPhone}
+          getDisplayStatus={getDisplayStatus}
+          getItemCount={getItemCount}
+          getNextStatus={getNextStatus}
+          getPaymentInfo={getPaymentInfo}
+          getRowStatusClass={getRowStatusClass}
+          getScheduledDeletionInfo={getScheduledDeletionInfo}
+          getStatusBadgeClass={getStatusBadgeClass}
+          getStatusMeta={getStatusMeta}
+          isDark={isDark}
+          language={language}
+          loading={loading}
+          markOrderStatus={markOrderStatus}
+          orders={orders}
+          setCurrentPage={setCurrentPage}
+          setSelectedOrder={setSelectedOrder}
+          startItem={startItem}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          updatingStatusId={updatingStatusId}
+        />
 
-            {orders.length === 0 && (
-              <div className="py-10 text-center">
-                <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>
-                  {language === 'fi' ? 'Tilauksia ei löytynyt' : 'No orders found'}
-                </p>
-              </div>
-            )}
+        <SelectedOrderModal
+          formatCustomerName={formatCustomerName}
+          formatDate={formatDate}
+          formatMoney={formatMoney}
+          formatStatusLabel={formatStatusLabel}
+          getCustomerEmail={getCustomerEmail}
+          getCustomerPhone={getCustomerPhone}
+          getDisplayStatus={getDisplayStatus}
+          getItemEan={getItemEan}
+          getItemSku={getItemSku}
+          getItemTitle={getItemTitle}
+          getStatusBadgeClass={getStatusBadgeClass}
+          getStatusMeta={getStatusMeta}
+          isDark={isDark}
+          language={language}
+          markOrderStatus={markOrderStatus}
+          order={selectedOrder}
+          orderMarkStatuses={ORDER_MARK_STATUSES}
+          orderTotals={selectedOrderTotals}
+          selectedItems={selectedItems}
+          updatingStatusId={updatingStatusId}
+          onClose={() => setSelectedOrder(null)}
+        />
 
-            {totalPages > 1 && (
-              <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {language === 'fi'
-                    ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
-                    : `Showing ${startItem}-${endItem} of ${totalCount}`}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    disabled={currentPage <= 1}
-                    className={`px-3 py-1.5 rounded-lg text-sm border disabled:opacity-50 ${
-                      isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    {language === 'fi' ? 'Edellinen' : 'Previous'}
-                  </button>
-                  <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage >= totalPages}
-                    className={`px-3 py-1.5 rounded-lg text-sm border disabled:opacity-50 ${
-                      isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    {language === 'fi' ? 'Seuraava' : 'Next'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {selectedOrder && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <button
-              aria-label="Close modal overlay"
-              onClick={() => setSelectedOrder(null)}
-              className="absolute inset-0 bg-black/60"
-            />
-            <div className={`relative z-[101] w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border p-5 ${
-              isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
-            }`}>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className={`text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Tilauksen tiedot' : 'Order details'}
-                </h2>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border ${
-                    isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  {language === 'fi' ? 'Sulje' : 'Close'}
-                </button>
-              </div>
-
-              <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 mb-5 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                  <p><strong>ID:</strong> {selectedOrder.id}</p>
-                  <p><strong>{language === 'fi' ? 'Päivä' : 'Date'}:</strong> {formatDate(selectedOrder.created_at)}</p>
-                  <p className="mt-1">
-                    <strong>{language === 'fi' ? 'Maksun tila' : 'Payment status'}:</strong>{' '}
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${getStatusBadgeClass(getDisplayStatus(selectedOrder))}`}>
-                      {(() => {
-                        const icon = getStatusMeta(getDisplayStatus(selectedOrder)).icon;
-                        const Icon = icon;
-                        return <Icon className="w-3 h-3" />;
-                      })()}
-                      {formatStatusLabel(getDisplayStatus(selectedOrder))}
-                    </span>
-                  </p>
-                  <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> {formatMoney(selectedOrderTotals?.subtotalCents ?? null)}</p>
-                  <p>
-                    <strong>{language === 'fi' ? 'ALV' : 'VAT'} ({selectedOrderTotals?.vatPercent !== null && selectedOrderTotals?.vatPercent !== undefined ? selectedOrderTotals.vatPercent.toFixed(1) : '-' }%):</strong>{' '}
-                    {formatMoney(selectedOrderTotals?.vatCents ?? null)}
-                  </p>
-                  <p><strong>{language === 'fi' ? 'Yhteensä' : 'Total'}:</strong> {formatMoney(selectedOrderTotals?.totalCents ?? selectedOrder.grand_total_cents)}</p>
-                </div>
-                <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                  <p><strong>{language === 'fi' ? 'Asiakas' : 'Customer'}:</strong> {formatCustomerName(selectedOrder)}</p>
-                  <p><strong>Email:</strong> {getCustomerEmail(selectedOrder)}</p>
-                  <p><strong>{language === 'fi' ? 'Puhelin' : 'Phone'}:</strong> {getCustomerPhone(selectedOrder)}</p>
-                </div>
-              </div>
-
-              <div className={`mb-5 rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                <p className={`mb-2 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Päivitä toimituksen tila' : 'Update fulfillment status'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {ORDER_MARK_STATUSES.map((status) => {
-                    const active = getDisplayStatus(selectedOrder) === status;
-                    return (
-                      <button
-                        key={`modal-${selectedOrder.id}-${status}`}
-                        onClick={() => markOrderStatus(selectedOrder.id, status)}
-                        disabled={updatingStatusId === selectedOrder.id}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors disabled:opacity-50 ${
-                          active
-                            ? getStatusBadgeClass(status)
-                            : (isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100')
-                        }`}
-                      >
-                        {formatStatusLabel(status)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h3 className={`mb-3 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Tilatut tuotteet' : 'Ordered items'}
-                </h3>
-                {selectedItems.length === 0 ? (
-                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>-</p>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {selectedItems.map((item: any, index: number) => {
-                      const qty = Number(item?.qty ?? item?.quantity ?? 1);
-                      const unitCents = Number(item?.client_unit_price_cents ?? Math.round(Number(item?.price ?? 0) * 100));
-                      const lineTotal = (unitCents * qty) / 100;
-                      const ean = getItemEan(item);
-                      const sku = getItemSku(item);
-                      const size = item?.size ?? item?.size_string ?? item?.dimension ?? item?.product?.size_string ?? '';
-                      const title = getItemTitle(item);
-
-                      return (
-                        <div
-                          key={`${selectedOrder.id}-item-${index}`}
-                          className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}
-                        >
-                          <p className={`mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</p>
-                          <div className={`space-y-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <p><strong>EAN:</strong> {ean || '-'}</p>
-                            <p><strong>SKU:</strong> {sku || '-'}</p>
-                            <p><strong>{language === 'fi' ? 'Koko' : 'Size'}:</strong> {size || '-'}</p>
-                            <p><strong>{language === 'fi' ? 'Määrä' : 'Qty'}:</strong> {qty}</p>
-                            <p><strong>{language === 'fi' ? 'Yksikköhinta' : 'Unit price'}:</strong> EUR {(unitCents / 100).toFixed(2)}</p>
-                            <p><strong>{language === 'fi' ? 'Rivin summa' : 'Line total'}:</strong> EUR {lineTotal.toFixed(2)}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {createOrderOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <button
-              aria-label="Close create order modal"
-              onClick={() => setCreateOrderOpen(false)}
-              className="absolute inset-0 bg-black/60"
-            />
-            <div className={`relative z-[111] w-full max-w-2xl rounded-2xl border p-5 ${
-              isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
-            }`}>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className={`text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Luo tilaus' : 'Create order'}
-                </h2>
-                <button
-                  onClick={() => setCreateOrderOpen(false)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border ${
-                    isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  {language === 'fi' ? 'Sulje' : 'Close'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder={language === 'fi' ? 'Etunimi' : 'First name'}
-                  value={createForm.firstName}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, firstName: e.target.value }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="text"
-                  placeholder={language === 'fi' ? 'Sukunimi' : 'Last name'}
-                  value={createForm.lastName}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, lastName: e.target.value }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={createForm.email}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="text"
-                  placeholder={language === 'fi' ? 'Puhelin' : 'Phone'}
-                  value={createForm.phone}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, phone: e.target.value }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="text"
-                  placeholder={language === 'fi' ? 'Tuotteen nimi' : 'Item name'}
-                  value={createForm.itemName}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, itemName: e.target.value }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="text"
-                  placeholder="EAN"
-                  value={createForm.itemEan}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setCreateForm((prev) => ({
-                      ...prev,
-                      itemEan: value,
-                      variantId: null,
-                      baseUnitPriceEur: null,
-                      pricingRules: null,
-                    }));
-                    if (eanLookupMessage) setEanLookupMessage(null);
-                  }}
-                  onBlur={() => lookupItemByEan(createForm.itemEan)}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  placeholder={language === 'fi' ? 'Määrä' : 'Qty'}
-                  value={createForm.qty}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setCreateForm((prev) => {
-                      const nextQty = Math.max(1, Number.parseInt(value, 10) || 1);
-                      const next: OrderCreateForm = { ...prev, qty: value };
-
-                      if (!prev.unitPriceManuallyEdited && prev.baseUnitPriceEur !== null) {
-                        const autoPricing = calculateLinePricing(
-                          prev.baseUnitPriceEur,
-                          nextQty,
-                          prev.pricingRules,
-                        );
-                        next.unitPriceEur = autoPricing.effectiveUnitPriceEur.toFixed(2);
-                      }
-
-                      return next;
-                    });
-                  }}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder={language === 'fi' ? 'Yksikköhinta EUR' : 'Unit price EUR'}
-                  value={createForm.unitPriceEur}
-                  onChange={(e) => setCreateForm((prev) => ({
-                    ...prev,
-                    unitPriceEur: e.target.value,
-                    unitPriceManuallyEdited: true,
-                  }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.1"
-                  placeholder={language === 'fi' ? 'ALV %' : 'VAT %'}
-                  value={createForm.vatPercent}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, vatPercent: e.target.value }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-                <select
-                  value={createForm.paymentMethod}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, paymentMethod: e.target.value as PaymentMethod }))}
-                  className={`px-3 py-2 rounded-lg border ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                >
-                  <option value="cash">{language === 'fi' ? 'Käteinen' : 'Cash'}</option>
-                  <option value="card">{language === 'fi' ? 'Kortti' : 'Card'}</option>
-                </select>
-                <select
-                  value={createForm.status}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, status: e.target.value as OrderMarkStatus }))}
-                  className={`px-3 py-2 rounded-lg border md:col-span-2 ${isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                >
-                  {ORDER_MARK_STATUSES.map((status) => (
-                    <option key={`create-${status}`} value={status}>{formatStatusLabel(status)}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={`mt-3 rounded-lg border p-3 text-sm ${isDark ? 'border-white/10 bg-white/5 text-gray-200' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
-                {(() => {
-                  const qty = Math.max(1, Number.parseInt(createForm.qty, 10) || 1);
-                  const unit = Number.parseFloat(createForm.unitPriceEur || '0');
-                  const vatPercent = Number.parseFloat(createForm.vatPercent || '0');
-                  const baseUnit = createForm.baseUnitPriceEur ?? (Number.isFinite(unit) ? unit : 0);
-                  const autoPricing = calculateLinePricing(baseUnit, qty, createForm.pricingRules);
-                  const usingAutoPricing = !createForm.unitPriceManuallyEdited && createForm.baseUnitPriceEur !== null;
-                  const subtotal = Number.isFinite(unit) ? unit * qty : 0;
-                  const vat = Number.isFinite(vatPercent) ? subtotal * (vatPercent / 100) : 0;
-                  const total = subtotal + vat;
-
-                  return (
-                    <>
-                      {usingAutoPricing && autoPricing.savingsEur > 0 && (
-                        <p>
-                          <strong>{language === 'fi' ? 'Pakettialennus' : 'Bundle discount'}:</strong>{' '}
-                          EUR {autoPricing.savingsEur.toFixed(2)}
-                        </p>
-                      )}
-                      <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> EUR {subtotal.toFixed(2)}</p>
-                      <p><strong>{language === 'fi' ? 'ALV' : 'VAT'} ({Number.isFinite(vatPercent) ? vatPercent.toFixed(1) : '0.0'}%):</strong> EUR {vat.toFixed(2)}</p>
-                      <p><strong>{language === 'fi' ? 'Kokonaissumma' : 'Total'}:</strong> EUR {total.toFixed(2)}</p>
-                    </>
-                  );
-                })()}
-                {eanLookupLoading && (
-                  <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi' ? 'Haetaan EAN-tuotetta...' : 'Looking up EAN item...'}
-                  </p>
-                )}
-                {eanLookupMessage && (
-                  <p className={`mt-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{eanLookupMessage}</p>
-                )}
-              </div>
-
-              {createOrderError && (
-                <p className={`mt-3 text-sm ${isDark ? 'text-red-300' : 'text-red-700'}`}>{createOrderError}</p>
-              )}
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => setCreateOrderOpen(false)}
-                  disabled={creatingOrder}
-                  className={`px-4 py-2 rounded-lg text-sm border ${
-                    isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  {language === 'fi' ? 'Peruuta' : 'Cancel'}
-                </button>
-                <button
-                  onClick={handleCreateOrder}
-                  disabled={creatingOrder}
-                  className={`px-4 py-2 rounded-lg text-sm ${
-                    isDark ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30' : 'bg-green-100 text-green-700 hover:bg-green-200'
-                  }`}
-                >
-                  {creatingOrder
-                    ? (language === 'fi' ? 'Luodaan...' : 'Creating...')
-                    : (language === 'fi' ? 'Luo tilaus' : 'Create order')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <CreateOrderModal
+          createForm={createForm}
+          createOrderError={createOrderError}
+          creatingOrder={creatingOrder}
+          eanLookupLoading={eanLookupLoading}
+          eanLookupMessage={eanLookupMessage}
+          handleCreateOrder={handleCreateOrder}
+          isDark={isDark}
+          language={language}
+          lookupItemByEan={lookupItemByEan}
+          open={createOrderOpen}
+          setCreateForm={setCreateForm}
+          setCreateOrderOpen={setCreateOrderOpen}
+          setEanLookupMessage={setEanLookupMessage}
+        />
       </div>
     </div>
   );

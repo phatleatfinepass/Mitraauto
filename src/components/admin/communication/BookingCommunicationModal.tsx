@@ -45,7 +45,7 @@ export function BookingCommunicationModal({
 }: BookingCommunicationModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`h-[min(88vh,920px)] max-w-[min(1360px,calc(100vw-2rem))] overflow-hidden p-0 ${theme === 'dark' ? 'border-white/10 bg-[#0F1117] text-white' : 'border-gray-200 bg-[#F3F2EE]'}`}>
+      <DialogContent className={`h-[min(88vh,920px)] w-[min(1360px,calc(100vw-2rem))] max-w-[min(1360px,calc(100vw-2rem))] sm:max-w-[min(1360px,calc(100vw-2rem))] overflow-hidden p-0 ${theme === 'dark' ? 'border-white/10 bg-[#0F1117] text-white' : 'border-gray-200 bg-[#F3F2EE]'}`}>
         {booking ? (
           <>
             <DialogHeader className={`border-b px-6 py-5 ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
@@ -69,7 +69,7 @@ export function BookingCommunicationModal({
               </div>
             </DialogHeader>
 
-            <div className="min-h-0 flex-1 px-6 py-5">
+            <div className="min-h-0 flex-1 overflow-hidden px-6 py-5">
               <BookingCommunicationPanel
                 booking={booking}
                 conversation={conversation}
