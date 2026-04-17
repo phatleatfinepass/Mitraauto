@@ -39,6 +39,9 @@ export function useTiresCmsCatalogSync({
       const { error: refreshError } = await supabase.rpc('catalog_refresh_products_search_v3');
       if (refreshError) throw refreshError;
 
+      const { error: cmsRefreshError } = await supabase.rpc('refresh_cms_tires_admin_mv');
+      if (cmsRefreshError) throw cmsRefreshError;
+
       setHasPendingCatalogSync(false);
       setCatalogSyncMessage(language === 'fi' ? 'Catalog sync valmis.' : 'Catalog sync completed.');
       await fetchTires();

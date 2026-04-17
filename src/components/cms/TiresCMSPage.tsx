@@ -44,7 +44,6 @@ export function TiresCMSPage() {
 
   const {
     currentPage,
-    discoveredPageCount,
     endItem,
     error,
     fetchTires,
@@ -65,6 +64,7 @@ export function TiresCMSPage() {
     supplierFilter,
     tires,
     totalCount,
+    totalPages,
   } = useTiresCmsList(25);
 
   useEffect(() => {
@@ -352,7 +352,6 @@ export function TiresCMSPage() {
       <div className="px-8 py-6">
         <TiresCmsTableSection
           currentPage={currentPage}
-          discoveredPageCount={discoveredPageCount}
           endItem={endItem}
           error={error}
           filteredTires={filteredTires}
@@ -371,7 +370,7 @@ export function TiresCMSPage() {
           showWarningTooltip={showWarningTooltip}
           startItem={startItem}
           totalCount={totalCount}
-          hasNextPage={hasNextPage}
+          totalPages={totalPages}
         />
       </div>
 

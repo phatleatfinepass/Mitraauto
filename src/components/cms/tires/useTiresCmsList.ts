@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '../../../utils/supabase/client';
 import type { TireRow } from './types';
@@ -107,8 +107,9 @@ export function useTiresCmsList(pageSize = 25) {
   const [supplierFilter, setSupplierFilter] = useState(initialState.supplierFilter);
   const [currentPage, setCurrentPage] = useState(initialState.currentPage);
   const [totalCount, setTotalCount] = useState(initialState.totalCount);
-  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(initialState.totalCount > initialState.currentPage * pageSize);
   const [refreshing, setRefreshing] = useState(false);
+  const didMountRef = useRef(false);
 
   const toNumberOrNull = useCallback((value: any) => {
     if (value === null || value === undefined || value === '') return null;
@@ -145,6 +146,10 @@ export function useTiresCmsList(pageSize = 25) {
   }, [searchTerm]);
 
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
     setCurrentPage(1);
   }, [showMissingEanOnly, hideNonPassenger, supplierFilter, debouncedSearchTerm]);
 
@@ -286,34 +291,56 @@ export function useTiresCmsList(pageSize = 25) {
       };
 
       try {
-        const { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
-          p_search: trimmedSearch || null,
-          p_missing_ean_only: showMissingEanOnly,
-          p_exclude_non_passenger: hideNonPassenger,
-          p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
-          p_limit: pageSize + 1,
-          p_offset: offset,
-        });
+        const [
+          { data: rpcRows, error: rpcError },
+          { data: rpcCount, error: rpcCountError },
+        ] = await Promise.all([
+          supabase.rpc('cms_list_tires_admin_v1', {
+            p_search: trimmedSearch || null,
+            p_missing_ean_only: showMissingEanOnly,
+            p_exclude_non_passenger: hideNonPassenger,
+            p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+            p_limit: pageSize,
+            p_offset: offset,
+          }),
+          supabase.rpc('cms_count_tires_admin_v1', {
+            p_search: trimmedSearch || null,
+            p_missing_ean_only: showMissingEanOnly,
+            p_exclude_non_passenger: hideNonPassenger,
+            p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+          }),
+        ]);
 
         if (rpcError) {
           throw rpcError;
         }
+        if (rpcCountError) {
+          throw rpcCountError;
+        }
 
+        const resolvedTotalCount = Number(rpcCount ?? 0);
         const rows = rpcRows ?? [];
+
         if (rows.length === 0) {
           setTires([]);
-          setTotalCount(offset);
+          setTotalCount(resolvedTotalCount);
           setHasNextPage(false);
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.setItem(
+              TIRES_CMS_CACHE_KEY,
+              JSON.stringify({
+                tires: [],
+                totalCount: resolvedTotalCount,
+              })
+            );
+          }
           return;
         }
 
-        const hasMorePages = rows.length > pageSize;
-        const visibleRows = hasMorePages ? rows.slice(0, pageSize) : rows;
-        const resolvedTotalCount = hasMorePages ? offset + visibleRows.length + 1 : offset + visibleRows.length;
-
-        const mappedRows = mapRowsToTires(visibleRows);
+        const mappedRows = mapRowsToTires(rows);
+        const resolvedHasNextPage = currentPage * pageSize < resolvedTotalCount;
         setTotalCount(resolvedTotalCount);
-        setHasNextPage(hasMorePages);
+        setHasNextPage(resolvedHasNextPage);
         setTires(mappedRows);
         if (typeof window !== 'undefined') {
           window.sessionStorage.setItem(
@@ -326,154 +353,7 @@ export function useTiresCmsList(pageSize = 25) {
         }
         return;
       } catch (rpcListError: any) {
-        if (rpcListError?.code === '57014') {
-          throw rpcListError;
-        }
-        console.warn('cms_list_tires_admin_v1 fallback to products_search path:', rpcListError);
-      }
-
-      const productsSearchColumns = [
-        'variant_id',
-        'product_type',
-        'derived_ean',
-        'supplier_code_best',
-        'supplier_external_id_best',
-        'brand',
-        'model',
-        'size_string',
-        'season',
-        'runflat',
-        'xl_reinforced',
-        'load_index',
-        'speed_rating',
-        'speed_index',
-        'ev_ready',
-        'threepmsf',
-        'winter_approved',
-        'ice_approved',
-        'eu_wet',
-        'eu_noise',
-        'eu_label_json',
-        'final_price_eur',
-        'price',
-        'ean_conflict_open',
-        'width_mm',
-        'aspect_ratio',
-        'diameter_in',
-      ].join(', ');
-      const productCmsColumns = [
-        'variant_id',
-        'title',
-        'subtitle',
-        'short_description',
-        'long_description',
-        'hero_image_url',
-        'gallery',
-        'seo_slug',
-        'seo_title',
-        'seo_description',
-        'is_hidden',
-        'spec_overrides',
-        'price_override_eur',
-        'promo_enabled',
-        'promo_price_eur',
-        'promo_start',
-        'promo_end',
-      ].join(', ');
-
-      let productsQuery = supabase
-        .from('products_search')
-        .select(productsSearchColumns)
-        .eq('product_type', 'tire')
-        .order('brand', { ascending: true })
-        .order('model', { ascending: true })
-        .order('variant_id', { ascending: true })
-        .range(offset, offset + pageSize);
-
-      if (trimmedSearch) {
-        productsQuery = productsQuery.or([
-          `brand.ilike.%${trimmedSearch}%`,
-          `model.ilike.%${trimmedSearch}%`,
-          `size_string.ilike.%${trimmedSearch}%`,
-          `derived_ean.ilike.%${trimmedSearch}%`,
-        ].join(','));
-      }
-
-      if (showMissingEanOnly) {
-        productsQuery = productsQuery.or('derived_ean.is.null,derived_ean.like.EANMISSING_%');
-      }
-      if (hideNonPassenger) {
-        productsQuery = productsQuery.eq('is_non_passenger', false);
-      }
-      if (supplierFilter !== 'all') {
-        productsQuery = productsQuery.eq('supplier_code_best', supplierFilter);
-      }
-
-      const { data: products, error: productsError } = await productsQuery;
-      if (productsError) throw productsError;
-
-      if (!products || products.length === 0) {
-        setTires([]);
-        setTotalCount(offset);
-        setHasNextPage(false);
-        return;
-      }
-
-      const hasMorePages = products.length > pageSize;
-      const visibleProducts = hasMorePages ? products.slice(0, pageSize) : products;
-      const resolvedTotalCount = hasMorePages ? offset + visibleProducts.length + 1 : offset + visibleProducts.length;
-      setTotalCount(resolvedTotalCount);
-      setHasNextPage(hasMorePages);
-
-      const variantIds = visibleProducts.map((product: any) => product.variant_id);
-      const variantIdsNeedingFallbackEan = visibleProducts
-        .filter((product: any) => !product.derived_ean || String(product.derived_ean).startsWith('EANMISSING_'))
-        .map((product: any) => product.variant_id);
-      const chunkSize = 200;
-      const cmsRows: any[] = [];
-      const eanRows: any[] = [];
-
-      for (let i = 0; i < variantIds.length; i += chunkSize) {
-        const idChunk = variantIds.slice(i, i + chunkSize);
-        const eanChunk = variantIdsNeedingFallbackEan.filter((variantId) => idChunk.includes(variantId));
-        const queries: [PromiseLike<any>, PromiseLike<any> | null] = [
-          supabase.from('product_cms').select(productCmsColumns).in('variant_id', idChunk),
-          eanChunk.length > 0
-            ? supabase.from('catalog_tire_variants').select('id, ean').in('id', eanChunk)
-            : null,
-        ];
-        const [cmsResult, eanResult] = await Promise.all([
-          queries[0],
-          queries[1] ?? Promise.resolve({ data: [], error: null }),
-        ]);
-        const { data: cmsBatch, error: cmsError } = cmsResult;
-        const { data: eanBatch, error: eanError } = eanResult;
-
-        if (cmsError) throw cmsError;
-        if (eanError) throw eanError;
-
-        if (cmsBatch?.length) cmsRows.push(...cmsBatch);
-        if (eanBatch?.length) eanRows.push(...eanBatch);
-      }
-
-      const cmsMap = new Map(cmsRows.map((row: any) => [row.variant_id, row]));
-      const eanMap = new Map(eanRows.map((row: any) => [row.id, row.ean]));
-      const fallbackRows = visibleProducts.map((product: any) => ({
-        ...product,
-        ean: eanMap.get(product.variant_id) ?? null,
-        cms_data: cmsMap.get(product.variant_id) || null,
-      }));
-
-      const mappedFallbackRows = mapRowsToTires(fallbackRows);
-      setTires(mappedFallbackRows);
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(
-          TIRES_CMS_CACHE_KEY,
-          JSON.stringify({
-            tires: mappedFallbackRows,
-            totalCount: resolvedTotalCount,
-          })
-        );
+        throw rpcListError;
       }
     } catch (err: any) {
       console.error('Fetch tires error:', err);
@@ -500,7 +380,7 @@ export function useTiresCmsList(pageSize = 25) {
 
   const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalCount);
-  const discoveredPageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const patchLocalCmsData = useCallback((variantId: string, cmsPatch: Record<string, any> | null) => {
     setTires((previous) =>
@@ -555,7 +435,6 @@ export function useTiresCmsList(pageSize = 25) {
     endItem,
     error,
     fetchTires,
-    discoveredPageCount,
     hasNextPage,
     patchLocalCmsData,
     patchLocalIdentityData,
@@ -569,9 +448,9 @@ export function useTiresCmsList(pageSize = 25) {
     hideNonPassenger,
     showMissingEanOnly,
     startItem,
-    supplierFilter,
     tires,
     totalCount,
+    totalPages,
     loading,
   };
 }

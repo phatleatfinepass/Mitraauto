@@ -7,7 +7,6 @@ interface TiresTableSectionProps {
   endItem: number;
   error: string | null;
   filteredTires: TireRow[];
-  discoveredPageCount: number;
   getEffectiveIdentity: (tire: TireRow | null) => { brand: string; model: string; size_string: string };
   getWarningTooltip: (tire: TireRow) => string;
   handleEdit: (tire: TireRow) => void;
@@ -23,7 +22,7 @@ interface TiresTableSectionProps {
   showWarningTooltip: (text: string, x: number, y: number) => void;
   startItem: number;
   totalCount: number;
-  hasNextPage: boolean;
+  totalPages: number;
 }
 
 export function TiresCmsTableSection({
@@ -31,7 +30,6 @@ export function TiresCmsTableSection({
   endItem,
   error,
   filteredTires,
-  discoveredPageCount,
   getEffectiveIdentity,
   getWarningTooltip,
   handleEdit,
@@ -47,7 +45,7 @@ export function TiresCmsTableSection({
   showWarningTooltip,
   startItem,
   totalCount,
-  hasNextPage,
+  totalPages,
 }: TiresTableSectionProps) {
   if (loading) {
     return (
@@ -185,8 +183,7 @@ export function TiresCmsTableSection({
         isDark={isDark}
         language={language}
         currentPage={currentPage}
-        hasNextPage={hasNextPage}
-        discoveredPageCount={discoveredPageCount}
+        totalPages={totalPages}
         totalCount={totalCount}
         startItem={startItem}
         endItem={endItem}
