@@ -82,7 +82,7 @@ begin
     ps.winter_approved,
     ps.ice_approved,
     ps.eu_wet,
-    ps.eu_noise,
+    nullif(regexp_replace(coalesce(ps.eu_noise::text, ''), '[^0-9\\.-]', '', 'g'), '')::numeric as eu_noise,
     ps.eu_label_json,
     ps.final_price_eur,
     ps.price,

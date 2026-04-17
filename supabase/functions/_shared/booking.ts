@@ -1011,7 +1011,7 @@ async function sendEmail(args: {
       }
     : await getLatestConversationAnchor(args.booking.id, mailboxEmail);
 
-  const finalSubject = (existingThread?.subject ?? anchor.subject ?? args.subject).trim();
+  const finalSubject = args.subject.trim();
   const rawMessage = buildRawMessage({
     subject: finalSubject,
     text: args.text,
