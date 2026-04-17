@@ -20,9 +20,10 @@ import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import type { CatalogProduct } from './components/catalog/CatalogPage';
 import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
-import { TiresCMSPageV2 as TiresCMSPage } from './components/cms/TiresCMSPageV2';
+import { TiresCMSPage } from './components/cms/TiresCMSPage';
 import { RimsCMSPageV2 as RimsCMSPage } from './components/cms/RimsCMSPageV2';
 import { OrdersCMSPage } from './components/cms/OrdersCMSPage';
+import { RescueCMSPage } from './components/cms/RescueCMSPage';
 import { CmsGuard } from './components/cms/CmsGuard';
 // NEW PAGES
 import { ContactPage } from './components/ContactPage';
@@ -86,11 +87,15 @@ type ParsedTireSize = {
   speedRating?: string;
 };
 
-type CmsTab = 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'future';
+type CmsTab = 'rescue' | 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'future';
 const BOOKING_STATUS_HANDOFF = 'handoff';
 
 function resolveCmsTabFromHash(hash?: string): CmsTab {
   const normalized = (hash ?? '').replace('#', '').toLowerCase();
+
+  if (normalized === 'rescue') {
+    return 'rescue';
+  }
 
   if (normalized === 'catalog-tires') {
     return 'catalog-tires';
@@ -108,7 +113,7 @@ function resolveCmsTabFromHash(hash?: string): CmsTab {
     return 'future';
   }
 
-  return 'schedule';
+  return 'rescue';
 }
 
 function normalizeAppPath(path: string): string {
@@ -407,8 +412,8 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
-  const [cmsTab, setCmsTab] = useState<CmsTab>('schedule');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const requestedProtectedPathRef = useRef<string | null>(null);
@@ -593,10 +598,13 @@ function HomePage() {
       } else if (normalizedPath === '/pwa' || normalizedPath.startsWith('/pwa/')) {
         setCurrentPage('pwa-not-found');
         setSelectedProduct(null);
-      } else if (normalizedPath === '/cms') {
+      } else if (normalizedPath === '/cms' || normalizedPath === '/cms/rescue') {
         setCurrentPage('cms-beta');
         setSelectedProduct(null);
         setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
+      } else if (normalizedPath === '/cms/rescue-board') {
+        setCurrentPage('cms-rescue');
+        setSelectedProduct(null);
       } else if (
         normalizedPath === '/cms/orders' ||
         normalizedPath === '/cms-orders'
@@ -776,7 +784,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-tires', 'cms-rims', 'cms-orders', 'cms-beta'];
+      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-rims', 'cms-orders', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         setCurrentPage('home');
         window.history.pushState({}, '', '/');
@@ -875,6 +883,7 @@ function HomePage() {
   ];
 
   const cmsTabs = [
+    { id: 'rescue' as const, label: 'Rescue 24/7', description: 'Manage emergency requests' },
     { id: 'schedule' as const, label: 'Booking Schedule', description: 'Manage appointments' },
     { id: 'catalog-tires' as const, label: 'Tire Catalog', description: 'Edit tire content' },
     { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
@@ -1047,6 +1056,10 @@ function HomePage() {
           <CmsGuard onNeedLogin={handleLoginNeeded}>
             <AdminSchedulePage />
           </CmsGuard>
+        ) : currentPage === 'cms-rescue' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <RescueCMSPage />
+          </CmsGuard>
         ) : currentPage === 'cms-tires' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
             <TiresCMSPage />
@@ -1106,7 +1119,9 @@ function HomePage() {
                 </div>
 
                 <div className="rounded-xl border bg-card shadow-sm">
-                  {cmsTab === 'schedule' ? (
+                  {cmsTab === 'rescue' ? (
+                    <RescueCMSPage />
+                  ) : cmsTab === 'schedule' ? (
                     <AdminSchedulePage />
                   ) : cmsTab === 'catalog-tires' ? (
                     <TiresCMSPage />

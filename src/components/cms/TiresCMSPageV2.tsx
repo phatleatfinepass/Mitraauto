@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
-import { Edit, Eye, EyeOff, X, Save, AlertCircle, Upload, GripVertical, RotateCcw, AlertTriangle } from 'lucide-react';
+import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw } from 'lucide-react';
 import { TiresCmsToolbar } from './tires/TiresCmsToolbar';
-import { TiresCmsPagination } from './tires/TiresCmsPagination';
+import { TiresCmsTableSection } from './tires/TiresCmsTableSection';
+import { TiresWarningTooltip } from './tires/TiresWarningTooltip';
+import { useTiresCmsList } from './tires/useTiresCmsList';
+import type { ProductCMS, TireRow, TiresWarningTooltipState } from './tires/types';
 import {
   calculateLinePricing,
   getPricingRulesFromSpecOverrides,
@@ -13,81 +16,6 @@ import {
   type BundlePricingMode,
   type ProductPricingRules,
 } from '../../utils/pricing';
-
-interface ProductSearchTire {
-  variant_id: string;
-  product_type: 'tire';
-  ean?: string | null;
-  derived_ean: string | null;
-  supplier_code_best?: string | null;
-  supplier_external_id_best?: string | null;
-  brand: string;
-  model: string;
-  size_string: string | null;
-  season: string | null;
-  runflat?: boolean | null;
-  xl_reinforced?: boolean | null;
-  load_index?: string | number | null;
-  speed_rating?: string | null;
-  speed_index?: string | null;
-  ev_ready?: boolean | null;
-  threepmsf?: boolean | null;
-  winter_approved?: boolean | null;
-  ice_approved?: boolean | null;
-  
-  // Base EU values from supplier
-  eu_fuel_class: string | null;
-  eu_wet_grip_class: string | null;
-  eu_noise_db: number | null;
-  eu_noise_class: string | null;
-  
-  // Final computed values
-  final_title: string | null;
-  final_price_eur: number | null;
-  final_is_hidden: boolean;
-  price?: number | null;
-  
-  // Conflict detection
-  ean_conflict_open?: boolean | null;
-  has_duplicate_ean_conflict?: boolean;
-  has_mandatory_field_conflict?: boolean;
-  has_missing_ean?: boolean;
-  is_non_passenger_auto?: boolean;
-  is_non_passenger_manual?: boolean;
-  is_non_passenger?: boolean;
-}
-
-interface ProductCMS {
-  variant_id: string;
-  title: string | null;
-  subtitle: string | null;
-  short_description: string | null;
-  long_description: string | null;
-  hero_image_url: string | null;
-  gallery: string[] | null;
-  seo_slug: string | null;
-  seo_title: string | null;
-  seo_description: string | null;
-  is_hidden: boolean;
-  spec_overrides: {
-    eu?: {
-      fuel_class?: string;
-      wet_grip_class?: string;
-      noise_db?: number;
-      noise_class?: string;
-    };
-    [key: string]: any;
-  } | null;
-  price_override_eur: number | null;
-  promo_enabled: boolean;
-  promo_price_eur: number | null;
-  promo_start: string | null;
-  promo_end: string | null;
-}
-
-interface TireRow extends ProductSearchTire {
-  cms_data?: ProductCMS | null;
-}
 
 const EU_FUEL_WET_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
 const EU_NOISE_CLASS_OPTIONS = ['A', 'B', 'C'];
@@ -98,33 +26,6 @@ export function TiresCMSPageV2() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
-  const pageSize = 100;
-  const EXCLUDED_TIRE_KEYWORDS = [
-    'motorcycle',
-    'motorbike',
-    'moto',
-    'scooter',
-    'moped',
-    'atv',
-    'utv',
-    'quad',
-    'trailer',
-    'tractor',
-    'traktor',
-    'agri',
-    'agric',
-    'farm',
-    'implement',
-    'forklift',
-    'kart',
-    'enduro',
-  ];
-
-  const [tires, setTires] = useState<TireRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showMissingEanOnly, setShowMissingEanOnly] = useState(false);
   const [selectedTire, setSelectedTire] = useState<TireRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -132,11 +33,8 @@ export function TiresCMSPageV2() {
   const [syncingCatalog, setSyncingCatalog] = useState(false);
   const [hasPendingCatalogSync, setHasPendingCatalogSync] = useState(false);
   const [catalogSyncMessage, setCatalogSyncMessage] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [sizeParts, setSizeParts] = useState({ width: '', aspect: '', rim: '', load_index: '', speed_rating: '' });
-  const [warningTooltip, setWarningTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [warningTooltip, setWarningTooltip] = useState<TiresWarningTooltipState | null>(null);
 
   // Edit state
   const [editData, setEditData] = useState<Partial<ProductCMS>>({});
@@ -145,6 +43,26 @@ export function TiresCMSPageV2() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const {
+    currentPage,
+    endItem,
+    error,
+    fetchTires,
+    loading,
+    paginationItems,
+    patchLocalCmsData,
+    patchLocalIdentityData,
+    searchTerm,
+    setCurrentPage,
+    setSearchTerm,
+    setShowMissingEanOnly,
+    showMissingEanOnly,
+    startItem,
+    tires,
+    totalCount,
+    totalPages,
+  } = useTiresCmsList(50);
 
   const toNumberOrNull = (value: any) => {
     if (value === null || value === undefined || value === '') return null;
@@ -251,186 +169,8 @@ export function TiresCMSPageV2() {
     return check === expected;
   };
 
-  const isAutoNonPassengerTire = (row: any) => {
-    const searchBlob = `${row.brand ?? ''} ${row.model ?? ''} ${row.size_string ?? ''}`.toLowerCase();
-    const keywordMatched = EXCLUDED_TIRE_KEYWORDS.some((keyword) => searchBlob.includes(keyword));
-
-    const widthMm = toNumberOrNull(row.width_mm);
-    const aspectRatio = toNumberOrNull(row.aspect_ratio);
-    const diameterIn = toNumberOrNull(row.diameter_in);
-
-    const inchStyleNonPassenger =
-      widthMm !== null &&
-      widthMm > 0 &&
-      widthMm < 80 &&
-      !Number.isInteger(widthMm) &&
-      aspectRatio === null &&
-      diameterIn !== null &&
-      diameterIn >= 20;
-
-    return keywordMatched || inchStyleNonPassenger;
-  };
-
   const getManualNonPassengerFlag = (specOverrides: any) =>
     Boolean(specOverrides?.classification?.non_passenger_manual);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedSearchTerm(searchTerm), 250);
-    return () => window.clearTimeout(timer);
-  }, [searchTerm]);
-
-  useEffect(() => {
-    fetchTires();
-  }, [showMissingEanOnly, debouncedSearchTerm, currentPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [showMissingEanOnly, debouncedSearchTerm]);
-
-  const fetchTires = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const trimmedSearch = debouncedSearchTerm.trim();
-      let productsQuery = supabase
-        .from('products_search')
-        .select('*', { count: 'estimated' })
-        .eq('product_type', 'tire')
-        .order('brand', { ascending: true })
-        .order('model', { ascending: true })
-        .order('variant_id', { ascending: true })
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
-
-      if (trimmedSearch) {
-        productsQuery = productsQuery.or([
-          `brand.ilike.%${trimmedSearch}%`,
-          `model.ilike.%${trimmedSearch}%`,
-          `size_string.ilike.%${trimmedSearch}%`,
-          `derived_ean.ilike.%${trimmedSearch}%`,
-        ].join(','));
-      }
-
-      if (showMissingEanOnly) {
-        productsQuery = productsQuery.or('derived_ean.is.null,derived_ean.like.EANMISSING_%');
-      }
-
-      const { data: products, error: productsError, count } = await productsQuery;
-
-      if (productsError) throw productsError;
-
-      const resolvedTotalCount = count ?? 0;
-      setTotalCount(resolvedTotalCount);
-
-      const safeTotalPages = Math.max(1, Math.ceil(resolvedTotalCount / pageSize));
-      if (currentPage > safeTotalPages) {
-        setCurrentPage(safeTotalPages);
-      }
-
-      if (!products || products.length === 0) {
-        setTires([]);
-        return;
-      }
-
-      // Fetch CMS data for these variants
-      const variantIds = products.map((p: any) => p.variant_id);
-      const chunkSize = 200;
-      const cmsRows: any[] = [];
-      const eanRows: any[] = [];
-
-      for (let i = 0; i < variantIds.length; i += chunkSize) {
-        const idChunk = variantIds.slice(i, i + chunkSize);
-        const [{ data: cmsBatch, error: cmsError }, { data: eanBatch, error: eanError }] = await Promise.all([
-          supabase
-            .from('product_cms')
-            .select('*')
-            .in('variant_id', idChunk),
-          supabase
-            .from('catalog_tire_variants')
-            .select('id, ean')
-            .in('id', idChunk),
-        ]);
-
-        if (cmsError) throw cmsError;
-        if (eanError) throw eanError;
-
-        if (cmsBatch?.length) cmsRows.push(...cmsBatch);
-        if (eanBatch?.length) eanRows.push(...eanBatch);
-      }
-
-      // Merge data
-      const cmsMap = new Map(cmsRows.map((c: any) => [c.variant_id, c]));
-      const eanMap = new Map(eanRows.map((row: any) => [row.id, row.ean]));
-      const normalizedEanCounts = new Map<string, number>();
-
-      for (const product of products) {
-        const cmsData = cmsMap.get(product.variant_id) || null;
-        const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
-        const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
-        const ean = (identityEan || product.derived_ean || eanMap.get(product.variant_id) || '').trim();
-        if (!ean) continue;
-        normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
-      }
-
-      const hasMandatoryFieldConflict = (product: any, resolvedEan: string | null) => {
-        const missingEan = !resolvedEan || resolvedEan.trim().length === 0;
-        const missingBrand = !product.brand || String(product.brand).trim().length === 0;
-        const missingModel = !product.model || String(product.model).trim().length === 0;
-        const missingSize = !product.size_string || String(product.size_string).trim().length === 0;
-        const resolvedPrice = product.final_price_eur ?? product.price ?? null;
-        const missingPrice = resolvedPrice === null || resolvedPrice === undefined;
-
-        return missingEan || missingBrand || missingModel || missingSize || missingPrice;
-      };
-
-      const merged = products.map((p: any) => {
-        const cmsData = cmsMap.get(p.variant_id) || null;
-        const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
-        const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
-        const resolvedEan = identityEan || p.derived_ean || eanMap.get(p.variant_id) || null;
-        const missingEan = !resolvedEan || String(resolvedEan).trim().length === 0 || String(resolvedEan).startsWith('EANMISSING_');
-        const duplicateEanConflict = (() => {
-          const normalized = (resolvedEan ?? '').trim();
-          return normalized ? (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
-        })();
-        const mandatoryFieldConflict = hasMandatoryFieldConflict(p, resolvedEan);
-        const autoNonPassenger = isAutoNonPassengerTire(p);
-        const manualNonPassenger = getManualNonPassengerFlag(cmsData?.spec_overrides);
-        const nonPassenger = autoNonPassenger || manualNonPassenger;
-
-        return {
-          ...p,
-          brand: identity.brand ?? p.brand,
-          model: identity.model ?? p.model,
-          size_string: identity.size_string ?? p.size_string,
-          derived_ean: resolvedEan,
-          final_price_eur:
-            cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
-              ? cmsData.promo_price_eur
-              : cmsData?.price_override_eur ?? p.final_price_eur ?? p.price ?? null,
-          has_missing_ean: missingEan,
-          has_duplicate_ean_conflict: duplicateEanConflict,
-          has_mandatory_field_conflict: mandatoryFieldConflict,
-          is_non_passenger_auto: autoNonPassenger,
-          is_non_passenger_manual: manualNonPassenger,
-          is_non_passenger: nonPassenger,
-          ean_conflict_open: Boolean(p.ean_conflict_open) || duplicateEanConflict || mandatoryFieldConflict,
-          cms_data: cmsData
-        };
-      });
-
-      const visibleRows = showMissingEanOnly
-        ? merged.filter((row: any) => Boolean(row.has_missing_ean))
-        : merged;
-
-      setTires(visibleRows as TireRow[]);
-    } catch (err: any) {
-      console.error('Fetch tires error:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
     const parseTireSize = (size?: string | null) => {
     const cleaned = size?.trim() ?? '';
@@ -576,63 +316,6 @@ export function TiresCMSPageV2() {
     setSizeParts({ width: '', aspect: '', rim: '', load_index: '', speed_rating: '' });
   };
 
-  const patchLocalCmsData = (variantId: string, cmsPatch: Record<string, any> | null) => {
-    const applyCmsPatch = (rows: TireRow[]) =>
-      rows.map((tire) => {
-        if (tire.variant_id !== variantId) return tire;
-        if (cmsPatch === null) {
-          const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
-          return {
-            ...tire,
-            cms_data: null,
-            is_non_passenger_manual: false,
-            is_non_passenger: autoNonPassenger,
-          };
-        }
-
-        const nextCmsData = {
-          ...(tire.cms_data ?? { variant_id: tire.variant_id }),
-          ...cmsPatch,
-        } as any;
-        const effectivePrice =
-          nextCmsData?.promo_enabled && nextCmsData?.promo_price_eur !== null && nextCmsData?.promo_price_eur !== undefined
-            ? nextCmsData.promo_price_eur
-            : nextCmsData?.price_override_eur ?? tire.price ?? null;
-        const manualNonPassenger = getManualNonPassengerFlag(nextCmsData?.spec_overrides);
-        const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
-
-        return {
-          ...tire,
-          final_price_eur: effectivePrice,
-          cms_data: nextCmsData,
-          is_non_passenger_manual: manualNonPassenger,
-          is_non_passenger: autoNonPassenger || manualNonPassenger,
-        };
-      });
-
-    setTires((prev) => applyCmsPatch(prev));
-  };
-
-  const patchLocalIdentityData = (variantId: string, specOverrides: any) => {
-    const identity = specOverrides?.identity ?? {};
-    const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
-
-    const applyIdentityPatch = (rows: TireRow[]) =>
-      rows.map((tire) =>
-        tire.variant_id === variantId
-          ? {
-              ...tire,
-              brand: identity?.brand ?? tire.brand,
-              model: identity?.model ?? tire.model,
-              size_string: identity?.size_string ?? tire.size_string,
-              derived_ean: identityEan || tire.derived_ean,
-            }
-          : tire
-      );
-
-    setTires((prev) => applyIdentityPatch(prev));
-  };
-
   const handleSave = async () => {
     if (!selectedTire) return;
 
@@ -776,7 +459,7 @@ export function TiresCMSPageV2() {
   const handleApplyCatalogSync = async () => {
     if (syncingCatalog) return;
     setSyncingCatalog(true);
-    setError(null);
+    setSaveError(null);
     setCatalogSyncMessage(null);
 
     try {
@@ -819,7 +502,7 @@ export function TiresCMSPageV2() {
 
     try {
       if (forceHidden) {
-        setError(
+        setCatalogSyncMessage(
           language === 'fi'
             ? (missingSupplierPrice
               ? 'Tuote on piilotettu, koska toimittajahinta puuttuu.'
@@ -856,7 +539,7 @@ export function TiresCMSPageV2() {
       }
     } catch (err: any) {
       console.error('Toggle visibility error:', err);
-      setError(err.message);
+      setCatalogSyncMessage(err.message);
     }
   };
 
@@ -1199,34 +882,6 @@ export function TiresCMSPageV2() {
 
   const filteredTires = tires;
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalCount);
-  const paginationItems = (() => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, index) => index + 1);
-    }
-
-    const items: Array<number | 'ellipsis-left' | 'ellipsis-right'> = [1];
-    const windowStart = Math.max(2, currentPage - 1);
-    const windowEnd = Math.min(totalPages - 1, currentPage + 1);
-
-    if (windowStart > 2) {
-      items.push('ellipsis-left');
-    }
-
-    for (let page = windowStart; page <= windowEnd; page += 1) {
-      items.push(page);
-    }
-
-    if (windowEnd < totalPages - 1) {
-      items.push('ellipsis-right');
-    }
-
-    items.push(totalPages);
-    return items;
-  })();
-
   const originalApiPrice =
     selectedTire?.price !== null && selectedTire?.price !== undefined
       ? Number(selectedTire.price)
@@ -1240,16 +895,7 @@ export function TiresCMSPageV2() {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
-      {warningTooltip && (
-        <div
-          className={`fixed z-[120] max-w-[380px] rounded-md px-2 py-1.5 text-xs shadow-lg pointer-events-none ${
-            isDark ? 'bg-black/95 text-white border border-white/20' : 'bg-gray-900 text-white border border-gray-700'
-          }`}
-          style={{ left: `${warningTooltip.x}px`, top: `${warningTooltip.y}px` }}
-        >
-          {warningTooltip.text}
-        </div>
-      )}
+      <TiresWarningTooltip isDark={isDark} warningTooltip={warningTooltip} />
       <TiresCmsToolbar
         isDark={isDark}
         language={language}
@@ -1265,186 +911,28 @@ export function TiresCMSPageV2() {
 
       {/* Main Content */}
       <div className="px-8 py-6">
-        {loading ? (
-          <div className="text-center py-20">
-            <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${
-              isDark ? 'border-white' : 'border-gray-900'
-            }`} />
-          </div>
-        ) : error ? (
-          <div className={`p-4 rounded-lg ${isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
-            <p>{error}</p>
-          </div>
-        ) : (
-          <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                {language === 'fi'
-                  ? `Yhteensä ${totalCount} tuotetta`
-                  : `${totalCount} items total`}
-              </p>
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? `Näytetään ${startItem}-${endItem} / ${totalCount} (sivu ${currentPage}/${totalPages})`
-                  : `Showing ${startItem}-${endItem} of ${totalCount} (page ${currentPage}/${totalPages})`}
-              </p>
-            </div>
-
-            {/* Table */}
-            <div className={`rounded-lg border overflow-hidden ${
-              isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'
-            }`}>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className={isDark ? 'bg-white/5' : 'bg-gray-50'}>
-                    <tr>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Brändi' : 'Brand'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Malli' : 'Model'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Koko' : 'Size'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        EAN
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Hinta' : 'Price'}
-                      </th>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Näkyvyys' : 'Visible'}
-                      </th>
-                      <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {language === 'fi' ? 'Toiminnot' : 'Actions'}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {filteredTires.map((tire) => (
-                      <tr
-                        key={tire.variant_id}
-                        className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${
-                          tire.ean_conflict_open ? (isDark ? 'bg-yellow-500/10' : 'bg-yellow-50') : ''
-                        }`}
-                      >
-                        <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          <div className="flex items-center gap-2">
-                            {getEffectiveIdentity(tire).brand}
-                            {tire.ean_conflict_open && (
-                              <span
-                                className="inline-flex items-center px-1 cursor-help"
-                                aria-label={getWarningTooltip(tire)}
-                                onMouseEnter={(e) => showWarningTooltip(getWarningTooltip(tire), e.clientX, e.clientY)}
-                                onMouseMove={(e) => showWarningTooltip(getWarningTooltip(tire), e.clientX, e.clientY)}
-                                onMouseLeave={hideWarningTooltip}
-                                onFocus={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  showWarningTooltip(getWarningTooltip(tire), rect.left, rect.bottom);
-                                }}
-                                onBlur={hideWarningTooltip}
-                              >
-                                <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                              </span>
-                            )}
-                            {tire.is_non_passenger && (
-                              <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                                isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'
-                              }`}>
-                                {language === 'fi'
-                                  ? (tire.is_non_passenger_manual ? 'Ei-henkilöauto (manuaali)' : 'Ei-henkilöauto')
-                                  : (tire.is_non_passenger_manual ? 'Non-passenger (manual)' : 'Non-passenger')}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className={`px-4 py-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {getEffectiveIdentity(tire).model}
-                        </td>
-                        <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {getEffectiveIdentity(tire).size_string || '—'}
-                        </td>
-                        <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                          {tire.derived_ean || '—'}
-                        </td>
-                        <td className={`px-4 py-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {tire.final_price_eur !== null && tire.final_price_eur !== undefined
-                            ? `€${tire.final_price_eur.toFixed(2)}`
-                            : '—'}
-                          {hasMissingSupplierPrice(tire) && (
-                            <p className={`mt-1 text-xs ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                              {language === 'fi' ? 'Toimittajahinta puuttuu' : 'Missing supplier price'}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleToggleVisibility(tire)}
-                            className={`p-1 rounded transition-colors ${
-                              (tire.cms_data?.is_hidden || mustHideFromStore(tire))
-                                ? (isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600')
-                                : (isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700')
-                            }`}
-                          >
-                            {(tire.cms_data?.is_hidden || mustHideFromStore(tire)) ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleEdit(tire)}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                              isDark 
-                                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' 
-                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                            }`}
-                          >
-                            <Edit className="w-4 h-4" />
-                            {language === 'fi' ? 'Muokkaa' : 'Edit'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {filteredTires.length === 0 && (
-              <div className="text-center py-20">
-                <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {language === 'fi' ? 'Ei renkaita löytynyt' : 'No tires found'}
-                </p>
-              </div>
-            )}
-
-            <TiresCmsPagination
-              isDark={isDark}
-              language={language}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalCount={totalCount}
-              startItem={startItem}
-              endItem={endItem}
-              paginationItems={paginationItems}
-              onPageChange={setCurrentPage}
-            />
-          </>
-        )}
+        <TiresTableSection
+          currentPage={currentPage}
+          endItem={endItem}
+          error={error}
+          filteredTires={filteredTires}
+          getEffectiveIdentity={getEffectiveIdentity}
+          getWarningTooltip={getWarningTooltip}
+          handleEdit={handleEdit}
+          handleToggleVisibility={handleToggleVisibility}
+          hasMissingSupplierPrice={hasMissingSupplierPrice}
+          hideWarningTooltip={hideWarningTooltip}
+          isDark={isDark}
+          language={language}
+          loading={loading}
+          mustHideFromStore={mustHideFromStore}
+          onPageChange={setCurrentPage}
+          paginationItems={paginationItems}
+          showWarningTooltip={showWarningTooltip}
+          startItem={startItem}
+          totalCount={totalCount}
+          totalPages={totalPages}
+        />
       </div>
 
       {/* Edit Drawer */}
