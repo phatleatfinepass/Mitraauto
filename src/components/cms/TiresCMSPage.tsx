@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
+import { supabase } from '../../utils/supabase/client';
 import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw } from 'lucide-react';
 import { TiresCmsToolbar } from './tires/TiresCmsToolbar';
 import { TiresImagesSection } from './tires/TiresImagesSection';
@@ -37,6 +38,9 @@ export function TiresCMSPage() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
+  const [bulkMarkupSupplier, setBulkMarkupSupplier] = useState('RD');
+  const [bulkMarkupAmount, setBulkMarkupAmount] = useState('20');
+  const [applyingBulkMarkup, setApplyingBulkMarkup] = useState(false);
 
   const {
     currentPage,
@@ -49,8 +53,10 @@ export function TiresCMSPage() {
     patchLocalIdentityData,
     searchTerm,
     setCurrentPage,
+    setHideNonPassenger,
     setSearchTerm,
     setShowMissingEanOnly,
+    hideNonPassenger,
     showMissingEanOnly,
     startItem,
     tires,
@@ -196,6 +202,111 @@ export function TiresCMSPage() {
         ? Number(editData.price_override_eur)
         : originalApiPrice;
 
+  const handleApplyBulkSupplierMarkup = async () => {
+    const supplierCode = String(bulkMarkupSupplier).trim().toUpperCase();
+    const markup = Number(bulkMarkupAmount);
+
+    if (!supplierCode) {
+      setCatalogSyncMessage(language === 'fi' ? 'Valitse toimittaja.' : 'Choose a supplier.');
+      return;
+    }
+
+    if (!Number.isFinite(markup)) {
+      setCatalogSyncMessage(language === 'fi' ? 'Lisähinnan pitää olla numero.' : 'Markup amount must be a number.');
+      return;
+    }
+
+    setApplyingBulkMarkup(true);
+    setCatalogSyncMessage(null);
+
+    try {
+      const collectedRows: Array<{ variant_id: string; price: number }> = [];
+      const pageSize = 1000;
+      let offset = 0;
+
+      while (true) {
+        let query = supabase
+          .from('products_search')
+          .select('variant_id, price')
+          .eq('product_type', 'tire')
+          .eq('supplier_code_best', supplierCode)
+          .not('price', 'is', null)
+          .order('variant_id', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+
+        if (searchTerm.trim()) {
+          const q = searchTerm.trim();
+          query = query.or([
+            `brand.ilike.%${q}%`,
+            `model.ilike.%${q}%`,
+            `size_string.ilike.%${q}%`,
+            `derived_ean.ilike.%${q}%`,
+          ].join(','));
+        }
+
+        if (showMissingEanOnly) {
+          query = query.or('derived_ean.is.null,derived_ean.like.EANMISSING_%');
+        }
+
+        if (hideNonPassenger) {
+          query = query.eq('is_non_passenger', false);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const rows = (data ?? [])
+          .filter((row: any) => typeof row.variant_id === 'string' && Number.isFinite(Number(row.price)))
+          .map((row: any) => ({
+            variant_id: row.variant_id,
+            price: Number(row.price),
+          }));
+
+        collectedRows.push(...rows);
+
+        if (!data || data.length < pageSize) {
+          break;
+        }
+
+        offset += pageSize;
+      }
+
+      if (collectedRows.length === 0) {
+        setCatalogSyncMessage(
+          language === 'fi'
+            ? 'Yhtään sopivaa rengasta ei löytynyt nykyisestä näkymästä.'
+            : 'No matching tires were found in the current view.'
+        );
+        return;
+      }
+
+      const payload = collectedRows.map((row) => ({
+        variant_id: row.variant_id,
+        price_override_eur: Math.round((row.price + markup) * 100) / 100,
+      }));
+
+      const chunkSize = 500;
+      for (let index = 0; index < payload.length; index += chunkSize) {
+        const chunk = payload.slice(index, index + chunkSize);
+        const { error } = await supabase.from('product_cms').upsert(chunk, { onConflict: 'variant_id' });
+        if (error) throw error;
+      }
+
+      setHasPendingCatalogSync(true);
+      setCatalogSyncMessage(
+        language === 'fi'
+          ? `Lisähinta asetettu ${collectedRows.length} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
+          : `Markup applied to ${collectedRows.length} tires from supplier ${supplierCode}. Run "Apply Sync".`
+      );
+      await fetchTires();
+    } catch (error: any) {
+      console.error('Bulk supplier markup error:', error);
+      setCatalogSyncMessage(error?.message || (language === 'fi' ? 'Massahinnoittelu epäonnistui.' : 'Bulk markup failed.'));
+    } finally {
+      setApplyingBulkMarkup(false);
+    }
+  };
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
       <TiresWarningTooltip isDark={isDark} warningTooltip={warningTooltip} />
@@ -204,11 +315,19 @@ export function TiresCMSPage() {
         language={language}
         searchTerm={searchTerm}
         showMissingEanOnly={showMissingEanOnly}
+        hideNonPassenger={hideNonPassenger}
         syncingCatalog={syncingCatalog}
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
+        bulkMarkupSupplier={bulkMarkupSupplier}
+        bulkMarkupAmount={bulkMarkupAmount}
+        applyingBulkMarkup={applyingBulkMarkup}
         onSearchTermChange={setSearchTerm}
         onShowMissingEanOnlyChange={setShowMissingEanOnly}
+        onHideNonPassengerChange={setHideNonPassenger}
+        onBulkMarkupSupplierChange={setBulkMarkupSupplier}
+        onBulkMarkupAmountChange={setBulkMarkupAmount}
+        onApplyBulkSupplierMarkup={handleApplyBulkSupplierMarkup}
         onApplyCatalogSync={handleApplyCatalogSync}
       />
 

@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../../utils/supabase/client';
 import type { TireRow } from './types';
 
+const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v1';
+const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v1';
+
 const EXCLUDED_TIRE_KEYWORDS = [
   'motorcycle',
   'motorbike',
@@ -49,14 +52,57 @@ function extractLabelValue(label: any, keys: string[]): unknown {
 }
 
 export function useTiresCmsList(pageSize = 25) {
-  const [tires, setTires] = useState<TireRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialState = (() => {
+    if (typeof window === 'undefined') {
+      return {
+        tires: [] as TireRow[],
+        totalCount: 0,
+        searchTerm: '',
+        showMissingEanOnly: false,
+        hideNonPassenger: true,
+        currentPage: 1,
+      };
+    }
+
+    try {
+      const rawState = window.sessionStorage.getItem(TIRES_CMS_STATE_KEY);
+      const parsedState = rawState ? JSON.parse(rawState) : null;
+      const rawCache = window.sessionStorage.getItem(TIRES_CMS_CACHE_KEY);
+      const parsedCache = rawCache ? JSON.parse(rawCache) : null;
+
+      return {
+        tires: Array.isArray(parsedCache?.tires) ? parsedCache.tires : [],
+        totalCount: Number.isFinite(parsedCache?.totalCount) ? parsedCache.totalCount : 0,
+        searchTerm: typeof parsedState?.searchTerm === 'string' ? parsedState.searchTerm : '',
+        showMissingEanOnly: Boolean(parsedState?.showMissingEanOnly),
+        hideNonPassenger:
+          typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
+        currentPage:
+          Number.isInteger(parsedState?.currentPage) && parsedState.currentPage > 0
+            ? parsedState.currentPage
+            : 1,
+      };
+    } catch {
+      return {
+        tires: [] as TireRow[],
+        totalCount: 0,
+        searchTerm: '',
+        showMissingEanOnly: false,
+        hideNonPassenger: true,
+        currentPage: 1,
+      };
+    }
+  })();
+
+  const [tires, setTires] = useState<TireRow[]>(initialState.tires);
+  const [loading, setLoading] = useState(initialState.tires.length === 0);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [showMissingEanOnly, setShowMissingEanOnly] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState(initialState.searchTerm);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(initialState.searchTerm);
+  const [showMissingEanOnly, setShowMissingEanOnly] = useState(initialState.showMissingEanOnly);
+  const [hideNonPassenger, setHideNonPassenger] = useState(initialState.hideNonPassenger);
+  const [currentPage, setCurrentPage] = useState(initialState.currentPage);
+  const [totalCount, setTotalCount] = useState(initialState.totalCount);
 
   const toNumberOrNull = useCallback((value: any) => {
     if (value === null || value === undefined || value === '') return null;
@@ -94,7 +140,20 @@ export function useTiresCmsList(pageSize = 25) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [showMissingEanOnly, debouncedSearchTerm]);
+  }, [showMissingEanOnly, hideNonPassenger, debouncedSearchTerm]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(
+      TIRES_CMS_STATE_KEY,
+      JSON.stringify({
+        searchTerm,
+        showMissingEanOnly,
+        hideNonPassenger,
+        currentPage,
+      })
+    );
+  }, [currentPage, hideNonPassenger, searchTerm, showMissingEanOnly]);
 
   const fetchTires = useCallback(async () => {
     setLoading(true);
@@ -218,6 +277,7 @@ export function useTiresCmsList(pageSize = 25) {
         const { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
           p_search: trimmedSearch || null,
           p_missing_ean_only: showMissingEanOnly,
+          p_exclude_non_passenger: hideNonPassenger,
           p_limit: pageSize + 1,
           p_offset: offset,
         });
@@ -237,8 +297,18 @@ export function useTiresCmsList(pageSize = 25) {
         const visibleRows = hasMorePages ? rows.slice(0, pageSize) : rows;
         const resolvedTotalCount = hasMorePages ? offset + visibleRows.length + 1 : offset + visibleRows.length;
 
+        const mappedRows = mapRowsToTires(visibleRows);
         setTotalCount(resolvedTotalCount);
-        setTires(mapRowsToTires(visibleRows));
+        setTires(mappedRows);
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem(
+            TIRES_CMS_CACHE_KEY,
+            JSON.stringify({
+              tires: mappedRows,
+              totalCount: resolvedTotalCount,
+            })
+          );
+        }
         return;
       } catch (rpcListError) {
         console.warn('cms_list_tires_admin_v1 fallback to products_search path:', rpcListError);
@@ -314,6 +384,9 @@ export function useTiresCmsList(pageSize = 25) {
       if (showMissingEanOnly) {
         productsQuery = productsQuery.or('derived_ean.is.null,derived_ean.like.EANMISSING_%');
       }
+      if (hideNonPassenger) {
+        productsQuery = productsQuery.eq('is_non_passenger', false);
+      }
 
       const { data: products, error: productsError } = await productsQuery;
       if (productsError) throw productsError;
@@ -368,14 +441,32 @@ export function useTiresCmsList(pageSize = 25) {
         cms_data: cmsMap.get(product.variant_id) || null,
       }));
 
-      setTires(mapRowsToTires(fallbackRows));
+      const mappedFallbackRows = mapRowsToTires(fallbackRows);
+      setTires(mappedFallbackRows);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(
+          TIRES_CMS_CACHE_KEY,
+          JSON.stringify({
+            tires: mappedFallbackRows,
+            totalCount: resolvedTotalCount,
+          })
+        );
+      }
     } catch (err: any) {
       console.error('Fetch tires error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearchTerm, getManualNonPassengerFlag, isAutoNonPassengerTire, pageSize, showMissingEanOnly]);
+  }, [
+    currentPage,
+    debouncedSearchTerm,
+    getManualNonPassengerFlag,
+    hideNonPassenger,
+    isAutoNonPassengerTire,
+    pageSize,
+    showMissingEanOnly,
+  ]);
 
   useEffect(() => {
     void fetchTires();
@@ -458,8 +549,10 @@ export function useTiresCmsList(pageSize = 25) {
     patchLocalIdentityData,
     searchTerm,
     setCurrentPage,
+    setHideNonPassenger,
     setSearchTerm,
     setShowMissingEanOnly,
+    hideNonPassenger,
     showMissingEanOnly,
     startItem,
     tires,

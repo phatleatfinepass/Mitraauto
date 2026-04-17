@@ -1,6 +1,7 @@
 create or replace function public.cms_list_tires_admin_v1(
   p_search text default null,
   p_missing_ean_only boolean default false,
+  p_exclude_non_passenger boolean default true,
   p_limit integer default 26,
   p_offset integer default 0
 )
@@ -132,6 +133,10 @@ begin
       or coalesce(ps.derived_ean, ctv.ean, '') ilike '%' || p_search || '%'
     )
     and (
+      not p_exclude_non_passenger
+      or coalesce(ps.is_non_passenger, false) = false
+    )
+    and (
       not p_missing_ean_only
       or coalesce(ps.derived_ean, ctv.ean) is null
       or coalesce(ps.derived_ean, ctv.ean) like 'EANMISSING_%'
@@ -142,5 +147,5 @@ begin
 end;
 $$;
 
-revoke all on function public.cms_list_tires_admin_v1(text, boolean, integer, integer) from public;
-grant execute on function public.cms_list_tires_admin_v1(text, boolean, integer, integer) to authenticated;
+revoke all on function public.cms_list_tires_admin_v1(text, boolean, boolean, integer, integer) from public;
+grant execute on function public.cms_list_tires_admin_v1(text, boolean, boolean, integer, integer) to authenticated;
