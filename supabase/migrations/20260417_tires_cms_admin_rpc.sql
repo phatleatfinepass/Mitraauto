@@ -62,41 +62,105 @@ begin
   end if;
 
   return query
+  with base_rows as (
+    select
+      ps.variant_id,
+      ps.product_type,
+      ps.derived_ean,
+      ps.ean as base_ean,
+      ps.supplier_code_best,
+      ps.supplier_external_id_best,
+      ps.brand,
+      ps.model,
+      ps.size_string,
+      ps.season,
+      ps.runflat,
+      ps.xl_reinforced,
+      ps.load_index::text as load_index,
+      ps.speed_rating,
+      ps.speed_index,
+      ps.ev_ready,
+      ps.threepmsf,
+      ps.winter_approved,
+      ps.ice_approved,
+      ps.eu_wet,
+      nullif(regexp_replace(coalesce(ps.eu_noise::text, ''), '[^0-9\\.-]', '', 'g'), '')::numeric as eu_noise,
+      ps.eu_label_json,
+      ps.final_price_eur,
+      ps.price,
+      ps.ean_conflict_open,
+      ps.width_mm,
+      ps.aspect_ratio,
+      ps.diameter_in,
+      coalesce(ps.has_ean_multi_spec_conflict, false) as has_ean_multi_spec_conflict,
+      coalesce(ps.has_mandatory_conflict, false) as has_mandatory_conflict,
+      coalesce(ps.missing_supplier_price, false) as missing_supplier_price,
+      coalesce(ps.is_non_passenger_auto, false) as is_non_passenger_auto,
+      coalesce(ps.is_non_passenger_manual, false) as is_non_passenger_manual,
+      coalesce(ps.is_non_passenger, false) as is_non_passenger
+    from public.products_search ps
+    where ps.product_type = 'tire'
+      and (
+        p_search is null
+        or btrim(p_search) = ''
+        or ps.brand ilike '%' || p_search || '%'
+        or ps.model ilike '%' || p_search || '%'
+        or ps.size_string ilike '%' || p_search || '%'
+        or coalesce(ps.derived_ean, ps.ean, '') ilike '%' || p_search || '%'
+      )
+      and (
+        not p_exclude_non_passenger
+        or coalesce(ps.is_non_passenger, false) = false
+      )
+      and (
+        p_supplier_code is null
+        or btrim(p_supplier_code) = ''
+        or upper(coalesce(ps.supplier_code_best, '')) = upper(btrim(p_supplier_code))
+      )
+      and (
+        not p_missing_ean_only
+        or coalesce(ps.derived_ean, ps.ean) is null
+        or coalesce(ps.derived_ean, ps.ean) like 'EANMISSING_%'
+      )
+    order by ps.variant_id asc
+    limit greatest(coalesce(p_limit, 26), 1)
+    offset greatest(coalesce(p_offset, 0), 0)
+  )
   select
-    ps.variant_id,
-    ps.product_type,
-    coalesce(nullif(ps.derived_ean, ''), nullif(ctv.ean, '')) as derived_ean,
-    ps.supplier_code_best,
-    ps.supplier_external_id_best,
-    ps.brand,
-    ps.model,
-    ps.size_string,
-    ps.season,
-    ps.runflat,
-    ps.xl_reinforced,
-    ps.load_index::text as load_index,
-    ps.speed_rating,
-    ps.speed_index,
-    ps.ev_ready,
-    ps.threepmsf,
-    ps.winter_approved,
-    ps.ice_approved,
-    ps.eu_wet,
-    nullif(regexp_replace(coalesce(ps.eu_noise::text, ''), '[^0-9\\.-]', '', 'g'), '')::numeric as eu_noise,
-    ps.eu_label_json,
-    ps.final_price_eur,
-    ps.price,
-    ps.ean_conflict_open,
-    ps.width_mm,
-    ps.aspect_ratio,
-    ps.diameter_in,
-    coalesce(nullif(ps.ean, ''), nullif(ctv.ean, '')) as ean,
-    coalesce(ps.has_ean_multi_spec_conflict, false) as has_ean_multi_spec_conflict,
-    coalesce(ps.has_mandatory_conflict, false) as has_mandatory_conflict,
-    coalesce(ps.missing_supplier_price, false) as missing_supplier_price,
-    coalesce(ps.is_non_passenger_auto, false) as is_non_passenger_auto,
-    coalesce(ps.is_non_passenger_manual, false) as is_non_passenger_manual,
-    coalesce(ps.is_non_passenger, false) as is_non_passenger,
+    base_rows.variant_id,
+    base_rows.product_type,
+    coalesce(nullif(base_rows.derived_ean, ''), nullif(ctv.ean, '')) as derived_ean,
+    base_rows.supplier_code_best,
+    base_rows.supplier_external_id_best,
+    base_rows.brand,
+    base_rows.model,
+    base_rows.size_string,
+    base_rows.season,
+    base_rows.runflat,
+    base_rows.xl_reinforced,
+    base_rows.load_index,
+    base_rows.speed_rating,
+    base_rows.speed_index,
+    base_rows.ev_ready,
+    base_rows.threepmsf,
+    base_rows.winter_approved,
+    base_rows.ice_approved,
+    base_rows.eu_wet,
+    base_rows.eu_noise,
+    base_rows.eu_label_json,
+    base_rows.final_price_eur,
+    base_rows.price,
+    base_rows.ean_conflict_open,
+    base_rows.width_mm,
+    base_rows.aspect_ratio,
+    base_rows.diameter_in,
+    coalesce(nullif(base_rows.base_ean, ''), nullif(ctv.ean, '')) as ean,
+    base_rows.has_ean_multi_spec_conflict,
+    base_rows.has_mandatory_conflict,
+    base_rows.missing_supplier_price,
+    base_rows.is_non_passenger_auto,
+    base_rows.is_non_passenger_manual,
+    base_rows.is_non_passenger,
     case
       when pc.variant_id is null then null
       else jsonb_build_object(
@@ -119,37 +183,12 @@ begin
         'promo_end', pc.promo_end
       )
     end as cms_data
-  from public.products_search ps
+  from base_rows
   left join public.catalog_tire_variants ctv
-    on ctv.id = ps.variant_id
+    on ctv.id = base_rows.variant_id
   left join public.product_cms pc
-    on pc.variant_id = ps.variant_id
-  where ps.product_type = 'tire'
-    and (
-      p_search is null
-      or btrim(p_search) = ''
-      or ps.brand ilike '%' || p_search || '%'
-      or ps.model ilike '%' || p_search || '%'
-      or ps.size_string ilike '%' || p_search || '%'
-      or coalesce(ps.derived_ean, ctv.ean, '') ilike '%' || p_search || '%'
-    )
-    and (
-      not p_exclude_non_passenger
-      or coalesce(ps.is_non_passenger, false) = false
-    )
-    and (
-      p_supplier_code is null
-      or btrim(p_supplier_code) = ''
-      or upper(coalesce(ps.supplier_code_best, '')) = upper(btrim(p_supplier_code))
-    )
-    and (
-      not p_missing_ean_only
-      or coalesce(ps.derived_ean, ctv.ean) is null
-      or coalesce(ps.derived_ean, ctv.ean) like 'EANMISSING_%'
-    )
-  order by ps.brand asc, ps.model asc, ps.variant_id asc
-  limit greatest(coalesce(p_limit, 26), 1)
-  offset greatest(coalesce(p_offset, 0), 0);
+    on pc.variant_id = base_rows.variant_id
+  order by base_rows.variant_id asc;
 end;
 $$;
 

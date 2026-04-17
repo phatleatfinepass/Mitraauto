@@ -8,16 +8,19 @@ interface TiresCmsToolbarProps {
   showMissingEanOnly: boolean;
   hideNonPassenger: boolean;
   supplierFilter: string;
+  supplierDraft: string;
   supplierOptions: Array<{ code: string; label: string }>;
   syncingCatalog: boolean;
   hasPendingCatalogSync: boolean;
   catalogSyncMessage: string | null;
   bulkMarkupAmount: string;
   applyingBulkMarkup: boolean;
+  supplierFilterDirty: boolean;
   onSearchTermChange: (value: string) => void;
   onShowMissingEanOnlyChange: (checked: boolean) => void;
   onHideNonPassengerChange: (checked: boolean) => void;
-  onSupplierFilterChange: (value: string) => void;
+  onSupplierDraftChange: (value: string) => void;
+  onApplySupplierFilter: () => void;
   onBulkMarkupAmountChange: (value: string) => void;
   onApplyBulkSupplierMarkup: () => void;
   onApplyCatalogSync: () => void;
@@ -30,16 +33,19 @@ export function TiresCmsToolbar({
   showMissingEanOnly,
   hideNonPassenger,
   supplierFilter,
+  supplierDraft,
   supplierOptions,
   syncingCatalog,
   hasPendingCatalogSync,
   catalogSyncMessage,
   bulkMarkupAmount,
   applyingBulkMarkup,
+  supplierFilterDirty,
   onSearchTermChange,
   onShowMissingEanOnlyChange,
   onHideNonPassengerChange,
-  onSupplierFilterChange,
+  onSupplierDraftChange,
+  onApplySupplierFilter,
   onBulkMarkupAmountChange,
   onApplyBulkSupplierMarkup,
   onApplyCatalogSync,
@@ -91,8 +97,8 @@ export function TiresCmsToolbar({
                   {language === 'fi' ? 'Näytä toimittaja' : 'Show supplier'}
                 </span>
                 <select
-                  value={supplierFilter}
-                  onChange={(e) => onSupplierFilterChange(e.target.value)}
+                  value={supplierDraft}
+                  onChange={(e) => onSupplierDraftChange(e.target.value)}
                   className={`px-3 py-2 rounded-lg border text-sm ${
                     isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                   }`}
@@ -104,6 +110,18 @@ export function TiresCmsToolbar({
                     </option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={onApplySupplierFilter}
+                  disabled={!supplierFilterDirty}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isDark
+                      ? 'bg-white/10 text-white hover:bg-white/15 disabled:bg-white/5 disabled:text-gray-500'
+                      : 'bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400'
+                  } disabled:cursor-not-allowed`}
+                >
+                  {language === 'fi' ? 'Käytä' : 'Apply'}
+                </button>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">

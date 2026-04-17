@@ -325,7 +325,10 @@ export function useTiresCmsList(pageSize = 25) {
           );
         }
         return;
-      } catch (rpcListError) {
+      } catch (rpcListError: any) {
+        if (rpcListError?.code === '57014') {
+          throw rpcListError;
+        }
         console.warn('cms_list_tires_admin_v1 fallback to products_search path:', rpcListError);
       }
 
@@ -497,6 +500,7 @@ export function useTiresCmsList(pageSize = 25) {
 
   const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalCount);
+  const discoveredPageCount = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const patchLocalCmsData = useCallback((variantId: string, cmsPatch: Record<string, any> | null) => {
     setTires((previous) =>
@@ -551,6 +555,7 @@ export function useTiresCmsList(pageSize = 25) {
     endItem,
     error,
     fetchTires,
+    discoveredPageCount,
     hasNextPage,
     patchLocalCmsData,
     patchLocalIdentityData,

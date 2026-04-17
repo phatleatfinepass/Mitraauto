@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
@@ -40,9 +40,11 @@ export function TiresCMSPage() {
   const isDark = theme === 'dark';
   const [bulkMarkupAmount, setBulkMarkupAmount] = useState('20');
   const [applyingBulkMarkup, setApplyingBulkMarkup] = useState(false);
+  const [supplierDraft, setSupplierDraft] = useState('all');
 
   const {
     currentPage,
+    discoveredPageCount,
     endItem,
     error,
     fetchTires,
@@ -64,6 +66,10 @@ export function TiresCMSPage() {
     tires,
     totalCount,
   } = useTiresCmsList(25);
+
+  useEffect(() => {
+    setSupplierDraft(supplierFilter);
+  }, [supplierFilter]);
 
   const {
     catalogSyncMessage,
@@ -308,6 +314,12 @@ export function TiresCMSPage() {
     }
   };
 
+  const handleApplySupplierFilter = () => {
+    if (supplierDraft === supplierFilter) return;
+    setCurrentPage(1);
+    setSupplierFilter(supplierDraft);
+  };
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
       <TiresWarningTooltip isDark={isDark} warningTooltip={warningTooltip} />
@@ -318,16 +330,19 @@ export function TiresCMSPage() {
         showMissingEanOnly={showMissingEanOnly}
         hideNonPassenger={hideNonPassenger}
         supplierFilter={supplierFilter}
+        supplierDraft={supplierDraft}
         supplierOptions={SUPPLIER_OPTIONS}
         syncingCatalog={syncingCatalog}
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
         bulkMarkupAmount={bulkMarkupAmount}
         applyingBulkMarkup={applyingBulkMarkup}
+        supplierFilterDirty={supplierDraft !== supplierFilter}
         onSearchTermChange={setSearchTerm}
         onShowMissingEanOnlyChange={setShowMissingEanOnly}
         onHideNonPassengerChange={setHideNonPassenger}
-        onSupplierFilterChange={setSupplierFilter}
+        onSupplierDraftChange={setSupplierDraft}
+        onApplySupplierFilter={handleApplySupplierFilter}
         onBulkMarkupAmountChange={setBulkMarkupAmount}
         onApplyBulkSupplierMarkup={handleApplyBulkSupplierMarkup}
         onApplyCatalogSync={handleApplyCatalogSync}
@@ -337,6 +352,7 @@ export function TiresCMSPage() {
       <div className="px-8 py-6">
         <TiresCmsTableSection
           currentPage={currentPage}
+          discoveredPageCount={discoveredPageCount}
           endItem={endItem}
           error={error}
           filteredTires={filteredTires}
