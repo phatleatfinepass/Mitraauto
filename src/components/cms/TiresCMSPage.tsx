@@ -4,7 +4,15 @@ import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
 import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw } from 'lucide-react';
 import { TiresCmsToolbar } from './tires/TiresCmsToolbar';
+import { TiresImagesSection } from './tires/TiresImagesSection';
+import { TiresBadgesSection } from './tires/TiresBadgesSection';
 import { TiresCmsTableSection } from './tires/TiresCmsTableSection';
+import { TiresContentSection } from './tires/TiresContentSection';
+import { TiresEuLabelSection } from './tires/TiresEuLabelSection';
+import { TiresIdentitySection } from './tires/TiresIdentitySection';
+import { TiresPricingSection } from './tires/TiresPricingSection';
+import { TiresSeoSection } from './tires/TiresSeoSection';
+import { TiresVisibilitySection } from './tires/TiresVisibilitySection';
 import { TiresWarningTooltip } from './tires/TiresWarningTooltip';
 import { useTiresCmsList } from './tires/useTiresCmsList';
 import type { ProductCMS, TireRow, TiresWarningTooltipState } from './tires/types';
@@ -21,6 +29,17 @@ const EU_FUEL_WET_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
 const EU_NOISE_CLASS_OPTIONS = ['A', 'B', 'C'];
 const VAT_RATE = 0.255;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
+
+const SUPPLIER_OPTIONS = [
+  { code: 'RD', label: 'Rengasduo' },
+  { code: 'VT', label: 'Vannetukku' },
+];
+
+function getSupplierLabel(code: string | null | undefined) {
+  const normalized = String(code ?? '').trim().toUpperCase();
+  const known = SUPPLIER_OPTIONS.find((option) => option.code === normalized);
+  return known?.label ?? (normalized || 'Unknown supplier');
+}
 
 export function TiresCMSPage() {
   const { theme } = useTheme();
@@ -43,6 +62,8 @@ export function TiresCMSPage() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [supplierMarkupSupplier, setSupplierMarkupSupplier] = useState('RD');
+  const [supplierMarkupAmount, setSupplierMarkupAmount] = useState('20');
 
   const {
     currentPage,
@@ -269,6 +290,8 @@ export function TiresCMSPage() {
 
   const handleEdit = (tire: TireRow) => {
     setSelectedTire(tire);
+    setSupplierMarkupSupplier(String(tire.supplier_code_best ?? 'RD').trim().toUpperCase() || 'RD');
+    setSupplierMarkupAmount('20');
     
     // Initialize edit data
     const cms = tire.cms_data;
@@ -882,6 +905,43 @@ export function TiresCMSPage() {
 
   const filteredTires = tires;
 
+  const applySupplierMarkup = () => {
+    if (!selectedTire) return;
+
+    const selectedSupplier = String(supplierMarkupSupplier ?? '').trim().toUpperCase();
+    const tireSupplier = String(selectedTire.supplier_code_best ?? '').trim().toUpperCase();
+    const baseApiPrice =
+      selectedTire.price !== null && selectedTire.price !== undefined
+        ? Number(selectedTire.price)
+        : null;
+    const markupAmount = Number(supplierMarkupAmount);
+
+    if (!baseApiPrice || !Number.isFinite(baseApiPrice)) {
+      setSaveError(language === 'fi' ? 'API-hintaa ei löytynyt tälle tuotteelle.' : 'No API price was found for this tire.');
+      return;
+    }
+
+    if (!Number.isFinite(markupAmount)) {
+      setSaveError(language === 'fi' ? 'Lisähinnan pitää olla numero.' : 'Markup amount must be a number.');
+      return;
+    }
+
+    if (selectedSupplier !== tireSupplier) {
+      setSaveError(
+        language === 'fi'
+          ? `Valittu toimittaja (${getSupplierLabel(selectedSupplier)}) ei vastaa renkaan toimittajaa (${getSupplierLabel(tireSupplier)}).`
+          : `Selected supplier (${getSupplierLabel(selectedSupplier)}) does not match this tire's supplier (${getSupplierLabel(tireSupplier)}).`
+      );
+      return;
+    }
+
+    setSaveError(null);
+    setEditData((prev) => ({
+      ...prev,
+      price_override_eur: Math.round((baseApiPrice + markupAmount) * 100) / 100,
+    }));
+  };
+
   const originalApiPrice =
     selectedTire?.price !== null && selectedTire?.price !== undefined
       ? Number(selectedTire.price)
@@ -973,982 +1033,286 @@ export function TiresCMSPage() {
             {/* Drawer Content */}
             <div className="px-6 py-6 space-y-8">
               
-              {/* Section A: Identity */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Tunnisteet' : 'Identity'}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={clearIdentityOverrides}
-                    className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    {language === 'fi' ? 'Palauta perustasot' : 'Reset to base'}
-                  </button>
-                </div>
+              <TiresIdentitySection
+                baseBrand={selectedTire.brand}
+                baseDerivedEan={selectedTire.derived_ean}
+                baseEan={selectedTire.ean}
+                baseModel={selectedTire.model}
+                baseSeason={selectedTire.season}
+                clearIdentityOverrides={clearIdentityOverrides}
+                getIdentityOverride={getIdentityOverride}
+                isDark={isDark}
+                language={language}
+                setIdentityField={setIdentityField}
+                sizeParts={sizeParts}
+                updateSizePart={updateSizePart}
+              />
 
-                <div className={`grid grid-cols-2 gap-4 p-4 rounded-lg ${
-                  isDark ? 'bg-white/5' : 'bg-gray-50'
-                }`}>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {language === 'fi' ? 'Brändi' : 'Brand'}
-                    </label>
-                    <input
-                      type="text"
-                      value={getIdentityOverride()?.brand ?? selectedTire.brand}
-                      onChange={(e) => setIdentityField('brand', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {language === 'fi' ? 'Malli' : 'Model'}
-                    </label>
-                    <input
-                      type="text"
-                      value={getIdentityOverride()?.model ?? selectedTire.model}
-                      onChange={(e) => setIdentityField('model', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      EAN
-                    </label>
-                    <input
-                      type="text"
-                      value={getIdentityOverride()?.ean ?? ''}
-                      onChange={(e) => setIdentityField('ean', e.target.value)}
-                      placeholder={selectedTire.ean || selectedTire.derived_ean || 'EAN'}
-                      className={`w-full px-3 py-2 rounded-lg border font-mono ${
-                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                      {language === 'fi'
-                        ? 'Syötä oikea EAN korvaamaan puuttuva EAN.'
-                        : 'Enter real EAN to replace missing EAN.'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {language === 'fi' ? 'Koko' : 'Size'}
-                    </label>
-                    <div className="grid grid-cols-5 gap-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="205"
-                        value={sizeParts.width}
-                        onChange={(e) => updateSizePart('width', e.target.value)}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="55"
-                        value={sizeParts.aspect}
-                        onChange={(e) => updateSizePart('aspect', e.target.value)}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="16"
-                        value={sizeParts.rim}
-                        onChange={(e) => updateSizePart('rim', e.target.value)}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="91"
-                        value={sizeParts.load_index}
-                        onChange={(e) => updateSizePart('load_index', e.target.value)}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      />
-                      <input
-                        type="text"
-                        placeholder="V"
-                        value={sizeParts.speed_rating}
-                        onChange={(e) => updateSizePart('speed_rating', e.target.value.toUpperCase())}
-                        className={`w-full px-3 py-2 rounded-lg border ${
-                          isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      />
-                    </div>
-                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                      {language === 'fi' ? 'Muoto: 205 / 55 R16 91 V' : 'Format: 205 / 55 R16 91 V'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {language === 'fi' ? 'Kausi' : 'Season'}
-                    </label>
-                    <select
-                      value={getIdentityOverride()?.season ?? selectedTire.season ?? ''}
-                      onChange={(e) => setIdentityField('season', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    >
-                      <option value="">{language === 'fi' ? 'Perusta (ei muutosta)' : 'Use base value'}</option>
-                      <option value="summer">{language === 'fi' ? 'Kesä' : 'Summer'}</option>
-                      <option value="winter">{language === 'fi' ? 'Talvi' : 'Winter'}</option>
-                      <option value="all_season">{language === 'fi' ? 'Ympärivuotinen' : 'All Season'}</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
+              <TiresBadgesSection
+                clearFeatureOverrides={clearFeatureOverrides}
+                getEffectiveFeatureValue={getEffectiveFeatureValue}
+                isDark={isDark}
+                language={language}
+                setFeatureField={setFeatureField}
+              />
 
-              {/* Section B: Tire Badges */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Rengasmerkit (badges)' : 'Tire badges'}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={clearFeatureOverrides}
-                    className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    {language === 'fi' ? 'Palauta badge-ohitukset' : 'Reset badge overrides'}
-                  </button>
-                </div>
-
-                <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-lg ${
-                  isDark ? 'bg-white/5' : 'bg-gray-50'
-                }`}>
-                  {[
-                    { key: 'ev_ready', labelFi: 'EV', labelEn: 'EV' },
-                    { key: 'runflat', labelFi: 'RunFlat', labelEn: 'RunFlat' },
-                    { key: 'xl', labelFi: 'XL', labelEn: 'XL' },
-                    { key: 'studded', labelFi: 'Nastat', labelEn: 'Studded' },
-                    { key: 'threepmsf', labelFi: '3PMSF', labelEn: '3PMSF' },
-                    { key: 'winter_approved', labelFi: 'M+S', labelEn: 'M+S' },
-                    { key: 'ice_approved', labelFi: 'Jää', labelEn: 'Ice approved' },
-                  ].map((feature) => (
-                    <label key={feature.key} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={getEffectiveFeatureValue(feature.key as any)}
-                        onChange={(e) => setFeatureField(feature.key as any, e.target.checked)}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                      <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {language === 'fi' ? feature.labelFi : feature.labelEn}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                <p className={`mt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  {language === 'fi'
-                    ? 'Nämä arvot tallennetaan CMS-ohituksina ja voidaan näyttää verkkokaupan korteissa.'
-                    : 'These are saved as CMS overrides and can be shown on webshop cards.'}
-                </p>
-              </div>
-
-              {/* Section B: EU Labels */}
-              <div>
-                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'EU-rengas­merkintä' : 'EU Tyre Label'}
-                </h3>
-                
-                <div className={`flex gap-3 p-4 rounded-lg border mb-6 ${
-                  isDark 
-                    ? 'bg-blue-500/10 border-blue-500/30' 
-                    : 'bg-blue-50 border-blue-200'
-                }`}>
-                  <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-                  <div className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-900'}`}>
-                    {language === 'fi' 
-                      ? 'Voit ohittaa toimittajan arvot. Tyhjä = käytä perusarvoa.'
-                      : 'Override supplier values. Empty = use base value.'}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  {/* Fuel Efficiency */}
-                  <div className="space-y-3">
-                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Polttoaine­tehokkuus' : 'Fuel Efficiency'}
-                    </label>
-                    
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
-                      </span>
-                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {selectedTire.eu_fuel_class || '—'}
-                      </span>
-                    </div>
-
-                    <select
-                      value={getEUOverride()?.fuel_class || ''}
-                      onChange={(e) => setEUField('fuel_class', e.target.value || undefined)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    >
-                      <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
-                      {EU_FUEL_WET_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Wet Grip */}
-                  <div className="space-y-3">
-                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Märkäpito' : 'Wet Grip'}
-                    </label>
-                    
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
-                      </span>
-                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {selectedTire.eu_wet_grip_class || '—'}
-                      </span>
-                    </div>
-
-                    <select
-                      value={getEUOverride()?.wet_grip_class || ''}
-                      onChange={(e) => setEUField('wet_grip_class', e.target.value || undefined)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    >
-                      <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
-                      {EU_FUEL_WET_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Noise dB */}
-                  <div className="space-y-3">
-                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Melutaso (dB)' : 'Noise Level (dB)'}
-                    </label>
-                    
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
-                      </span>
-                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {selectedTire.eu_noise_db ? `${selectedTire.eu_noise_db} dB` : '—'}
-                      </span>
-                    </div>
-
-                    <input
-                      type="number"
-                      min="50"
-                      max="90"
-                      step="1"
-                      value={getEUOverride()?.noise_db ?? ''}
-                      onChange={(e) => setEUField('noise_db', e.target.value ? parseInt(e.target.value) : undefined)}
-                      placeholder={language === 'fi' ? 'Käytä perustasoa' : 'Use base value'}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-
-                  {/* Noise Class */}
-                  <div className="space-y-3">
-                    <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Meluluokka' : 'Noise Class'}
-                    </label>
-                    
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {language === 'fi' ? 'Perustaso:' : 'Base:'}
-                      </span>
-                      <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {selectedTire.eu_noise_class || '—'}
-                      </span>
-                    </div>
-
-                    <select
-                      value={getEUOverride()?.noise_class || ''}
-                      onChange={(e) => setEUField('noise_class', e.target.value || undefined)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    >
-                      <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
-                      {EU_NOISE_CLASS_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {hasEUOverride() && (
-                  <div className="flex justify-end pt-4 mt-4 border-t border-white/10">
-                    <button
-                      type="button"
-                      onClick={clearEUOverrides}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                        isDark 
-                          ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400' 
-                          : 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
-                      }`}
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      {language === 'fi' ? 'Tyhjennä EU-ohitukset' : 'Clear EU Overrides'}
-                    </button>
-                  </div>
-                )}
-              </div>
+              <TiresEuLabelSection
+                euFuelWetOptions={EU_FUEL_WET_OPTIONS}
+                euNoiseClassOptions={EU_NOISE_CLASS_OPTIONS}
+                getEuOverride={getEUOverride}
+                hasEuOverride={hasEUOverride()}
+                isDark={isDark}
+                language={language}
+                onClearEuOverrides={clearEUOverrides}
+                onSetEuField={setEUField}
+                selectedTire={selectedTire}
+              />
 
               {/* Section C: Pricing */}
-              <div>
-                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Hinnoittelu' : 'Pricing'}
-                </h3>
-                
-                <div className="space-y-4">
-	                  <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-	                    <div className="flex justify-between items-center mb-2">
-	                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-	                        {language === 'fi' ? 'API / tietokannan alkuperäinen hinta (ilman ALV):' : 'Original API / database price (excl. VAT):'}
-	                      </span>
-	                      <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-	                        €{originalApiPrice?.toFixed(2) || '0.00'}
-	                      </span>
-	                    </div>
-	                    <div className="flex justify-between items-center">
-	                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-	                        {language === 'fi' ? 'Nykyinen voimassa oleva hinta (ilman ALV):' : 'Current effective price (excl. VAT):'}
-	                      </span>
-	                      <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-	                        €{effectiveDraftPrice?.toFixed(2) || '0.00'}
-	                      </span>
-	                    </div>
-	                    <div className="flex justify-between items-center mt-2">
-	                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-	                        {language === 'fi' ? 'Voimassa oleva hinta ALV 25.5% kanssa:' : 'Effective price incl. VAT 25.5%:'}
-	                      </span>
-	                      <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-	                        €{(toPriceWithVat(effectiveDraftPrice ?? null) ?? 0).toFixed(2)}
-	                      </span>
-	                    </div>
-	                  </div>
+              <TiresPricingSection
+                editData={editData}
+                effectiveDraftPrice={effectiveDraftPrice}
+                getSupplierLabel={getSupplierLabel}
+                isDark={isDark}
+                language={language}
+                onApplySupplierMarkup={applySupplierMarkup}
+                onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
+                originalApiPrice={originalApiPrice}
+                selectedTire={selectedTire}
+                setSupplierMarkupAmount={setSupplierMarkupAmount}
+                setSupplierMarkupSupplier={setSupplierMarkupSupplier}
+                supplierMarkupAmount={supplierMarkupAmount}
+                supplierMarkupSupplier={supplierMarkupSupplier}
+                supplierOptions={SUPPLIER_OPTIONS}
+                toPriceWithVat={toPriceWithVat}
+              >
+                <div className="border-t pt-4 border-white/10 space-y-4">
+                  {(() => {
+                    const bundlePricing = getBundlePricing();
+                    const tier2 = bundlePricing?.qty2 ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+                    const tier4 = bundlePricing?.qty4 ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
+                    const basePrice = Number(selectedTire.final_price_eur ?? selectedTire.price ?? 0);
+                    const preview2 = calculateLinePricing(basePrice, 2, bundlePricing);
+                    const preview4 = calculateLinePricing(basePrice, 4, bundlePricing);
+                    const invalidFixed2 = tier2.mode === 'fixed_total' && tier2.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier2.fixed_total_eur, 2);
+                    const invalidFixed4 = tier4.mode === 'fixed_total' && tier4.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier4.fixed_total_eur, 4);
 
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Hinnan ohitus (€)' : 'Price Override (€)'}
-                    </label>
-	                    <input
-	                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editData.price_override_eur ?? ''}
-                      onChange={(e) => setEditData(prev => ({ 
-                        ...prev, 
-                        price_override_eur: e.target.value ? parseFloat(e.target.value) : null 
-                      }))}
-                      placeholder={language === 'fi' ? 'Jätä tyhjäksi käyttääksesi perushintaa' : 'Leave empty to use base price'}
-	                      className={`w-full px-3 py-2 rounded-lg border ${
-	                        isDark 
-	                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-	                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-	                      }`}
-	                    />
-	                    <div className="mt-2 flex flex-wrap items-center gap-3">
-	                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-	                        {language === 'fi'
-	                          ? 'Tyhjä arvo palauttaa alkuperäisen API-hinnan.'
-	                          : 'Leaving this empty restores the original API price.'}
-	                      </p>
-	                      {editData.price_override_eur !== null && editData.price_override_eur !== undefined && (
-	                        <button
-	                          type="button"
-	                          onClick={() => setEditData((prev) => ({ ...prev, price_override_eur: null }))}
-	                          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-	                            isDark
-	                              ? 'border-white/10 text-gray-200 hover:bg-white/10'
-	                              : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-	                          }`}
-	                        >
-	                          <RotateCcw className="w-3.5 h-3.5" />
-	                          {language === 'fi' ? 'Palauta alkuperäinen API-hinta' : 'Restore original API price'}
-	                        </button>
-	                      )}
-	                    </div>
-	                    <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-	                      {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
-	                      €{(toPriceWithVat(editData.price_override_eur ?? null) ?? 0).toFixed(2)}
-	                    </p>
-	                  </div>
-
-                  <div className="border-t pt-4 border-white/10">
-                    <label className="flex items-center gap-3 cursor-pointer mb-4">
-                      <input
-                        type="checkbox"
-                        checked={editData.promo_enabled || false}
-                        onChange={(e) => setEditData(prev => ({ ...prev, promo_enabled: e.target.checked }))}
-                        className="w-5 h-5 rounded border-gray-300"
-                      />
-                      <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {language === 'fi' ? 'Tarjoushinta käytössä' : 'Promotional price enabled'}
-                      </span>
-                    </label>
-
-                    {editData.promo_enabled && (
-                      <div className="space-y-4">
+                    return (
+                      <>
                         <div>
-                          <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {language === 'fi' ? 'Tarjoushinta (€)' : 'Promo Price (€)'}
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={editData.promo_price_eur ?? ''}
-                            onChange={(e) => setEditData(prev => ({ 
-                              ...prev, 
-                              promo_price_eur: e.target.value ? parseFloat(e.target.value) : null 
-                            }))}
-                            className={`w-full px-3 py-2 rounded-lg border ${
-                              isDark 
-                                ? 'bg-[#1C1C1E] border-white/20 text-white' 
-                                : 'bg-white border-gray-300 text-gray-900'
-                            }`}
-                          />
+                          <h4 className={`text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {language === 'fi' ? 'Pakettihinnoittelu (2 / 4 kpl)' : 'Bundle pricing (2 / 4 items)'}
+                          </h4>
+                          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {language === 'fi'
+                              ? 'Valitse alennusprosentti tai kiinteä kokonaishinta 2 tai 4 kappaleelle.'
+                              : 'Choose percentage discount or fixed total for bundles of 2 or 4 units.'}
+                          </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                              {language === 'fi' ? 'Alkaa' : 'Start Date'}
-                            </label>
-                            <input
-                              type="date"
-                              value={editData.promo_start ?? ''}
-                              onChange={(e) => setEditData(prev => ({ ...prev, promo_start: e.target.value || null }))}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                            <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>2 {language === 'fi' ? 'kpl' : 'items'}</p>
+                            <select
+                              value={tier2.mode}
+                              onChange={(e) => setBundleTier(2, {
+                                mode: e.target.value as BundlePricingMode,
+                                percent_off: null,
+                                fixed_total_eur: null,
+                              })}
                               className={`w-full px-3 py-2 rounded-lg border ${
-                                isDark 
-                                  ? 'bg-[#1C1C1E] border-white/20 text-white' 
-                                  : 'bg-white border-gray-300 text-gray-900'
+                                isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                               }`}
-                            />
-                            <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                              {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
-                              €{(toPriceWithVat(editData.promo_price_eur ?? null) ?? 0).toFixed(2)}
-                            </p>
-                          </div>
-
-                          <div>
-                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                              {language === 'fi' ? 'Päättyy' : 'End Date'}
-                            </label>
-                            <input
-                              type="date"
-                              value={editData.promo_end ?? ''}
-                              onChange={(e) => setEditData(prev => ({ ...prev, promo_end: e.target.value || null }))}
-                              className={`w-full px-3 py-2 rounded-lg border ${
-                                isDark 
-                                  ? 'bg-[#1C1C1E] border-white/20 text-white' 
-                                  : 'bg-white border-gray-300 text-gray-900'
-                              }`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border-t pt-4 border-white/10 space-y-4">
-                    {(() => {
-                      const bundlePricing = getBundlePricing();
-                      const tier2 = bundlePricing?.qty2 ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
-                      const tier4 = bundlePricing?.qty4 ?? { mode: 'none' as BundlePricingMode, percent_off: null, fixed_total_eur: null };
-                      const basePrice = Number(selectedTire.final_price_eur ?? selectedTire.price ?? 0);
-                      const preview2 = calculateLinePricing(basePrice, 2, bundlePricing);
-                      const preview4 = calculateLinePricing(basePrice, 4, bundlePricing);
-                      const invalidFixed2 = tier2.mode === 'fixed_total' && tier2.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier2.fixed_total_eur, 2);
-                      const invalidFixed4 = tier4.mode === 'fixed_total' && tier4.fixed_total_eur !== null && !isFixedBundleTotalCompatible(tier4.fixed_total_eur, 4);
-
-                      return (
-                        <>
-                          <div>
-                            <h4 className={`text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                              {language === 'fi' ? 'Pakettihinnoittelu (2 / 4 kpl)' : 'Bundle pricing (2 / 4 items)'}
-                            </h4>
-                            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                              {language === 'fi'
-                                ? 'Valitse alennusprosentti tai kiinteä kokonaishinta 2 tai 4 kappaleelle.'
-                                : 'Choose percentage discount or fixed total for bundles of 2 or 4 units.'}
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                              <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>2 {language === 'fi' ? 'kpl' : 'items'}</p>
-                              <select
-                                value={tier2.mode}
-                                onChange={(e) => setBundleTier(2, {
-                                  mode: e.target.value as BundlePricingMode,
-                                  percent_off: null,
-                                  fixed_total_eur: null,
-                                })}
+                            >
+                              <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
+                              <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
+                              <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
+                            </select>
+                            {tier2.mode === 'percent' && (
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value={tier2.percent_off ?? ''}
+                                onChange={(e) => setBundleTier(2, { percent_off: e.target.value ? Number(e.target.value) : null })}
+                                placeholder={language === 'fi' ? 'Esim. 5' : 'e.g. 5'}
                                 className={`w-full px-3 py-2 rounded-lg border ${
                                   isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                              >
-                                <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
-                                <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
-                                <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
-                              </select>
-                              {tier2.mode === 'percent' && (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.1"
-                                  value={tier2.percent_off ?? ''}
-                                  onChange={(e) => setBundleTier(2, { percent_off: e.target.value ? Number(e.target.value) : null })}
-                                  placeholder={language === 'fi' ? 'Esim. 5' : 'e.g. 5'}
-                                  className={`w-full px-3 py-2 rounded-lg border ${
-                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                  }`}
-                                />
-                              )}
-                              {tier2.mode === 'fixed_total' && (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={tier2.fixed_total_eur ?? ''}
-                                  onChange={(e) => setBundleTier(2, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
-                                  placeholder={language === 'fi' ? 'Esim. 220.00' : 'e.g. 220.00'}
-                                  className={`w-full px-3 py-2 rounded-lg border ${
-                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                  }`}
-                                />
-                              )}
-                              {invalidFixed2 && (
-                                <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                                  {language === 'fi'
-                                    ? 'Kiinteä hinta ei jakaudu tasan 2 kappaleelle senttitasolla.'
-                                    : 'Fixed total does not divide evenly across 2 units in cents.'}
-                                </p>
-                              )}
-                              <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview2.lineTotalEur.toFixed(2)}
-                                {preview2.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview2.savingsEur.toFixed(2)})` : ''}
-                              </p>
-                            </div>
-
-                            <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                              <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>4 {language === 'fi' ? 'kpl' : 'items'}</p>
-                              <select
-                                value={tier4.mode}
-                                onChange={(e) => setBundleTier(4, {
-                                  mode: e.target.value as BundlePricingMode,
-                                  percent_off: null,
-                                  fixed_total_eur: null,
-                                })}
+                              />
+                            )}
+                            {tier2.mode === 'fixed_total' && (
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={tier2.fixed_total_eur ?? ''}
+                                onChange={(e) => setBundleTier(2, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
+                                placeholder={language === 'fi' ? 'Esim. 220.00' : 'e.g. 220.00'}
                                 className={`w-full px-3 py-2 rounded-lg border ${
                                   isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                              >
-                                <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
-                                <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
-                                <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
-                              </select>
-                              {tier4.mode === 'percent' && (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.1"
-                                  value={tier4.percent_off ?? ''}
-                                  onChange={(e) => setBundleTier(4, { percent_off: e.target.value ? Number(e.target.value) : null })}
-                                  placeholder={language === 'fi' ? 'Esim. 10' : 'e.g. 10'}
-                                  className={`w-full px-3 py-2 rounded-lg border ${
-                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                  }`}
-                                />
-                              )}
-                              {tier4.mode === 'fixed_total' && (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={tier4.fixed_total_eur ?? ''}
-                                  onChange={(e) => setBundleTier(4, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
-                                  placeholder={language === 'fi' ? 'Esim. 420.00' : 'e.g. 420.00'}
-                                  className={`w-full px-3 py-2 rounded-lg border ${
-                                    isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                  }`}
-                                />
-                              )}
-                              {invalidFixed4 && (
-                                <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                                  {language === 'fi'
-                                    ? 'Kiinteä hinta ei jakaudu tasan 4 kappaleelle senttitasolla.'
-                                    : 'Fixed total does not divide evenly across 4 units in cents.'}
-                                </p>
-                              )}
-                              <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview4.lineTotalEur.toFixed(2)}
-                                {preview4.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview4.savingsEur.toFixed(2)})` : ''}
+                              />
+                            )}
+                            {invalidFixed2 && (
+                              <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                                {language === 'fi'
+                                  ? 'Kiinteä hinta ei jakaudu tasan 2 kappaleelle senttitasolla.'
+                                  : 'Fixed total does not divide evenly across 2 units in cents.'}
                               </p>
-                            </div>
+                            )}
+                            <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview2.lineTotalEur.toFixed(2)}
+                              {preview2.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview2.savingsEur.toFixed(2)})` : ''}
+                            </p>
                           </div>
 
-                          {(bundlePricing?.qty2 || bundlePricing?.qty4) && (
-                            <div className="flex justify-end">
-                              <button
-                                type="button"
-                                onClick={clearBundlePricing}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                                  isDark
-                                    ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400'
-                                    : 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
+                          <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                            <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>4 {language === 'fi' ? 'kpl' : 'items'}</p>
+                            <select
+                              value={tier4.mode}
+                              onChange={(e) => setBundleTier(4, {
+                                mode: e.target.value as BundlePricingMode,
+                                percent_off: null,
+                                fixed_total_eur: null,
+                              })}
+                              className={`w-full px-3 py-2 rounded-lg border ${
+                                isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            >
+                              <option value="none">{language === 'fi' ? 'Ei alennusta' : 'No bundle discount'}</option>
+                              <option value="percent">{language === 'fi' ? 'Alennus %' : 'Discount %'}</option>
+                              <option value="fixed_total">{language === 'fi' ? 'Kiinteä kokonaishinta' : 'Fixed total price'}</option>
+                            </select>
+                            {tier4.mode === 'percent' && (
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value={tier4.percent_off ?? ''}
+                                onChange={(e) => setBundleTier(4, { percent_off: e.target.value ? Number(e.target.value) : null })}
+                                placeholder={language === 'fi' ? 'Esim. 10' : 'e.g. 10'}
+                                className={`w-full px-3 py-2 rounded-lg border ${
+                                  isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                                {language === 'fi' ? 'Tyhjennä pakettihinnoittelu' : 'Clear bundle pricing'}
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Section D: Images */}
-              <div>
-                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Kuvat' : 'Images'}
-                </h3>
-
-                {/* Upload Button */}
-                {((editData.gallery as string[])?.length || 0) < 10 && (
-                  <label className="block cursor-pointer mb-4">
-                    <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      isDark 
-                        ? 'border-white/20 hover:border-white/40 bg-white/5' 
-                        : 'border-gray-300 hover:border-gray-400 bg-gray-50'
-                    }`}>
-                      <Upload className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-                      <p className={`text-sm mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {uploadingImages ? (language === 'fi' ? 'Ladataan...' : 'Uploading...') : (language === 'fi' ? 'Klikkaa ladataksesi kuvia' : 'Click to upload images')}
-                      </p>
-                      <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                        PNG, JPG max 5MB ({(editData.gallery as string[])?.length || 0}/10)
-                      </p>
-                    </div>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e.target.files)}
-                      disabled={uploadingImages}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-
-                {uploadError && (
-                  <div className={`p-3 rounded-lg mb-4 ${isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
-                    <p className="text-sm">{uploadError}</p>
-                  </div>
-                )}
-
-                {/* Image Grid */}
-                {((editData.gallery as string[])?.length || 0) > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {(editData.gallery as string[]).map((url, index) => (
-                      <div
-                        key={url}
-                        draggable
-                        onDragStart={() => handleDragStart(index)}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDragEnd={handleDragEnd}
-                        className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
-                          draggedIndex === index 
-                            ? 'opacity-50 scale-95' 
-                            : 'opacity-100 scale-100'
-                        } ${
-                          isDark ? 'border-white/10 hover:border-white/30' : 'border-gray-200 hover:border-gray-400'
-                        }`}
-                      >
-                        <div className="aspect-square bg-white">
-                          <img 
-                            src={url} 
-                            alt={`Product ${index + 1}`}
-                            className="w-full h-full object-contain"
-                          />
+                              />
+                            )}
+                            {tier4.mode === 'fixed_total' && (
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={tier4.fixed_total_eur ?? ''}
+                                onChange={(e) => setBundleTier(4, { fixed_total_eur: e.target.value ? Number(e.target.value) : null })}
+                                placeholder={language === 'fi' ? 'Esim. 420.00' : 'e.g. 420.00'}
+                                className={`w-full px-3 py-2 rounded-lg border ${
+                                  isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                            )}
+                            {invalidFixed4 && (
+                              <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                                {language === 'fi'
+                                  ? 'Kiinteä hinta ei jakaudu tasan 4 kappaleelle senttitasolla.'
+                                  : 'Fixed total does not divide evenly across 4 units in cents.'}
+                              </p>
+                            )}
+                            <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {language === 'fi' ? 'Esikatselu:' : 'Preview:'} €{preview4.lineTotalEur.toFixed(2)}
+                              {preview4.savingsEur > 0 ? ` (${language === 'fi' ? 'säästö' : 'saving'} €${preview4.savingsEur.toFixed(2)})` : ''}
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 cursor-move"
-                            title="Drag to reorder"
-                          >
-                            <GripVertical className="w-5 h-5 text-white" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(index)}
-                            className="p-2 rounded-lg bg-red-500/80 hover:bg-red-500 transition-colors"
-                            title="Remove"
-                          >
-                            <X className="w-5 h-5 text-white" />
-                          </button>
-                        </div>
-
-                        <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${
-                          index === 0 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-black/50 text-white'
-                        }`}>
-                          {index === 0 ? 'Hero' : `#${index + 1}`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Section E: Content */}
-              <div>
-                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Sisältö' : 'Content'}
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Otsikko' : 'Title'}
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.title ?? ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder={`${getEffectiveIdentity(selectedTire).brand} ${getEffectiveIdentity(selectedTire).model}`}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Alaotsikko' : 'Subtitle'}
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.subtitle ?? ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, subtitle: e.target.value }))}
-                      placeholder={getEffectiveIdentity(selectedTire).size_string || ''}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Lyhyt kuvaus' : 'Short Description'}
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={editData.short_description ?? ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, short_description: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Pitkä kuvaus' : 'Long Description'}
-                    </label>
-                    <textarea
-                      rows={6}
-                      value={editData.long_description ?? ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, long_description: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section F: SEO */}
-              <div>
-                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  SEO
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'URL-tunniste' : 'SEO Slug'}
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.seo_slug ?? ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, seo_slug: e.target.value }))}
-                      placeholder="tire-brand-model-size"
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'SEO-otsikko' : 'SEO Title'}
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.seo_title ?? ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, seo_title: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'SEO-kuvaus' : 'SEO Description'}
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={editData.seo_description ?? ''}
-                      onChange={(e) => setEditData(prev => ({ ...prev, seo_description: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section G: Visibility */}
-              <div>
-                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Näkyvyys' : 'Visibility'}
-                </h3>
-                {mustHideFromStore(selectedTire) && (
-                  <div className={`mb-3 flex items-start gap-2 rounded-lg border p-3 ${
-                    isDark ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' : 'border-amber-300 bg-amber-50 text-amber-800'
-                  }`}>
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p className="text-sm">
-                      {language === 'fi'
-                        ? (
-                          hasMissingSupplierPrice(selectedTire)
-                            ? 'Toimittajahinta puuttuu. Tuote pidetään automaattisesti piilotettuna verkkokaupasta.'
-                            : 'Tämä ei ole henkilöauton rengas. Tuote pidetään automaattisesti piilotettuna verkkokaupasta.'
-                        )
-                        : (
-                          hasMissingSupplierPrice(selectedTire)
-                            ? 'Supplier price is missing. This product is automatically kept hidden from webshop.'
-                            : 'This is not a passenger-car tire. The product is automatically kept hidden from webshop.'
+                        {(bundlePricing?.qty2 || bundlePricing?.qty4) && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={clearBundlePricing}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                                isDark
+                                  ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400'
+                                  : 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
+                              }`}
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              {language === 'fi' ? 'Tyhjennä pakettihinnoittelu' : 'Clear bundle pricing'}
+                            </button>
+                          </div>
                         )}
-                    </p>
-                  </div>
-                )}
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(editData.is_hidden) || mustHideFromStore(selectedTire)}
-                    disabled={mustHideFromStore(selectedTire)}
-                    onChange={(e) => setEditData(prev => ({ ...prev, is_hidden: e.target.checked }))}
-                    className="w-5 h-5 rounded border-gray-300"
-                  />
-                  <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Piilota kaupasta' : 'Hide from store'}
-                  </span>
-                </label>
-                <label className="mt-3 flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={getManualNonPassengerFlag(editData.spec_overrides)}
-                    onChange={(e) =>
-                      setEditData((prev) => {
-                        const currentOverrides = prev.spec_overrides || {};
-                        const currentClassification = (currentOverrides.classification || {}) as Record<string, any>;
-                        const nextClassification = { ...currentClassification };
+                      </>
+                    );
+                  })()}
+                </div>
+              </TiresPricingSection>
 
-                        if (e.target.checked) {
-                          nextClassification.non_passenger_manual = true;
-                        } else {
-                          delete nextClassification.non_passenger_manual;
-                        }
+              <TiresImagesSection
+                draggedIndex={draggedIndex}
+                editGallery={(editData.gallery as string[]) ?? []}
+                handleDragEnd={handleDragEnd}
+                handleDragOver={handleDragOver}
+                handleDragStart={handleDragStart}
+                handleImageUpload={handleImageUpload}
+                handleRemoveImage={handleRemoveImage}
+                isDark={isDark}
+                language={language}
+                uploadError={uploadError}
+                uploadingImages={uploadingImages}
+              />
 
-                        const { classification, ...restOverrides } = currentOverrides;
-                        const nextOverrides = {
-                          ...restOverrides,
-                          ...(Object.keys(nextClassification).length > 0 ? { classification: nextClassification } : {}),
-                        };
+              <TiresContentSection
+                editData={editData}
+                identityBrand={getEffectiveIdentity(selectedTire).brand}
+                identityModel={getEffectiveIdentity(selectedTire).model}
+                identitySizeString={getEffectiveIdentity(selectedTire).size_string}
+                isDark={isDark}
+                language={language}
+                onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
+              />
 
-                        return {
-                          ...prev,
-                          spec_overrides: Object.keys(nextOverrides).length > 0 ? nextOverrides : null,
-                        };
-                      })
+              <TiresSeoSection
+                editData={editData}
+                isDark={isDark}
+                language={language}
+                onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
+              />
+
+              <TiresVisibilitySection
+                editData={editData}
+                hasMissingSupplierPrice={hasMissingSupplierPrice}
+                isDark={isDark}
+                isManualNonPassenger={getManualNonPassengerFlag(editData.spec_overrides)}
+                language={language}
+                mustHideFromStore={mustHideFromStore}
+                onHiddenChange={(hidden) => setEditData((prev) => ({ ...prev, is_hidden: hidden }))}
+                onManualNonPassengerChange={(checked) =>
+                  setEditData((prev) => {
+                    const currentOverrides = prev.spec_overrides || {};
+                    const currentClassification = (currentOverrides.classification || {}) as Record<string, any>;
+                    const nextClassification = { ...currentClassification };
+
+                    if (checked) {
+                      nextClassification.non_passenger_manual = true;
+                    } else {
+                      delete nextClassification.non_passenger_manual;
                     }
-                    className="w-5 h-5 rounded border-gray-300"
-                  />
-                  <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Merkitse ei-henkilöautoksi' : 'Mark as non-passenger'}
-                  </span>
-                </label>
-              </div>
+
+                    const { classification, ...restOverrides } = currentOverrides;
+                    const nextOverrides = {
+                      ...restOverrides,
+                      ...(Object.keys(nextClassification).length > 0 ? { classification: nextClassification } : {}),
+                    };
+
+                    return {
+                      ...prev,
+                      spec_overrides: Object.keys(nextOverrides).length > 0 ? nextOverrides : null,
+                    };
+                  })
+                }
+                selectedTire={selectedTire}
+              />
 
               {/* Save Error */}
               {saveError && (

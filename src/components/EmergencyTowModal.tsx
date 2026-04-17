@@ -35,6 +35,8 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
   const [gpsLoading, setGpsLoading] = useState(false);
   const [requestId, setRequestId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
+    customerName: '',
+    licensePlate: '',
     street: '',
     postcode: '',
     city: '',
@@ -103,6 +105,18 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
     setError('');
 
     // Validate phone number
+    if (!formData.customerName || formData.customerName.trim().length < 2) {
+      setError(t('emergency.error.noName'));
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.licensePlate || formData.licensePlate.trim().length < 2) {
+      setError(t('emergency.error.noLicensePlate'));
+      setLoading(false);
+      return;
+    }
+
     if (!formData.phone || formData.phone.trim().length < 6) {
       setError(t('emergency.error.noPhone'));
       setLoading(false);
@@ -130,12 +144,16 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
 
       if (step === 'gps') {
         payload = {
+          p_customer_name: formData.customerName.trim(),
+          p_license_plate: formData.licensePlate.trim().toUpperCase(),
           p_phone: formData.phone.trim(),
           p_lat: formData.lat,
           p_lng: formData.lng,
         };
       } else {
         payload = {
+          p_customer_name: formData.customerName.trim(),
+          p_license_plate: formData.licensePlate.trim().toUpperCase(),
           p_phone: formData.phone.trim(),
           p_street_address: formData.street.trim(),
           p_postcode: formData.postcode.trim(),
@@ -183,6 +201,8 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
     setError('');
     setRequestId(null);
     setFormData({
+      customerName: '',
+      licensePlate: '',
       street: '',
       postcode: '',
       city: '',
@@ -318,6 +338,36 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
 
                 {/* Phone Number */}
                 <div className="space-y-2 group">
+                  <Label htmlFor="customer-name-gps" className="transition-all group-hover:text-ring">{t('emergency.customerName')}</Label>
+                  <Input
+                    id="customer-name-gps"
+                    type="text"
+                    placeholder={t('emergency.customerNamePlaceholder')}
+                    value={formData.customerName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, customerName: e.target.value })
+                    }
+                    className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 group">
+                  <Label htmlFor="license-plate-gps" className="transition-all group-hover:text-ring">{t('emergency.licensePlate')}</Label>
+                  <Input
+                    id="license-plate-gps"
+                    type="text"
+                    placeholder={t('emergency.licensePlatePlaceholder')}
+                    value={formData.licensePlate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, licensePlate: e.target.value.toUpperCase() })
+                    }
+                    className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 group">
                   <Label htmlFor="phone-gps" className="transition-all group-hover:text-ring">{t('emergency.phone')}</Label>
                   <Input
                     id="phone-gps"
@@ -419,6 +469,36 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
                 </div>
 
                 {/* Phone Number */}
+                <div className="space-y-2 group">
+                  <Label htmlFor="customer-name-manual" className="transition-all group-hover:text-ring">{t('emergency.customerName')}</Label>
+                  <Input
+                    id="customer-name-manual"
+                    type="text"
+                    placeholder={t('emergency.customerNamePlaceholder')}
+                    value={formData.customerName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, customerName: e.target.value })
+                    }
+                    className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 group">
+                  <Label htmlFor="license-plate-manual" className="transition-all group-hover:text-ring">{t('emergency.licensePlate')}</Label>
+                  <Input
+                    id="license-plate-manual"
+                    type="text"
+                    placeholder={t('emergency.licensePlatePlaceholder')}
+                    value={formData.licensePlate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, licensePlate: e.target.value.toUpperCase() })
+                    }
+                    className="transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.15)] hover:border-ring/50 focus:shadow-[0_0_25px_rgba(0,113,227,0.25)]"
+                    required
+                  />
+                </div>
+
                 <div className="space-y-2 group">
                   <Label htmlFor="phone-manual" className="transition-all group-hover:text-ring">{t('emergency.phone')}</Label>
                   <Input

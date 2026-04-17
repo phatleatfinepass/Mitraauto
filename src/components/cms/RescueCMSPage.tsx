@@ -1,48 +1,53 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
-  CalendarDays,
+  CarFront,
   CheckCircle2,
-  ChevronRight,
-  Clock3,
+  ExternalLink,
   Loader2,
-  Mail,
   MapPin,
   Navigation,
   Phone,
-  PlusCircle,
   RefreshCcw,
   Save,
+  Search,
   ShieldAlert,
   User,
-  Wrench,
+  X,
 } from 'lucide-react';
 import { supabase } from '../../utils/supabase/client';
 import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
-import { BookingCommunicationModal } from '../admin/communication/BookingCommunicationModal';
-import { useBookingConversation } from '../admin/communication/useBookingConversation';
-import type { ScheduleBooking } from '../../utils/schedule';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '../ui/drawer';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 
-type RescueStatusFilter = 'all' | 'active' | 'closed';
+type RescueStatus = 'received' | 'processing' | 'on_the_way' | 'picking' | 'at_garage';
+type RescueStatusFilter = 'all' | RescueStatus;
 
 type RescueRequestRow = {
   id: number;
   user_id: string | null;
+  customer_name?: string | null;
+  license_plate?: string | null;
   lat: string | number | null;
   lng: string | number | null;
   street_address: string | null;
   postcode: string | null;
   city: string | null;
   phone: string;
-  source: string;
+  source: string | null;
   status: string;
   assigned_to: string | null;
   priority: number;
@@ -55,45 +60,19 @@ type RescueEventRow = {
   id: number;
   request_id: number;
   event_type: string;
-  meta: Record<string, unknown>;
+  meta: Record<string, unknown> | null;
   created_at: string;
 };
 
-type RescueCreateServiceForm = {
-  licensePlate: string;
-  customerName: string;
-  customerEmail: string;
-  serviceName: string;
-  bookingDate: string;
-  bookingTime: string;
-  notes: string;
-};
-
-type WorkflowStep = {
-  id: string;
-  label: string;
-  complete: boolean;
-  current: boolean;
-};
-
 const REFRESH_INTERVAL_MS = 30_000;
-const BOOKING_MARKER_PATTERN = /\[booking:([0-9a-f-]{36})\]/i;
-const DEFAULT_STATUS_PRESETS = [
-  'new',
-  'assigned',
-  'vehicle_received',
-  'service_created',
-  'customer_contacted',
-  'in_service',
-  'completed',
-  'canceled',
-] as const;
-const CLOSED_STATUS_KEYWORDS = ['completed', 'done', 'closed', 'cancel', 'resolved'];
-
-function isClosedStatus(status: string | null | undefined) {
-  const normalized = (status ?? '').toLowerCase();
-  return CLOSED_STATUS_KEYWORDS.some((keyword) => normalized.includes(keyword));
-}
+const STATUS_ORDER: RescueStatus[] = ['received', 'processing', 'on_the_way', 'picking', 'at_garage'];
+const STATUS_LABELS: Record<RescueStatus, string> = {
+  received: 'Received',
+  processing: 'Processing',
+  on_the_way: 'On the way to pickup the car',
+  picking: 'Picking',
+  at_garage: 'At the garage',
+};
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return 'Unknown';
@@ -112,9 +91,9 @@ function formatRelative(value: string | null | undefined) {
   if (!value) return 'Unknown';
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-
   const diffMs = Date.now() - parsed.getTime();
   const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+
   if (diffMinutes < 1) return 'Just now';
   if (diffMinutes < 60) return `${diffMinutes} min ago`;
 
@@ -127,11 +106,9 @@ function formatRelative(value: string | null | undefined) {
 
 function formatSourceLabel(source: string | null | undefined) {
   if (!source) return 'Unknown';
-  return source
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ');
+  if (source === 'gps') return 'GPS';
+  if (source === 'manual') return 'Manual address';
+  return source;
 }
 
 function formatLocation(request: RescueRequestRow) {
@@ -142,16 +119,6 @@ function formatLocation(request: RescueRequestRow) {
   if (parts.length > 0) return parts.join(', ');
   if (request.lat !== null && request.lng !== null) return `${request.lat}, ${request.lng}`;
   return 'Location missing';
-}
-
-function extractLinkedBookingId(notes: string | null | undefined) {
-  const match = (notes ?? '').match(BOOKING_MARKER_PATTERN);
-  return match?.[1] ?? null;
-}
-
-function replaceLinkedBookingId(notes: string | null | undefined, bookingId: string) {
-  const cleaned = (notes ?? '').replace(BOOKING_MARKER_PATTERN, '').trim();
-  return cleaned ? `[booking:${bookingId}]\n${cleaned}` : `[booking:${bookingId}]`;
 }
 
 function appendActionNote(notes: string | null | undefined, text: string) {
@@ -167,280 +134,146 @@ function appendActionNote(notes: string | null | undefined, text: string) {
   return existing ? `${existing}\n${line}` : line;
 }
 
-function getStatusTone(status: string) {
-  const normalized = status.toLowerCase();
-
-  if (normalized.includes('cancel')) return 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300';
-  if (normalized.includes('complete') || normalized.includes('done') || normalized.includes('resolve')) {
-    return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
-  }
-  if (
-    normalized.includes('assign') ||
-    normalized.includes('progress') ||
-    normalized.includes('receive') ||
-    normalized.includes('service') ||
-    normalized.includes('contact')
-  ) {
-    return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
-  }
-
-  return 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300';
+function normalizeStatus(value: string | null | undefined): RescueStatus {
+  const candidate = (value ?? '').toLowerCase() as RescueStatus;
+  return STATUS_ORDER.includes(candidate) ? candidate : 'received';
 }
 
-function formatLocalDateInput(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function getStatusTone(status: string | null | undefined) {
+  switch (normalizeStatus(status)) {
+    case 'received':
+      return 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300';
+    case 'processing':
+      return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+    case 'on_the_way':
+      return 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300';
+    case 'picking':
+      return 'border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300';
+    case 'at_garage':
+      return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+    default:
+      return 'border-border bg-muted text-foreground';
+  }
 }
 
-function getNextBookingSlot() {
-  const now = new Date();
-  const rounded = new Date(now);
-  rounded.setSeconds(0, 0);
-  const minutes = rounded.getMinutes();
-
-  if (minutes === 0 || minutes === 30) {
-    rounded.setMinutes(minutes);
-  } else if (minutes < 30) {
-    rounded.setMinutes(30);
-  } else {
-    rounded.setHours(rounded.getHours() + 1, 0, 0, 0);
+function EventMeta({ meta }: { meta: Record<string, unknown> | null }) {
+  if (!meta || Object.keys(meta).length === 0) {
+    return <p className="mt-1 text-sm text-muted-foreground">No additional details.</p>;
   }
 
-  return {
-    date: formatLocalDateInput(rounded),
-    time: `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`,
-  };
-}
-
-function buildWorkflowSteps(request: RescueRequestRow | null, linkedBooking: ScheduleBooking | null): WorkflowStep[] {
-  if (!request) return [];
-
-  const status = request.status.toLowerCase();
-  const hasReceived = status.includes('receive');
-  const hasService = Boolean(linkedBooking) || status.includes('service');
-  const hasContact = status.includes('contact') || Boolean(linkedBooking?.customer_email);
-  const isClosed = isClosedStatus(status);
-
-  return [
-    {
-      id: 'intake',
-      label: 'Request received',
-      complete: true,
-      current: !hasReceived,
-    },
-    {
-      id: 'received',
-      label: 'Vehicle received',
-      complete: hasReceived,
-      current: hasReceived && !hasService,
-    },
-    {
-      id: 'service',
-      label: 'Service draft created',
-      complete: hasService,
-      current: hasService && !hasContact,
-    },
-    {
-      id: 'contact',
-      label: 'Customer communication',
-      complete: hasContact,
-      current: hasContact && !isClosed,
-    },
-    {
-      id: 'closed',
-      label: 'Case closed',
-      complete: isClosed,
-      current: isClosed,
-    },
-  ];
-}
-
-function WorkflowRail({ steps }: { steps: WorkflowStep[] }) {
   return (
-    <div className="grid gap-3 md:grid-cols-5">
-      {steps.map((step, index) => (
-        <div
-          key={step.id}
-          className={`rounded-2xl border p-3 ${
-            step.complete
-              ? 'border-emerald-500/30 bg-emerald-500/10'
-              : step.current
-                ? 'border-amber-500/30 bg-amber-500/10'
-                : 'border-border bg-background'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                step.complete
-                  ? 'bg-emerald-500 text-white'
-                  : step.current
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {step.complete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
-            </div>
-            <span className="text-sm font-medium text-foreground">{step.label}</span>
-          </div>
-        </div>
+    <div className="mt-2 space-y-1">
+      {Object.entries(meta).map(([key, value]) => (
+        <p key={key} className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{key.replace(/_/g, ' ')}:</span>{' '}
+          {typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value)}
+        </p>
       ))}
     </div>
   );
 }
 
-function TimelineCard({
-  request,
-  events,
-  eventsLoading,
-  eventsAvailable,
-  linkedBooking,
-}: {
-  request: RescueRequestRow;
-  events: RescueEventRow[];
-  eventsLoading: boolean;
-  eventsAvailable: boolean;
-  linkedBooking: ScheduleBooking | null;
-}) {
-  const timeline = useMemo(() => {
-    const items = [
-      {
-        id: `request-${request.id}-created`,
-        title: 'Request received',
-        detail: `Created from ${formatSourceLabel(request.source)}`,
-        at: request.created_at,
-      },
-      ...events.map((event) => ({
-        id: `event-${event.id}`,
-        title: event.event_type.replace(/_/g, ' '),
-        detail: Object.keys(event.meta || {}).length > 0 ? JSON.stringify(event.meta) : 'No additional metadata',
-        at: event.created_at,
-      })),
-    ];
-
-    if (linkedBooking) {
-      items.push({
-        id: `booking-${linkedBooking.id}`,
-        title: 'Service draft linked',
-        detail: `${linkedBooking.service_name || 'Service'} · ${linkedBooking.booking_date} ${linkedBooking.booking_time}`,
-        at: linkedBooking.created_at,
-      });
-    }
-
-    return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-  }, [events, linkedBooking, request]);
+function WorkflowRail({ status }: { status: RescueStatus }) {
+  const currentIndex = STATUS_ORDER.indexOf(status);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Case timeline</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {eventsLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading timeline...
-          </div>
-        ) : !eventsAvailable ? (
-          <div className="rounded-xl border border-dashed px-4 py-4 text-sm text-muted-foreground">
-            Timeline events are not available in this session. The page can still run from the rescue request itself.
-          </div>
-        ) : null}
-
-        {timeline.map((item) => (
-          <div key={item.id} className="rounded-xl border px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
+    <div className="grid gap-2 md:grid-cols-5">
+      {STATUS_ORDER.map((step, index) => {
+        const complete = index < currentIndex;
+        const current = index === currentIndex;
+        return (
+          <div
+            key={step}
+            className={`rounded-lg border px-3 py-3 ${
+              complete
+                ? 'border-border bg-muted/40'
+                : current
+                  ? 'border-foreground/20 bg-background'
+                  : 'border-border bg-background'
+            }`}
+          >
+            <div className="flex items-start gap-2.5">
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[11px] font-semibold ${
+                  complete
+                    ? 'border-border bg-card text-foreground'
+                    : current
+                      ? 'border-foreground/20 bg-foreground text-background'
+                      : 'border-border bg-muted text-muted-foreground'
+                }`}
+              >
+                {complete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
               </div>
-              <p className="text-xs text-muted-foreground">{formatDateTime(item.at)}</p>
+              <span className="text-[13px] font-medium leading-5 text-foreground">{STATUS_LABELS[step]}</span>
             </div>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function InfoGrid({
+  items,
+}: {
+  items: Array<{ label: string; value: React.ReactNode }>;
+}) {
+  return (
+    <dl className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item.label} className="space-y-1">
+          <dt className="text-xs text-muted-foreground">{item.label}</dt>
+          <dd className="text-sm font-medium leading-5 text-foreground">{item.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function SectionBlock({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border bg-card">
+      <div className="border-b px-5 py-4">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+      </div>
+      <div className="px-5 py-4">{children}</div>
+    </section>
   );
 }
 
 export function RescueCMSPage() {
   const { language } = useLanguage();
-  const { theme } = useTheme();
   const [requests, setRequests] = useState<RescueRequestRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<RescueStatusFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [creatingService, setCreatingService] = useState(false);
   const [error, setError] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState('');
-  const [communicationOpen, setCommunicationOpen] = useState(false);
-  const [createServiceOpen, setCreateServiceOpen] = useState(false);
-  const [linkedBooking, setLinkedBooking] = useState<ScheduleBooking | null>(null);
-  const [loadingLinkedBooking, setLoadingLinkedBooking] = useState(false);
   const [events, setEvents] = useState<RescueEventRow[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsAvailable, setEventsAvailable] = useState(true);
   const [editor, setEditor] = useState({
-    status: '',
+    status: 'received',
     priority: '0',
     internalNotes: '',
     assignedTo: '',
   });
-  const [createServiceForm, setCreateServiceForm] = useState<RescueCreateServiceForm>(() => {
-    const slot = getNextBookingSlot();
-    return {
-      licensePlate: '',
-      customerName: '',
-      customerEmail: '',
-      serviceName: 'Rescue 24/7 intake',
-      bookingDate: slot.date,
-      bookingTime: slot.time,
-      notes: '',
-    };
-  });
 
-  const cmsStrings = useMemo(() => ({
-    conversationLoadFailed: language === 'fi' ? 'Keskustelua ei voitu ladata.' : 'Failed to load conversation.',
-    noEmailNoSend: language === 'fi' ? 'Sähköpostiosoite puuttuu.' : 'No customer email available.',
-    messageRequired: language === 'fi' ? 'Viestin aihe ja sisältö vaaditaan.' : 'Subject and message are required.',
-    adminMessageSent: language === 'fi' ? 'Viesti lähetetty.' : 'Message sent.',
-    adminMessageFailed: language === 'fi' ? 'Viestin lähetys epäonnistui.' : 'Failed to send message.',
-    conversationHistory: language === 'fi' ? 'Varausketjun viestihistoria.' : 'Conversation history for this booking thread.',
-    syncingConversation: language === 'fi' ? 'Synkronoidaan...' : 'Syncing...',
-    syncConversation: language === 'fi' ? 'Synkronoi' : 'Sync',
-    conversationLoading: language === 'fi' ? 'Ladataan keskustelua...' : 'Loading conversation...',
-    conversationEmpty: language === 'fi' ? 'Tälle varaukselle ei ole vielä viestejä.' : 'No messages for this booking yet.',
-    receivedLabel: language === 'fi' ? 'Saapunut' : 'Received',
-    sentLabel: language === 'fi' ? 'Lähetetty' : 'Sent',
-    replyToMessage: language === 'fi' ? 'Vastaa' : 'Reply',
-    sendMessage: language === 'fi' ? 'Lähetä viesti' : 'Send message',
-    messageSubject: language === 'fi' ? 'Aihe' : 'Subject',
-    messageSubjectPlaceholder: language === 'fi' ? 'Kirjoita aiherivi' : 'Write a subject line',
-    messageBody: language === 'fi' ? 'Viesti' : 'Message',
-    messageBodyPlaceholder: language === 'fi' ? 'Kirjoita viesti asiakkaalle' : 'Write a message to the customer',
-    sendingMessage: language === 'fi' ? 'Lähetetään...' : 'Sending...',
-    threadConnected: language === 'fi' ? 'Ketju yhdistetty' : 'Thread connected',
-    noThreadYet: language === 'fi' ? 'Ei ketjua vielä' : 'No thread yet',
-  }), [language]);
-
-  const bookingConversation = useBookingConversation({
-    buildCustomerCompletionDraft: (booking) => ({
-      subject: language === 'fi' ? 'Täydennä varauksesi tiedot' : 'Complete your booking details',
-      message: language === 'fi'
-        ? `Hei ${booking.customer_name || ''},\n\nTäydennä varauksesi tiedot vastaamalla tähän viestiin.`
-        : `Hi ${booking.customer_name || ''},\n\nPlease complete your booking details by replying to this message.`,
-    }),
-    getBookingLanguage: (booking) => booking.booking_language === 'en' ? 'en' : 'fi',
-    language,
-    setBookingExpanded: () => undefined,
-    t: (key) => cmsStrings[key as keyof typeof cmsStrings] || key,
-  });
+  const statusOptions = useMemo(() => STATUS_ORDER, []);
 
   const loadRequests = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'initial') {
@@ -448,6 +281,7 @@ export function RescueCMSPage() {
     } else {
       setRefreshing(true);
     }
+
     setError('');
 
     try {
@@ -458,14 +292,12 @@ export function RescueCMSPage() {
 
       if (queryError) throw queryError;
 
-      setCurrentUserId(authData.user?.id ?? null);
       setCurrentUserEmail(authData.user?.email ?? '');
-
       const nextRows = (data ?? []) as RescueRequestRow[];
       setRequests(nextRows);
       setSelectedId((currentSelected) => {
         if (currentSelected && nextRows.some((row) => row.id === currentSelected)) return currentSelected;
-        return nextRows[0]?.id ?? null;
+        return null;
       });
     } catch (err: any) {
       setError(err?.message || 'Failed to load rescue requests.');
@@ -485,42 +317,38 @@ export function RescueCMSPage() {
   }, [loadRequests]);
 
   const filteredRequests = useMemo(() => {
-    if (statusFilter === 'all') return requests;
-    if (statusFilter === 'active') return requests.filter((request) => !isClosedStatus(request.status));
-    return requests.filter((request) => isClosedStatus(request.status));
-  }, [requests, statusFilter]);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return requests.filter((request) => {
+      const statusMatches = statusFilter === 'all' || normalizeStatus(request.status) === statusFilter;
+      if (!statusMatches) return false;
+      if (!normalizedQuery) return true;
+
+      const haystack = [
+        request.customer_name,
+        request.license_plate,
+        request.phone,
+        request.street_address,
+        request.postcode,
+        request.city,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, [requests, searchQuery, statusFilter]);
 
   const selectedRequest = useMemo(
     () => requests.find((request) => request.id === selectedId) ?? null,
     [requests, selectedId],
   );
 
-  const linkedBookingId = useMemo(
-    () => extractLinkedBookingId(selectedRequest?.internal_notes),
-    [selectedRequest?.internal_notes],
-  );
-
-  const statusOptions = useMemo(() => {
-    const dynamicStatuses = requests.map((request) => request.status).filter(Boolean);
-    return Array.from(new Set([...DEFAULT_STATUS_PRESETS, ...dynamicStatuses]));
-  }, [requests]);
-
-  const summary = useMemo(() => {
-    const active = requests.filter((request) => !isClosedStatus(request.status)).length;
-    const closed = requests.filter((request) => isClosedStatus(request.status)).length;
-    const unassigned = requests.filter((request) => !request.assigned_to && !isClosedStatus(request.status)).length;
-    return { total: requests.length, active, closed, unassigned };
-  }, [requests]);
-
-  const workflowSteps = useMemo(
-    () => buildWorkflowSteps(selectedRequest, linkedBooking),
-    [linkedBooking, selectedRequest],
-  );
-
   useEffect(() => {
     if (!selectedRequest) {
       setEditor({
-        status: '',
+        status: 'received',
         priority: '0',
         internalNotes: '',
         assignedTo: '',
@@ -529,44 +357,35 @@ export function RescueCMSPage() {
     }
 
     setEditor({
-      status: selectedRequest.status,
+      status: normalizeStatus(selectedRequest.status),
       priority: String(selectedRequest.priority ?? 0),
       internalNotes: selectedRequest.internal_notes ?? '',
       assignedTo: selectedRequest.assigned_to ?? '',
     });
-    setSaveMessage('');
   }, [selectedRequest]);
 
-  useEffect(() => {
-    if (!linkedBookingId) {
-      setLinkedBooking(null);
-      return;
+  const loadEvents = useCallback(async (requestId: number) => {
+    setEventsLoading(true);
+
+    try {
+      const { data, error: queryError } = await supabase
+        .from('emergency_request_events')
+        .select('*')
+        .eq('request_id', requestId)
+        .order('created_at', { ascending: false });
+
+      if (queryError) throw queryError;
+
+      setEvents((data ?? []) as RescueEventRow[]);
+      setEventsAvailable(true);
+    } catch (err) {
+      console.error(err);
+      setEvents([]);
+      setEventsAvailable(false);
+    } finally {
+      setEventsLoading(false);
     }
-
-    let active = true;
-    const run = async () => {
-      setLoadingLinkedBooking(true);
-      try {
-        const { data, error: queryError } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('id', linkedBookingId)
-          .single();
-
-        if (queryError) throw queryError;
-        if (active) setLinkedBooking(data as ScheduleBooking);
-      } catch {
-        if (active) setLinkedBooking(null);
-      } finally {
-        if (active) setLoadingLinkedBooking(false);
-      }
-    };
-
-    void run();
-    return () => {
-      active = false;
-    };
-  }, [linkedBookingId]);
+  }, []);
 
   useEffect(() => {
     if (!selectedRequest) {
@@ -574,756 +393,527 @@ export function RescueCMSPage() {
       return;
     }
 
-    let active = true;
-    const run = async () => {
-      setEventsLoading(true);
-      try {
-        const { data, error: queryError } = await supabase
-          .from('emergency_request_events')
-          .select('*')
-          .eq('request_id', selectedRequest.id)
-          .order('created_at', { ascending: false });
+    void loadEvents(selectedRequest.id);
+  }, [loadEvents, selectedRequest]);
 
-        if (queryError) throw queryError;
-        if (active) {
-          setEvents((data ?? []) as RescueEventRow[]);
-          setEventsAvailable(true);
-        }
-      } catch {
-        if (active) {
-          setEvents([]);
-          setEventsAvailable(false);
-        }
-      } finally {
-        if (active) setEventsLoading(false);
-      }
-    };
+  const summary = useMemo(() => {
+    const counts = STATUS_ORDER.reduce<Record<RescueStatus, number>>(
+      (acc, status) => ({ ...acc, [status]: 0 }),
+      {
+        received: 0,
+        processing: 0,
+        on_the_way: 0,
+        picking: 0,
+        at_garage: 0,
+      },
+    );
 
-    void run();
-    return () => {
-      active = false;
-    };
-  }, [selectedRequest]);
-
-  useEffect(() => {
-    if (!createServiceOpen || !selectedRequest) return;
-
-    const slot = getNextBookingSlot();
-    setCreateServiceForm({
-      licensePlate: '',
-      customerName: '',
-      customerEmail: '',
-      serviceName: language === 'fi' ? 'Rescue 24/7 vastaanotto' : 'Rescue 24/7 intake',
-      bookingDate: slot.date,
-      bookingTime: slot.time,
-      notes: `${language === 'fi' ? 'Lähde' : 'Source'}: Rescue request #${selectedRequest.id}\n${language === 'fi' ? 'Puhelin' : 'Phone'}: ${selectedRequest.phone}\n${language === 'fi' ? 'Sijainti' : 'Location'}: ${formatLocation(selectedRequest)}`,
+    requests.forEach((request) => {
+      counts[normalizeStatus(request.status)] += 1;
     });
-  }, [createServiceOpen, language, selectedRequest]);
 
-  const recordEvent = useCallback(async (requestId: number, eventType: string, meta: Record<string, unknown>) => {
+    return counts;
+  }, [requests]);
+
+  const logEvent = useCallback(async (requestId: number, eventType: string, meta: Record<string, unknown>) => {
     try {
-      await supabase.from('emergency_request_events').insert([
-        {
-          request_id: requestId,
-          event_type: eventType,
-          meta,
-        },
-      ]);
-    } catch {
-      // Best effort only. Rescue page should still operate even when event logging is blocked.
+      const { error: insertError } = await supabase.from('emergency_request_events').insert({
+        request_id: requestId,
+        event_type: eventType,
+        meta,
+      });
+
+      if (insertError) throw insertError;
+    } catch (err) {
+      console.error('Failed to log rescue event', err);
     }
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const persistRequest = useCallback(async (nextStatus?: RescueStatus) => {
     if (!selectedRequest) return;
 
     setSaving(true);
-    setError('');
     setSaveMessage('');
+    setError('');
+
+    const status = nextStatus ?? (editor.status as RescueStatus);
+    const notes =
+      nextStatus && nextStatus !== normalizeStatus(selectedRequest.status)
+        ? appendActionNote(editor.internalNotes, `Status changed to ${STATUS_LABELS[nextStatus]}.`)
+        : editor.internalNotes;
 
     try {
-      const parsedPriority = Number.parseInt(editor.priority, 10);
-      const payload = {
-        status: editor.status,
-        priority: Number.isFinite(parsedPriority) ? parsedPriority : selectedRequest.priority,
-        internal_notes: editor.internalNotes.trim() || null,
-        assigned_to: editor.assignedTo || null,
+      const updatePayload = {
+        status,
+        priority: Number(editor.priority) || 0,
+        internal_notes: notes.trim() || null,
+        assigned_to: editor.assignedTo.trim() || null,
       };
 
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('emergency_requests')
-        .update(payload)
-        .eq('id', selectedRequest.id);
+        .update(updatePayload)
+        .eq('id', selectedRequest.id)
+        .select('*')
+        .single();
 
       if (updateError) throw updateError;
 
-      await recordEvent(selectedRequest.id, 'case_saved', {
-        status: payload.status,
-        priority: payload.priority,
-        assigned_to: payload.assigned_to,
-      });
+      setRequests((current) => current.map((request) => (
+        request.id === selectedRequest.id ? { ...(data as RescueRequestRow) } : request
+      )));
+      setEditor((current) => ({
+        ...current,
+        status,
+        internalNotes: notes,
+      }));
 
-      setSaveMessage(language === 'fi' ? 'Pelastuspyyntö päivitetty.' : 'Rescue request updated.');
-      await loadRequests('refresh');
+      const previousStatus = normalizeStatus(selectedRequest.status);
+      if (status !== previousStatus) {
+        await logEvent(selectedRequest.id, status, {
+          previous_status: previousStatus,
+          updated_by: currentUserEmail || 'admin',
+        });
+      } else {
+        await logEvent(selectedRequest.id, 'case_updated', {
+          updated_by: currentUserEmail || 'admin',
+        });
+      }
+
+      setSaveMessage(language === 'fi' ? 'Pelastustapaus tallennettu.' : 'Rescue case saved.');
+      await loadEvents(selectedRequest.id);
     } catch (err: any) {
       setError(err?.message || 'Failed to save rescue request.');
     } finally {
       setSaving(false);
     }
-  }, [editor, language, loadRequests, recordEvent, selectedRequest]);
+  }, [currentUserEmail, editor.assignedTo, editor.internalNotes, editor.priority, editor.status, language, loadEvents, logEvent, selectedRequest]);
 
-  const handleQuickAction = useCallback(async (status: string, note: string, eventType: string) => {
-    if (!selectedRequest) return;
-
-    setSaving(true);
-    setError('');
-    setSaveMessage('');
-
-    try {
-      const nextNotes = appendActionNote(selectedRequest.internal_notes, note);
-      const { error: updateError } = await supabase
-        .from('emergency_requests')
-        .update({
-          status,
-          internal_notes: nextNotes,
-        })
-        .eq('id', selectedRequest.id);
-
-      if (updateError) throw updateError;
-
-      await recordEvent(selectedRequest.id, eventType, { status, note });
-      setSaveMessage(language === 'fi' ? 'Toiminto tallennettu.' : 'Action saved.');
-      await loadRequests('refresh');
-    } catch (err: any) {
-      setError(err?.message || 'Failed to update rescue request.');
-    } finally {
-      setSaving(false);
-    }
-  }, [language, loadRequests, recordEvent, selectedRequest]);
-
-  const handleCreateServiceDraft = useCallback(async () => {
-    if (!selectedRequest) return;
-    if (!createServiceForm.licensePlate.trim() || !createServiceForm.customerName.trim() || !createServiceForm.serviceName.trim()) {
-      setError(language === 'fi'
-        ? 'Rekisterinumero, asiakasnimi ja palvelu ovat pakollisia.'
-        : 'License plate, customer name, and service are required.');
-      return;
-    }
-
-    setCreatingService(true);
-    setError('');
-    setSaveMessage('');
-
-    try {
-      const bookingPayload = {
-        license_plate: createServiceForm.licensePlate.trim().toUpperCase(),
-        booking_date: createServiceForm.bookingDate,
-        booking_time: createServiceForm.bookingTime,
-        service_name: createServiceForm.serviceName.trim(),
-        customer_name: createServiceForm.customerName.trim(),
-        customer_phone: selectedRequest.phone,
-        customer_email: createServiceForm.customerEmail.trim() || null,
-        notes: createServiceForm.notes.trim() || null,
-        status: 'confirmed',
-        booking_language: language === 'fi' ? 'fi' : 'en',
-      };
-
-      const { data: bookingData, error: bookingError } = await supabase
-        .from('bookings')
-        .insert([bookingPayload])
-        .select('*')
-        .single();
-
-      if (bookingError || !bookingData) {
-        throw bookingError || new Error('Failed to create booking');
-      }
-
-      const nextNotes = appendActionNote(
-        replaceLinkedBookingId(selectedRequest.internal_notes, bookingData.id),
-        `Service draft created for booking ${bookingData.id}`,
-      );
-
-      const { error: rescueUpdateError } = await supabase
-        .from('emergency_requests')
-        .update({
-          status: 'service_created',
-          internal_notes: nextNotes,
-        })
-        .eq('id', selectedRequest.id);
-
-      if (rescueUpdateError) throw rescueUpdateError;
-
-      await recordEvent(selectedRequest.id, 'service_created', { booking_id: bookingData.id });
-
-      setLinkedBooking(bookingData as ScheduleBooking);
-      setCreateServiceOpen(false);
-      setSaveMessage(language === 'fi' ? 'Palveluluonnos luotu ja linkitetty.' : 'Service draft created and linked.');
-      await loadRequests('refresh');
-    } catch (err: any) {
-      setError(err?.message || 'Failed to create service draft.');
-    } finally {
-      setCreatingService(false);
-    }
-  }, [createServiceForm, language, loadRequests, recordEvent, selectedRequest]);
-
-  const openCommunicationHub = useCallback((compose = false) => {
-    if (!linkedBooking) return;
-    setCommunicationOpen(true);
-    if (compose) {
-      bookingConversation.handleOpenMessageComposer(linkedBooking);
-      void recordEvent(selectedRequest?.id ?? 0, 'customer_contacted', {
-        booking_id: linkedBooking.id,
-        mode: 'compose_opened',
-      });
-    } else {
-      void bookingConversation.loadBookingConversation(linkedBooking.id, true);
-    }
-  }, [bookingConversation, linkedBooking, recordEvent, selectedRequest?.id]);
+  const selectedStatus = normalizeStatus(selectedRequest?.status);
+  const selectedStatusIndex = STATUS_ORDER.indexOf(selectedStatus);
+  const nextStatus = selectedStatusIndex < STATUS_ORDER.length - 1 ? STATUS_ORDER[selectedStatusIndex + 1] : null;
+  const mapsHref = selectedRequest
+    ? selectedRequest.lat !== null && selectedRequest.lng !== null
+      ? `https://www.google.com/maps?q=${selectedRequest.lat},${selectedRequest.lng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatLocation(selectedRequest))}`
+    : null;
+  const phoneHref = selectedRequest ? `tel:${selectedRequest.phone.replace(/\s+/g, '')}` : null;
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS Module</p>
-          <h1 className="text-3xl font-semibold text-foreground">Rescue 24/7</h1>
-          <p className="mt-2 max-w-3xl text-muted-foreground">
-            Rebuilt around the current backend: intake first, then case workflow, then service handoff. Use booking communication only after a real service draft exists.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-[180px]">
-            <Label htmlFor="rescue-filter">Queue filter</Label>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as RescueStatusFilter)}>
-              <SelectTrigger id="rescue-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All requests</SelectItem>
-                <SelectItem value="active">Active only</SelectItem>
-                <SelectItem value="closed">Closed only</SelectItem>
-              </SelectContent>
-            </Select>
+    <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="right">
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Rescue 24/7</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Dispatch board for emergency intake, pickup progress, and arrival at the garage.
+            </p>
           </div>
-
-          <Button variant="outline" onClick={() => void loadRequests('refresh')} disabled={refreshing || loading}>
-            <RefreshCcw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+          <Button variant="outline" onClick={() => void loadRequests('refresh')} disabled={refreshing}>
+            {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+            Refresh queue
           </Button>
         </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total requests</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-3xl font-semibold">{summary.total}</span>
-            <ShieldAlert className="h-5 w-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-3xl font-semibold">{summary.active}</span>
-            <Clock3 className="h-5 w-5 text-amber-500" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unassigned</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-3xl font-semibold">{summary.unassigned}</span>
-            <User className="h-5 w-5 text-blue-500" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Closed</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-3xl font-semibold">{summary.closed}</span>
-            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {error ? (
-        <div className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <span>{error}</span>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {STATUS_ORDER.map((status) => (
+            <Card key={status} className="overflow-hidden">
+              <CardContent className="flex items-center justify-between p-5">
+                <div>
+                  <p className="text-sm text-muted-foreground">{STATUS_LABELS[status]}</p>
+                  <p className="mt-2 text-3xl font-semibold text-foreground">{summary[status]}</p>
+                </div>
+                <div className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusTone(status)}`}>
+                  {status.replace(/_/g, ' ')}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      ) : null}
 
-      {saveMessage ? (
-        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <span>{saveMessage}</span>
-        </div>
-      ) : null}
+        {error ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(480px,0.95fr)]">
-        <Card className="min-h-[520px]">
-          <CardHeader>
-            <CardTitle>Incoming queue</CardTitle>
+        {saveMessage ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="h-4 w-4" />
+            {saveMessage}
+          </div>
+        ) : null}
+
+        <Card className="overflow-hidden">
+          <CardHeader className="gap-4 border-b bg-muted/20">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <CardTitle>Emergency queue</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Open a case in the drawer to dispatch the next action and update the rescue timeline.
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {filteredRequests.length} case{filteredRequests.length === 1 ? '' : 's'} visible
+              </div>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr),220px]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search name, plate, phone, or address"
+                  className="pl-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as RescueStatusFilter)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {STATUS_LABELS[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-0">
             {loading ? (
-              <div className="rounded-xl border border-dashed px-4 py-12 text-center text-muted-foreground">
-                Loading rescue requests...
+              <div className="flex items-center gap-2 px-6 py-10 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading rescue queue...
               </div>
             ) : filteredRequests.length === 0 ? (
-              <div className="rounded-xl border border-dashed px-4 py-12 text-center text-muted-foreground">
-                No rescue requests in this filter.
+              <div className="px-6 py-12 text-center">
+                <ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground" />
+                <p className="mt-4 text-lg font-semibold text-foreground">No emergency requests found</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Try another filter or wait for a new public rescue request.
+                </p>
               </div>
             ) : (
-              filteredRequests.map((request) => {
-                const isSelected = request.id === selectedId;
-                const assignedToCurrentUser = currentUserId && request.assigned_to === currentUserId;
-                const linkedBookingIdForRow = extractLinkedBookingId(request.internal_notes);
-
-                return (
-                  <button
-                    key={request.id}
-                    type="button"
-                    onClick={() => setSelectedId(request.id)}
-                    className={`w-full rounded-2xl border p-4 text-left transition ${
-                      isSelected
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-border hover:border-primary/40 hover:bg-muted/40'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-base font-semibold text-foreground">Request #{request.id}</span>
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusTone(request.status)}`}>
-                            {request.status}
-                          </span>
-                          <span className="inline-flex rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                            P{request.priority}
-                          </span>
-                        </div>
-
-                        <div className="mt-2 flex flex-col gap-2 text-sm text-muted-foreground">
-                          <span className="inline-flex items-center gap-2">
-                            <Phone className="h-4 w-4" />
-                            {request.phone}
-                          </span>
-                          <span className="inline-flex items-center gap-2">
-                            {request.lat !== null && request.lng !== null ? (
-                              <Navigation className="h-4 w-4" />
-                            ) : (
-                              <MapPin className="h-4 w-4" />
-                            )}
-                            {formatLocation(request)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-right text-xs text-muted-foreground">
-                        <div>{formatRelative(request.created_at)}</div>
-                        <div className="mt-1">{formatSourceLabel(request.source)}</div>
-                        <div className="mt-1">
-                          {request.assigned_to
-                            ? assignedToCurrentUser
-                              ? 'Assigned to you'
-                              : 'Assigned'
-                            : 'Unassigned'}
-                        </div>
-                        {linkedBookingIdForRow ? (
-                          <div className="mt-1 inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                            <ChevronRight className="h-3.5 w-3.5" />
-                            Service linked
+              <div className="divide-y">
+                {filteredRequests.map((request) => {
+                  const active = request.id === selectedId && drawerOpen;
+                  return (
+                    <button
+                      key={request.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(request.id);
+                        setDrawerOpen(true);
+                      }}
+                      className={`w-full px-6 py-4 text-left transition ${
+                        active ? 'bg-primary/5' : 'hover:bg-muted/40'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-base font-semibold text-foreground">
+                              {request.customer_name?.trim() || 'Unnamed customer'}
+                            </span>
+                            <span className="rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                              #{request.id}
+                            </span>
+                            <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusTone(request.status)}`}>
+                              {STATUS_LABELS[normalizeStatus(request.status)]}
+                            </span>
                           </div>
-                        ) : null}
+                          <div className="mt-2 grid gap-2 text-sm text-muted-foreground lg:grid-cols-2 2xl:grid-cols-4">
+                            <p><span className="font-medium text-foreground">Plate:</span> {request.license_plate?.trim() || 'Missing'}</p>
+                            <p><span className="font-medium text-foreground">Phone:</span> {request.phone}</p>
+                            <p className="truncate"><span className="font-medium text-foreground">Location:</span> {formatLocation(request)}</p>
+                            <p><span className="font-medium text-foreground">Created:</span> {formatRelative(request.created_at)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 xl:justify-end">
+                          <div className="text-sm text-muted-foreground">
+                            {formatSourceLabel(request.source)}
+                          </div>
+                          <span
+                            className={`inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium ${
+                              active
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-background text-foreground'
+                            }`}
+                          >
+                            Open case
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
-
-        <div className="space-y-6">
-          {!selectedRequest ? (
-            <Card>
-              <CardContent className="rounded-xl border border-dashed px-4 py-12 text-center text-muted-foreground">
-                Select a rescue request to inspect and manage it.
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Case overview</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground">Request #{selectedRequest.id}</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Created {formatDateTime(selectedRequest.created_at)} · {formatRelative(selectedRequest.created_at)}
-                      </p>
-                    </div>
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusTone(selectedRequest.status)}`}>
-                      {selectedRequest.status}
-                    </span>
-                  </div>
-
-                  <WorkflowRail steps={workflowSteps} />
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-xl border bg-background p-3">
-                      <p className="font-medium text-foreground">Caller</p>
-                      <p className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-4 w-4" />
-                        <a href={`tel:${selectedRequest.phone}`} className="hover:text-foreground">
-                          {selectedRequest.phone}
-                        </a>
-                      </p>
-                    </div>
-                    <div className="rounded-xl border bg-background p-3">
-                      <p className="font-medium text-foreground">Source</p>
-                      <p className="mt-2 text-sm text-muted-foreground">{formatSourceLabel(selectedRequest.source)}</p>
-                    </div>
-                    <div className="rounded-xl border bg-background p-3 md:col-span-2">
-                      <p className="font-medium text-foreground">Location</p>
-                      <p className="mt-2 text-sm text-muted-foreground">{formatLocation(selectedRequest)}</p>
-                      {selectedRequest.lat !== null && selectedRequest.lng !== null ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          GPS: {selectedRequest.lat}, {selectedRequest.lng}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Workflow actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleQuickAction('assigned', 'Case assigned to operator.', 'assigned')}
-                      disabled={saving}
-                    >
-                      <User className="mr-2 h-4 w-4" />
-                      Assign case
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleQuickAction('vehicle_received', 'Vehicle received on site.', 'vehicle_received')}
-                      disabled={saving}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Receive car
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setCreateServiceOpen(true)}
-                      disabled={saving || Boolean(linkedBooking)}
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Create service
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => openCommunicationHub(true)}
-                      disabled={!linkedBooking || !linkedBooking.customer_email}
-                    >
-                      <Mail className="mr-2 h-4 w-4" />
-                      Send email
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => openCommunicationHub(false)}
-                      disabled={!linkedBooking}
-                    >
-                      <Wrench className="mr-2 h-4 w-4" />
-                      Communication hub
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleQuickAction('completed', 'Case closed.', 'completed')}
-                      disabled={saving}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Close case
-                    </Button>
-                  </div>
-
-                  <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
-                    Booking communication is intentionally a second step. Rescue intake stays compact until a service draft exists.
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Service handoff</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loadingLinkedBooking ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading linked booking...
-                    </div>
-                  ) : linkedBooking ? (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-xl border bg-muted/30 p-3">
-                        <p className="font-medium text-foreground">Booking</p>
-                        <p className="mt-2 text-sm text-muted-foreground">{linkedBooking.id}</p>
-                      </div>
-                      <div className="rounded-xl border bg-muted/30 p-3">
-                        <p className="font-medium text-foreground">Customer</p>
-                        <p className="mt-2 text-sm text-muted-foreground">{linkedBooking.customer_name || '—'}</p>
-                      </div>
-                      <div className="rounded-xl border bg-muted/30 p-3">
-                        <p className="font-medium text-foreground">Service</p>
-                        <p className="mt-2 text-sm text-muted-foreground">{linkedBooking.service_name || '—'}</p>
-                      </div>
-                      <div className="rounded-xl border bg-muted/30 p-3">
-                        <p className="font-medium text-foreground">Schedule</p>
-                        <p className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
-                          <CalendarDays className="h-4 w-4" />
-                          {linkedBooking.booking_date} · {linkedBooking.booking_time}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border bg-muted/30 p-3">
-                        <p className="font-medium text-foreground">Plate</p>
-                        <p className="mt-2 text-sm text-muted-foreground">{linkedBooking.license_plate || '—'}</p>
-                      </div>
-                      <div className="rounded-xl border bg-muted/30 p-3">
-                        <p className="font-medium text-foreground">Email</p>
-                        <p className="mt-2 text-sm text-muted-foreground">{linkedBooking.customer_email || '—'}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed px-4 py-6 text-sm text-muted-foreground">
-                      No linked service draft yet. Create one from this rescue case when the car is received and the workshop needs a formal service record.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Case editor</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="rescue-status">Status</Label>
-                      <Select
-                        value={editor.status}
-                        onValueChange={(value) => setEditor((current) => ({ ...current, status: value }))}
-                      >
-                        <SelectTrigger id="rescue-status">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statusOptions.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {status}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="rescue-priority">Priority</Label>
-                      <Input
-                        id="rescue-priority"
-                        type="number"
-                        value={editor.priority}
-                        onChange={(event) => setEditor((current) => ({ ...current, priority: event.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="rescue-assignee">Assigned user id</Label>
-                    <Input
-                      id="rescue-assignee"
-                      value={editor.assignedTo}
-                      onChange={(event) => setEditor((current) => ({ ...current, assignedTo: event.target.value }))}
-                      placeholder="UUID of assigned admin"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditor((current) => ({ ...current, assignedTo: currentUserId ?? current.assignedTo }))}
-                        disabled={!currentUserId}
-                      >
-                        Assign to me
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditor((current) => ({ ...current, assignedTo: '' }))}
-                      >
-                        Clear assignment
-                      </Button>
-                    </div>
-                    {currentUserEmail ? (
-                      <p className="text-xs text-muted-foreground">Current admin: {currentUserEmail}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="rescue-notes">Internal notes</Label>
-                    <Textarea
-                      id="rescue-notes"
-                      value={editor.internalNotes}
-                      onChange={(event) => setEditor((current) => ({ ...current, internalNotes: event.target.value }))}
-                      rows={8}
-                      placeholder="Dispatch updates, ETA, towing details, customer follow-up..."
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                    <div className="text-xs text-muted-foreground">
-                      Last updated {formatDateTime(selectedRequest.updated_at)}
-                    </div>
-                    <Button onClick={() => void handleSave()} disabled={saving}>
-                      <Save className="mr-2 h-4 w-4" />
-                      {saving ? 'Saving...' : 'Save changes'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <TimelineCard
-                request={selectedRequest}
-                events={events}
-                eventsLoading={eventsLoading}
-                eventsAvailable={eventsAvailable}
-                linkedBooking={linkedBooking}
-              />
-            </>
-          )}
-        </div>
       </div>
 
-      <Dialog open={createServiceOpen} onOpenChange={setCreateServiceOpen}>
-        <DialogContent className="sm:max-w-[640px]">
-          <DialogHeader>
-            <DialogTitle>Create service draft</DialogTitle>
-            <DialogDescription>
-              Convert this rescue intake into a booking/service record so schedule, workshop handling, and communication can continue in the existing booking system.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="rescue-service-license-plate">License plate</Label>
-              <Input
-                id="rescue-service-license-plate"
-                value={createServiceForm.licensePlate}
-                onChange={(event) => setCreateServiceForm((current) => ({ ...current, licensePlate: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rescue-service-customer-name">Customer name</Label>
-              <Input
-                id="rescue-service-customer-name"
-                value={createServiceForm.customerName}
-                onChange={(event) => setCreateServiceForm((current) => ({ ...current, customerName: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rescue-service-email">Customer email</Label>
-              <Input
-                id="rescue-service-email"
-                type="email"
-                value={createServiceForm.customerEmail}
-                onChange={(event) => setCreateServiceForm((current) => ({ ...current, customerEmail: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rescue-service-name">Service</Label>
-              <Input
-                id="rescue-service-name"
-                value={createServiceForm.serviceName}
-                onChange={(event) => setCreateServiceForm((current) => ({ ...current, serviceName: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rescue-service-date">Booking date</Label>
-              <Input
-                id="rescue-service-date"
-                type="date"
-                value={createServiceForm.bookingDate}
-                onChange={(event) => setCreateServiceForm((current) => ({ ...current, bookingDate: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rescue-service-time">Booking time</Label>
-              <Input
-                id="rescue-service-time"
-                type="time"
-                value={createServiceForm.bookingTime}
-                onChange={(event) => setCreateServiceForm((current) => ({ ...current, bookingTime: event.target.value }))}
-              />
+      <DrawerContent className="data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-[920px]">
+        {!selectedRequest ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+            <ShieldAlert className="h-10 w-10 text-muted-foreground" />
+            <div>
+              <p className="text-lg font-semibold text-foreground">Select a rescue request</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Choose a case from the queue to open the dispatch drawer.
+              </p>
             </div>
           </div>
+        ) : (
+          <>
+            <DrawerHeader className="border-b bg-background">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 space-y-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <DrawerTitle className="text-xl">Rescue case #{selectedRequest.id}</DrawerTitle>
+                    <div className="text-sm text-muted-foreground">{STATUS_LABELS[selectedStatus]}</div>
+                  </div>
+                  <DrawerDescription className="text-sm">
+                    Created {formatDateTime(selectedRequest.created_at)}. Source: {formatSourceLabel(selectedRequest.source)}.
+                  </DrawerDescription>
+                  <InfoGrid
+                    items={[
+                      { label: 'Customer', value: selectedRequest.customer_name?.trim() || 'Unnamed customer' },
+                      { label: 'License plate', value: selectedRequest.license_plate?.trim() || 'Missing' },
+                      { label: 'Phone', value: selectedRequest.phone },
+                      { label: 'Pickup', value: formatLocation(selectedRequest) },
+                    ]}
+                  />
+                </div>
+                <DrawerClose asChild>
+                  <Button variant="ghost" size="icon" aria-label="Close drawer">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </DrawerClose>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {phoneHref ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={phoneHref}>
+                      <Phone className="mr-2 h-4 w-4" />
+                      Call customer
+                    </a>
+                  </Button>
+                ) : null}
+                {mapsHref ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={mapsHref} target="_blank" rel="noreferrer">
+                      <MapPin className="mr-2 h-4 w-4" />
+                      Open map
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : null}
+                {nextStatus ? (
+                  <Button size="sm" onClick={() => void persistRequest(nextStatus)} disabled={saving}>
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CarFront className="mr-2 h-4 w-4" />}
+                    Move to {STATUS_LABELS[nextStatus]}
+                  </Button>
+                ) : (
+                  <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                    Vehicle arrived at the garage
+                  </div>
+                )}
+              </div>
+            </DrawerHeader>
 
-          <div className="space-y-2">
-            <Label htmlFor="rescue-service-notes">Booking notes</Label>
-            <Textarea
-              id="rescue-service-notes"
-              rows={8}
-              value={createServiceForm.notes}
-              onChange={(event) => setCreateServiceForm((current) => ({ ...current, notes: event.target.value }))}
-            />
-          </div>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6">
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),300px]">
+                <div className="space-y-6">
+                  <SectionBlock title="Progress">
+                    <div className="space-y-4">
+                      <WorkflowRail status={selectedStatus} />
+                      <div className="text-sm text-muted-foreground">
+                        {nextStatus
+                          ? <>Next recommended step: <span className="font-medium text-foreground">{STATUS_LABELS[nextStatus]}</span></>
+                          : 'This emergency case has reached the garage. Later service management can continue from here.'}
+                      </div>
+                    </div>
+                  </SectionBlock>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setCreateServiceOpen(false)} disabled={creatingService}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={() => void handleCreateServiceDraft()} disabled={creatingService}>
-              {creatingService ? 'Creating...' : 'Create service draft'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+                  <SectionBlock title="Pickup details">
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 text-sm text-muted-foreground">
+                        <MapPin className="mt-0.5 h-4 w-4 text-foreground" />
+                        <div>
+                          <p className="font-medium text-foreground">{formatLocation(selectedRequest)}</p>
+                          {selectedRequest.lat !== null && selectedRequest.lng !== null ? (
+                            <p className="mt-1">{selectedRequest.lat}, {selectedRequest.lng}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <InfoGrid
+                        items={[
+                          { label: 'Source', value: formatSourceLabel(selectedRequest.source) },
+                          { label: 'Priority', value: editor.priority },
+                          { label: 'Assigned to', value: editor.assignedTo || 'Unassigned' },
+                          { label: 'Last updated', value: formatDateTime(selectedRequest.updated_at) },
+                        ]}
+                      />
+                    </div>
+                  </SectionBlock>
 
-      <BookingCommunicationModal
-        booking={linkedBooking}
-        conversation={linkedBooking ? bookingConversation.bookingConversations[linkedBooking.id] : undefined}
-        isLoadingConversation={linkedBooking ? bookingConversation.loadingConversationBookingId === linkedBooking.id : false}
-        language={language}
-        messageDraft={linkedBooking ? bookingConversation.messageDrafts[linkedBooking.id] : undefined}
-        open={communicationOpen}
-        sending={linkedBooking ? bookingConversation.sendingMessageBookingId === linkedBooking.id : false}
-        theme={theme}
-        t={(key) => cmsStrings[key as keyof typeof cmsStrings] || key}
-        onDraftChange={bookingConversation.handleBookingMessageDraftChange}
-        onOpenChange={setCommunicationOpen}
-        onReply={(booking, message) => bookingConversation.handleOpenMessageComposer(booking, message)}
-        onSend={(booking) => void bookingConversation.handleSendBookingMessage(booking)}
-        onSync={(bookingId) => void bookingConversation.handleSyncBookingConversation(bookingId)}
-      />
-    </div>
+                  <SectionBlock title="Internal notes">
+                    <div className="space-y-2">
+                      <Label htmlFor="rescue-notes">Notes</Label>
+                      <Textarea
+                        id="rescue-notes"
+                        rows={10}
+                        placeholder="Arrival notes, access details, towing instructions..."
+                        value={editor.internalNotes}
+                        onChange={(event) => setEditor((current) => ({ ...current, internalNotes: event.target.value }))}
+                      />
+                    </div>
+                  </SectionBlock>
+
+                  <SectionBlock title="Timeline">
+                    <div className="space-y-3">
+                      {eventsLoading ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading timeline...
+                        </div>
+                      ) : !eventsAvailable ? (
+                        <div className="rounded-md border border-dashed px-4 py-4 text-sm text-muted-foreground">
+                          Timeline events are not available in this session.
+                        </div>
+                      ) : null}
+
+                      <div className="border-l pl-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Request created</p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Public emergency request received through {formatSourceLabel(selectedRequest.source)}.
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{formatDateTime(selectedRequest.created_at)}</p>
+                        </div>
+                      </div>
+
+                      {events.map((event) => (
+                        <div key={event.id} className="border-l pl-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">
+                                {STATUS_LABELS[event.event_type as RescueStatus] ?? event.event_type.replace(/_/g, ' ')}
+                              </p>
+                              <EventMeta meta={event.meta} />
+                            </div>
+                            <p className="text-xs text-muted-foreground">{formatDateTime(event.created_at)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </SectionBlock>
+                </div>
+
+                <div className="space-y-6">
+                  <SectionBlock title="Customer">
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 text-sm text-muted-foreground">
+                        <User className="mt-0.5 h-4 w-4 text-foreground" />
+                        <div>
+                          <p className="font-medium text-foreground">{selectedRequest.customer_name?.trim() || 'Unnamed customer'}</p>
+                          <p className="mt-1">{selectedRequest.license_plate?.trim() || 'License plate missing'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 text-sm text-muted-foreground">
+                        <Phone className="mt-0.5 h-4 w-4 text-foreground" />
+                        <p className="font-medium text-foreground">{selectedRequest.phone}</p>
+                      </div>
+                    </div>
+                  </SectionBlock>
+
+                  <SectionBlock title="Status actions" description="Use quick progression or set a specific stage manually.">
+                    <div className="space-y-2">
+                      {STATUS_ORDER.map((status) => {
+                        const active = status === selectedStatus;
+                        return (
+                          <Button
+                            key={status}
+                            type="button"
+                            variant={active ? 'default' : 'outline'}
+                            disabled={saving || active}
+                            onClick={() => void persistRequest(status)}
+                            className="w-full justify-start"
+                          >
+                            {active ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <CarFront className="mr-2 h-4 w-4" />}
+                            {STATUS_LABELS[status]}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </SectionBlock>
+
+                  <SectionBlock title="Case fields">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="rescue-status">Status</Label>
+                        <Select value={editor.status} onValueChange={(value) => setEditor((current) => ({ ...current, status: value }))}>
+                          <SelectTrigger id="rescue-status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions.map((status) => (
+                              <SelectItem key={status} value={status}>
+                                {STATUS_LABELS[status]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="rescue-priority">Priority</Label>
+                        <Input
+                          id="rescue-priority"
+                          type="number"
+                          min="0"
+                          max="5"
+                          value={editor.priority}
+                          onChange={(event) => setEditor((current) => ({ ...current, priority: event.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="rescue-assigned-to">Assigned to</Label>
+                        <Input
+                          id="rescue-assigned-to"
+                          placeholder="Operator or driver"
+                          value={editor.assignedTo}
+                          onChange={(event) => setEditor((current) => ({ ...current, assignedTo: event.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </SectionBlock>
+                </div>
+              </div>
+            </div>
+
+            <DrawerFooter className="border-t bg-background">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <DrawerClose asChild>
+                  <Button variant="outline">Close</Button>
+                </DrawerClose>
+                <Button onClick={() => void persistRequest()} disabled={saving}>
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save case
+                </Button>
+              </div>
+            </DrawerFooter>
+          </>
+        )}
+      </DrawerContent>
+    </Drawer>
   );
 }
