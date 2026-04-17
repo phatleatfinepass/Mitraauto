@@ -38,7 +38,6 @@ export function TiresCMSPage() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
-  const [bulkMarkupSupplier, setBulkMarkupSupplier] = useState('RD');
   const [bulkMarkupAmount, setBulkMarkupAmount] = useState('20');
   const [applyingBulkMarkup, setApplyingBulkMarkup] = useState(false);
 
@@ -47,21 +46,23 @@ export function TiresCMSPage() {
     endItem,
     error,
     fetchTires,
+    hasNextPage,
     loading,
-    paginationItems,
     patchLocalCmsData,
     patchLocalIdentityData,
+    refreshing,
     searchTerm,
     setCurrentPage,
     setHideNonPassenger,
     setSearchTerm,
     setShowMissingEanOnly,
+    setSupplierFilter,
     hideNonPassenger,
     showMissingEanOnly,
     startItem,
+    supplierFilter,
     tires,
     totalCount,
-    totalPages,
   } = useTiresCmsList(25);
 
   const {
@@ -203,10 +204,10 @@ export function TiresCMSPage() {
         : originalApiPrice;
 
   const handleApplyBulkSupplierMarkup = async () => {
-    const supplierCode = String(bulkMarkupSupplier).trim().toUpperCase();
+    const supplierCode = String(supplierFilter).trim().toUpperCase();
     const markup = Number(bulkMarkupAmount);
 
-    if (!supplierCode) {
+    if (!supplierCode || supplierCode === 'ALL') {
       setCatalogSyncMessage(language === 'fi' ? 'Valitse toimittaja.' : 'Choose a supplier.');
       return;
     }
@@ -316,16 +317,17 @@ export function TiresCMSPage() {
         searchTerm={searchTerm}
         showMissingEanOnly={showMissingEanOnly}
         hideNonPassenger={hideNonPassenger}
+        supplierFilter={supplierFilter}
+        supplierOptions={SUPPLIER_OPTIONS}
         syncingCatalog={syncingCatalog}
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
-        bulkMarkupSupplier={bulkMarkupSupplier}
         bulkMarkupAmount={bulkMarkupAmount}
         applyingBulkMarkup={applyingBulkMarkup}
         onSearchTermChange={setSearchTerm}
         onShowMissingEanOnlyChange={setShowMissingEanOnly}
         onHideNonPassengerChange={setHideNonPassenger}
-        onBulkMarkupSupplierChange={setBulkMarkupSupplier}
+        onSupplierFilterChange={setSupplierFilter}
         onBulkMarkupAmountChange={setBulkMarkupAmount}
         onApplyBulkSupplierMarkup={handleApplyBulkSupplierMarkup}
         onApplyCatalogSync={handleApplyCatalogSync}
@@ -347,13 +349,13 @@ export function TiresCMSPage() {
           isDark={isDark}
           language={language}
           loading={loading}
+          refreshing={refreshing}
           mustHideFromStore={mustHideFromStore}
           onPageChange={setCurrentPage}
-          paginationItems={paginationItems}
           showWarningTooltip={showWarningTooltip}
           startItem={startItem}
           totalCount={totalCount}
-          totalPages={totalPages}
+          hasNextPage={hasNextPage}
         />
       </div>
 

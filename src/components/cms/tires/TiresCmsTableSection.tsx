@@ -16,13 +16,13 @@ interface TiresTableSectionProps {
   isDark: boolean;
   language: string;
   loading: boolean;
+  refreshing: boolean;
   mustHideFromStore: (tire: TireRow | null) => boolean;
   onPageChange: (page: number) => void;
-  paginationItems: Array<number | 'ellipsis-left' | 'ellipsis-right'>;
   showWarningTooltip: (text: string, x: number, y: number) => void;
   startItem: number;
   totalCount: number;
-  totalPages: number;
+  hasNextPage: boolean;
 }
 
 export function TiresCmsTableSection({
@@ -39,13 +39,13 @@ export function TiresCmsTableSection({
   isDark,
   language,
   loading,
+  refreshing,
   mustHideFromStore,
   onPageChange,
-  paginationItems,
   showWarningTooltip,
   startItem,
   totalCount,
-  totalPages,
+  hasNextPage,
 }: TiresTableSectionProps) {
   if (loading) {
     return (
@@ -67,14 +67,20 @@ export function TiresCmsTableSection({
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-          {language === 'fi' ? `Yhteensä ${totalCount} tuotetta` : `${totalCount} items total`}
+          {language === 'fi' ? `Vähintään ${totalCount} tuotetta` : `At least ${totalCount} items`}
         </p>
         <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
           {language === 'fi'
-            ? `Näytetään ${startItem}-${endItem} / ${totalCount} (sivu ${currentPage}/${totalPages})`
-            : `Showing ${startItem}-${endItem} of ${totalCount} (page ${currentPage}/${totalPages})`}
+            ? `Näytetään ${startItem}-${endItem} (sivu ${currentPage})`
+            : `Showing ${startItem}-${endItem} (page ${currentPage})`}
         </p>
       </div>
+
+      {refreshing ? (
+        <div className={`mb-3 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          {language === 'fi' ? 'Päivitetään listaa…' : 'Refreshing list…'}
+        </div>
+      ) : null}
 
       <div className={`overflow-hidden rounded-lg border ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
         <div className="overflow-x-auto">
@@ -177,11 +183,10 @@ export function TiresCmsTableSection({
         isDark={isDark}
         language={language}
         currentPage={currentPage}
-        totalPages={totalPages}
+        hasNextPage={hasNextPage}
         totalCount={totalCount}
         startItem={startItem}
         endItem={endItem}
-        paginationItems={paginationItems}
         onPageChange={onPageChange}
       />
     </>

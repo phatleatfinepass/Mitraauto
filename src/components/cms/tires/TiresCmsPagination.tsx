@@ -4,11 +4,10 @@ interface TiresCmsPaginationProps {
   isDark: boolean;
   language: string;
   currentPage: number;
-  totalPages: number;
+  hasNextPage: boolean;
   totalCount: number;
   startItem: number;
   endItem: number;
-  paginationItems: Array<number | string>;
   onPageChange: (page: number) => void;
 }
 
@@ -16,14 +15,13 @@ export function TiresCmsPagination({
   isDark,
   language,
   currentPage,
-  totalPages,
+  hasNextPage,
   totalCount,
   startItem,
   endItem,
-  paginationItems,
   onPageChange,
 }: TiresCmsPaginationProps) {
-  if (totalPages <= 1) {
+  if (currentPage <= 1 && !hasNextPage) {
     return null;
   }
 
@@ -31,23 +29,10 @@ export function TiresCmsPagination({
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6">
       <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
         {language === 'fi'
-          ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
-          : `Showing ${startItem}-${endItem} of ${totalCount}`}
+          ? `Näytetään ${startItem}-${endItem}${totalCount > 0 ? ` / vähintään ${totalCount}` : ''}`
+          : `Showing ${startItem}-${endItem}${totalCount > 0 ? ` / at least ${totalCount}` : ''}`}
       </p>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-          className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-            isDark
-              ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-              : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-          }`}
-          aria-label={language === 'fi' ? 'Ensimmäinen sivu' : 'First page'}
-        >
-          {language === 'fi' ? 'Ens.' : 'First'}
-        </button>
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
@@ -60,41 +45,17 @@ export function TiresCmsPagination({
         >
           {language === 'fi' ? 'Edellinen' : 'Previous'}
         </button>
-        {paginationItems.map((item, index) => {
-          if (typeof item !== 'number') {
-            return (
-              <span
-                key={`${item}-${index}`}
-                className={`px-2 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
-              >
-                ...
-              </span>
-            );
-          }
-
-          return (
-            <button
-              key={item}
-              type="button"
-              onClick={() => onPageChange(item)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                item === currentPage
-                  ? isDark
-                    ? 'bg-blue-500/30 text-blue-200'
-                    : 'bg-blue-100 text-blue-700'
-                  : isDark
-                    ? 'text-gray-300 hover:bg-white/10'
-                    : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {item}
-            </button>
-          );
-        })}
+        <span
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+            isDark ? 'bg-white/5 text-gray-200' : 'bg-gray-100 text-gray-700'
+          }`}
+        >
+          {language === 'fi' ? `Sivu ${currentPage}` : `Page ${currentPage}`}
+        </span>
         <button
           type="button"
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={!hasNextPage}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
             isDark
               ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
@@ -102,19 +63,6 @@ export function TiresCmsPagination({
           }`}
         >
           {language === 'fi' ? 'Seuraava' : 'Next'}
-        </button>
-        <button
-          type="button"
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className={`px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-            isDark
-              ? 'border-white/10 text-gray-200 hover:bg-white/10 disabled:text-gray-600 disabled:hover:bg-transparent'
-              : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
-          }`}
-          aria-label={language === 'fi' ? 'Viimeinen sivu' : 'Last page'}
-        >
-          {language === 'fi' ? 'Vik.' : 'Last'}
         </button>
       </div>
     </div>

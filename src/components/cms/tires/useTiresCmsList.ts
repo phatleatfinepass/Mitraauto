@@ -60,6 +60,7 @@ export function useTiresCmsList(pageSize = 25) {
         searchTerm: '',
         showMissingEanOnly: false,
         hideNonPassenger: true,
+        supplierFilter: 'all',
         currentPage: 1,
       };
     }
@@ -77,6 +78,7 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly: Boolean(parsedState?.showMissingEanOnly),
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
+        supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
         currentPage:
           Number.isInteger(parsedState?.currentPage) && parsedState.currentPage > 0
             ? parsedState.currentPage
@@ -89,6 +91,7 @@ export function useTiresCmsList(pageSize = 25) {
         searchTerm: '',
         showMissingEanOnly: false,
         hideNonPassenger: true,
+        supplierFilter: 'all',
         currentPage: 1,
       };
     }
@@ -101,8 +104,11 @@ export function useTiresCmsList(pageSize = 25) {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(initialState.searchTerm);
   const [showMissingEanOnly, setShowMissingEanOnly] = useState(initialState.showMissingEanOnly);
   const [hideNonPassenger, setHideNonPassenger] = useState(initialState.hideNonPassenger);
+  const [supplierFilter, setSupplierFilter] = useState(initialState.supplierFilter);
   const [currentPage, setCurrentPage] = useState(initialState.currentPage);
   const [totalCount, setTotalCount] = useState(initialState.totalCount);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const toNumberOrNull = useCallback((value: any) => {
     if (value === null || value === undefined || value === '') return null;
@@ -140,7 +146,7 @@ export function useTiresCmsList(pageSize = 25) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [showMissingEanOnly, hideNonPassenger, debouncedSearchTerm]);
+  }, [showMissingEanOnly, hideNonPassenger, supplierFilter, debouncedSearchTerm]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -150,13 +156,19 @@ export function useTiresCmsList(pageSize = 25) {
         searchTerm,
         showMissingEanOnly,
         hideNonPassenger,
+        supplierFilter,
         currentPage,
       })
     );
-  }, [currentPage, hideNonPassenger, searchTerm, showMissingEanOnly]);
+  }, [currentPage, hideNonPassenger, searchTerm, showMissingEanOnly, supplierFilter]);
 
   const fetchTires = useCallback(async () => {
-    setLoading(true);
+    const isInitialLoad = tires.length === 0;
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     setError(null);
 
     try {
@@ -278,6 +290,7 @@ export function useTiresCmsList(pageSize = 25) {
           p_search: trimmedSearch || null,
           p_missing_ean_only: showMissingEanOnly,
           p_exclude_non_passenger: hideNonPassenger,
+          p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
           p_limit: pageSize + 1,
           p_offset: offset,
         });
@@ -290,6 +303,7 @@ export function useTiresCmsList(pageSize = 25) {
         if (rows.length === 0) {
           setTires([]);
           setTotalCount(offset);
+          setHasNextPage(false);
           return;
         }
 
@@ -299,6 +313,7 @@ export function useTiresCmsList(pageSize = 25) {
 
         const mappedRows = mapRowsToTires(visibleRows);
         setTotalCount(resolvedTotalCount);
+        setHasNextPage(hasMorePages);
         setTires(mappedRows);
         if (typeof window !== 'undefined') {
           window.sessionStorage.setItem(
@@ -387,6 +402,9 @@ export function useTiresCmsList(pageSize = 25) {
       if (hideNonPassenger) {
         productsQuery = productsQuery.eq('is_non_passenger', false);
       }
+      if (supplierFilter !== 'all') {
+        productsQuery = productsQuery.eq('supplier_code_best', supplierFilter);
+      }
 
       const { data: products, error: productsError } = await productsQuery;
       if (productsError) throw productsError;
@@ -394,6 +412,7 @@ export function useTiresCmsList(pageSize = 25) {
       if (!products || products.length === 0) {
         setTires([]);
         setTotalCount(offset);
+        setHasNextPage(false);
         return;
       }
 
@@ -401,6 +420,7 @@ export function useTiresCmsList(pageSize = 25) {
       const visibleProducts = hasMorePages ? products.slice(0, pageSize) : products;
       const resolvedTotalCount = hasMorePages ? offset + visibleProducts.length + 1 : offset + visibleProducts.length;
       setTotalCount(resolvedTotalCount);
+      setHasNextPage(hasMorePages);
 
       const variantIds = visibleProducts.map((product: any) => product.variant_id);
       const variantIdsNeedingFallbackEan = visibleProducts
@@ -457,6 +477,7 @@ export function useTiresCmsList(pageSize = 25) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [
     currentPage,
@@ -466,30 +487,16 @@ export function useTiresCmsList(pageSize = 25) {
     isAutoNonPassengerTire,
     pageSize,
     showMissingEanOnly,
+    supplierFilter,
+    tires.length,
   ]);
 
   useEffect(() => {
     void fetchTires();
   }, [fetchTires]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [pageSize, totalCount]);
   const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalCount);
-  const paginationItems = useMemo(() => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, index) => index + 1);
-    }
-
-    const items: Array<number | 'ellipsis-left' | 'ellipsis-right'> = [1];
-    const windowStart = Math.max(2, currentPage - 1);
-    const windowEnd = Math.min(totalPages - 1, currentPage + 1);
-
-    if (windowStart > 2) items.push('ellipsis-left');
-    for (let page = windowStart; page <= windowEnd; page += 1) items.push(page);
-    if (windowEnd < totalPages - 1) items.push('ellipsis-right');
-    items.push(totalPages);
-    return items;
-  }, [currentPage, totalPages]);
 
   const patchLocalCmsData = useCallback((variantId: string, cmsPatch: Record<string, any> | null) => {
     setTires((previous) =>
@@ -544,20 +551,22 @@ export function useTiresCmsList(pageSize = 25) {
     endItem,
     error,
     fetchTires,
-    paginationItems,
+    hasNextPage,
     patchLocalCmsData,
     patchLocalIdentityData,
+    refreshing,
     searchTerm,
     setCurrentPage,
     setHideNonPassenger,
     setSearchTerm,
     setShowMissingEanOnly,
+    setSupplierFilter,
     hideNonPassenger,
     showMissingEanOnly,
     startItem,
+    supplierFilter,
     tires,
     totalCount,
-    totalPages,
     loading,
   };
 }

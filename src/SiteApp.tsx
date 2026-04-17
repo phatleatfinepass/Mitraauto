@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, startTransition, useState, useEffect, useCallback, useRef } from 'react';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
 import { CartProvider, useCart } from './components/CartContext';
@@ -510,104 +510,98 @@ function HomePage() {
 
     return () => clearInterval(timer);
   }, [isMobileViewport]);
+
+  const transitionNavigationState = useCallback(
+    (
+      page: typeof currentPage,
+      product: ProductDetail | null = null,
+      nextCmsTab?: CmsTab,
+    ) => {
+      startTransition(() => {
+        setCurrentPage(page);
+        setSelectedProduct(product);
+        if (nextCmsTab !== undefined) {
+          setCmsTab(nextCmsTab);
+        }
+      });
+    },
+    [setCurrentPage, setSelectedProduct, setCmsTab]
+  );
   
   const updatePageFromPath = useCallback(
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
       const normalizedPath = normalizeAppPath(path);
+      const nextCmsTab =
+        normalizedPath === '/cms' || normalizedPath === '/cms/rescue'
+          ? resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined)
+          : undefined;
 
       if (normalizedPath === '/') {
-        setCurrentPage('home');
-        setSelectedProduct(null);
+        transitionNavigationState('home');
       }
 
       // Legacy routes (keep working)
       else if (normalizedPath === '/services') {
-        setCurrentPage('services');
-        setSelectedProduct(null);
+        transitionNavigationState('services');
       } else if (normalizedPath === '/tire-hotel') {
-        setCurrentPage('tire-hotel');
-        setSelectedProduct(null);
+        transitionNavigationState('tire-hotel');
       } else if (normalizedPath === '/about') {
-        setCurrentPage('about');
-        setSelectedProduct(null);
+        transitionNavigationState('about');
       } 
       
       // NEW FINNISH CANONICAL ROUTES
       else if (normalizedPath === '/yhteystiedot') {
-        setCurrentPage('contact');
-        setSelectedProduct(null);
+        transitionNavigationState('contact');
       } else if (normalizedPath === '/ukk') {
-        setCurrentPage('faq');
-        setSelectedProduct(null);
+        transitionNavigationState('faq');
       } else if (normalizedPath === '/helsinki') {
-        setCurrentPage('helsinki');
-        setSelectedProduct(null);
+        transitionNavigationState('helsinki');
       } else if (normalizedPath === '/palvelut') {
-        setCurrentPage('services');
-        setSelectedProduct(null);
+        transitionNavigationState('services');
       } else if (normalizedPath === '/palvelut/autohuolto' || normalizedPath === '/helsinki/autohuolto') {
-        setCurrentPage('car-service');
-        setSelectedProduct(null);
+        transitionNavigationState('car-service');
       } else if (normalizedPath === '/palvelut/renkaanvaihto' || normalizedPath === '/helsinki/renkaanvaihto') {
-        setCurrentPage('tire-change');
-        setSelectedProduct(null);
+        transitionNavigationState('tire-change');
       } else if (normalizedPath === '/palvelut/rengashotelli' || normalizedPath === '/helsinki/rengashotelli') {
-        setCurrentPage('tire-hotel');
-        setSelectedProduct(null);
+        transitionNavigationState('tire-hotel');
       } else if (normalizedPath === '/palvelut/vikadiagnostiikka') {
-        setCurrentPage('diagnostics');
-        setSelectedProduct(null);
+        transitionNavigationState('diagnostics');
       } else if (normalizedPath === '/palvelut/autopesu') {
-        setCurrentPage('car-wash');
-        setSelectedProduct(null);
+        transitionNavigationState('car-wash');
       } else if (normalizedPath === '/meista') {
-        setCurrentPage('about');
-        setSelectedProduct(null);
+        transitionNavigationState('about');
       }
       
       // NEW ENGLISH MIRROR ROUTES
       else if (normalizedPath === '/en') {
-        setCurrentPage('home');
-        setSelectedProduct(null);
+        transitionNavigationState('home');
       } else if (normalizedPath === '/en/contact') {
-        setCurrentPage('contact');
-        setSelectedProduct(null);
+        transitionNavigationState('contact');
       } else if (normalizedPath === '/en/faq') {
-        setCurrentPage('faq');
-        setSelectedProduct(null);
+        transitionNavigationState('faq');
       } else if (normalizedPath === '/en/helsinki') {
-        setCurrentPage('helsinki');
-        setSelectedProduct(null);
+        transitionNavigationState('helsinki');
       } else if (normalizedPath === '/en/services') {
-        setCurrentPage('services');
-        setSelectedProduct(null);
+        transitionNavigationState('services');
       } else if (normalizedPath === '/en/services/car-service' || normalizedPath === '/en/helsinki/car-service') {
-        setCurrentPage('car-service');
-        setSelectedProduct(null);
+        transitionNavigationState('car-service');
       } else if (normalizedPath === '/en/services/tire-change' || normalizedPath === '/en/helsinki/tire-change') {
-        setCurrentPage('tire-change');
-        setSelectedProduct(null);
+        transitionNavigationState('tire-change');
       } else if (normalizedPath === '/en/services/tire-hotel' || normalizedPath === '/en/helsinki/tire-hotel') {
-        setCurrentPage('tire-hotel');
-        setSelectedProduct(null);
+        transitionNavigationState('tire-hotel');
       } else if (normalizedPath === '/en/services/diagnostics') {
-        setCurrentPage('diagnostics');
-        setSelectedProduct(null);
+        transitionNavigationState('diagnostics');
       } else if (normalizedPath === '/en/services/car-wash') {
-        setCurrentPage('car-wash');
-        setSelectedProduct(null);
+        transitionNavigationState('car-wash');
       } else if (normalizedPath === '/en/about') {
-        setCurrentPage('about');
-        setSelectedProduct(null);
+        transitionNavigationState('about');
       } else if (normalizedPath === '/booking/manage' || normalizedPath === '/en/booking/manage') {
-        setCurrentPage('booking-manage');
-        setSelectedProduct(null);
+        transitionNavigationState('booking-manage');
       }
       
       // Admin/CMS/Protected routes
       else if (normalizedPath === '/admin/schedule') {
-        setCurrentPage('admin-schedule');
-        setSelectedProduct(null);
+        transitionNavigationState('admin-schedule');
       } else if (
         normalizedPath === '/pwa/cms' ||
         normalizedPath === '/pwa/cms/rescue' ||
@@ -615,68 +609,51 @@ function HomePage() {
         normalizedPath === '/pwa/cms/order' ||
         normalizedPath === '/pwa/cms/tools'
       ) {
-        setCurrentPage('pwa-cms');
-        setSelectedProduct(null);
+        transitionNavigationState('pwa-cms');
       } else if (normalizedPath === '/pwa' || normalizedPath.startsWith('/pwa/')) {
-        setCurrentPage('pwa-not-found');
-        setSelectedProduct(null);
+        transitionNavigationState('pwa-not-found');
       } else if (normalizedPath === '/cms' || normalizedPath === '/cms/rescue') {
-        setCurrentPage('cms-beta');
-        setSelectedProduct(null);
-        setCmsTab(resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined));
+        transitionNavigationState('cms-beta', null, nextCmsTab);
       } else if (normalizedPath === '/cms/rescue-board') {
-        setCurrentPage('cms-rescue');
-        setSelectedProduct(null);
+        transitionNavigationState('cms-rescue');
       } else if (
         normalizedPath === '/cms/orders' ||
         normalizedPath === '/cms-orders'
       ) {
-        setCurrentPage('cms-orders');
-        setSelectedProduct(null);
+        transitionNavigationState('cms-orders');
       } 
       
       // Legal routes
       else if (normalizedPath === '/privacy' || normalizedPath === '/legal/privacy') {
-        setCurrentPage('privacy');
-        setSelectedProduct(null);
+        transitionNavigationState('privacy');
       } else if (normalizedPath === '/terms' || normalizedPath === '/legal/terms') {
-        setCurrentPage('terms');
-        setSelectedProduct(null);
+        transitionNavigationState('terms');
       } else if (normalizedPath === '/legal') {
-        setCurrentPage('legal');
-        setSelectedProduct(null);
+        transitionNavigationState('legal');
       } 
       
       // Catalog routes
       else if (normalizedPath === '/catalog' || normalizedPath === '/shop') {
-        setCurrentPage('catalog');
-        setSelectedProduct(null);
+        transitionNavigationState('catalog');
       } else if (normalizedPath.startsWith('/catalog/')) {
-        setCurrentPage('catalog-detail');
-        if (state?.selectedProduct) {
-          setSelectedProduct(state.selectedProduct);
-        }
+        transitionNavigationState('catalog-detail', state?.selectedProduct ?? null);
       } 
       
       // Checkout routes
       else if (normalizedPath === '/checkout/success') {
-        setCurrentPage('checkout-success');
-        setSelectedProduct(null);
+        transitionNavigationState('checkout-success');
       } else if (normalizedPath === '/checkout/cancel') {
-        setCurrentPage('checkout-cancel');
-        setSelectedProduct(null);
+        transitionNavigationState('checkout-cancel');
       } else if (normalizedPath === '/checkout') {
-        setCurrentPage('checkout');
-        setSelectedProduct(null);
+        transitionNavigationState('checkout');
       } 
       
       // Default: explicit 404
       else {
-        setCurrentPage('not-found');
-        setSelectedProduct(null);
+        transitionNavigationState('not-found');
       }
     },
-    [setCurrentPage, setSelectedProduct]
+    [transitionNavigationState]
   );
 
   const navigate = useCallback(
@@ -701,7 +678,9 @@ function HomePage() {
   const handleProductSelect = useCallback(
     (product: CatalogProduct) => {
       const detail = mapCatalogProductToDetail(product);
-      setSelectedProduct(detail);
+      startTransition(() => {
+        setSelectedProduct(detail);
+      });
       const detailPath = `/catalog/${product.product_type}/${product.id}`;
       navigate(detailPath, { state: { selectedProduct: detail } });
     },
@@ -726,7 +705,9 @@ function HomePage() {
     const handleHashChange = () => {
       const normalizedPath = normalizeAppPath(window.location.pathname);
       if (normalizedPath === '/cms') {
-        setCmsTab(resolveCmsTabFromHash(window.location.hash));
+        startTransition(() => {
+          setCmsTab(resolveCmsTabFromHash(window.location.hash));
+        });
       }
     };
 
@@ -752,7 +733,9 @@ function HomePage() {
   };
 
   const handleCmsTabChange = (tab: CmsTab) => {
-    setCmsTab(tab);
+    startTransition(() => {
+      setCmsTab(tab);
+    });
 
     if (typeof window !== 'undefined') {
       const normalizedPath = normalizeAppPath(window.location.pathname);
@@ -808,7 +791,9 @@ function HomePage() {
       // If on CMS/admin page, redirect to home
       const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-rims', 'cms-orders', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
-        setCurrentPage('home');
+        startTransition(() => {
+          setCurrentPage('home');
+        });
         window.history.pushState({}, '', '/');
       }
       
@@ -937,7 +922,15 @@ function HomePage() {
         />
       ) : null}
 
-      {!isPwaRoute ? <CartDrawer onCheckout={() => setCurrentPage('checkout')} /> : null}
+      {!isPwaRoute ? (
+        <CartDrawer
+          onCheckout={() =>
+            startTransition(() => {
+              setCurrentPage('checkout');
+            })
+          }
+        />
+      ) : null}
 
       {!isPwaRoute ? (
         <AuthModal
@@ -1069,10 +1062,7 @@ function HomePage() {
         ) : currentPage === 'checkout-cancel' ? (
           <CheckoutCancelPage
             onNavigateHome={() => navigate('/')}
-            onNavigateToCheckout={() => {
-              setCurrentPage('checkout');
-              navigate('/checkout');
-            }}
+            onNavigateToCheckout={() => navigate('/checkout')}
           />
         ) : currentPage === 'admin-schedule' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
