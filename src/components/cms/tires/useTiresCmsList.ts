@@ -24,6 +24,30 @@ const EXCLUDED_TIRE_KEYWORDS = [
   'enduro',
 ];
 
+function normalizeEuRating(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().toUpperCase();
+  return /^[A-E]$/.test(normalized) ? normalized : null;
+}
+
+function normalizeEuNoise(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function extractLabelValue(label: any, keys: string[]): unknown {
+  if (!label || typeof label !== 'object') return null;
+
+  for (const key of keys) {
+    if (label[key] !== undefined && label[key] !== null && label[key] !== '') {
+      return label[key];
+    }
+  }
+
+  return null;
+}
+
 export function useTiresCmsList(pageSize = 50) {
   const [tires, setTires] = useState<TireRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +121,6 @@ export function useTiresCmsList(pageSize = 50) {
         'threepmsf',
         'winter_approved',
         'ice_approved',
-        'eu_fuel',
         'eu_wet',
         'eu_noise',
         'eu_label_json',
@@ -191,6 +214,40 @@ export function useTiresCmsList(pageSize = 50) {
           euLabel?.external_noise_class ??
           euLabel?.externalNoiseClass ??
           null;
+        const euFuel = normalizeEuRating(
+          extractLabelValue(euLabel, [
+            'fuel',
+            'fuel_class',
+            'fuelclass',
+            'fuelefficiency',
+            'fuel_efficiency',
+            'rrc',
+            'rolling_resistance',
+            'energy',
+          ])
+        );
+        const euWet = normalizeEuRating(
+          product.eu_wet ??
+          extractLabelValue(euLabel, [
+            'wet',
+            'wet_class',
+            'wet_grip_class',
+            'wetgripclass',
+            'wet_grip',
+            'wetgrip',
+          ])
+        );
+        const euNoise = normalizeEuNoise(
+          product.eu_noise ??
+          extractLabelValue(euLabel, [
+            'noise',
+            'noise_db',
+            'noiseclass',
+            'noise_class',
+            'noisedb',
+            'db',
+          ])
+        );
         const missingEan = !resolvedEan || String(resolvedEan).trim().length === 0 || String(resolvedEan).startsWith('EANMISSING_');
         const duplicateEanConflict = (() => {
           const normalized = (resolvedEan ?? '').trim();
@@ -216,9 +273,9 @@ export function useTiresCmsList(pageSize = 50) {
           model: identity.model ?? product.model,
           size_string: identity.size_string ?? product.size_string,
           derived_ean: resolvedEan,
-          eu_fuel_class: product.eu_fuel ?? null,
-          eu_wet_grip_class: product.eu_wet ?? null,
-          eu_noise_db: product.eu_noise ?? null,
+          eu_fuel_class: euFuel,
+          eu_wet_grip_class: euWet,
+          eu_noise_db: euNoise,
           eu_noise_class: typeof euNoiseClass === 'string' ? euNoiseClass : null,
           final_price_eur:
             cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
