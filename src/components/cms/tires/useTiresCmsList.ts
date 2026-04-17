@@ -102,6 +102,148 @@ export function useTiresCmsList(pageSize = 25) {
 
     try {
       const trimmedSearch = debouncedSearchTerm.trim();
+      const offset = (currentPage - 1) * pageSize;
+      const mapRowsToTires = (rows: any[]) => {
+        const normalizedEanCounts = new Map<string, number>();
+
+        for (const row of rows) {
+          const cmsData = row.cms_data || null;
+          const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
+          const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
+          const ean = (identityEan || row.derived_ean || row.ean || '').trim();
+          if (!ean) continue;
+          normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
+        }
+
+        return rows.map((row: any) => {
+          const cmsData = row.cms_data || null;
+          const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
+          const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
+          const resolvedEan = identityEan || row.derived_ean || row.ean || null;
+          const euLabel = row.eu_label_json && typeof row.eu_label_json === 'object' ? row.eu_label_json : null;
+          const euNoiseClass =
+            euLabel?.noise_class ??
+            euLabel?.noiseClass ??
+            euLabel?.external_noise_class ??
+            euLabel?.externalNoiseClass ??
+            null;
+          const euFuel = normalizeEuRating(
+            extractLabelValue(euLabel, [
+              'fuel',
+              'fuel_class',
+              'fuelclass',
+              'fuelefficiency',
+              'fuel_efficiency',
+              'rrc',
+              'rolling_resistance',
+              'energy',
+            ])
+          );
+          const euWet = normalizeEuRating(
+            row.eu_wet ??
+              extractLabelValue(euLabel, [
+                'wet',
+                'wet_class',
+                'wet_grip_class',
+                'wetgripclass',
+                'wet_grip',
+                'wetgrip',
+              ])
+          );
+          const euNoise = normalizeEuNoise(
+            row.eu_noise ??
+              extractLabelValue(euLabel, [
+                'noise',
+                'noise_db',
+                'noiseclass',
+                'noise_class',
+                'noisedb',
+                'db',
+              ])
+          );
+          const missingEan =
+            !resolvedEan ||
+            String(resolvedEan).trim().length === 0 ||
+            String(resolvedEan).startsWith('EANMISSING_');
+          const duplicateEanConflict = (() => {
+            const normalized = (resolvedEan ?? '').trim();
+            return normalized ? (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
+          })();
+          const resolvedPrice = row.final_price_eur ?? row.price ?? null;
+          const mandatoryFieldConflict =
+            Boolean(row.has_mandatory_conflict) ||
+            missingEan ||
+            !row.brand ||
+            String(row.brand).trim().length === 0 ||
+            !row.model ||
+            String(row.model).trim().length === 0 ||
+            !row.size_string ||
+            String(row.size_string).trim().length === 0 ||
+            resolvedPrice === null ||
+            resolvedPrice === undefined;
+          const autoNonPassenger =
+            typeof row.is_non_passenger_auto === 'boolean' ? row.is_non_passenger_auto : isAutoNonPassengerTire(row);
+          const manualNonPassenger = getManualNonPassengerFlag(cmsData?.spec_overrides);
+
+          return {
+            ...row,
+            brand: identity.brand ?? row.brand,
+            model: identity.model ?? row.model,
+            size_string: identity.size_string ?? row.size_string,
+            derived_ean: resolvedEan,
+            eu_fuel_class: euFuel,
+            eu_wet_grip_class: euWet,
+            eu_noise_db: euNoise,
+            eu_noise_class: typeof euNoiseClass === 'string' ? euNoiseClass : null,
+            final_price_eur:
+              cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
+                ? cmsData.promo_price_eur
+                : cmsData?.price_override_eur ?? row.final_price_eur ?? row.price ?? null,
+            has_missing_ean: missingEan,
+            has_duplicate_ean_conflict: Boolean(row.has_ean_multi_spec_conflict) || duplicateEanConflict,
+            has_mandatory_field_conflict: mandatoryFieldConflict,
+            is_non_passenger_auto: autoNonPassenger,
+            is_non_passenger_manual: manualNonPassenger,
+            is_non_passenger: autoNonPassenger || manualNonPassenger,
+            ean_conflict_open:
+              Boolean(row.ean_conflict_open) ||
+              Boolean(row.has_ean_multi_spec_conflict) ||
+              mandatoryFieldConflict,
+            cms_data: cmsData,
+          } as TireRow;
+        });
+      };
+
+      try {
+        const { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
+          p_search: trimmedSearch || null,
+          p_missing_ean_only: showMissingEanOnly,
+          p_limit: pageSize + 1,
+          p_offset: offset,
+        });
+
+        if (rpcError) {
+          throw rpcError;
+        }
+
+        const rows = rpcRows ?? [];
+        if (rows.length === 0) {
+          setTires([]);
+          setTotalCount(offset);
+          return;
+        }
+
+        const hasMorePages = rows.length > pageSize;
+        const visibleRows = hasMorePages ? rows.slice(0, pageSize) : rows;
+        const resolvedTotalCount = hasMorePages ? offset + visibleRows.length + 1 : offset + visibleRows.length;
+
+        setTotalCount(resolvedTotalCount);
+        setTires(mapRowsToTires(visibleRows));
+        return;
+      } catch (rpcListError) {
+        console.warn('cms_list_tires_admin_v1 fallback to products_search path:', rpcListError);
+      }
+
       const productsSearchColumns = [
         'variant_id',
         'product_type',
@@ -131,8 +273,26 @@ export function useTiresCmsList(pageSize = 25) {
         'aspect_ratio',
         'diameter_in',
       ].join(', ');
+      const productCmsColumns = [
+        'variant_id',
+        'title',
+        'subtitle',
+        'short_description',
+        'long_description',
+        'hero_image_url',
+        'gallery',
+        'seo_slug',
+        'seo_title',
+        'seo_description',
+        'is_hidden',
+        'spec_overrides',
+        'price_override_eur',
+        'promo_enabled',
+        'promo_price_eur',
+        'promo_start',
+        'promo_end',
+      ].join(', ');
 
-      const offset = (currentPage - 1) * pageSize;
       let productsQuery = supabase
         .from('products_search')
         .select(productsSearchColumns)
@@ -170,16 +330,28 @@ export function useTiresCmsList(pageSize = 25) {
       setTotalCount(resolvedTotalCount);
 
       const variantIds = visibleProducts.map((product: any) => product.variant_id);
+      const variantIdsNeedingFallbackEan = visibleProducts
+        .filter((product: any) => !product.derived_ean || String(product.derived_ean).startsWith('EANMISSING_'))
+        .map((product: any) => product.variant_id);
       const chunkSize = 200;
       const cmsRows: any[] = [];
       const eanRows: any[] = [];
 
       for (let i = 0; i < variantIds.length; i += chunkSize) {
         const idChunk = variantIds.slice(i, i + chunkSize);
-        const [{ data: cmsBatch, error: cmsError }, { data: eanBatch, error: eanError }] = await Promise.all([
-          supabase.from('product_cms').select('*').in('variant_id', idChunk),
-          supabase.from('catalog_tire_variants').select('id, ean').in('id', idChunk),
+        const eanChunk = variantIdsNeedingFallbackEan.filter((variantId) => idChunk.includes(variantId));
+        const queries: [PromiseLike<any>, PromiseLike<any> | null] = [
+          supabase.from('product_cms').select(productCmsColumns).in('variant_id', idChunk),
+          eanChunk.length > 0
+            ? supabase.from('catalog_tire_variants').select('id, ean').in('id', eanChunk)
+            : null,
+        ];
+        const [cmsResult, eanResult] = await Promise.all([
+          queries[0],
+          queries[1] ?? Promise.resolve({ data: [], error: null }),
         ]);
+        const { data: cmsBatch, error: cmsError } = cmsResult;
+        const { data: eanBatch, error: eanError } = eanResult;
 
         if (cmsError) throw cmsError;
         if (eanError) throw eanError;
@@ -190,108 +362,13 @@ export function useTiresCmsList(pageSize = 25) {
 
       const cmsMap = new Map(cmsRows.map((row: any) => [row.variant_id, row]));
       const eanMap = new Map(eanRows.map((row: any) => [row.id, row.ean]));
-      const normalizedEanCounts = new Map<string, number>();
+      const fallbackRows = visibleProducts.map((product: any) => ({
+        ...product,
+        ean: eanMap.get(product.variant_id) ?? null,
+        cms_data: cmsMap.get(product.variant_id) || null,
+      }));
 
-      for (const product of visibleProducts) {
-        const cmsData = cmsMap.get(product.variant_id) || null;
-        const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
-        const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
-        const ean = (identityEan || product.derived_ean || eanMap.get(product.variant_id) || '').trim();
-        if (!ean) continue;
-        normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
-      }
-
-      const merged = visibleProducts.map((product: any) => {
-        const cmsData = cmsMap.get(product.variant_id) || null;
-        const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
-        const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
-        const resolvedEan = identityEan || product.derived_ean || eanMap.get(product.variant_id) || null;
-        const euLabel = product.eu_label_json && typeof product.eu_label_json === 'object' ? product.eu_label_json : null;
-        const euNoiseClass =
-          euLabel?.noise_class ??
-          euLabel?.noiseClass ??
-          euLabel?.external_noise_class ??
-          euLabel?.externalNoiseClass ??
-          null;
-        const euFuel = normalizeEuRating(
-          extractLabelValue(euLabel, [
-            'fuel',
-            'fuel_class',
-            'fuelclass',
-            'fuelefficiency',
-            'fuel_efficiency',
-            'rrc',
-            'rolling_resistance',
-            'energy',
-          ])
-        );
-        const euWet = normalizeEuRating(
-          product.eu_wet ??
-          extractLabelValue(euLabel, [
-            'wet',
-            'wet_class',
-            'wet_grip_class',
-            'wetgripclass',
-            'wet_grip',
-            'wetgrip',
-          ])
-        );
-        const euNoise = normalizeEuNoise(
-          product.eu_noise ??
-          extractLabelValue(euLabel, [
-            'noise',
-            'noise_db',
-            'noiseclass',
-            'noise_class',
-            'noisedb',
-            'db',
-          ])
-        );
-        const missingEan = !resolvedEan || String(resolvedEan).trim().length === 0 || String(resolvedEan).startsWith('EANMISSING_');
-        const duplicateEanConflict = (() => {
-          const normalized = (resolvedEan ?? '').trim();
-          return normalized ? (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
-        })();
-        const resolvedPrice = product.final_price_eur ?? product.price ?? null;
-        const mandatoryFieldConflict =
-          missingEan ||
-          !product.brand ||
-          String(product.brand).trim().length === 0 ||
-          !product.model ||
-          String(product.model).trim().length === 0 ||
-          !product.size_string ||
-          String(product.size_string).trim().length === 0 ||
-          resolvedPrice === null ||
-          resolvedPrice === undefined;
-        const autoNonPassenger = isAutoNonPassengerTire(product);
-        const manualNonPassenger = getManualNonPassengerFlag(cmsData?.spec_overrides);
-
-        return {
-          ...product,
-          brand: identity.brand ?? product.brand,
-          model: identity.model ?? product.model,
-          size_string: identity.size_string ?? product.size_string,
-          derived_ean: resolvedEan,
-          eu_fuel_class: euFuel,
-          eu_wet_grip_class: euWet,
-          eu_noise_db: euNoise,
-          eu_noise_class: typeof euNoiseClass === 'string' ? euNoiseClass : null,
-          final_price_eur:
-            cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
-              ? cmsData.promo_price_eur
-              : cmsData?.price_override_eur ?? product.final_price_eur ?? product.price ?? null,
-          has_missing_ean: missingEan,
-          has_duplicate_ean_conflict: duplicateEanConflict,
-          has_mandatory_field_conflict: mandatoryFieldConflict,
-          is_non_passenger_auto: autoNonPassenger,
-          is_non_passenger_manual: manualNonPassenger,
-          is_non_passenger: autoNonPassenger || manualNonPassenger,
-          ean_conflict_open: Boolean(product.ean_conflict_open) || duplicateEanConflict || mandatoryFieldConflict,
-          cms_data: cmsData,
-        } as TireRow;
-      });
-
-      setTires(showMissingEanOnly ? merged.filter((row) => Boolean(row.has_missing_ean)) : merged);
+      setTires(mapRowsToTires(fallbackRows));
     } catch (err: any) {
       console.error('Fetch tires error:', err);
       setError(err.message);

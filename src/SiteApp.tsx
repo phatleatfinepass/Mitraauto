@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import { ThemeProvider } from './components/ThemeContext';
 import { CartProvider, useCart } from './components/CartContext';
@@ -19,11 +19,6 @@ import { LegalPage } from './components/LegalPage';
 import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import type { CatalogProduct } from './components/catalog/CatalogPage';
-import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
-import { TiresCMSPage } from './components/cms/TiresCMSPage';
-import { RimsCMSPageV2 as RimsCMSPage } from './components/cms/RimsCMSPageV2';
-import { OrdersCMSPage } from './components/cms/OrdersCMSPage';
-import { RescueCMSPage } from './components/cms/RescueCMSPage';
 import { CmsGuard } from './components/cms/CmsGuard';
 // NEW PAGES
 import { ContactPage } from './components/ContactPage';
@@ -78,6 +73,22 @@ const heroImages = [
   }
 ];
 
+const AdminSchedulePage = lazy(() =>
+  import('./components/admin/AdminSchedulePage').then((module) => ({ default: module.AdminSchedulePage }))
+);
+const RescueCMSPage = lazy(() =>
+  import('./components/cms/RescueCMSPage').then((module) => ({ default: module.RescueCMSPage }))
+);
+const TiresCMSPage = lazy(() =>
+  import('./components/cms/TiresCMSPage').then((module) => ({ default: module.TiresCMSPage }))
+);
+const RimsCMSPage = lazy(() =>
+  import('./components/cms/RimsCMSPageV2').then((module) => ({ default: module.RimsCMSPageV2 }))
+);
+const OrdersCMSPage = lazy(() =>
+  import('./components/cms/OrdersCMSPage').then((module) => ({ default: module.OrdersCMSPage }))
+);
+
 type ParsedTireSize = {
   width?: number;
   aspect?: number;
@@ -126,6 +137,17 @@ function normalizeAppPath(path: string): string {
   }
 
   return path;
+}
+
+function CmsRouteFallback() {
+  return (
+    <div className="min-h-[50vh] flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF6B35]" />
+        <p className="text-sm text-muted-foreground">Loading CMS…</p>
+      </div>
+    </div>
+  );
 }
 
 function CmsBetaHandoffControl() {
@@ -1054,23 +1076,33 @@ function HomePage() {
           />
         ) : currentPage === 'admin-schedule' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
-            <AdminSchedulePage />
+            <Suspense fallback={<CmsRouteFallback />}>
+              <AdminSchedulePage />
+            </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-rescue' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
-            <RescueCMSPage />
+            <Suspense fallback={<CmsRouteFallback />}>
+              <RescueCMSPage />
+            </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-tires' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
-            <TiresCMSPage />
+            <Suspense fallback={<CmsRouteFallback />}>
+              <TiresCMSPage />
+            </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-rims' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
-            <RimsCMSPage />
+            <Suspense fallback={<CmsRouteFallback />}>
+              <RimsCMSPage />
+            </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-orders' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
-            <OrdersCMSPage />
+            <Suspense fallback={<CmsRouteFallback />}>
+              <OrdersCMSPage />
+            </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
@@ -1120,15 +1152,25 @@ function HomePage() {
 
                 <div className="rounded-xl border bg-card shadow-sm">
                   {cmsTab === 'rescue' ? (
-                    <RescueCMSPage />
+                    <Suspense fallback={<CmsRouteFallback />}>
+                      <RescueCMSPage />
+                    </Suspense>
                   ) : cmsTab === 'schedule' ? (
-                    <AdminSchedulePage />
+                    <Suspense fallback={<CmsRouteFallback />}>
+                      <AdminSchedulePage />
+                    </Suspense>
                   ) : cmsTab === 'catalog-tires' ? (
-                    <TiresCMSPage />
+                    <Suspense fallback={<CmsRouteFallback />}>
+                      <TiresCMSPage />
+                    </Suspense>
                   ) : cmsTab === 'catalog-rims' ? (
-                    <RimsCMSPage />
+                    <Suspense fallback={<CmsRouteFallback />}>
+                      <RimsCMSPage />
+                    </Suspense>
                   ) : cmsTab === 'orders' ? (
-                    <OrdersCMSPage />
+                    <Suspense fallback={<CmsRouteFallback />}>
+                      <OrdersCMSPage />
+                    </Suspense>
                   ) : (
                     <div className="space-y-2 p-8 text-muted-foreground">
                       <h2 className="text-xl font-semibold text-foreground">Coming soon</h2>
