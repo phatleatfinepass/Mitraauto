@@ -48,7 +48,7 @@ function extractLabelValue(label: any, keys: string[]): unknown {
   return null;
 }
 
-export function useTiresCmsList(pageSize = 50) {
+export function useTiresCmsList(pageSize = 25) {
   const [tires, setTires] = useState<TireRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,14 +132,15 @@ export function useTiresCmsList(pageSize = 50) {
         'diameter_in',
       ].join(', ');
 
+      const offset = (currentPage - 1) * pageSize;
       let productsQuery = supabase
         .from('products_search')
-        .select(productsSearchColumns, { count: 'estimated' })
+        .select(productsSearchColumns)
         .eq('product_type', 'tire')
         .order('brand', { ascending: true })
         .order('model', { ascending: true })
         .order('variant_id', { ascending: true })
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+        .range(offset, offset + pageSize);
 
       if (trimmedSearch) {
         productsQuery = productsQuery.or([
@@ -154,23 +155,21 @@ export function useTiresCmsList(pageSize = 50) {
         productsQuery = productsQuery.or('derived_ean.is.null,derived_ean.like.EANMISSING_%');
       }
 
-      const { data: products, error: productsError, count } = await productsQuery;
+      const { data: products, error: productsError } = await productsQuery;
       if (productsError) throw productsError;
-
-      const resolvedTotalCount = count ?? 0;
-      setTotalCount(resolvedTotalCount);
-
-      const safeTotalPages = Math.max(1, Math.ceil(resolvedTotalCount / pageSize));
-      if (currentPage > safeTotalPages) {
-        setCurrentPage(safeTotalPages);
-      }
 
       if (!products || products.length === 0) {
         setTires([]);
+        setTotalCount(offset);
         return;
       }
 
-      const variantIds = products.map((product: any) => product.variant_id);
+      const hasMorePages = products.length > pageSize;
+      const visibleProducts = hasMorePages ? products.slice(0, pageSize) : products;
+      const resolvedTotalCount = hasMorePages ? offset + visibleProducts.length + 1 : offset + visibleProducts.length;
+      setTotalCount(resolvedTotalCount);
+
+      const variantIds = visibleProducts.map((product: any) => product.variant_id);
       const chunkSize = 200;
       const cmsRows: any[] = [];
       const eanRows: any[] = [];
@@ -193,7 +192,7 @@ export function useTiresCmsList(pageSize = 50) {
       const eanMap = new Map(eanRows.map((row: any) => [row.id, row.ean]));
       const normalizedEanCounts = new Map<string, number>();
 
-      for (const product of products) {
+      for (const product of visibleProducts) {
         const cmsData = cmsMap.get(product.variant_id) || null;
         const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
         const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
@@ -202,7 +201,7 @@ export function useTiresCmsList(pageSize = 50) {
         normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
       }
 
-      const merged = products.map((product: any) => {
+      const merged = visibleProducts.map((product: any) => {
         const cmsData = cmsMap.get(product.variant_id) || null;
         const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
         const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');

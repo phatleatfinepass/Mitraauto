@@ -62,7 +62,7 @@ export function TiresCMSPage() {
     tires,
     totalCount,
     totalPages,
-  } = useTiresCmsList(50);
+  } = useTiresCmsList(25);
 
   const toNumberOrNull = (value: any) => {
     if (value === null || value === undefined || value === '') return null;
