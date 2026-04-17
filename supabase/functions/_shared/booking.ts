@@ -277,6 +277,14 @@ function toBase64Utf8(value: string) {
   return btoa(binary);
 }
 
+function encodeMimeHeader(value: string) {
+  if (!/[^\u0000-\u007f]/.test(value)) {
+    return value;
+  }
+
+  return `=?UTF-8?B?${toBase64Utf8(value)}?=`;
+}
+
 function baseSiteUrl() {
   return DEFAULT_SITE_URL.replace(/\/+$/, "");
 }
@@ -927,7 +935,7 @@ async function sendEmail(args: {
       `From: ${senderAddress()}`,
       `To: ${args.to}`,
       `Reply-To: ${replyToEmail()}`,
-      `Subject: ${messageArgs.subject}`,
+      `Subject: ${encodeMimeHeader(messageArgs.subject)}`,
       `Date: ${new Date().toUTCString()}`,
       `Message-ID: ${messageId}`,
       "MIME-Version: 1.0",

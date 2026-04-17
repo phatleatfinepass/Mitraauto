@@ -193,6 +193,21 @@ function toBase64Url(value: string) {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll(/=+$/g, "");
 }
 
+function toBase64Utf8(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function encodeMimeHeader(value: string) {
+  if (!/[^\u0000-\u007f]/.test(value)) {
+    return value;
+  }
+
+  return `=?UTF-8?B?${toBase64Utf8(value)}?=`;
+}
+
 async function updateGmailSyncState(mailboxEmail: string, patch: Partial<GmailSyncStateRow>) {
   const { error } = await supabaseAdmin
     .from("gmail_sync_state")
@@ -466,7 +481,7 @@ function buildRawMessage(args: {
   const lines = [
     `From: ${buildEmailAddress(args.fromName, args.fromEmail)}`,
     `To: ${buildEmailAddress(args.toName, args.toEmail)}`,
-    `Subject: ${args.subject}`,
+    `Subject: ${encodeMimeHeader(args.subject)}`,
     `Date: ${formatRfc2822Date()}`,
     `Message-ID: ${messageId}`,
     "MIME-Version: 1.0",
