@@ -480,7 +480,33 @@ export function useTiresCmsList(pageSize = 25) {
         }
 
         const resolvedTotalCount = Number(rpcCount ?? 0);
-        const rows = rpcRows ?? [];
+        let rows = rpcRows ?? [];
+
+        const variantIds = (rows as any[])
+          .map((row: any) => row?.variant_id)
+          .filter((value: any): value is string => typeof value === 'string' && value.length > 0);
+
+        if (variantIds.length > 0) {
+          const { data: liveCmsRows, error: liveCmsError } = await supabase
+            .from('product_cms')
+            .select(
+              'variant_id,title,subtitle,short_description,long_description,hero_image_url,gallery,seo_slug,seo_title,seo_description,is_hidden,spec_overrides,price_override_eur,promo_enabled,promo_price_eur,promo_start,promo_end',
+            )
+            .in('variant_id', variantIds);
+
+          if (liveCmsError) {
+            throw liveCmsError;
+          }
+
+          const liveCmsByVariantId = new Map(
+            ((liveCmsRows ?? []) as any[]).map((row) => [row.variant_id, row]),
+          );
+
+          rows = (rows as any[]).map((row) => ({
+            ...row,
+            cms_data: liveCmsByVariantId.has(row.variant_id) ? liveCmsByVariantId.get(row.variant_id) : null,
+          }));
+        }
 
         if (rows.length === 0) {
           setTires([]);

@@ -102,6 +102,7 @@ export function TiresCMSPage() {
 
   const {
     catalogSyncMessage,
+    catalogSyncProgress,
     handleApplyCatalogSync,
     hasPendingCatalogSync,
     setCatalogSyncMessage,
@@ -388,14 +389,26 @@ export function TiresCMSPage() {
         setBulkMarkupProgress({ mode: 'apply', processed, total: totalItems });
       }
 
+      filteredTires
+        .filter((tire) => String(tire.supplier_code_best ?? '').toUpperCase() === supplierCode)
+        .forEach((tire) => {
+          const nextOverride = Math.round(
+            ((hasPercentInput
+              ? Number(tire.price ?? 0) * (1 + percentAdjustment / 100)
+              : Number(tire.price ?? 0) + amountAdjustment) || 0) * 100
+          ) / 100;
+
+          patchLocalCmsData(tire.variant_id, {
+            price_override_eur: nextOverride,
+          });
+        });
+
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
         language === 'fi'
           ? `${hasPercentInput ? 'Prosenttimuutos' : 'Hintaero'} asetettu ${processed} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
           : `${hasPercentInput ? 'Percent adjustment' : 'Markup or discount'} applied to ${processed} tires from supplier ${supplierCode}. Run "Apply Sync".`
       );
-      invalidateCache();
-      await fetchTires({ force: true });
     } catch (error: any) {
       console.error('Bulk supplier markup error:', error);
       setCatalogSyncMessage(error?.message || (language === 'fi' ? 'Massahinnoittelu epäonnistui.' : 'Bulk markup failed.'));
@@ -449,14 +462,20 @@ export function TiresCMSPage() {
         setBulkMarkupProgress({ mode: 'revert', processed, total: totalItems });
       }
 
+      filteredTires
+        .filter((tire) => String(tire.supplier_code_best ?? '').toUpperCase() === supplierCode)
+        .forEach((tire) => {
+          patchLocalCmsData(tire.variant_id, {
+            price_override_eur: null,
+          });
+        });
+
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
         language === 'fi'
           ? `API-hinta palautettu ${processed} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
           : `Reverted ${processed} tires from supplier ${supplierCode} back to API price. Run "Apply Sync".`
       );
-      invalidateCache();
-      await fetchTires({ force: true });
     } catch (error: any) {
       console.error('Bulk supplier markup revert error:', error);
       setCatalogSyncMessage(
@@ -508,6 +527,7 @@ export function TiresCMSPage() {
         syncingCatalog={syncingCatalog}
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
+        catalogSyncProgress={catalogSyncProgress}
         bulkMarkupAmount={bulkMarkupAmount}
         bulkMarkupPercent={bulkMarkupPercent}
         bulkMarkupSupplier={bulkMarkupSupplier}

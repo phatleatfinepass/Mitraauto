@@ -52,6 +52,7 @@ interface TiresCmsToolbarProps {
   syncingCatalog: boolean;
   hasPendingCatalogSync: boolean;
   catalogSyncMessage: string | null;
+  catalogSyncProgress: { processed: number; total: number } | null;
   bulkMarkupAmount: string;
   bulkMarkupPercent: string;
   bulkMarkupSupplier: string;
@@ -96,6 +97,7 @@ export function TiresCmsToolbar({
   syncingCatalog,
   hasPendingCatalogSync,
   catalogSyncMessage,
+  catalogSyncProgress,
   bulkMarkupAmount,
   bulkMarkupPercent,
   bulkMarkupSupplier,
@@ -214,6 +216,24 @@ export function TiresCmsToolbar({
             {catalogSyncMessage}
           </p>
         )}
+
+        {catalogSyncProgress ? (
+          <div className="mt-3 space-y-2">
+            <div className={`h-2 overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+              <div
+                className="h-full rounded-full bg-blue-500 transition-[width] duration-200"
+                style={{
+                  width: `${catalogSyncProgress.total > 0 ? Math.min(100, (catalogSyncProgress.processed / catalogSyncProgress.total) * 100) : 0}%`,
+                }}
+              />
+            </div>
+            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fi'
+                ? `Synkronoidaan ${catalogSyncProgress.processed} / ${catalogSyncProgress.total}`
+                : `Syncing ${catalogSyncProgress.processed} / ${catalogSyncProgress.total}`}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <Sheet open={settingsDrawerOpen} onOpenChange={onSettingsDrawerOpenChange}>

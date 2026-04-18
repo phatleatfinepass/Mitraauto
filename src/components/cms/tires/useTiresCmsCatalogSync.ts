@@ -13,37 +13,45 @@ export function useTiresCmsCatalogSync({
   const [syncingCatalog, setSyncingCatalog] = useState(false);
   const [hasPendingCatalogSync, setHasPendingCatalogSync] = useState(false);
   const [catalogSyncMessage, setCatalogSyncMessage] = useState<string | null>(null);
+  const [catalogSyncProgress, setCatalogSyncProgress] = useState<{
+    processed: number;
+    total: number;
+  } | null>(null);
 
   const handleApplyCatalogSync = async () => {
     if (syncingCatalog) return;
 
     setSyncingCatalog(true);
     setCatalogSyncMessage(null);
+    setCatalogSyncProgress({ processed: 0, total: 2 });
 
     try {
-      // Tires CMS changes currently mutate product_cms / CMS-facing overrides.
-      // They do not require the full supplier catalog rebuild chain on every sync.
-      // Keep this path limited to republishing the search surface and CMS snapshot.
-      const { error: refreshError } = await supabase.rpc('catalog_refresh_products_search_v3');
-      if (refreshError) throw refreshError;
-
-      const { error: cmsRefreshError } = await supabase.rpc('refresh_cms_tires_admin_mv');
-      if (cmsRefreshError) throw cmsRefreshError;
-
-      setHasPendingCatalogSync(false);
-      setCatalogSyncMessage(language === 'fi' ? 'Catalog sync valmis.' : 'Catalog sync completed.');
+      // Tires CMS changes are now read live from product_cms in both the catalog fetch path
+      // and the CMS list overlay path. Apply Sync only needs to clear local stale caches and
+      // reload the current page view instead of rebuilding the full catalog search surface.
       invalidateCache();
+      setCatalogSyncProgress({ processed: 1, total: 2 });
+
       await fetchTires({ force: true });
+      setCatalogSyncProgress({ processed: 2, total: 2 });
+      setHasPendingCatalogSync(false);
+      setCatalogSyncMessage(
+        language === 'fi'
+          ? 'Renkaiden muutokset synkronoitu paikalliseen näkymään.'
+          : 'Tires changes synced to the local view.'
+      );
     } catch (err: any) {
       console.error('Catalog sync error:', err);
       setCatalogSyncMessage(err?.message || 'Catalog sync failed');
     } finally {
       setSyncingCatalog(false);
+      setCatalogSyncProgress(null);
     }
   };
 
   return {
     catalogSyncMessage,
+    catalogSyncProgress,
     handleApplyCatalogSync,
     hasPendingCatalogSync,
     setCatalogSyncMessage,

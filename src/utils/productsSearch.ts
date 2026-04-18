@@ -54,6 +54,20 @@ export type ProductSearchRow = {
   pricing_rules?: ProductPricingRules | null;
 };
 
+type ProductCmsOverlayRow = {
+  variant_id: string;
+  title: string | null;
+  subtitle: string | null;
+  short_description: string | null;
+  long_description: string | null;
+  hero_image_url: string | null;
+  seo_slug: string | null;
+  is_hidden: boolean | null;
+  price_override_eur: number | null;
+  promo_enabled: boolean | null;
+  promo_price_eur: number | null;
+};
+
 interface FetchOptions {
   limit?: number;
   offset?: number;
@@ -157,6 +171,12 @@ function applySort(rows: ProductSearchRow[], sortBy: string | undefined): Produc
     default:
       return list;
   }
+}
+
+function normalizeOverlayPrice(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
 }
 
 export async function fetchProductsSearch(
@@ -312,9 +332,52 @@ export async function fetchProductsSearch(
 
   if (error) throw error;
 
-  const rows = ((data ?? []) as any[]).map((row) => ({
+  let rows = ((data ?? []) as any[]).map((row) => ({
     ...row,
     pricing_rules: null,
   })) as ProductSearchRow[];
+
+  const variantIds = rows.map((row) => row.variant_id).filter(Boolean);
+  if (variantIds.length > 0) {
+    const { data: cmsData, error: cmsError } = await supabase
+      .from('product_cms')
+      .select(
+        'variant_id,title,subtitle,short_description,long_description,hero_image_url,seo_slug,is_hidden,price_override_eur,promo_enabled,promo_price_eur',
+      )
+      .in('variant_id', variantIds);
+
+    if (cmsError) throw cmsError;
+
+    const cmsByVariantId = new Map(
+      ((cmsData ?? []) as ProductCmsOverlayRow[]).map((row) => [row.variant_id, row]),
+    );
+
+    rows = rows
+      .map((row) => {
+        const cmsRow = cmsByVariantId.get(row.variant_id);
+        if (!cmsRow) return row;
+
+        const promoPrice =
+          cmsRow.promo_enabled ? normalizeOverlayPrice(cmsRow.promo_price_eur) : null;
+        const overridePrice = normalizeOverlayPrice(cmsRow.price_override_eur);
+        const effectivePrice = promoPrice ?? overridePrice ?? row.final_price_eur ?? row.price ?? null;
+
+        return {
+          ...row,
+          card_title: cmsRow.title ?? row.card_title,
+          subtitle: cmsRow.subtitle ?? row.subtitle,
+          short_description: cmsRow.short_description ?? row.short_description,
+          long_description: cmsRow.long_description ?? row.long_description,
+          hero_image_url: cmsRow.hero_image_url ?? row.hero_image_url,
+          seo_slug: cmsRow.seo_slug ?? row.seo_slug,
+          final_is_hidden: Boolean(cmsRow.is_hidden ?? row.final_is_hidden),
+          final_price_eur: effectivePrice,
+        };
+      })
+      .filter((row) => !row.final_is_hidden);
+
+    rows = applySort(rows, filters.sortBy);
+  }
+
   return { items: rows, total: count ?? rows.length };
 }
