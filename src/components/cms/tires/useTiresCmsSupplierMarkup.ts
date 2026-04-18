@@ -38,7 +38,11 @@ export function useTiresCmsSupplierMarkup({
     }
 
     if (!Number.isFinite(markupAmount)) {
-      setSaveError(language === 'fi' ? 'Lisähinnan pitää olla numero.' : 'Markup amount must be a number.');
+      setSaveError(
+        language === 'fi'
+          ? 'Hintaeron pitää olla numero.'
+          : 'Markup or discount amount must be a number.'
+      );
       return;
     }
 

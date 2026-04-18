@@ -67,10 +67,17 @@ export function BookingThreadList({
               const preview = (message.bodyText || message.snippet || '—').replace(/\s+/g, ' ').trim();
 
               return (
-                <button
+                <div
                   key={message.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelect(message.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelect(message.id);
+                    }
+                  }}
                   className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
                     isSelected
                       ? theme === 'dark'
@@ -114,7 +121,7 @@ export function BookingThreadList({
                       {t('replyToMessage')}
                     </button>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

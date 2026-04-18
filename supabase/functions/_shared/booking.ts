@@ -1012,12 +1012,13 @@ async function sendEmail(args: {
     : await getLatestConversationAnchor(args.booking.id, mailboxEmail);
 
   const finalSubject = args.subject.trim();
+  const shouldThread = args.type === "message";
   const rawMessage = buildRawMessage({
     subject: finalSubject,
     text: args.text,
     html: args.html,
-    inReplyTo: anchor.messageIdHeader ?? null,
-    referencesHeader: anchor.referencesHeader ?? anchor.messageIdHeader ?? null,
+    inReplyTo: shouldThread ? (anchor.messageIdHeader ?? null) : null,
+    referencesHeader: shouldThread ? (anchor.referencesHeader ?? anchor.messageIdHeader ?? null) : null,
     icsContent: args.icsContent,
     icsFilename: args.icsFilename,
   });
@@ -1028,7 +1029,7 @@ async function sendEmail(args: {
     "POST",
     {
       raw: toBase64Url(rawMessage.raw),
-      ...(existingThread?.provider_thread_id ? { threadId: existingThread.provider_thread_id } : {}),
+      ...(shouldThread && existingThread?.provider_thread_id ? { threadId: existingThread.provider_thread_id } : {}),
     },
   );
 

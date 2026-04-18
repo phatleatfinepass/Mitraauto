@@ -9,6 +9,7 @@ export interface ProductSearchTire {
   model: string;
   size_string: string | null;
   season: string | null;
+  studded?: boolean | null;
   runflat?: boolean | null;
   xl_reinforced?: boolean | null;
   load_index?: string | number | null;

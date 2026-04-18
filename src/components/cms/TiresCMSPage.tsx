@@ -39,8 +39,23 @@ export function TiresCMSPage() {
   const { language } = useLanguage();
   const isDark = theme === 'dark';
   const [bulkMarkupAmount, setBulkMarkupAmount] = useState('20');
+  const [bulkMarkupPercent, setBulkMarkupPercent] = useState('');
+  const [bulkMarkupSupplier, setBulkMarkupSupplier] = useState('');
+  const [bulkMarkupMatchCount, setBulkMarkupMatchCount] = useState<number | null>(null);
+  const [loadingBulkMarkupCount, setLoadingBulkMarkupCount] = useState(false);
   const [applyingBulkMarkup, setApplyingBulkMarkup] = useState(false);
+  const [revertingBulkMarkup, setRevertingBulkMarkup] = useState(false);
+  const [bulkMarkupProgress, setBulkMarkupProgress] = useState<{
+    mode: 'apply' | 'revert';
+    processed: number;
+    total: number;
+  } | null>(null);
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   const [supplierDraft, setSupplierDraft] = useState('all');
+  const [showNonPassengerDraft, setShowNonPassengerDraft] = useState(false);
+  const [missingMetadataFieldsDraft, setMissingMetadataFieldsDraft] = useState<string[]>([]);
+  const [showMissingImagesOnlyDraft, setShowMissingImagesOnlyDraft] = useState(false);
+  const [missingSeoFieldsDraft, setMissingSeoFieldsDraft] = useState<string[]>([]);
 
   const {
     currentPage,
@@ -55,11 +70,15 @@ export function TiresCMSPage() {
     searchTerm,
     setCurrentPage,
     setHideNonPassenger,
+    setMissingMetadataFields,
+    setMissingSeoFields,
     setSearchTerm,
-    setShowMissingEanOnly,
+    setShowMissingImagesOnly,
     setSupplierFilter,
     hideNonPassenger,
-    showMissingEanOnly,
+    missingMetadataFields,
+    missingSeoFields,
+    showMissingImagesOnly,
     startItem,
     supplierFilter,
     tires,
@@ -69,7 +88,17 @@ export function TiresCMSPage() {
 
   useEffect(() => {
     setSupplierDraft(supplierFilter);
-  }, [supplierFilter]);
+    setShowNonPassengerDraft(!hideNonPassenger);
+    setMissingMetadataFieldsDraft(missingMetadataFields);
+    setShowMissingImagesOnlyDraft(showMissingImagesOnly);
+    setMissingSeoFieldsDraft(missingSeoFields);
+  }, [
+    supplierFilter,
+    hideNonPassenger,
+    missingMetadataFields,
+    showMissingImagesOnly,
+    missingSeoFields,
+  ]);
 
   const {
     catalogSyncMessage,
@@ -83,6 +112,57 @@ export function TiresCMSPage() {
     invalidateCache,
     language,
   });
+
+  useEffect(() => {
+    if (!settingsDrawerOpen) return;
+    if (!bulkMarkupSupplier) {
+      setBulkMarkupMatchCount(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      setLoadingBulkMarkupCount(true);
+      try {
+        const { data, error } = await supabase.rpc('cms_count_tires_admin_v1', {
+          p_search: searchTerm.trim() || null,
+          p_missing_ean_only: false,
+          p_exclude_non_passenger: hideNonPassenger,
+          p_supplier_code: bulkMarkupSupplier,
+          p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+          p_missing_image_only: showMissingImagesOnly,
+          p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
+        });
+        if (error) throw error;
+        if (!cancelled) {
+          setBulkMarkupMatchCount(Number(data ?? 0));
+        }
+      } catch (error) {
+        console.error('Bulk markup count error:', error);
+        if (!cancelled) {
+          setBulkMarkupMatchCount(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingBulkMarkupCount(false);
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    bulkMarkupSupplier,
+    hideNonPassenger,
+    missingMetadataFields,
+    missingSeoFields,
+    searchTerm,
+    settingsDrawerOpen,
+    showMissingImagesOnly,
+  ]);
 
   const toNumberOrNull = (value: any) => {
     if (value === null || value === undefined || value === '') return null;
@@ -211,17 +291,60 @@ export function TiresCMSPage() {
         ? Number(editData.price_override_eur)
         : originalApiPrice;
 
+  const fetchSupplierBulkPage = async (supplierCode: string, offset: number, pageSize: number) => {
+    const { data, error } = await supabase.rpc('cms_list_tires_admin_v1', {
+      p_search: searchTerm.trim() || null,
+      p_missing_ean_only: false,
+      p_exclude_non_passenger: hideNonPassenger,
+      p_supplier_code: supplierCode,
+      p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+      p_missing_image_only: showMissingImagesOnly,
+      p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
+      p_limit: pageSize,
+      p_offset: offset,
+    });
+    if (error) throw error;
+
+    return (data ?? [])
+      .filter((row: any) => typeof row.variant_id === 'string' && Number.isFinite(Number(row.price)))
+      .map((row: any) => ({
+        variant_id: row.variant_id,
+        price: Number(row.price),
+      }));
+  };
+
   const handleApplyBulkSupplierMarkup = async () => {
-    const supplierCode = String(supplierFilter).trim().toUpperCase();
-    const markup = Number(bulkMarkupAmount);
+    const supplierCode = String(bulkMarkupSupplier).trim().toUpperCase();
+    const hasAmountInput = bulkMarkupAmount.trim() !== '';
+    const hasPercentInput = bulkMarkupPercent.trim() !== '';
+    const amountAdjustment = Number(bulkMarkupAmount);
+    const percentAdjustment = Number(bulkMarkupPercent);
 
     if (!supplierCode || supplierCode === 'ALL') {
       setCatalogSyncMessage(language === 'fi' ? 'Valitse toimittaja.' : 'Choose a supplier.');
       return;
     }
 
-    if (!Number.isFinite(markup)) {
-      setCatalogSyncMessage(language === 'fi' ? 'Lisähinnan pitää olla numero.' : 'Markup amount must be a number.');
+    if (!hasAmountInput && !hasPercentInput) {
+      setCatalogSyncMessage(
+        language === 'fi'
+          ? 'Anna muutos joko euroina tai prosentteina.'
+          : 'Enter an adjustment in either euros or percent.'
+      );
+      return;
+    }
+
+    if (hasAmountInput && !Number.isFinite(amountAdjustment)) {
+      setCatalogSyncMessage(
+        language === 'fi' ? 'Euromäärän pitää olla numero.' : 'Euro adjustment must be a number.'
+      );
+      return;
+    }
+
+    if (hasPercentInput && !Number.isFinite(percentAdjustment)) {
+      setCatalogSyncMessage(
+        language === 'fi' ? 'Prosentin pitää olla numero.' : 'Percent adjustment must be a number.'
+      );
       return;
     }
 
@@ -229,58 +352,9 @@ export function TiresCMSPage() {
     setCatalogSyncMessage(null);
 
     try {
-      const collectedRows: Array<{ variant_id: string; price: number }> = [];
-      const pageSize = 1000;
-      let offset = 0;
+      const totalItems = bulkMarkupMatchCount ?? 0;
 
-      while (true) {
-        let query = supabase
-          .from('products_search')
-          .select('variant_id, price')
-          .eq('product_type', 'tire')
-          .eq('supplier_code_best', supplierCode)
-          .not('price', 'is', null)
-          .order('variant_id', { ascending: true })
-          .range(offset, offset + pageSize - 1);
-
-        if (searchTerm.trim()) {
-          const q = searchTerm.trim();
-          query = query.or([
-            `brand.ilike.%${q}%`,
-            `model.ilike.%${q}%`,
-            `size_string.ilike.%${q}%`,
-            `derived_ean.ilike.%${q}%`,
-          ].join(','));
-        }
-
-        if (showMissingEanOnly) {
-          query = query.or('derived_ean.is.null,derived_ean.like.EANMISSING_%');
-        }
-
-        if (hideNonPassenger) {
-          query = query.eq('is_non_passenger', false);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-
-        const rows = (data ?? [])
-          .filter((row: any) => typeof row.variant_id === 'string' && Number.isFinite(Number(row.price)))
-          .map((row: any) => ({
-            variant_id: row.variant_id,
-            price: Number(row.price),
-          }));
-
-        collectedRows.push(...rows);
-
-        if (!data || data.length < pageSize) {
-          break;
-        }
-
-        offset += pageSize;
-      }
-
-      if (collectedRows.length === 0) {
+      if (totalItems === 0) {
         setCatalogSyncMessage(
           language === 'fi'
             ? 'Yhtään sopivaa rengasta ei löytynyt nykyisestä näkymästä.'
@@ -288,24 +362,37 @@ export function TiresCMSPage() {
         );
         return;
       }
+      const pageSize = 500;
+      let offset = 0;
+      let processed = 0;
+      setBulkMarkupProgress({ mode: 'apply', processed: 0, total: totalItems });
 
-      const payload = collectedRows.map((row) => ({
-        variant_id: row.variant_id,
-        price_override_eur: Math.round((row.price + markup) * 100) / 100,
-      }));
+      while (offset < totalItems) {
+        const rows = await fetchSupplierBulkPage(supplierCode, offset, pageSize);
+        if (rows.length === 0) break;
 
-      const chunkSize = 500;
-      for (let index = 0; index < payload.length; index += chunkSize) {
-        const chunk = payload.slice(index, index + chunkSize);
-        const { error } = await supabase.from('product_cms').upsert(chunk, { onConflict: 'variant_id' });
+        const payload = rows.map((row) => ({
+          variant_id: row.variant_id,
+          price_override_eur: Math.round(
+            (hasPercentInput
+              ? row.price * (1 + percentAdjustment / 100)
+              : row.price + amountAdjustment) * 100
+          ) / 100,
+        }));
+
+        const { error } = await supabase.from('product_cms').upsert(payload, { onConflict: 'variant_id' });
         if (error) throw error;
+
+        processed += rows.length;
+        offset += pageSize;
+        setBulkMarkupProgress({ mode: 'apply', processed, total: totalItems });
       }
 
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
         language === 'fi'
-          ? `Lisähinta asetettu ${collectedRows.length} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
-          : `Markup applied to ${collectedRows.length} tires from supplier ${supplierCode}. Run "Apply Sync".`
+          ? `${hasPercentInput ? 'Prosenttimuutos' : 'Hintaero'} asetettu ${processed} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
+          : `${hasPercentInput ? 'Percent adjustment' : 'Markup or discount'} applied to ${processed} tires from supplier ${supplierCode}. Run "Apply Sync".`
       );
       invalidateCache();
       await fetchTires({ force: true });
@@ -314,13 +401,94 @@ export function TiresCMSPage() {
       setCatalogSyncMessage(error?.message || (language === 'fi' ? 'Massahinnoittelu epäonnistui.' : 'Bulk markup failed.'));
     } finally {
       setApplyingBulkMarkup(false);
+      setBulkMarkupProgress(null);
+    }
+  };
+
+  const handleRevertBulkSupplierMarkup = async () => {
+    const supplierCode = String(bulkMarkupSupplier).trim().toUpperCase();
+
+    if (!supplierCode || supplierCode === 'ALL') {
+      setCatalogSyncMessage(language === 'fi' ? 'Valitse toimittaja.' : 'Choose a supplier.');
+      return;
+    }
+
+    setRevertingBulkMarkup(true);
+    setCatalogSyncMessage(null);
+
+    try {
+      const totalItems = bulkMarkupMatchCount ?? 0;
+
+      if (totalItems === 0) {
+        setCatalogSyncMessage(
+          language === 'fi'
+            ? 'Yhtään sopivaa rengasta ei löytynyt nykyisestä näkymästä.'
+            : 'No matching tires were found in the current view.'
+        );
+        return;
+      }
+      const pageSize = 500;
+      let offset = 0;
+      let processed = 0;
+      setBulkMarkupProgress({ mode: 'revert', processed: 0, total: totalItems });
+
+      while (offset < totalItems) {
+        const rows = await fetchSupplierBulkPage(supplierCode, offset, pageSize);
+        if (rows.length === 0) break;
+
+        const payload = rows.map((row) => ({
+          variant_id: row.variant_id,
+          price_override_eur: null,
+        }));
+
+        const { error } = await supabase.from('product_cms').upsert(payload, { onConflict: 'variant_id' });
+        if (error) throw error;
+
+        processed += rows.length;
+        offset += pageSize;
+        setBulkMarkupProgress({ mode: 'revert', processed, total: totalItems });
+      }
+
+      setHasPendingCatalogSync(true);
+      setCatalogSyncMessage(
+        language === 'fi'
+          ? `API-hinta palautettu ${processed} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
+          : `Reverted ${processed} tires from supplier ${supplierCode} back to API price. Run "Apply Sync".`
+      );
+      invalidateCache();
+      await fetchTires({ force: true });
+    } catch (error: any) {
+      console.error('Bulk supplier markup revert error:', error);
+      setCatalogSyncMessage(
+        error?.message || (language === 'fi' ? 'API-hintaan palautus epäonnistui.' : 'Failed to revert to API price.')
+      );
+    } finally {
+      setRevertingBulkMarkup(false);
+      setBulkMarkupProgress(null);
     }
   };
 
   const handleApplySupplierFilter = () => {
-    if (supplierDraft === supplierFilter) return;
+    const nextHideNonPassenger = !showNonPassengerDraft;
+    const hasChanges =
+      supplierDraft !== supplierFilter ||
+      nextHideNonPassenger !== hideNonPassenger ||
+      showMissingImagesOnlyDraft !== showMissingImagesOnly ||
+      missingMetadataFieldsDraft.join('|') !== missingMetadataFields.join('|') ||
+      missingSeoFieldsDraft.join('|') !== missingSeoFields.join('|');
+
+    if (!hasChanges) {
+      setSettingsDrawerOpen(false);
+      return;
+    }
+
     setCurrentPage(1);
     setSupplierFilter(supplierDraft);
+    setHideNonPassenger(nextHideNonPassenger);
+    setMissingMetadataFields(missingMetadataFieldsDraft);
+    setShowMissingImagesOnly(showMissingImagesOnlyDraft);
+    setMissingSeoFields(missingSeoFieldsDraft);
+    setSettingsDrawerOpen(false);
   };
 
   return (
@@ -330,8 +498,10 @@ export function TiresCMSPage() {
         isDark={isDark}
         language={language}
         searchTerm={searchTerm}
-        showMissingEanOnly={showMissingEanOnly}
-        hideNonPassenger={hideNonPassenger}
+        showNonPassengerDraft={showNonPassengerDraft}
+        missingMetadataFieldsDraft={missingMetadataFieldsDraft}
+        showMissingImagesOnlyDraft={showMissingImagesOnlyDraft}
+        missingSeoFieldsDraft={missingSeoFieldsDraft}
         supplierFilter={supplierFilter}
         supplierDraft={supplierDraft}
         supplierOptions={SUPPLIER_OPTIONS}
@@ -339,15 +509,44 @@ export function TiresCMSPage() {
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
         bulkMarkupAmount={bulkMarkupAmount}
+        bulkMarkupPercent={bulkMarkupPercent}
+        bulkMarkupSupplier={bulkMarkupSupplier}
+        bulkMarkupMatchCount={bulkMarkupMatchCount}
+        loadingBulkMarkupCount={loadingBulkMarkupCount}
         applyingBulkMarkup={applyingBulkMarkup}
-        supplierFilterDirty={supplierDraft !== supplierFilter}
+        revertingBulkMarkup={revertingBulkMarkup}
+        bulkMarkupProgress={bulkMarkupProgress}
+        settingsDrawerOpen={settingsDrawerOpen}
+        supplierFilterDirty={
+          supplierDraft !== supplierFilter ||
+          (!showNonPassengerDraft) !== hideNonPassenger ||
+          showMissingImagesOnlyDraft !== showMissingImagesOnly ||
+          missingMetadataFieldsDraft.join('|') !== missingMetadataFields.join('|') ||
+          missingSeoFieldsDraft.join('|') !== missingSeoFields.join('|')
+        }
         onSearchTermChange={setSearchTerm}
-        onShowMissingEanOnlyChange={setShowMissingEanOnly}
-        onHideNonPassengerChange={setHideNonPassenger}
+        onShowNonPassengerDraftChange={setShowNonPassengerDraft}
+        onMissingMetadataFieldsDraftChange={setMissingMetadataFieldsDraft}
+        onShowMissingImagesOnlyDraftChange={setShowMissingImagesOnlyDraft}
+        onMissingSeoFieldsDraftChange={setMissingSeoFieldsDraft}
         onSupplierDraftChange={setSupplierDraft}
+        onBulkMarkupSupplierChange={setBulkMarkupSupplier}
+        onSettingsDrawerOpenChange={setSettingsDrawerOpen}
         onApplySupplierFilter={handleApplySupplierFilter}
-        onBulkMarkupAmountChange={setBulkMarkupAmount}
+        onBulkMarkupAmountChange={(value) => {
+          setBulkMarkupAmount(value);
+          if (value.trim() !== '') {
+            setBulkMarkupPercent('');
+          }
+        }}
+        onBulkMarkupPercentChange={(value) => {
+          setBulkMarkupPercent(value);
+          if (value.trim() !== '') {
+            setBulkMarkupAmount('');
+          }
+        }}
         onApplyBulkSupplierMarkup={handleApplyBulkSupplierMarkup}
+        onRevertBulkSupplierMarkup={handleRevertBulkSupplierMarkup}
         onApplyCatalogSync={handleApplyCatalogSync}
       />
 

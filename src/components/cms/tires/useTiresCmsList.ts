@@ -15,6 +15,33 @@ type TiresCmsCacheStore = {
   queries: Record<string, TiresCmsQueryCacheEntry>;
 };
 
+type MissingMetadataField =
+  | 'brand'
+  | 'model'
+  | 'ean'
+  | 'size'
+  | 'season'
+  | 'ev_ready'
+  | 'runflat'
+  | 'xl'
+  | 'studded'
+  | 'threepmsf'
+  | 'winter_approved'
+  | 'ice_approved'
+  | 'eu_fuel_class'
+  | 'eu_wet_grip_class'
+  | 'eu_noise_db'
+  | 'eu_noise_class';
+
+type MissingSeoField =
+  | 'title'
+  | 'subtitle'
+  | 'short_description'
+  | 'long_description'
+  | 'seo_slug'
+  | 'seo_title'
+  | 'seo_description';
+
 const EXCLUDED_TIRE_KEYWORDS = [
   'motorcycle',
   'motorbike',
@@ -65,6 +92,9 @@ function buildTiresCmsQueryKey(params: {
   showMissingEanOnly: boolean;
   hideNonPassenger: boolean;
   supplierFilter: string;
+  missingMetadataFields: string[];
+  showMissingImagesOnly: boolean;
+  missingSeoFields: string[];
   pageSize: number;
 }) {
   return JSON.stringify({
@@ -72,6 +102,9 @@ function buildTiresCmsQueryKey(params: {
     missing: params.showMissingEanOnly,
     hideNonPassenger: params.hideNonPassenger,
     supplier: params.supplierFilter,
+    missingMetadataFields: [...params.missingMetadataFields].sort(),
+    missingImages: params.showMissingImagesOnly,
+    missingSeoFields: [...params.missingSeoFields].sort(),
     pageSize: params.pageSize,
   });
 }
@@ -107,6 +140,9 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly: false,
         hideNonPassenger: true,
         supplierFilter: 'all',
+        missingMetadataFields: [] as MissingMetadataField[],
+        showMissingImagesOnly: false,
+        missingSeoFields: [] as MissingSeoField[],
         currentPage: 1,
       };
     }
@@ -121,6 +157,9 @@ export function useTiresCmsList(pageSize = 25) {
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
+        missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
+        showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
+        missingSeoFields: Array.isArray(parsedState?.missingSeoFields) ? parsedState.missingSeoFields : [],
         pageSize,
       });
       const initialPage =
@@ -139,6 +178,9 @@ export function useTiresCmsList(pageSize = 25) {
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
+        missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
+        showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
+        missingSeoFields: Array.isArray(parsedState?.missingSeoFields) ? parsedState.missingSeoFields : [],
         currentPage: initialPage,
       };
     } catch {
@@ -150,6 +192,9 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly: false,
         hideNonPassenger: true,
         supplierFilter: 'all',
+        missingMetadataFields: [] as MissingMetadataField[],
+        showMissingImagesOnly: false,
+        missingSeoFields: [] as MissingSeoField[],
         currentPage: 1,
       };
     }
@@ -163,6 +208,11 @@ export function useTiresCmsList(pageSize = 25) {
   const [showMissingEanOnly, setShowMissingEanOnly] = useState(initialState.showMissingEanOnly);
   const [hideNonPassenger, setHideNonPassenger] = useState(initialState.hideNonPassenger);
   const [supplierFilter, setSupplierFilter] = useState(initialState.supplierFilter);
+  const [missingMetadataFields, setMissingMetadataFields] = useState<MissingMetadataField[]>(
+    initialState.missingMetadataFields,
+  );
+  const [showMissingImagesOnly, setShowMissingImagesOnly] = useState(initialState.showMissingImagesOnly);
+  const [missingSeoFields, setMissingSeoFields] = useState<MissingSeoField[]>(initialState.missingSeoFields);
   const [currentPage, setCurrentPage] = useState(initialState.currentPage);
   const [totalCount, setTotalCount] = useState(initialState.totalCount);
   const [hasNextPage, setHasNextPage] = useState(initialState.totalCount > initialState.currentPage * pageSize);
@@ -174,6 +224,9 @@ export function useTiresCmsList(pageSize = 25) {
     showMissingEanOnly,
     hideNonPassenger,
     supplierFilter,
+    missingMetadataFields,
+    showMissingImagesOnly,
+    missingSeoFields,
     pageSize,
   });
   const cachedQuery = cacheRef.current.queries[queryKey];
@@ -219,7 +272,15 @@ export function useTiresCmsList(pageSize = 25) {
       return;
     }
     setCurrentPage(1);
-  }, [showMissingEanOnly, hideNonPassenger, supplierFilter, debouncedSearchTerm]);
+  }, [
+    showMissingEanOnly,
+    hideNonPassenger,
+    supplierFilter,
+    debouncedSearchTerm,
+    missingMetadataFields,
+    showMissingImagesOnly,
+    missingSeoFields,
+  ]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -230,10 +291,22 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly,
         hideNonPassenger,
         supplierFilter,
+        missingMetadataFields,
+        showMissingImagesOnly,
+        missingSeoFields,
         currentPage,
       })
     );
-  }, [currentPage, hideNonPassenger, searchTerm, showMissingEanOnly, supplierFilter]);
+  }, [
+    currentPage,
+    hideNonPassenger,
+    searchTerm,
+    showMissingEanOnly,
+    supplierFilter,
+    missingMetadataFields,
+    showMissingImagesOnly,
+    missingSeoFields,
+  ]);
 
   useEffect(() => {
     if (!cachedPage) return;
@@ -382,6 +455,9 @@ export function useTiresCmsList(pageSize = 25) {
             p_missing_ean_only: showMissingEanOnly,
             p_exclude_non_passenger: hideNonPassenger,
             p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+            p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+            p_missing_image_only: showMissingImagesOnly,
+            p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
             p_limit: pageSize,
             p_offset: offset,
           }),
@@ -390,6 +466,9 @@ export function useTiresCmsList(pageSize = 25) {
             p_missing_ean_only: showMissingEanOnly,
             p_exclude_non_passenger: hideNonPassenger,
             p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+            p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+            p_missing_image_only: showMissingImagesOnly,
+            p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
           }),
         ]);
 
@@ -407,15 +486,20 @@ export function useTiresCmsList(pageSize = 25) {
           setTires([]);
           setTotalCount(resolvedTotalCount);
           setHasNextPage(false);
-          if (typeof window !== 'undefined') {
-            window.sessionStorage.setItem(
-              TIRES_CMS_CACHE_KEY,
-              JSON.stringify({
-                tires: [],
+          const nextCacheStore: TiresCmsCacheStore = {
+            queries: {
+              ...cacheRef.current.queries,
+              [queryKey]: {
                 totalCount: resolvedTotalCount,
-              })
-            );
-          }
+                pages: {
+                  ...(cacheRef.current.queries[queryKey]?.pages ?? {}),
+                  [String(currentPage)]: [],
+                },
+              },
+            },
+          };
+          cacheRef.current = nextCacheStore;
+          writeTiresCmsCacheStore(nextCacheStore);
           return;
         }
 
@@ -460,6 +544,9 @@ export function useTiresCmsList(pageSize = 25) {
     queryKey,
     showMissingEanOnly,
     supplierFilter,
+    missingMetadataFields,
+    showMissingImagesOnly,
+    missingSeoFields,
     tires.length,
   ]);
 
@@ -577,11 +664,17 @@ export function useTiresCmsList(pageSize = 25) {
     searchTerm,
     setCurrentPage,
     setHideNonPassenger,
+    setMissingMetadataFields,
+    setMissingSeoFields,
     setSearchTerm,
     setShowMissingEanOnly,
+    setShowMissingImagesOnly,
     setSupplierFilter,
     hideNonPassenger,
+    missingMetadataFields,
+    missingSeoFields,
     showMissingEanOnly,
+    showMissingImagesOnly,
     startItem,
     tires,
     totalCount,

@@ -70,6 +70,7 @@ function BookingGroupSection({
   formatBookingGroupLabel,
   getBookingServiceNameForCms,
   groups,
+  language,
   mutedTextClass,
   onOpenBooking,
   subtleTextClass,
@@ -81,6 +82,7 @@ function BookingGroupSection({
   formatBookingGroupLabel: (dateValue: string) => string;
   getBookingServiceNameForCms: (serviceName?: string | null) => string;
   groups: BookingListGroup[];
+  language: string;
   mutedTextClass: string;
   onOpenBooking: (booking: ScheduleBooking) => void;
   subtleTextClass: string;
@@ -269,15 +271,16 @@ export function AdminScheduleBookingPanel({
           </div>
 
           <div className="mt-5 space-y-5">
-            <BookingGroupSection
-              emptyText={reservationEmptyText}
-              formatBookingGroupLabel={formatBookingGroupLabel}
-              getBookingServiceNameForCms={getBookingServiceNameForCms}
-              groups={reservationBookingGroups}
-              mutedTextClass={mutedTextClass}
-              onOpenBooking={onOpenBooking}
-              subtleTextClass={subtleTextClass}
-              t={t}
+        <BookingGroupSection
+          emptyText={reservationEmptyText}
+          formatBookingGroupLabel={formatBookingGroupLabel}
+          getBookingServiceNameForCms={getBookingServiceNameForCms}
+          groups={reservationBookingGroups}
+          language={language}
+          mutedTextClass={mutedTextClass}
+          onOpenBooking={onOpenBooking}
+          subtleTextClass={subtleTextClass}
+          t={t}
               theme={theme}
               titleClass={titleClass}
             />

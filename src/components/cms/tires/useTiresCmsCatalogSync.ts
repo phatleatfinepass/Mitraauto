@@ -21,23 +21,9 @@ export function useTiresCmsCatalogSync({
     setCatalogSyncMessage(null);
 
     try {
-      const { data: offersRun, error: offersError } = await supabase.rpc('catalog_build_offers_v3', {
-        p_limit: 200000,
-      });
-      if (offersError) throw offersError;
-      if ((offersRun as any)?.errors && Number((offersRun as any).errors) > 0) {
-        throw new Error((offersRun as any)?.error || 'catalog_build_offers_v3 failed');
-      }
-
-      const { error: prefilterError } = await supabase.rpc('catalog_build_offer_prefilter_v3');
-      if (prefilterError) throw prefilterError;
-
-      const { error: variantsError } = await supabase.rpc('catalog_build_variants_v3');
-      if (variantsError) throw variantsError;
-
-      const { error: conflictsError } = await supabase.rpc('catalog_refresh_conflicts_v3');
-      if (conflictsError) throw conflictsError;
-
+      // Tires CMS changes currently mutate product_cms / CMS-facing overrides.
+      // They do not require the full supplier catalog rebuild chain on every sync.
+      // Keep this path limited to republishing the search surface and CMS snapshot.
       const { error: refreshError } = await supabase.rpc('catalog_refresh_products_search_v3');
       if (refreshError) throw refreshError;
 

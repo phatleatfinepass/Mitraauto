@@ -131,7 +131,7 @@ export function TiresPricingSection({
           <div className="flex items-center justify-between gap-3">
             <div>
               <h4 className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Toimittajan lisähinta' : 'Supplier markup'}
+                {language === 'fi' ? 'Toimittajan hintaero' : 'Supplier markup or discount'}
               </h4>
               <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                 {language === 'fi'
@@ -176,7 +176,7 @@ export function TiresPricingSection({
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi' ? 'Lisähinta (€)' : 'Markup (€)'}
+                {language === 'fi' ? 'Hintaero (€)' : 'Markup or discount (€)'}
               </label>
               <input
                 type="number"
@@ -192,8 +192,8 @@ export function TiresPricingSection({
 
           <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {language === 'fi'
-              ? 'Tämä asettaa hinnan ohituksen muotoon API-hinta + lisähinta. Esimerkki: Rengasduo + 20 €.'
-              : 'This sets the price override as API price + markup. Example: Rengasduo + €20.'}
+              ? 'Tämä asettaa hinnan ohituksen muotoon API-hinta + hintaero. Negatiivinen arvo laskee hintaa.'
+              : 'This sets the price override as API price plus a markup or discount. Negative values lower the price.'}
           </p>
         </div>
 
