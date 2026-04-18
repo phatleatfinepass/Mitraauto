@@ -3,9 +3,11 @@ import { supabase } from '../../../utils/supabase/client';
 
 export function useTiresCmsCatalogSync({
   fetchTires,
+  invalidateCache,
   language,
 }: {
-  fetchTires: () => Promise<any>;
+  fetchTires: (options?: { force?: boolean }) => Promise<any>;
+  invalidateCache: () => void;
   language: string;
 }) {
   const [syncingCatalog, setSyncingCatalog] = useState(false);
@@ -44,7 +46,8 @@ export function useTiresCmsCatalogSync({
 
       setHasPendingCatalogSync(false);
       setCatalogSyncMessage(language === 'fi' ? 'Catalog sync valmis.' : 'Catalog sync completed.');
-      await fetchTires();
+      invalidateCache();
+      await fetchTires({ force: true });
     } catch (err: any) {
       console.error('Catalog sync error:', err);
       setCatalogSyncMessage(err?.message || 'Catalog sync failed');

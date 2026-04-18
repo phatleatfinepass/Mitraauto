@@ -47,7 +47,7 @@ export function TiresCMSPage() {
     endItem,
     error,
     fetchTires,
-    hasNextPage,
+    invalidateCache,
     loading,
     patchLocalCmsData,
     patchLocalIdentityData,
@@ -80,6 +80,7 @@ export function TiresCMSPage() {
     syncingCatalog,
   } = useTiresCmsCatalogSync({
     fetchTires,
+    invalidateCache,
     language,
   });
 
@@ -157,6 +158,7 @@ export function TiresCMSPage() {
   } = useTiresCmsMutations({
     editData,
     fetchTires,
+    invalidateCache,
     hasMissingSupplierPrice,
     language,
     onCloseEditor: closeEditor,
@@ -305,7 +307,8 @@ export function TiresCMSPage() {
           ? `Lisähinta asetettu ${collectedRows.length} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
           : `Markup applied to ${collectedRows.length} tires from supplier ${supplierCode}. Run "Apply Sync".`
       );
-      await fetchTires();
+      invalidateCache();
+      await fetchTires({ force: true });
     } catch (error: any) {
       console.error('Bulk supplier markup error:', error);
       setCatalogSyncMessage(error?.message || (language === 'fi' ? 'Massahinnoittelu epäonnistui.' : 'Bulk markup failed.'));

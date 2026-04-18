@@ -106,6 +106,7 @@ function isValidEan13(ean: string) {
 export function useTiresCmsMutations({
   editData,
   fetchTires,
+  invalidateCache,
   hasMissingSupplierPrice,
   language,
   onCloseEditor,
@@ -116,7 +117,8 @@ export function useTiresCmsMutations({
   setHasPendingCatalogSync,
 }: {
   editData: Partial<ProductCMS>;
-  fetchTires: () => Promise<any>;
+  fetchTires: (options?: { force?: boolean }) => Promise<any>;
+  invalidateCache: () => void;
   hasMissingSupplierPrice: (tire: TireRow | null) => boolean;
   language: string;
   onCloseEditor: () => void;
@@ -248,11 +250,12 @@ export function useTiresCmsMutations({
       );
 
       if (targetVariantId !== selectedTire.variant_id) {
+        invalidateCache();
         await supabase
           .from('product_cms')
           .delete()
           .eq('variant_id', selectedTire.variant_id);
-        await fetchTires();
+        await fetchTires({ force: true });
       } else {
         patchLocalCmsData(targetVariantId, payload);
         patchLocalIdentityData(targetVariantId, specOverrides);

@@ -6,6 +6,15 @@ import type { TireRow } from './types';
 const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v1';
 const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v1';
 
+type TiresCmsQueryCacheEntry = {
+  totalCount: number;
+  pages: Record<string, TireRow[]>;
+};
+
+type TiresCmsCacheStore = {
+  queries: Record<string, TiresCmsQueryCacheEntry>;
+};
+
 const EXCLUDED_TIRE_KEYWORDS = [
   'motorcycle',
   'motorbike',
@@ -51,6 +60,43 @@ function extractLabelValue(label: any, keys: string[]): unknown {
   return null;
 }
 
+function buildTiresCmsQueryKey(params: {
+  searchTerm: string;
+  showMissingEanOnly: boolean;
+  hideNonPassenger: boolean;
+  supplierFilter: string;
+  pageSize: number;
+}) {
+  return JSON.stringify({
+    q: params.searchTerm.trim().toLowerCase(),
+    missing: params.showMissingEanOnly,
+    hideNonPassenger: params.hideNonPassenger,
+    supplier: params.supplierFilter,
+    pageSize: params.pageSize,
+  });
+}
+
+function readTiresCmsCacheStore(): TiresCmsCacheStore {
+  if (typeof window === 'undefined') {
+    return { queries: {} };
+  }
+
+  try {
+    const rawCache = window.sessionStorage.getItem(TIRES_CMS_CACHE_KEY);
+    const parsedCache = rawCache ? JSON.parse(rawCache) : null;
+    return parsedCache && typeof parsedCache === 'object' && parsedCache.queries && typeof parsedCache.queries === 'object'
+      ? parsedCache
+      : { queries: {} };
+  } catch {
+    return { queries: {} };
+  }
+}
+
+function writeTiresCmsCacheStore(cacheStore: TiresCmsCacheStore) {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(TIRES_CMS_CACHE_KEY, JSON.stringify(cacheStore));
+}
+
 export function useTiresCmsList(pageSize = 25) {
   const initialState = (() => {
     if (typeof window === 'undefined') {
@@ -68,24 +114,36 @@ export function useTiresCmsList(pageSize = 25) {
     try {
       const rawState = window.sessionStorage.getItem(TIRES_CMS_STATE_KEY);
       const parsedState = rawState ? JSON.parse(rawState) : null;
-      const rawCache = window.sessionStorage.getItem(TIRES_CMS_CACHE_KEY);
-      const parsedCache = rawCache ? JSON.parse(rawCache) : null;
-
-      return {
-        tires: Array.isArray(parsedCache?.tires) ? parsedCache.tires : [],
-        totalCount: Number.isFinite(parsedCache?.totalCount) ? parsedCache.totalCount : 0,
+      const parsedCache = readTiresCmsCacheStore();
+      const initialQueryKey = buildTiresCmsQueryKey({
         searchTerm: typeof parsedState?.searchTerm === 'string' ? parsedState.searchTerm : '',
         showMissingEanOnly: Boolean(parsedState?.showMissingEanOnly),
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
-        currentPage:
-          Number.isInteger(parsedState?.currentPage) && parsedState.currentPage > 0
-            ? parsedState.currentPage
-            : 1,
+        pageSize,
+      });
+      const initialPage =
+        Number.isInteger(parsedState?.currentPage) && parsedState.currentPage > 0
+          ? parsedState.currentPage
+          : 1;
+      const cachedQuery = parsedCache.queries?.[initialQueryKey];
+      const cachedPage = cachedQuery?.pages?.[String(initialPage)] ?? [];
+
+      return {
+        cacheStore: parsedCache,
+        tires: Array.isArray(cachedPage) ? cachedPage : [],
+        totalCount: Number.isFinite(cachedQuery?.totalCount) ? cachedQuery.totalCount : 0,
+        searchTerm: typeof parsedState?.searchTerm === 'string' ? parsedState.searchTerm : '',
+        showMissingEanOnly: Boolean(parsedState?.showMissingEanOnly),
+        hideNonPassenger:
+          typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
+        supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
+        currentPage: initialPage,
       };
     } catch {
       return {
+        cacheStore: { queries: {} } as TiresCmsCacheStore,
         tires: [] as TireRow[],
         totalCount: 0,
         searchTerm: '',
@@ -110,6 +168,16 @@ export function useTiresCmsList(pageSize = 25) {
   const [hasNextPage, setHasNextPage] = useState(initialState.totalCount > initialState.currentPage * pageSize);
   const [refreshing, setRefreshing] = useState(false);
   const didMountRef = useRef(false);
+  const cacheRef = useRef<TiresCmsCacheStore>(initialState.cacheStore);
+  const queryKey = buildTiresCmsQueryKey({
+    searchTerm: debouncedSearchTerm,
+    showMissingEanOnly,
+    hideNonPassenger,
+    supplierFilter,
+    pageSize,
+  });
+  const cachedQuery = cacheRef.current.queries[queryKey];
+  const cachedPage = cachedQuery?.pages?.[String(currentPage)] ?? null;
 
   const toNumberOrNull = useCallback((value: any) => {
     if (value === null || value === undefined || value === '') return null;
@@ -167,7 +235,21 @@ export function useTiresCmsList(pageSize = 25) {
     );
   }, [currentPage, hideNonPassenger, searchTerm, showMissingEanOnly, supplierFilter]);
 
-  const fetchTires = useCallback(async () => {
+  useEffect(() => {
+    if (!cachedPage) return;
+    setTires(cachedPage);
+    setTotalCount(cachedQuery?.totalCount ?? 0);
+    setHasNextPage(currentPage * pageSize < (cachedQuery?.totalCount ?? 0));
+    setLoading(false);
+    setRefreshing(false);
+    setError(null);
+  }, [cachedPage, cachedQuery?.totalCount, currentPage, pageSize]);
+
+  const fetchTires = useCallback(async (options?: { force?: boolean }) => {
+    if (!options?.force && cachedPage) {
+      return;
+    }
+
     const isInitialLoad = tires.length === 0;
     if (isInitialLoad) {
       setLoading(true);
@@ -342,15 +424,20 @@ export function useTiresCmsList(pageSize = 25) {
         setTotalCount(resolvedTotalCount);
         setHasNextPage(resolvedHasNextPage);
         setTires(mappedRows);
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.setItem(
-            TIRES_CMS_CACHE_KEY,
-            JSON.stringify({
-              tires: mappedRows,
+        const nextCacheStore: TiresCmsCacheStore = {
+          queries: {
+            ...cacheRef.current.queries,
+            [queryKey]: {
               totalCount: resolvedTotalCount,
-            })
-          );
-        }
+              pages: {
+                ...(cacheRef.current.queries[queryKey]?.pages ?? {}),
+                [String(currentPage)]: mappedRows,
+              },
+            },
+          },
+        };
+        cacheRef.current = nextCacheStore;
+        writeTiresCmsCacheStore(nextCacheStore);
         return;
       } catch (rpcListError: any) {
         throw rpcListError;
@@ -364,11 +451,13 @@ export function useTiresCmsList(pageSize = 25) {
     }
   }, [
     currentPage,
+    cachedPage,
     debouncedSearchTerm,
     getManualNonPassengerFlag,
     hideNonPassenger,
     isAutoNonPassengerTire,
     pageSize,
+    queryKey,
     showMissingEanOnly,
     supplierFilter,
     tires.length,
@@ -383,8 +472,8 @@ export function useTiresCmsList(pageSize = 25) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const patchLocalCmsData = useCallback((variantId: string, cmsPatch: Record<string, any> | null) => {
-    setTires((previous) =>
-      previous.map((tire) => {
+    setTires((previous) => {
+      const nextPageRows = previous.map((tire) => {
         if (tire.variant_id !== variantId) return tire;
         if (cmsPatch === null) {
           const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
@@ -406,16 +495,36 @@ export function useTiresCmsList(pageSize = 25) {
           is_non_passenger_manual: manualNonPassenger,
           is_non_passenger: autoNonPassenger || manualNonPassenger,
         };
-      }),
-    );
-  }, [getManualNonPassengerFlag]);
+      });
+
+      const existingQuery = cacheRef.current.queries[queryKey];
+      if (existingQuery) {
+        const nextCacheStore: TiresCmsCacheStore = {
+          queries: {
+            ...cacheRef.current.queries,
+            [queryKey]: {
+              ...existingQuery,
+              pages: {
+                ...existingQuery.pages,
+                [String(currentPage)]: nextPageRows,
+              },
+            },
+          },
+        };
+        cacheRef.current = nextCacheStore;
+        writeTiresCmsCacheStore(nextCacheStore);
+      }
+
+      return nextPageRows;
+    });
+  }, [currentPage, getManualNonPassengerFlag, queryKey]);
 
   const patchLocalIdentityData = useCallback((variantId: string, specOverrides: any) => {
     const identity = specOverrides?.identity ?? {};
     const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
 
-    setTires((previous) =>
-      previous.map((tire) =>
+    setTires((previous) => {
+      const nextPageRows = previous.map((tire) =>
         tire.variant_id === variantId
           ? {
               ...tire,
@@ -425,8 +534,33 @@ export function useTiresCmsList(pageSize = 25) {
               derived_ean: identityEan || tire.derived_ean,
             }
           : tire,
-      ),
-    );
+      );
+
+      const existingQuery = cacheRef.current.queries[queryKey];
+      if (existingQuery) {
+        const nextCacheStore: TiresCmsCacheStore = {
+          queries: {
+            ...cacheRef.current.queries,
+            [queryKey]: {
+              ...existingQuery,
+              pages: {
+                ...existingQuery.pages,
+                [String(currentPage)]: nextPageRows,
+              },
+            },
+          },
+        };
+        cacheRef.current = nextCacheStore;
+        writeTiresCmsCacheStore(nextCacheStore);
+      }
+
+      return nextPageRows;
+    });
+  }, [currentPage, queryKey]);
+
+  const invalidateCache = useCallback(() => {
+    cacheRef.current = { queries: {} };
+    writeTiresCmsCacheStore(cacheRef.current);
   }, []);
 
   return {
@@ -436,6 +570,7 @@ export function useTiresCmsList(pageSize = 25) {
     error,
     fetchTires,
     hasNextPage,
+    invalidateCache,
     patchLocalCmsData,
     patchLocalIdentityData,
     refreshing,
