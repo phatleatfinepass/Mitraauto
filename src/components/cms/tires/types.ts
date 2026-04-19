@@ -1,3 +1,5 @@
+import type { TyreLabelSectionData } from '../../../utils/tyreLabel';
+
 export interface ProductSearchTire {
   variant_id: string;
   product_type: 'tire';
@@ -73,6 +75,25 @@ export interface ProductCMS {
       noise_db?: number;
       noise_class?: string;
     };
+    identity?: {
+      brand?: string | null;
+      model?: string | null;
+      ean?: string | null;
+      size_string?: string | null;
+      season?: string | null;
+      load_index?: string | null;
+      speed_rating?: string | null;
+    };
+    features?: {
+      ev_ready?: boolean;
+      runflat?: boolean;
+      xl?: boolean;
+      studded?: boolean;
+      threepmsf?: boolean;
+      winter_approved?: boolean;
+      ice_approved?: boolean;
+    };
+    tyre_label_section?: TyreLabelSectionData;
     [key: string]: any;
   } | null;
   price_override_eur: number | null;

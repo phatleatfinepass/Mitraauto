@@ -5,13 +5,11 @@ import { supabase } from '../../utils/supabase/client';
 import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw, Loader2, Wand2 } from 'lucide-react';
 import { TiresCmsToolbar } from './tires/TiresCmsToolbar';
 import { TiresImagesSection } from './tires/TiresImagesSection';
-import { TiresBadgesSection } from './tires/TiresBadgesSection';
 import { TiresBundlePricingSection } from './tires/TiresBundlePricingSection';
 import { TiresCmsTableSection } from './tires/TiresCmsTableSection';
 import { TiresContentSection } from './tires/TiresContentSection';
-import { TiresEuLabelSection } from './tires/TiresEuLabelSection';
-import { TiresIdentitySection } from './tires/TiresIdentitySection';
 import { TiresPricingSection } from './tires/TiresPricingSection';
+import { TiresTyreLabelSection } from './tires/TiresTyreLabelSection';
 import { TiresVisibilitySection } from './tires/TiresVisibilitySection';
 import { TiresWarningTooltip } from './tires/TiresWarningTooltip';
 import {
@@ -33,6 +31,7 @@ import { useTiresCmsMutations } from './tires/useTiresCmsMutations';
 import { useTiresCmsSupplierMarkup } from './tires/useTiresCmsSupplierMarkup';
 import { useTiresCmsWarnings } from './tires/useTiresCmsWarnings';
 import type { TireAdminPricingDetails, TireRow } from './tires/types';
+import { buildTyreLabelSectionData } from '../../utils/tyreLabel';
 
 const EU_FUEL_WET_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
 const EU_NOISE_CLASS_OPTIONS = ['A', 'B', 'C'];
@@ -465,6 +464,58 @@ export function TiresCMSPage() {
     return value;
   };
 
+  const generateAllAiValues = async (targetLanguage: 'fi' | 'en') => {
+    if (!selectedTire) {
+      throw new Error(language === 'fi' ? 'Rengasta ei ole valittu.' : 'No tire selected.');
+    }
+
+    const effectiveIdentity = getEffectiveIdentity(selectedTire);
+    const { data, error } = await supabase.functions.invoke('generate_tire_cms_copy', {
+      body: {
+        field: 'all_fields',
+        language: targetLanguage,
+        tire: {
+          variant_id: selectedTire.variant_id,
+          brand: effectiveIdentity.brand,
+          model: effectiveIdentity.model,
+          size_string: effectiveIdentity.size_string,
+          season: selectedTire.season,
+          supplier_code_best: selectedTire.supplier_code_best,
+          studded: selectedTire.studded,
+          runflat: selectedTire.runflat,
+          xl_reinforced: selectedTire.xl_reinforced,
+          ev_ready: selectedTire.ev_ready,
+          threepmsf: selectedTire.threepmsf,
+          winter_approved: selectedTire.winter_approved,
+          ice_approved: selectedTire.ice_approved,
+          eu_fuel: selectedTire.eu_fuel_class ?? selectedTire.eu_fuel ?? null,
+          eu_wet: selectedTire.eu_wet_grip_class ?? selectedTire.eu_wet ?? null,
+          eu_noise: selectedTire.eu_noise_db ?? selectedTire.eu_noise ?? null,
+        },
+        cms: {
+          title: editData.title ?? null,
+          subtitle: editData.subtitle ?? null,
+          short_description: editData.short_description ?? null,
+          long_description: editData.long_description ?? null,
+          seo_slug: editData.seo_slug ?? null,
+          seo_title: editData.seo_title ?? null,
+          seo_description: editData.seo_description ?? null,
+        },
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const values = (data as { values?: Partial<Record<TiresAiCopyField, string>> } | null)?.values;
+    if (!values) {
+      throw new Error(targetLanguage === 'fi' ? 'AI ei palauttanut sisältöä.' : 'AI did not return content.');
+    }
+
+    return values;
+  };
+
   const handleAiGenerationFailure = async (error: any, field: TiresAiCopyField | null = null) => {
       console.error('AI tire copy generation failed:', error);
       let detailedMessage: string | null = null;
@@ -522,55 +573,16 @@ export function TiresCMSPage() {
     setAiGeneratingField('all_fields');
     setAiGenerationError(null);
     setAiGenerationErrorField(null);
-    setAiGenerationProgress({ current: 0, total: 14, label: language === 'fi' ? 'Aloitetaan...' : 'Starting...' });
+    setAiGenerationProgress({ current: 0, total: 4, label: language === 'fi' ? 'Valmistellaan tietoja...' : 'Preparing data...' });
 
     try {
-      const fiValues: Partial<Record<TiresAiCopyField, string>> = {};
-      const enValues: Partial<Record<TiresAiCopyField, string>> = {};
-      const allFields: TiresAiCopyField[] = [
-        ...TIRES_CONTENT_AI_FIELDS,
-        ...TIRES_SEO_AI_FIELDS,
-      ];
+      setAiGenerationProgress({ current: 0.35, total: 4, label: language === 'fi' ? 'Luodaan suomenkielinen sisältö...' : 'Generating Finnish content...' });
+      const fiValues = await generateAllAiValues('fi');
+      setAiGenerationProgress({ current: 2, total: 4, label: language === 'fi' ? 'Suomenkielinen sisältö valmis' : 'Finnish content ready' });
 
-      for (const field of allFields) {
-        setAiGenerationProgress({
-          current: Object.keys(fiValues).length + 0.35,
-          total: 14,
-          label: `${language === 'fi' ? 'Suomi' : 'Finnish'}: ${field}`,
-        });
-        fiValues[field] = await generateAiFieldValue(field, 'fi');
-        setAiGenerationProgress({
-          current: Object.keys(fiValues).length + 1,
-          total: 14,
-          label: `${language === 'fi' ? 'Suomi' : 'Finnish'}: ${field}`,
-        });
-      }
-
-      for (const field of allFields) {
-        setAiGenerationProgress({
-          current: allFields.length + Object.keys(enValues).length + 0.35,
-          total: 14,
-          label: `English: ${field}`,
-        });
-        const value = await (async () => {
-          if (!selectedTire) {
-            throw new Error(language === 'fi' ? 'Rengasta ei ole valittu.' : 'No tire selected.');
-          }
-          return await generateAiFieldValue(field, 'en');
-        })();
-        enValues[field] = value;
-        setAiGenerationProgress({
-          current: allFields.length + Object.keys(enValues).length,
-          total: 14,
-          label: `English: ${field}`,
-        });
-      }
-
-      setAiGenerationProgress({
-        current: 14,
-        total: 14,
-        label: language === 'fi' ? 'Valmis' : 'Done',
-      });
+      setAiGenerationProgress({ current: 2.35, total: 4, label: language === 'fi' ? 'Luodaan englanninkielinen sisältö...' : 'Generating English content...' });
+      const enValues = await generateAllAiValues('en');
+      setAiGenerationProgress({ current: 4, total: 4, label: language === 'fi' ? 'Valmis' : 'Done' });
 
       setEditData((prev) => ({
         ...prev,
@@ -740,6 +752,76 @@ export function TiresCMSPage() {
   };
 
   const filteredTires = tires;
+  const draftTyreLabelSection = selectedTire
+    ? buildTyreLabelSectionData({
+        existing: (editData.spec_overrides as any)?.tyre_label_section,
+        brand: getEffectiveIdentity(selectedTire).brand,
+        model: getEffectiveIdentity(selectedTire).model,
+        sizeString: getEffectiveIdentity(selectedTire).size_string,
+        season: getIdentityOverride()?.season ?? selectedTire.season,
+        loadIndex: (editData.spec_overrides as any)?.identity?.load_index ?? selectedTire.load_index,
+        speedRating:
+          (editData.spec_overrides as any)?.identity?.speed_rating ??
+          selectedTire.speed_rating ??
+          selectedTire.speed_index,
+        ean: getIdentityOverride()?.ean ?? selectedTire.ean ?? selectedTire.derived_ean,
+        supplierCodeBest: selectedTire.supplier_code_best,
+        runflat: getEffectiveFeatureValue('runflat'),
+        xlReinforced: getEffectiveFeatureValue('xl'),
+        evReady: getEffectiveFeatureValue('ev_ready'),
+        studded: getEffectiveFeatureValue('studded'),
+        threepmsf: getEffectiveFeatureValue('threepmsf'),
+        winterApproved: getEffectiveFeatureValue('winter_approved'),
+        iceApproved: getEffectiveFeatureValue('ice_approved'),
+        euFuelClass: getEUOverride()?.fuel_class ?? selectedTire.eu_fuel_class ?? selectedTire.eu_fuel ?? null,
+        euWetGripClass: getEUOverride()?.wet_grip_class ?? selectedTire.eu_wet_grip_class ?? selectedTire.eu_wet ?? null,
+        euNoiseDb: getEUOverride()?.noise_db ?? selectedTire.eu_noise_db ?? selectedTire.eu_noise ?? null,
+        euNoiseClass: getEUOverride()?.noise_class ?? selectedTire.eu_noise_class ?? null,
+      })
+    : null;
+
+  const setTyreLabelField = (
+    group: 'identity' | 'eu_label' | 'compliance',
+    field: string,
+    value?: string,
+  ) => {
+    setEditData((prev) => {
+      const currentOverrides = (prev.spec_overrides || {}) as Record<string, any>;
+      const currentSection = currentOverrides.tyre_label_section || {};
+      const currentGroup = { ...(currentSection[group] || {}) };
+
+      if (!value || value.trim().length === 0) {
+        delete currentGroup[field];
+      } else {
+        currentGroup[field] = value.trim();
+      }
+
+      const nextSection = {
+        ...currentSection,
+        [group]: currentGroup,
+      };
+
+      const cleanedSection = Object.entries(nextSection).reduce((acc, [key, entry]) => {
+        if (entry && typeof entry === 'object' && Object.keys(entry).length > 0) {
+          acc[key] = entry;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      const nextOverrides = { ...currentOverrides };
+      if (Object.keys(cleanedSection).length > 0) {
+        nextOverrides.tyre_label_section = cleanedSection;
+      } else {
+        delete nextOverrides.tyre_label_section;
+      }
+
+      return {
+        ...prev,
+        spec_overrides: Object.keys(nextOverrides).length > 0 ? nextOverrides : null,
+      };
+    });
+  };
+
   useEffect(() => {
     setEanAuditError(null);
     setEanAuditResult(null);
@@ -1165,46 +1247,40 @@ export function TiresCMSPage() {
             {/* Drawer Content */}
             <div className="px-6 py-6 space-y-8">
               
-              <TiresIdentitySection
-                auditError={eanAuditError}
-                auditLoading={eanAuditLoading}
-                auditProgress={eanAuditProgress}
-                auditResult={eanAuditResult}
-                applyAuditResult={applyEanAuditResult}
-                baseBrand={selectedTire.brand}
-                baseDerivedEan={selectedTire.derived_ean}
-                baseEan={selectedTire.ean}
-                baseModel={selectedTire.model}
-                baseSeason={selectedTire.season}
-                clearIdentityOverrides={clearIdentityOverrides}
-                getIdentityOverride={getIdentityOverride}
-                isDark={isDark}
-                language={language}
-                onAuditByEan={handleAuditByEan}
-                setIdentityField={setIdentityField}
-                sizeParts={sizeParts}
-                updateSizePart={updateSizePart}
-              />
-
-              <TiresBadgesSection
-                clearFeatureOverrides={clearFeatureOverrides}
-                getEffectiveFeatureValue={getEffectiveFeatureValue}
-                isDark={isDark}
-                language={language}
-                setFeatureField={setFeatureField}
-              />
-
-              <TiresEuLabelSection
-                euFuelWetOptions={EU_FUEL_WET_OPTIONS}
-                euNoiseClassOptions={EU_NOISE_CLASS_OPTIONS}
-                getEuOverride={getEUOverride}
-                hasEuOverride={hasEUOverride()}
-                isDark={isDark}
-                language={language}
-                onClearEuOverrides={clearEUOverrides}
-                onSetEuField={setEUField}
-                selectedTire={selectedTire}
-              />
+              {draftTyreLabelSection && (
+                <TiresTyreLabelSection
+                  applyAuditResult={applyEanAuditResult}
+                  auditError={eanAuditError}
+                  auditLoading={eanAuditLoading}
+                  auditProgress={eanAuditProgress}
+                  auditResult={eanAuditResult}
+                  baseBrand={selectedTire.brand}
+                  baseDerivedEan={selectedTire.derived_ean}
+                  baseEan={selectedTire.ean}
+                  baseModel={selectedTire.model}
+                  baseSeason={selectedTire.season}
+                  clearEUOverrides={clearEUOverrides}
+                  clearFeatureOverrides={clearFeatureOverrides}
+                  clearIdentityOverrides={clearIdentityOverrides}
+                  euFuelWetOptions={EU_FUEL_WET_OPTIONS}
+                  euNoiseClassOptions={EU_NOISE_CLASS_OPTIONS}
+                  getEffectiveFeatureValue={getEffectiveFeatureValue}
+                  getEuOverride={getEUOverride}
+                  getIdentityOverride={getIdentityOverride}
+                  hasEuOverride={hasEUOverride()}
+                  isDark={isDark}
+                  language={language}
+                  onAuditByEan={handleAuditByEan}
+                  onSetEuField={setEUField}
+                  onTyreLabelFieldChange={setTyreLabelField}
+                  selectedTire={selectedTire}
+                  setFeatureField={setFeatureField}
+                  setIdentityField={setIdentityField}
+                  sizeParts={sizeParts}
+                  tyreLabelSection={draftTyreLabelSection}
+                  updateSizePart={updateSizePart}
+                />
+              )}
 
               {/* Section C: Pricing */}
               <TiresPricingSection

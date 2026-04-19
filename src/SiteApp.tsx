@@ -39,6 +39,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from './utils/supabase/client';
 import { fetchProductSearchRowByIdentifier } from './utils/productsSearch';
+import { buildTyreLabelSectionData } from './utils/tyreLabel';
 import { 
   Wrench, 
   Scale, 
@@ -411,6 +412,25 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
       noise_class: undefined,
       ev_ready: rawSeason === 'all_season' ? true : undefined,
       three_pmsf: normalizedSeason === 'winter' ? true : undefined,
+      tyre_label_section: buildTyreLabelSectionData({
+        brand: product.brand,
+        supplierName: product.supplier_name,
+        model: product.model,
+        sizeString: product.size_text,
+        loadIndex: parsedSize.loadIndex,
+        speedRating: parsedSize.speedRating,
+        season: normalizedSeason,
+        runflat: product.runflat ?? undefined,
+        xlReinforced: product.xl ?? undefined,
+        evReady: rawSeason === 'all_season' ? true : undefined,
+        studded: product.studded ?? undefined,
+        threepmsf: normalizedSeason === 'winter' ? true : undefined,
+        winterApproved: normalizedSeason === 'winter' || normalizedSeason === 'all_season',
+        iceApproved: undefined,
+        euFuelClass: product.eu_fuel ? String(product.eu_fuel) : undefined,
+        euWetGripClass: product.eu_wet ? String(product.eu_wet) : undefined,
+        euNoiseDb: typeof product.eu_noise === 'number' ? product.eu_noise : undefined,
+      }),
       best_price_eur: product.best_price_eur,
       best_image_url: product.best_image_url,
       images: detailImages,

@@ -33,6 +33,7 @@ import { RimCard } from './RimCard';
 import { buildProductImageFallback } from '../../utils/productImage';
 import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
 import { fetchProductLocaleContent, type ProductLocaleContent } from '../../utils/productsSearch';
+import type { TyreLabelSectionData } from '../../utils/tyreLabel';
 
 const VAT_RATE = 0.255;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
@@ -60,6 +61,7 @@ export interface TireProduct {
   noise_class?: string;
   ev_ready?: boolean;
   three_pmsf?: boolean;
+  tyre_label_section?: TyreLabelSectionData;
   best_price_eur?: number;
   seo_slug?: string;
   pricing_rules?: ProductPricingRules | null;
@@ -222,6 +224,246 @@ function CompatibilityList({
         </div>
       ))}
     </div>
+  );
+}
+
+function TyreLabelBlock({
+  grade,
+  theme,
+  title,
+}: {
+  grade: string | null | undefined;
+  theme: string;
+  title: string;
+}) {
+  const grades = ['A', 'B', 'C', 'D', 'E'];
+  const activeGrade = String(grade ?? '').trim().toUpperCase();
+
+  const tone = (value: string, active: boolean) => {
+    if (!active) {
+      return theme === 'dark'
+        ? 'border-white/10 bg-white/5 text-gray-500'
+        : 'border-gray-200 bg-gray-100 text-gray-400';
+    }
+
+    switch (value) {
+      case 'A':
+        return theme === 'dark' ? 'border-green-500/30 bg-green-500/15 text-green-300' : 'border-green-200 bg-green-50 text-green-700';
+      case 'B':
+        return theme === 'dark' ? 'border-lime-500/30 bg-lime-500/15 text-lime-300' : 'border-lime-200 bg-lime-50 text-lime-700';
+      case 'C':
+        return theme === 'dark' ? 'border-yellow-500/30 bg-yellow-500/15 text-yellow-300' : 'border-yellow-200 bg-yellow-50 text-yellow-700';
+      case 'D':
+        return theme === 'dark' ? 'border-orange-500/30 bg-orange-500/15 text-orange-300' : 'border-orange-200 bg-orange-50 text-orange-700';
+      case 'E':
+        return theme === 'dark' ? 'border-red-500/30 bg-red-500/15 text-red-300' : 'border-red-200 bg-red-50 text-red-700';
+      default:
+        return theme === 'dark' ? 'border-white/10 bg-white/5 text-gray-300' : 'border-gray-200 bg-white text-gray-700';
+    }
+  };
+
+  return (
+    <div>
+      <p className={`mb-2 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+        {title}
+      </p>
+      <div className="space-y-1">
+        {grades.map((value) => (
+          <div key={`${title}-${value}`} className={`rounded-md border px-3 py-1.5 text-sm font-medium ${tone(value, activeGrade === value)}`}>
+            {value}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TyreLabelIdentitySection({
+  language,
+  product,
+  theme,
+}: {
+  language: string;
+  product: TireProduct;
+  theme: string;
+}) {
+  const data = product.tyre_label_section;
+  if (!data) return null;
+
+  const t = (fi: string, en: string) => (language === 'fi' ? fi : en);
+  const identityRows = [
+    { label: t('Supplier', 'Supplier'), value: data.identity.supplier_name },
+    { label: t('Trademark', 'Trademark'), value: data.identity.supplier_trademark },
+    { label: t('Commercial name', 'Commercial name'), value: data.identity.commercial_name },
+    { label: t('Tyre type ID', 'Tyre type ID'), value: data.identity.tyre_type_identifier },
+    { label: t('Tyre class', 'Tyre class'), value: data.identity.tyre_class },
+    { label: t('Size designation', 'Size designation'), value: data.identity.size_designation },
+    {
+      label: t('Load / speed', 'Load / speed'),
+      value: [data.identity.load_index, data.identity.speed_symbol].filter(Boolean).join(' / ') || null,
+    },
+    {
+      label: t('Load version', 'Load version'),
+      value: data.identity.load_version,
+    },
+    { label: 'EAN', value: data.identity.ean },
+    { label: t('Supplier code', 'Supplier code'), value: data.identity.supplier_code },
+  ].filter((row) => row.value && String(row.value).trim().length > 0);
+
+  const complianceRows = [
+    { label: 'EPREL', value: data.eu_label.eprel_registration_number },
+    { label: t('Production start', 'Production start'), value: data.compliance.production_start },
+    { label: t('Production end', 'Production end'), value: data.compliance.production_end },
+    { label: t('Market start', 'Market start'), value: data.compliance.market_start },
+    { label: t('Source', 'Source'), value: data.compliance.data_source },
+  ].filter((row) => row.value && String(row.value).trim().length > 0);
+
+  const merchandisingBadges = [
+    product.runflat ? 'RunFlat' : null,
+    data.badges.extra_load ? 'XL' : null,
+    product.ev_ready ? 'EV' : null,
+    product.studded ? (language === 'fi' ? 'Nastat' : 'Studded') : null,
+    data.badges.winter_approved ? 'M+S' : null,
+  ].filter(Boolean) as string[];
+
+  return (
+    <section className={`rounded-3xl border p-6 sm:p-7 ${theme === 'dark' ? 'border-white/10 bg-[#171B22]' : 'border-[#E2E8F0] bg-[#FCFCFD]'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('Tyre Label & Product Identity', 'Tyre Label & Product Identity')}</h2>
+          <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            {t(
+              'EU-rengasmerkintä, EPREL-yhteys ja tuotteen tunnistetiedot yhdessä näkymässä.',
+              'EU tyre label, EPREL references, and exact product identity in one section.'
+            )}
+          </p>
+        </div>
+
+        {(data.eu_label.eprel_qr_url || data.eu_label.eprel_sheet_url) && (
+          <div className="flex flex-wrap gap-2">
+            {data.eu_label.eprel_qr_url && (
+              <a
+                href={data.eu_label.eprel_qr_url}
+                target="_blank"
+                rel="noreferrer"
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${
+                  theme === 'dark' ? 'border-white/10 bg-white/5 text-white hover:bg-white/10' : 'border-[#E2E8F0] bg-white text-[#0F172A] hover:bg-gray-50'
+                }`}
+              >
+                <ExternalLink className="size-4" />
+                {t('EPREL QR', 'EPREL QR')}
+              </a>
+            )}
+            {data.eu_label.eprel_sheet_url && (
+              <a
+                href={data.eu_label.eprel_sheet_url}
+                target="_blank"
+                rel="noreferrer"
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${
+                  theme === 'dark' ? 'border-blue-500/20 bg-blue-500/10 text-blue-200 hover:bg-blue-500/15' : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                }`}
+              >
+                <ExternalLink className="size-4" />
+                {t('EPREL fiche', 'EPREL fiche')}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="space-y-6">
+          <div>
+            <p className={`mb-3 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+              {t('Identity', 'Identity')}
+            </p>
+            <SpecList theme={theme} rows={identityRows} />
+          </div>
+
+          {merchandisingBadges.length > 0 && (
+            <div>
+              <p className={`mb-3 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                {t('Tyre badges', 'Tyre badges')}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {merchandisingBadges.map((badge) => (
+                  <Badge
+                    key={badge}
+                    className={`rounded-full px-3 py-1.5 ${
+                      theme === 'dark'
+                        ? 'border-white/10 bg-white/5 text-gray-200'
+                        : 'border-[#E2E8F0] bg-white text-[#334155]'
+                    }`}
+                  >
+                    {badge}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {complianceRows.length > 0 && (
+            <div>
+              <p className={`mb-3 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                {t('EPREL & Compliance', 'EPREL & Compliance')}
+              </p>
+              <SpecList theme={theme} rows={complianceRows} />
+            </div>
+          )}
+        </div>
+
+        <div className={`rounded-3xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-[#11141A]' : 'border-[#E2E8F0] bg-white'}`}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <TyreLabelBlock grade={data.eu_label.fuel_efficiency_class} theme={theme} title={t('Fuel efficiency', 'Fuel efficiency')} />
+            <TyreLabelBlock grade={data.eu_label.wet_grip_class} theme={theme} title={t('Wet grip', 'Wet grip')} />
+          </div>
+
+          <div className={`mt-4 rounded-2xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/[0.03]' : 'border-[#E2E8F0] bg-[#F8FAFC]'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#475569]'}`}>
+                {t('External rolling noise', 'External rolling noise')}
+              </p>
+              <p className={`font-mono text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
+                {data.eu_label.external_noise_db ? `${data.eu_label.external_noise_db} dB` : '—'}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              {['A', 'B', 'C'].map((noiseClass) => (
+                <span
+                  key={noiseClass}
+                  className={`inline-flex min-w-10 items-center justify-center rounded-full border px-2 py-1 text-xs font-semibold ${
+                    theme === 'dark'
+                      ? data.eu_label.external_noise_class === noiseClass
+                        ? 'border-blue-500/30 bg-blue-500/15 text-blue-200'
+                        : 'border-white/10 bg-white/5 text-gray-500'
+                      : data.eu_label.external_noise_class === noiseClass
+                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {noiseClass}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <DetailCard
+              theme={theme}
+              label={t('Severe snow', 'Severe snow')}
+              value={data.eu_label.severe_snow ? '3PMSF' : '—'}
+              accent={Boolean(data.eu_label.severe_snow)}
+            />
+            <DetailCard
+              theme={theme}
+              label={t('Severe ice', 'Severe ice')}
+              value={data.eu_label.severe_ice ? (language === 'fi' ? 'Hyväksytty' : 'Approved') : '—'}
+              accent={Boolean(data.eu_label.severe_ice)}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -607,56 +849,6 @@ export function ProductDetailPage({
           { label: t('deliveryTime'), value: product.delivery_days || t('delivery') },
         ];
 
-  const performanceCards =
-    product.type === 'tire'
-      ? [
-          product.fuel_efficiency
-            ? {
-                label: t('fuelEfficiency'),
-                value: product.fuel_efficiency.toUpperCase(),
-                icon: <Droplet className="size-5" />,
-                tone: getEUGradeColor(product.fuel_efficiency),
-              }
-            : null,
-          product.wet_grip
-            ? {
-                label: t('wetGrip'),
-                value: product.wet_grip.toUpperCase(),
-                icon: <CloudSun className="size-5" />,
-                tone: getEUGradeColor(product.wet_grip),
-              }
-            : null,
-          product.noise_level
-            ? {
-                label: `${t('noise')} (dB)`,
-                value: String(product.noise_level),
-                icon: <Volume2 className="size-5" />,
-                tone: theme === 'dark' ? 'bg-white/10 text-white border-white/10' : 'bg-gray-100 text-[#0F172A] border-gray-200',
-              }
-            : null,
-          {
-            label: t('season'),
-            value: getSeasonLabel(product.season),
-            icon: getSeasonIcon(product.season),
-            tone: theme === 'dark' ? 'bg-blue-500/15 text-blue-200 border-blue-500/20' : 'bg-blue-50 text-blue-700 border-blue-200',
-          },
-          {
-            label: t('studded'),
-            value: product.studded ? (language === 'fi' ? 'Kyllä' : 'Yes') : 'No',
-            icon: <Snowflake className="size-5" />,
-            tone: theme === 'dark' ? 'bg-cyan-500/15 text-cyan-200 border-cyan-500/20' : 'bg-cyan-50 text-cyan-700 border-cyan-200',
-          },
-          product.load_index || product.speed_rating
-            ? {
-                label: language === 'fi' ? 'Indeksit' : 'Indexes',
-                value: [product.load_index, product.speed_rating].filter(Boolean).join(''),
-                icon: <Gauge className="size-5" />,
-                tone: theme === 'dark' ? 'bg-orange-500/15 text-orange-200 border-orange-500/20' : 'bg-orange-50 text-orange-700 border-orange-200',
-              }
-            : null,
-        ].filter(Boolean)
-      : [];
-
   const trustItems = [
     {
       icon: <Truck className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
@@ -1015,26 +1207,8 @@ export function ProductDetailPage({
         </div>
 
         <div className="mt-12 space-y-12">
-          {product.type === 'tire' && performanceCards.length > 0 && (
-            <section>
-              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('euPerformance')}</h2>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {performanceCards.map((card, index) => (
-                  <div
-                    key={`${card.label}-${index}`}
-                    className={`rounded-2xl border p-5 ${
-                      theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-[#E2E8F0] bg-[#F8FAFC]'
-                    }`}
-                  >
-                    <div className={`inline-flex rounded-full border px-3 py-2 ${card.tone}`}>{card.icon}</div>
-                    <p className={`mt-4 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                      {card.label}
-                    </p>
-                    <p className={`mt-2 text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{card.value}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
+          {product.type === 'tire' && product.tyre_label_section && (
+            <TyreLabelIdentitySection language={language} product={product} theme={theme} />
           )}
 
           <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">

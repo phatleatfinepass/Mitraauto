@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../../utils/supabase/client';
 import { getPricingRulesFromSpecOverrides, isFixedBundleTotalCompatible } from '../../../utils/pricing';
+import { buildTyreLabelSectionData } from '../../../utils/tyreLabel';
 import type { ProductCMS, TireRow } from './types';
 import { getManualNonPassengerFlag } from './useTiresCmsEditor';
 
@@ -153,7 +154,7 @@ export function useTiresCmsMutations({
     setSaveError(null);
 
     try {
-      const specOverrides = editData.spec_overrides ?? {};
+      const specOverrides = { ...(editData.spec_overrides ?? {}) } as Record<string, any>;
       const pricingRules = getPricingRulesFromSpecOverrides(specOverrides);
       if (
         pricingRules?.qty2?.mode === 'fixed_total' &&
@@ -197,6 +198,66 @@ export function useTiresCmsMutations({
       const draftManualNonPassenger = getManualNonPassengerFlag(specOverrides);
       const draftNonPassenger = Boolean(selectedTire.is_non_passenger_auto) || draftManualNonPassenger;
       const mustBeHidden = hasMissingSupplierPrice(selectedTire) || draftNonPassenger;
+      const effectiveIdentity = {
+        brand: identityOverride.brand ?? selectedTire.brand,
+        model: identityOverride.model ?? selectedTire.model,
+        size_string: identityOverride.size_string ?? selectedTire.size_string,
+        season: identityOverride.season ?? selectedTire.season,
+        load_index: identityOverride.load_index ?? selectedTire.load_index,
+        speed_rating: identityOverride.speed_rating ?? selectedTire.speed_rating ?? selectedTire.speed_index,
+        ean: identityOverride.ean ?? selectedTire.ean ?? selectedTire.derived_ean,
+      };
+      const effectiveFeatures = {
+        ev_ready: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'ev_ready')
+          ? Boolean(specOverrides.features?.ev_ready)
+          : Boolean(selectedTire.ev_ready),
+        runflat: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'runflat')
+          ? Boolean(specOverrides.features?.runflat)
+          : Boolean(selectedTire.runflat),
+        xl: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'xl')
+          ? Boolean(specOverrides.features?.xl)
+          : Boolean(selectedTire.xl_reinforced),
+        studded: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'studded')
+          ? Boolean(specOverrides.features?.studded)
+          : Boolean(selectedTire.studded),
+        threepmsf: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'threepmsf')
+          ? Boolean(specOverrides.features?.threepmsf)
+          : Boolean(selectedTire.threepmsf),
+        winter_approved: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'winter_approved')
+          ? Boolean(specOverrides.features?.winter_approved)
+          : Boolean(selectedTire.winter_approved),
+        ice_approved: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'ice_approved')
+          ? Boolean(specOverrides.features?.ice_approved)
+          : Boolean(selectedTire.ice_approved),
+      };
+      const effectiveEu = {
+        fuel_class: specOverrides.eu?.fuel_class ?? selectedTire.eu_fuel_class ?? selectedTire.eu_fuel ?? null,
+        wet_grip_class: specOverrides.eu?.wet_grip_class ?? selectedTire.eu_wet_grip_class ?? selectedTire.eu_wet ?? null,
+        noise_db: specOverrides.eu?.noise_db ?? selectedTire.eu_noise_db ?? selectedTire.eu_noise ?? null,
+        noise_class: specOverrides.eu?.noise_class ?? selectedTire.eu_noise_class ?? null,
+      };
+      specOverrides.tyre_label_section = buildTyreLabelSectionData({
+        existing: specOverrides.tyre_label_section,
+        brand: effectiveIdentity.brand,
+        model: effectiveIdentity.model,
+        sizeString: effectiveIdentity.size_string,
+        season: effectiveIdentity.season,
+        loadIndex: effectiveIdentity.load_index,
+        speedRating: effectiveIdentity.speed_rating,
+        ean: effectiveIdentity.ean,
+        supplierCodeBest: selectedTire.supplier_code_best,
+        runflat: effectiveFeatures.runflat,
+        xlReinforced: effectiveFeatures.xl,
+        evReady: effectiveFeatures.ev_ready,
+        studded: effectiveFeatures.studded,
+        threepmsf: effectiveFeatures.threepmsf,
+        winterApproved: effectiveFeatures.winter_approved,
+        iceApproved: effectiveFeatures.ice_approved,
+        euFuelClass: effectiveEu.fuel_class,
+        euWetGripClass: effectiveEu.wet_grip_class,
+        euNoiseDb: effectiveEu.noise_db,
+        euNoiseClass: effectiveEu.noise_class,
+      });
       const payload: any = {
         variant_id: targetVariantId,
         title: editData.title?.trim() || null,

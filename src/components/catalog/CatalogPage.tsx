@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
 import { buildProductImageFallback } from '../../utils/productImage';
 import type { ProductPricingRules } from '../../utils/pricing';
+import { buildTyreLabelSectionData, type TyreLabelSectionData } from '../../utils/tyreLabel';
 
 type CatalogMode = 'tires' | 'rims';
 type SearchMode = 'license' | 'vehicle' | 'manual';
@@ -51,6 +52,7 @@ export interface CatalogProduct {
   threepmsf?: boolean;
   winter_approved?: boolean;
   ice_approved?: boolean;
+  tyre_label_section?: TyreLabelSectionData;
   // Rim specific
   rim_width?: number;
   rim_diameter?: number;
@@ -616,6 +618,33 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     || seasonNormalized === 'all_season'
     || hasAnyTag(tags, ['winter']);
   const iceApproved = Boolean((row as any).ice_approved) || hasAnyTag(tags, ['ice']);
+  const tyreLabelSection =
+    productType === 'tire'
+      ? buildTyreLabelSectionData({
+          existing: (row as any)?.spec_overrides?.tyre_label_section,
+          brand: row.brand_display_name || row.brand,
+          supplierName: supplierName,
+          model: row.model,
+          sizeString: formatCanonicalTireSize(row.size_string, loadIndex, speedRating) ?? row.size_string,
+          widthMm: row.width_mm,
+          aspectRatio: row.aspect_ratio,
+          diameterIn: row.diameter_in,
+          loadIndex,
+          speedRating,
+          season: row.season,
+          supplierCodeBest: supplierCode,
+          runflat: row.runflat,
+          xlReinforced: row.xl_reinforced,
+          evReady,
+          studded: row.studded,
+          threepmsf,
+          winterApproved,
+          iceApproved,
+          euFuelClass: euFuel,
+          euWetGripClass: euWet,
+          euNoiseDb: euNoise,
+        })
+      : undefined;
 
   return {
     id: row.variant_id,
@@ -651,6 +680,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     threepmsf: productType === 'tire' ? threepmsf : undefined,
     winter_approved: productType === 'tire' ? winterApproved : undefined,
     ice_approved: productType === 'tire' ? iceApproved : undefined,
+    tyre_label_section: tyreLabelSection,
     // Rim-specific fields
     rim_width: productType === 'rim' ? row.width_in ?? undefined : undefined,
     rim_diameter: productType === 'rim' ? row.rim_diameter_in ?? undefined : undefined,

@@ -670,6 +670,31 @@ export function useTiresCmsList(pageSize = 25) {
             : nextCmsData?.price_override_eur ?? tire.price ?? null;
         const manualNonPassenger = getManualNonPassengerFlag(nextCmsData?.spec_overrides);
         const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
+        const identity = (nextCmsData?.spec_overrides as any)?.identity ?? {};
+        const effectiveBrand = String(identity?.brand ?? tire.brand ?? '').trim();
+        const effectiveModel = String(identity?.model ?? tire.model ?? '').trim();
+        const effectiveSize = String(identity?.size_string ?? tire.size_string ?? '').trim();
+        const effectiveEan = resolveEffectiveEan(identity?.ean, tire.derived_ean, tire.ean);
+        const missingEan =
+          !effectiveEan ||
+          String(effectiveEan).trim().length === 0 ||
+          String(effectiveEan).startsWith('EANMISSING_');
+        const hasRequiredCmsContent =
+          String(nextCmsData?.title ?? '').trim().length > 0 &&
+          String(nextCmsData?.subtitle ?? '').trim().length > 0 &&
+          String(nextCmsData?.short_description ?? '').trim().length > 0 &&
+          String(nextCmsData?.long_description ?? '').trim().length > 0;
+        const nextMandatoryFieldConflict =
+          missingEan ||
+          !effectiveBrand ||
+          !effectiveModel ||
+          !effectiveSize ||
+          (effectivePrice === null || effectivePrice === undefined) ||
+          !hasRequiredCmsContent;
+        const nextEanConflictOpen =
+          (Boolean(tire.ean_conflict_open) && String(identity?.ean ?? '').replace(/\D/g, '').length === 0) ||
+          Boolean(tire.has_duplicate_ean_conflict) ||
+          nextMandatoryFieldConflict;
 
         return {
           ...tire,
@@ -677,6 +702,9 @@ export function useTiresCmsList(pageSize = 25) {
           cms_data: nextCmsData,
           is_non_passenger_manual: manualNonPassenger,
           is_non_passenger: autoNonPassenger || manualNonPassenger,
+          has_missing_ean: missingEan,
+          has_mandatory_field_conflict: nextMandatoryFieldConflict,
+          ean_conflict_open: nextEanConflictOpen,
         };
       });
 

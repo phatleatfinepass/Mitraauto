@@ -1,5 +1,6 @@
 import { getSupabaseConfigError, supabase } from './supabase/client';
 import type { ProductPricingRules } from './pricing';
+import type { TyreLabelSectionData } from './tyreLabel';
 
 export type ProductSearchRow = {
   variant_id: string;
@@ -52,6 +53,7 @@ export type ProductSearchRow = {
   eu_noise?: number | null;
   final_is_hidden?: boolean | null;
   pricing_rules?: ProductPricingRules | null;
+  tyre_label_section?: TyreLabelSectionData;
 };
 
 export type ProductLocaleContent = {

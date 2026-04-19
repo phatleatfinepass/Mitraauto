@@ -8,7 +8,8 @@ type TiresAiCopyField =
   | "long_description"
   | "seo_slug"
   | "seo_title"
-  | "seo_description";
+  | "seo_description"
+  | "all_fields";
 
 type TireCopyContext = {
   variant_id?: string | null;
@@ -133,6 +134,7 @@ function normalizeField(value: unknown): TiresAiCopyField {
     "seo_slug",
     "seo_title",
     "seo_description",
+    "all_fields",
   ];
   if (!allowedFields.includes(field)) {
     throw new Error("Invalid field");
@@ -156,46 +158,45 @@ function buildFieldInstructions(field: TiresAiCopyField, language: SupportedLang
   switch (field) {
     case "title":
       return fi
-        ? "Kirjoita tiivis tuoteotsikko. Käytä brändiä ja mallia. Älä lisää keksittyjä väittämiä."
-        : "Write a concise product title. Use the brand and model. Do not add invented claims.";
+        ? "Kirjoita luonnollinen ja hakukelpoinen tuoteotsikko. Sisällytä brändi, malli, koko, kuormitus- ja nopeusluokka sekä tärkeä badge kuten XL vain jos ne ovat tiedossa. Ei täytesanoja kuten 'laadukas'."
+        : "Write a natural, search-friendly product title. Include brand, model, size, load index, speed rating, and an important badge like XL only when known. No filler words.";
     case "subtitle":
       return fi
-        ? "Kirjoita lyhyt alaotsikko, ensisijaisesti koko- ja luokitustiedoista. Pidä se yhtenä rivinä."
-        : "Write a short subtitle focused on size and rating data. Keep it to one line.";
+        ? "Kirjoita yksi selkeä rivi tärkeimmistä teknisistä tiedoista. Priorisoi koko, XL/runflat jos totta, kausi sekä EU-arvot. Älä toista otsikkoa sellaisenaan."
+        : "Write one clear line of the key technical facts. Prioritize size, XL/runflat if true, season, and EU ratings. Do not repeat the title verbatim.";
     case "short_description":
       return fi
-        ? "Kirjoita 1-2 virkkeen lyhyt kuvaus verkkokauppaa varten. Korosta vain annettuja ominaisuuksia."
-        : "Write a 1-2 sentence short ecommerce description. Highlight only provided attributes.";
+        ? "Kirjoita 1-2 luonnollista virkettä verkkokauppaa varten. Kerro mitä rengas on ja mitkä tiedossa olevat ominaisuudet ovat tärkeimmät. Älä käytä geneerisiä markkinointifraaseja."
+        : "Write a natural 1-2 sentence ecommerce summary. Say what the tire is and which known attributes matter most. Avoid generic marketing filler.";
     case "long_description":
       return fi
-        ? "Kirjoita 2 lyhyttä kappaletta pitkäksi kuvaukseksi. Pidä sävy myyvä mutta täsmällinen."
-        : "Write 2 short paragraphs for a longer description. Keep the tone commercial but precise.";
+        ? "Kirjoita 2 lyhyttä kappaletta. Ensimmäinen kappale kuvaa tuotteen ydinkäyttöä ja rakennetta. Toinen kappale kuvaa vain tunnetut EU-arvot ja tekniset tiedot. Älä kirjoita väitteitä joita tiedot eivät tue. Kesärenkaasta ei saa kirjoittaa ympärivuotiseen ajoon sopivana."
+        : "Write 2 short paragraphs. The first describes the tire's core use and construction. The second covers only known EU ratings and technical details. Do not add claims not supported by the data.";
     case "seo_slug":
       return fi
         ? "Palauta vain selkeä URL-tunniste muodossa brand-model-size. Käytä vain pieniä ASCII-kirjaimia ja yhdysmerkkejä."
         : "Return only a clean URL slug in brand-model-size form. Use lowercase ASCII and hyphens only.";
     case "seo_title":
       return fi
-        ? "Kirjoita hakukoneotsikko, noin 50-65 merkkiä. Sisällytä brändi, malli ja koko jos mahtuu."
-        : "Write an SEO title, about 50-65 characters. Include brand, model, and size if they fit.";
+        ? "Kirjoita vahva hakukoneotsikko, noin 50-65 merkkiä. Sisällytä brändi, malli, koko, kuormitus/nopeusluokka ja kausi tai XL jos ne mahtuvat. Vältä geneerisiä sanoja kuten 'laadukas autonrengas'."
+        : "Write a strong SEO title, about 50-65 characters. Include brand, model, size, load/speed rating, and season or XL if they fit. Avoid generic filler.";
     case "seo_description":
       return fi
-        ? "Kirjoita hakukonekuvaus, noin 140-160 merkkiä. Tee siitä klikattava, mutta älä keksi faktoja."
-        : "Write an SEO description, about 140-160 characters. Make it clickable, but do not invent facts.";
+        ? "Kirjoita tarkka hakukonekuvaus, noin 140-160 merkkiä. Kuvaile rengas, koko ja tärkeät tunnetut EU-arvot luonnollisella suomella. Ei klikkiotsikkomaista liioittelua."
+        : "Write a precise SEO description, about 140-160 characters. Describe the tire, size, and known EU ratings in natural English. No hype or invented claims.";
+    case "all_fields":
+      return fi
+        ? "Luo koko tuotesisältö- ja SEO-paketti yhdellä kertaa. Sisällön pitää olla luonnollista suomea, tarkkaa ja hakukelpoinen ilman geneeristä AI-tekstiä."
+        : "Generate the full product content and SEO package in one pass. The copy must be natural, precise, and search-friendly without generic AI phrasing.";
   }
 }
 
-function buildPrompt(
-  field: TiresAiCopyField,
-  language: SupportedLanguage,
-  tire: TireCopyContext,
-  cms: CmsCopyInput,
-) {
+function buildPrompt(field: TiresAiCopyField, language: SupportedLanguage, tire: TireCopyContext, cms: CmsCopyInput) {
   return [
     {
       role: "system",
       content:
-        "You write accurate ecommerce copy for tire products sold by a Finnish automotive business. Use only the provided facts. Never invent pricing, warranties, stock, certifications, or performance claims. If a fact is missing, omit it.",
+        "You write accurate ecommerce product copy for tires sold by a Finnish automotive business. Use only the provided facts. Never invent pricing, warranties, stock, certifications, compatibility, or performance claims. If a fact is missing, omit it. Avoid generic AI phrases, avoid repetition across fields, and prefer concise, native-sounding wording. For Finnish, write natural ecommerce Finnish and avoid literal English-style phrasing. For summer tires, never suggest year-round or winter suitability unless explicit facts support it.",
     },
     {
       role: "user",
@@ -221,12 +222,85 @@ function buildPrompt(
   ];
 }
 
-async function generateFieldValue(
-  field: TiresAiCopyField,
-  language: SupportedLanguage,
-  tire: TireCopyContext,
-  cms: CmsCopyInput,
-) {
+type BulkCopyOutput = {
+  title: string;
+  subtitle: string;
+  short_description: string;
+  long_description: string;
+  seo_slug: string;
+  seo_title: string;
+  seo_description: string;
+};
+
+function buildAllFieldsPrompt(language: SupportedLanguage, tire: TireCopyContext, cms: CmsCopyInput) {
+  const fi = language === "fi";
+  return [
+    {
+      role: "system",
+      content:
+        "You write accurate ecommerce product copy for tires sold by a Finnish automotive business. Use only the provided facts. Never invent pricing, warranties, stock, certifications, compatibility, or performance claims. If a fact is missing, omit it. Avoid generic filler like 'quality tire', 'balanced performance', 'excellent choice', or similar. Ensure each field has a distinct job and does not just repeat another field. Finnish must sound natural to a native reader.",
+    },
+    {
+      role: "user",
+      content: JSON.stringify(
+        {
+          task: "Generate the complete product content and SEO package for one tire.",
+          language,
+          writing_goals: fi
+            ? [
+                "Tuoteotsikko on selkeä, hakukelpoinen ja tarkka.",
+                "Alaotsikko on yksi tiivis tekninen rivi.",
+                "Lyhyt kuvaus kertoo tuotteen olennaisen arvon ilman täytesanoja.",
+                "Pitkä kuvaus on 2 lyhyttä kappaletta, luonnollista suomea ja perustuu vain tiedossa oleviin faktoihin.",
+                "SEO-otsikko on vahva mutta ei geneerinen.",
+                "SEO-kuvaus on tarkka ja luonnollinen, noin 140-160 merkkiä.",
+                "Kesärenkaasta ei saa kirjoittaa ympärivuotiseen käyttöön sopivana.",
+              ]
+            : [
+                "The title is clear, precise, and search-friendly.",
+                "The subtitle is one concise technical line.",
+                "The short description explains the product without filler.",
+                "The long description is 2 short paragraphs based only on known facts.",
+                "The SEO title is strong but not generic.",
+                "The SEO description is precise and natural, about 140-160 characters.",
+              ],
+          style_rules: fi
+            ? [
+                "Vältä fraaseja kuten 'laadukas rengas', 'erinomainen valinta', 'tasapainoinen suorituskyky'.",
+                "Käytä kokoa muodossa esimerkiksi '205/45 R18 90Y XL'.",
+                "Jos XL on totta, käsittele se vahvistettuna rakenteena tai XL-merkintänä, ei irrallisena myyntifraasina.",
+                "EU-arvot saa mainita vain jos ne ovat annettuina tiedoissa.",
+              ]
+            : [
+                "Avoid filler like 'quality tire', 'excellent choice', or 'balanced performance'.",
+                "Use size formatting like '205/45 R18 90Y XL'.",
+                "Mention EU ratings only when known.",
+              ],
+          tire,
+          existing_cms_values: cms,
+          output_rules: {
+            return_json: true,
+            no_markdown: true,
+            no_extra_keys: true,
+            json_shape: {
+              title: "string",
+              subtitle: "string",
+              short_description: "string",
+              long_description: "string",
+              seo_slug: "string",
+              seo_title: "string",
+              seo_description: "string",
+            },
+          },
+        },
+        null,
+        2,
+      ),
+    },
+  ];
+}
+
+async function generateFieldValue(field: TiresAiCopyField, language: SupportedLanguage, tire: TireCopyContext, cms: CmsCopyInput) {
   const model = getEnv(
     "OPENAI_MODEL_COPY",
     Deno.env.get("OPENAI_MODEL") ?? "gpt-5-nano",
@@ -287,6 +361,96 @@ async function generateFieldValue(
   return field === "seo_slug" ? sanitizeSlug(rawValue) : rawValue;
 }
 
+async function generateAllFieldValues(
+  language: SupportedLanguage,
+  tire: TireCopyContext,
+  cms: CmsCopyInput,
+) {
+  const model = getEnv(
+    "OPENAI_MODEL_COPY",
+    Deno.env.get("OPENAI_MODEL") ?? "gpt-5-nano",
+  );
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getEnv("OPENAI_API_KEY")}`,
+    },
+    body: JSON.stringify({
+      model,
+      input: buildAllFieldsPrompt(language, tire, cms),
+      max_output_tokens: 1100,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "tire_cms_copy_all_fields",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              subtitle: { type: "string" },
+              short_description: { type: "string" },
+              long_description: { type: "string" },
+              seo_slug: { type: "string" },
+              seo_title: { type: "string" },
+              seo_description: { type: "string" },
+            },
+            required: [
+              "title",
+              "subtitle",
+              "short_description",
+              "long_description",
+              "seo_slug",
+              "seo_title",
+              "seo_description",
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
+    }),
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    const message =
+      payload?.error?.message ??
+      payload?.message ??
+      "OpenAI request failed";
+    throw new Error(message);
+  }
+
+  const outputText = String(
+    payload?.output_text ??
+      payload?.output?.flatMap((item: any) => item?.content ?? [])?.map((part: any) => part?.text ?? "")?.join("") ??
+      "",
+  ).trim();
+  if (!outputText) {
+    throw new Error("AI returned an empty response");
+  }
+
+  const parsed = JSON.parse(outputText) as Partial<BulkCopyOutput>;
+  const result: BulkCopyOutput = {
+    title: String(parsed.title ?? "").trim(),
+    subtitle: String(parsed.subtitle ?? "").trim(),
+    short_description: String(parsed.short_description ?? "").trim(),
+    long_description: String(parsed.long_description ?? "").trim(),
+    seo_slug: sanitizeSlug(String(parsed.seo_slug ?? "").trim()),
+    seo_title: String(parsed.seo_title ?? "").trim(),
+    seo_description: String(parsed.seo_description ?? "").trim(),
+  };
+
+  for (const [key, value] of Object.entries(result)) {
+    if (!value) {
+      throw new Error(`AI returned an empty ${key}`);
+    }
+  }
+
+  return result;
+}
+
 Deno.serve((request) =>
   withCors(request, async () => {
     await ensureAuthorized(request);
@@ -296,6 +460,11 @@ Deno.serve((request) =>
     const field = normalizeField(body?.field);
     const tire = (body?.tire ?? {}) as TireCopyContext;
     const cms = (body?.cms ?? {}) as CmsCopyInput;
+
+    if (field === "all_fields") {
+      const values = await generateAllFieldValues(language, tire, cms);
+      return jsonResponse({ values, field });
+    }
 
     const value = await generateFieldValue(field, language, tire, cms);
     return jsonResponse({ value, field });
