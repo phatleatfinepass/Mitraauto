@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { supabase } from '../../../utils/supabase/client';
 import type { ProductCMS, TireRow } from './types';
 
@@ -18,9 +18,8 @@ export function useTiresCmsImages({
     setUploadError(null);
   };
 
-  const handleImageUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !selectedTire) return;
-
+  const uploadFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0 || !selectedTire) return;
     setUploadingImages(true);
     setUploadError(null);
 
@@ -32,8 +31,12 @@ export function useTiresCmsImages({
 
       const newImages: string[] = [];
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (const file of files) {
+        const mimeExtension = file.type.startsWith('image/')
+          ? file.type.slice('image/'.length).replace('jpeg', 'jpg')
+          : '';
+        const originalExtension = file.name.includes('.') ? file.name.split('.').pop() ?? '' : '';
+        const ext = originalExtension || mimeExtension || 'png';
 
         if (!file.type.startsWith('image/')) {
           throw new Error(`${file.name} is not an image`);
@@ -45,7 +48,6 @@ export function useTiresCmsImages({
 
         const timestamp = Date.now();
         const randomStr = Math.random().toString(36).substring(7);
-        const ext = file.name.split('.').pop();
         const filename = `${timestamp}_${randomStr}.${ext}`;
         const path = `tires/${selectedTire.variant_id}/${filename}`;
 
@@ -77,7 +79,28 @@ export function useTiresCmsImages({
     } finally {
       setUploadingImages(false);
     }
+  }, [editData.gallery, selectedTire, setEditData]);
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    await uploadFiles(Array.from(files));
   };
+
+  const handleClipboardImagePaste = useCallback(async (clipboardData: DataTransfer | null) => {
+    if (!clipboardData) return false;
+
+    const pastedImages = Array.from(clipboardData.items)
+      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null);
+
+    if (pastedImages.length === 0) {
+      return false;
+    }
+
+    await uploadFiles(pastedImages);
+    return true;
+  }, [uploadFiles]);
 
   const handleRemoveImage = async (index: number) => {
     const gallery = (editData.gallery as string[]) || [];
@@ -104,6 +127,7 @@ export function useTiresCmsImages({
 
   return {
     clearImageFeedback,
+    handleClipboardImagePaste,
     handleImageUpload,
     handleRemoveImage,
     setUploadError,

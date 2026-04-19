@@ -2,36 +2,57 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
-import { Search, Filter } from 'lucide-react';
+import { Checkbox } from '../ui/checkbox';
+import { Input } from '../ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Filter, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { LicensePlateDisplay } from './LicensePlateDisplay';
+import { supabase } from '../../utils/supabase/client';
 
 interface TireFiltersProps {
   onFilterChange: (filters: any) => void;
   onSearch: () => void;
   searchMode: 'license' | 'vehicle' | 'manual';
+  filters?: {
+    width: string;
+    aspectRatio: string;
+    diameter: string;
+    season: string;
+    brand: any[];
+    runflat: boolean;
+    xl: boolean;
+    studded: boolean;
+    inStockOnly: boolean;
+    sortBy: string;
+    search: string;
+  };
 }
 
-export function TireFilters({ onFilterChange, onSearch, searchMode }: TireFiltersProps) {
+export const DEFAULT_TIRE_FILTERS = {
+  width: 'all',
+  aspectRatio: 'all',
+  diameter: 'all',
+  season: 'all',
+  brand: [],
+  runflat: false,
+  xl: false,
+  studded: false,
+  inStockOnly: false,
+  sortBy: 'price_asc',
+  search: '',
+};
+
+export function TireFilters({ onFilterChange, onSearch, searchMode, filters: externalFilters }: TireFiltersProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
   const [licensePlate, setLicensePlate] = useState('');
-  const [filters, setFilters] = useState({
-    width: 'all',
-    aspectRatio: 'all',
-    diameter: 'all',
-    season: 'all',
-    brand: [],
-    runflat: false,
-    xl: false,
-    studded: false,
-    inStockOnly: false,
-    sortBy: 'price_asc',
-    search: '',
-  });
+  const [filters, setFilters] = useState(DEFAULT_TIRE_FILTERS);
+  const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+  const [brandSearchTerm, setBrandSearchTerm] = useState('');
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -41,6 +62,36 @@ export function TireFilters({ onFilterChange, onSearch, searchMode }: TireFilter
       onSearch();
     }
   }, [licensePlate, searchMode]);
+
+  useEffect(() => {
+    if (!externalFilters) return;
+    setFilters({ ...DEFAULT_TIRE_FILTERS, ...externalFilters });
+  }, [externalFilters]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadBrands = async () => {
+      const { data, error } = await supabase.rpc('catalog_list_tire_brands_v1');
+      if (!active) return;
+      if (error) {
+        console.warn('Failed to load tire brands:', error);
+        return;
+      }
+
+      const brands = Array.isArray(data)
+        ? data
+            .map((row: any) => String(row?.brand ?? '').trim())
+            .filter((brand) => brand.length > 0)
+        : [];
+      setBrandOptions(brands);
+    };
+
+    void loadBrands();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLicensePlateKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && licensePlate.length >= 6) {
@@ -54,23 +105,21 @@ export function TireFilters({ onFilterChange, onSearch, searchMode }: TireFilter
     onFilterChange(newFilters);
   };
 
+  const toggleBrand = (brand: string, checked: boolean) => {
+    const currentBrands = Array.isArray(filters.brand) ? filters.brand : [];
+    const nextBrands = checked
+      ? Array.from(new Set([...currentBrands, brand]))
+      : currentBrands.filter((value) => value !== brand);
+    updateFilter('brand', nextBrands);
+  };
+
   const clearFilters = () => {
-    const emptyFilters = {
-      width: 'all',
-      aspectRatio: 'all',
-      diameter: 'all',
-      season: 'all',
-      brand: [],
-      runflat: false,
-      xl: false,
-      studded: false,
-      inStockOnly: false,
-      sortBy: 'price_asc',
-      search: '',
-    };
+    const emptyFilters = { ...DEFAULT_TIRE_FILTERS };
     setFilters(emptyFilters);
     onFilterChange(emptyFilters);
   };
+
+  const clearBrands = () => updateFilter('brand', []);
 
   const widthOptions = ['155', '165', '175', '185', '195', '205', '215', '225', '235', '245', '255', '265', '275', '285', '295', '305', '315', '325', '335', '345', '355'];
   const aspectOptions = ['30', '35', '40', '45', '50', '55', '60', '65', '70', '75', '80', '85'];
@@ -82,6 +131,10 @@ export function TireFilters({ onFilterChange, onSearch, searchMode }: TireFilter
   const secondaryTextClass = theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600';
   const inputBgClass = theme === 'dark' ? 'bg-white/5' : 'bg-gray-50';
   const selectBgClass = theme === 'dark' ? 'bg-[#161A22]' : 'bg-white';
+  const selectedBrands = Array.isArray(filters.brand) ? filters.brand : [];
+  const filteredBrandOptions = brandOptions.filter((brand) =>
+    brand.toLowerCase().includes(brandSearchTerm.trim().toLowerCase())
+  );
 
   return (
     <div className={`glassmorphic-panel rounded-2xl p-6 border backdrop-blur-xl ${borderClass} ${bgClass}`}>
@@ -293,20 +346,47 @@ export function TireFilters({ onFilterChange, onSearch, searchMode }: TireFilter
                 </div>
               </div>
 
-              {/* Search Input */}
+              {/* Brand Checklist */}
               <div>
                 <Label className={`${textClass} mb-2 block text-sm`}>
-                  {language === 'fi' ? 'Haku merkillä tai mallilla' : 'Search by brand or model'}
+                  {language === 'fi' ? 'Suodata merkeittäin' : 'Filter by brand'}
                 </Label>
-                <div className="relative">
-                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${secondaryTextClass}`} />
-                  <Input
-                    value={filters.search}
-                    onChange={(e) => updateFilter('search', e.target.value)}
-                    placeholder={language === 'fi' ? 'Malli tai merkki' : 'Model or brand'}
-                    className={`pl-10 ${inputBgClass} ${borderClass} ${textClass} placeholder:${secondaryTextClass}/50 focus:border-[#FF6B35] focus:ring-[#FF6B35]/20`}
-                  />
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setBrandDialogOpen(true)}
+                  className={`w-full justify-between ${theme === 'dark' ? 'border-white/10 bg-[#0f1319] text-white hover:bg-white/10' : 'border-gray-200 bg-white text-gray-900 hover:bg-gray-50'}`}
+                >
+                  <span className="truncate">
+                    {selectedBrands.length === 0
+                      ? (language === 'fi' ? 'Valitse merkit' : 'Choose brands')
+                      : selectedBrands.length === 1
+                        ? selectedBrands[0]
+                        : language === 'fi'
+                          ? `${selectedBrands.length} merkkiä valittu`
+                          : `${selectedBrands.length} brands selected`}
+                  </span>
+                  <span className={`${secondaryTextClass} text-xs`}>
+                    {language === 'fi' ? 'Avaa' : 'Open'}
+                  </span>
+                </Button>
+                {selectedBrands.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedBrands.slice(0, 4).map((brand) => (
+                      <span
+                        key={brand}
+                        className={`rounded-full px-2.5 py-1 text-xs ${theme === 'dark' ? 'bg-[#FF6B35]/15 text-[#FFD2C2]' : 'bg-[#FF6B35]/10 text-[#B9481E]'}`}
+                      >
+                        {brand}
+                      </span>
+                    ))}
+                    {selectedBrands.length > 4 && (
+                      <span className={`rounded-full px-2.5 py-1 text-xs ${theme === 'dark' ? 'bg-white/10 text-white/80' : 'bg-gray-100 text-gray-700'}`}>
+                        +{selectedBrands.length - 4}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Clear Filters */}
@@ -322,6 +402,75 @@ export function TireFilters({ onFilterChange, onSearch, searchMode }: TireFilter
           )}
         </>
       )}
+
+      <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
+        <DialogContent className={`${theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : 'border-gray-200 bg-white text-gray-900'} max-w-[calc(100vw-2rem)] sm:max-w-xl`}>
+          <DialogHeader>
+            <DialogTitle>{language === 'fi' ? 'Valitse rengasmerkit' : 'Choose tire brands'}</DialogTitle>
+            <DialogDescription className={theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}>
+              {language === 'fi'
+                ? 'Valitse yksi tai useampi merkki suodattaaksesi hakutuloksia.'
+                : 'Select one or more brands to narrow the search results.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${secondaryTextClass}`} />
+              <Input
+                value={brandSearchTerm}
+                onChange={(e) => setBrandSearchTerm(e.target.value)}
+                placeholder={language === 'fi' ? 'Etsi merkkiä' : 'Search brands'}
+                className={`pl-10 ${inputBgClass} ${borderClass} ${textClass}`}
+              />
+            </div>
+
+            <div className={`max-h-[320px] space-y-3 overflow-y-auto rounded-xl border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#0f1319]' : 'border-gray-200 bg-gray-50'}`}>
+              {brandOptions.length === 0 ? (
+                <p className={`text-sm ${secondaryTextClass}`}>
+                  {language === 'fi' ? 'Ladataan merkkejä...' : 'Loading brands...'}
+                </p>
+              ) : filteredBrandOptions.length === 0 ? (
+                <p className={`text-sm ${secondaryTextClass}`}>
+                  {language === 'fi' ? 'Ei merkkejä tällä haulla.' : 'No brands match this search.'}
+                </p>
+              ) : (
+                filteredBrandOptions.map((brand) => {
+                  const checked = selectedBrands.includes(brand);
+                  return (
+                    <label key={brand} className="flex items-center gap-3 cursor-pointer">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(value) => toggleBrand(brand, Boolean(value))}
+                        className="data-[state=checked]:bg-[#FF6B35] data-[state=checked]:border-[#FF6B35]"
+                      />
+                      <span className={`text-sm ${textClass}`}>{brand}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={clearBrands}
+              className={theme === 'dark' ? 'text-[#B0B8C4] hover:bg-white/10 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}
+            >
+              {language === 'fi' ? 'Tyhjennä merkit' : 'Clear brands'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setBrandDialogOpen(false)}
+              className="bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white"
+            >
+              {language === 'fi' ? 'Valmis' : 'Done'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

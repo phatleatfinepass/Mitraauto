@@ -43,6 +43,7 @@ export interface TireProduct {
   id: string;
   brand: string;
   model: string;
+  title?: string;
   subtitle?: string;
   tire_width?: number;
   aspect_ratio?: number;
@@ -82,6 +83,7 @@ export interface RimProduct {
   id: string;
   brand: string;
   model: string;
+  title?: string;
   subtitle?: string;
   rim_width?: number;
   rim_diameter?: number;
@@ -170,7 +172,7 @@ export function ProductDetailPage({
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
-  const displayName = String(product.model ?? '').trim();
+  const displayName = String((product as any).title ?? product.model ?? '').trim();
   const galleryImages = (product.images ?? [])
     .map((value) => String(value ?? '').trim())
     .filter((value) => value.length > 0);
@@ -247,7 +249,6 @@ export function ProductDetailPage({
       'outOfStock': { fi: 'Loppu varastosta', en: 'Out of Stock' },
       'delivery': { fi: 'Toimitus 1–3 arkipäivää', en: 'Delivery 1–3 business days' },
       'fulfilledBy': { fi: 'Toimittaa Mitra Auto', en: 'Fulfilled by Mitra Auto' },
-      'supplier': { fi: 'Toimittaja', en: 'Supplier' },
       'quantity': { fi: 'Määrä', en: 'Quantity' },
       'addToCart': { fi: 'Lisää ostoskoriin', en: 'Add to Cart' },
       'soldOut': { fi: 'Loppu', en: 'Sold Out' },
@@ -429,7 +430,7 @@ export function ProductDetailPage({
                 <motion.img
                   key={currentImageIndex}
                   src={images[currentImageIndex]}
-                  alt={`${product.brand} ${product.model}`}
+                  alt={`${product.brand} ${displayName || product.model}`}
                   className="w-full h-full object-cover transition-transform"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -677,10 +678,7 @@ export function ProductDetailPage({
                   <p className={`text-xs mt-0.5 ${
                     theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'
                   }`}>
-                    {product.supplier_name 
-                      ? `${t('supplier')}: ${product.supplier_name}`
-                      : t('fulfilledBy')
-                    }
+                    {t('fulfilledBy')}
                   </p>
                 </div>
               </div>

@@ -15,19 +15,29 @@ import { TiresPricingSection } from './tires/TiresPricingSection';
 import { TiresSeoSection } from './tires/TiresSeoSection';
 import { TiresVisibilitySection } from './tires/TiresVisibilitySection';
 import { TiresWarningTooltip } from './tires/TiresWarningTooltip';
-import { useTiresCmsEditor, getManualNonPassengerFlag } from './tires/useTiresCmsEditor';
+import {
+  TIRES_CONTENT_AI_FIELDS,
+  TIRES_SEO_AI_FIELDS,
+  type TiresAiCopyField,
+} from './tires/aiCopy';
+import {
+  useTiresCmsEditor,
+  getManualNonPassengerFlag,
+  TIRES_CMS_EDITOR_STATE_KEY,
+} from './tires/useTiresCmsEditor';
 import { useTiresCmsCatalogSync } from './tires/useTiresCmsCatalogSync';
 import { useTiresCmsImages } from './tires/useTiresCmsImages';
 import { useTiresCmsList } from './tires/useTiresCmsList';
 import { useTiresCmsMutations } from './tires/useTiresCmsMutations';
 import { useTiresCmsSupplierMarkup } from './tires/useTiresCmsSupplierMarkup';
 import { useTiresCmsWarnings } from './tires/useTiresCmsWarnings';
-import type { TireRow } from './tires/types';
+import type { TireAdminPricingDetails, TireRow } from './tires/types';
 
 const EU_FUEL_WET_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
 const EU_NOISE_CLASS_OPTIONS = ['A', 'B', 'C'];
 const VAT_RATE = 0.255;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
+const RD_SHIPPING_COST_EX_VAT = 12;
 
 const SUPPLIER_OPTIONS = [
   { code: 'RD', label: 'Rengasduo' },
@@ -56,6 +66,10 @@ export function TiresCMSPage() {
   const [missingMetadataFieldsDraft, setMissingMetadataFieldsDraft] = useState<string[]>([]);
   const [showMissingImagesOnlyDraft, setShowMissingImagesOnlyDraft] = useState(false);
   const [missingSeoFieldsDraft, setMissingSeoFieldsDraft] = useState<string[]>([]);
+  const [pricingDetails, setPricingDetails] = useState<TireAdminPricingDetails | null>(null);
+  const [aiGeneratingField, setAiGeneratingField] = useState<TiresAiCopyField | null>(null);
+  const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
+  const [aiGenerationErrorField, setAiGenerationErrorField] = useState<TiresAiCopyField | null>(null);
 
   const {
     currentPage,
@@ -203,6 +217,7 @@ export function TiresCMSPage() {
     handleImageReorder,
     hasEUOverride,
     openEditor,
+    restoreEditor,
     selectedTire,
     setBundleTier,
     setEditData,
@@ -217,8 +232,96 @@ export function TiresCMSPage() {
     updateSizePart,
   } = useTiresCmsEditor({ mustHideFromStore });
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || drawerOpen) {
+      return;
+    }
+
+    const rawState = window.sessionStorage.getItem(TIRES_CMS_EDITOR_STATE_KEY);
+    if (!rawState) {
+      return;
+    }
+
+    try {
+      const parsedState = JSON.parse(rawState) as {
+        selectedTire?: TireRow;
+        editData?: Partial<any>;
+        sizeParts?: {
+          width?: string;
+          aspect?: string;
+          rim?: string;
+          load_index?: string;
+          speed_rating?: string;
+        };
+        supplierMarkupSupplier?: string;
+        supplierMarkupAmount?: string;
+      };
+
+      if (!parsedState?.selectedTire?.variant_id) {
+        window.sessionStorage.removeItem(TIRES_CMS_EDITOR_STATE_KEY);
+        return;
+      }
+
+      const matchedTire =
+        tires.find((tire) => tire.variant_id === parsedState.selectedTire?.variant_id) ??
+        parsedState.selectedTire;
+
+      restoreEditor(matchedTire, {
+        selectedTire: matchedTire,
+        editData: parsedState.editData ?? {},
+        sizeParts: {
+          width: parsedState.sizeParts?.width ?? '',
+          aspect: parsedState.sizeParts?.aspect ?? '',
+          rim: parsedState.sizeParts?.rim ?? '',
+          load_index: parsedState.sizeParts?.load_index ?? '',
+          speed_rating: parsedState.sizeParts?.speed_rating ?? '',
+        },
+        supplierMarkupSupplier: parsedState.supplierMarkupSupplier ?? 'RD',
+        supplierMarkupAmount: parsedState.supplierMarkupAmount ?? '20',
+      });
+    } catch (error) {
+      console.error('Restore tire editor state error:', error);
+      window.sessionStorage.removeItem(TIRES_CMS_EDITOR_STATE_KEY);
+    }
+  }, [drawerOpen, restoreEditor, tires]);
+
+  useEffect(() => {
+    if (!selectedTire?.variant_id) {
+      setPricingDetails(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const { data, error } = await supabase.rpc('cms_get_tire_admin_pricing_v1', {
+          p_variant_id: selectedTire.variant_id,
+        });
+
+        if (error) throw error;
+
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!cancelled) {
+          setPricingDetails((row as TireAdminPricingDetails | null) ?? null);
+        }
+      } catch (error) {
+        console.error('Fetch tire pricing details error:', error);
+        if (!cancelled) {
+          setPricingDetails(null);
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTire?.variant_id]);
+
   const {
     clearImageFeedback,
+    handleClipboardImagePaste,
     handleImageUpload,
     handleRemoveImage,
     uploadError,
@@ -228,6 +331,34 @@ export function TiresCMSPage() {
     selectedTire,
     setEditData,
   });
+
+  useEffect(() => {
+    if (!drawerOpen || !selectedTire) {
+      return;
+    }
+
+    const handlePaste = (event: ClipboardEvent) => {
+      if (!event.clipboardData) {
+        return;
+      }
+
+      const containsClipboardImage = Array.from(event.clipboardData.items).some(
+        (item) => item.kind === 'file' && item.type.startsWith('image/'),
+      );
+
+      if (!containsClipboardImage) {
+        return;
+      }
+
+      event.preventDefault();
+      void handleClipboardImagePaste(event.clipboardData);
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [drawerOpen, handleClipboardImagePaste, selectedTire]);
 
   const {
     handleResetCms,
@@ -266,31 +397,156 @@ export function TiresCMSPage() {
   const handleCloseDrawer = () => {
     closeEditor();
     setSaveError(null);
+    setAiGenerationError(null);
+    setAiGenerationErrorField(null);
+    setAiGeneratingField(null);
     clearImageFeedback();
   };
 
+  const handleGenerateAiField = async (field: TiresAiCopyField) => {
+    if (!selectedTire) {
+      return;
+    }
+
+    setAiGeneratingField(field);
+    setAiGenerationError(null);
+    setAiGenerationErrorField(null);
+
+    try {
+      const effectiveIdentity = getEffectiveIdentity(selectedTire);
+      const { data, error } = await supabase.functions.invoke('generate_tire_cms_copy', {
+        body: {
+          field,
+          language,
+          tire: {
+            variant_id: selectedTire.variant_id,
+            brand: effectiveIdentity.brand,
+            model: effectiveIdentity.model,
+            size_string: effectiveIdentity.size_string,
+            season: selectedTire.season,
+            supplier_code_best: selectedTire.supplier_code_best,
+            studded: selectedTire.studded,
+            runflat: selectedTire.runflat,
+            xl_reinforced: selectedTire.xl_reinforced,
+            ev_ready: selectedTire.ev_ready,
+            threepmsf: selectedTire.threepmsf,
+            winter_approved: selectedTire.winter_approved,
+            ice_approved: selectedTire.ice_approved,
+            eu_fuel: selectedTire.eu_fuel_class ?? selectedTire.eu_fuel ?? null,
+            eu_wet: selectedTire.eu_wet_grip_class ?? selectedTire.eu_wet ?? null,
+            eu_noise: selectedTire.eu_noise_db ?? selectedTire.eu_noise ?? null,
+          },
+          cms: {
+            title: editData.title ?? null,
+            subtitle: editData.subtitle ?? null,
+            short_description: editData.short_description ?? null,
+            long_description: editData.long_description ?? null,
+            seo_slug: editData.seo_slug ?? null,
+            seo_title: editData.seo_title ?? null,
+            seo_description: editData.seo_description ?? null,
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const value = String((data as { value?: string } | null)?.value ?? '').trim();
+      if (!value) {
+        throw new Error(language === 'fi' ? 'AI ei palauttanut sisältöä.' : 'AI did not return content.');
+      }
+
+      setEditData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+      setAiGenerationErrorField(null);
+    } catch (error: any) {
+      console.error('AI tire copy generation failed:', error);
+      let detailedMessage: string | null = null;
+
+      const responseContext = error?.context;
+      if (responseContext && typeof responseContext.clone === 'function') {
+        try {
+          const body = await responseContext.clone().json();
+          detailedMessage = body?.error ?? body?.message ?? null;
+        } catch {
+          try {
+            detailedMessage = await responseContext.clone().text();
+          } catch {
+            detailedMessage = null;
+          }
+        }
+      }
+
+      setAiGenerationError(
+        detailedMessage ||
+          error?.message ||
+          (language === 'fi' ? 'AI-sisällön luonti epäonnistui.' : 'AI content generation failed.')
+      );
+      setAiGenerationErrorField(field);
+    } finally {
+      setAiGeneratingField(null);
+    }
+  };
+
   const filteredTires = tires;
+  const supplierCodeForPricing = String(
+    pricingDetails?.supplier_code_best ?? selectedTire?.supplier_code_best ?? '',
+  )
+    .trim()
+    .toUpperCase();
+  const isRengasDuoTire = supplierCodeForPricing === 'RD';
 
-  const { applySupplierMarkup, getSupplierLabel } = useTiresCmsSupplierMarkup({
-    language,
-    selectedTire,
-    setEditData,
-    setSaveError,
-    supplierMarkupAmount,
-    supplierMarkupSupplier,
-    supplierOptions: SUPPLIER_OPTIONS,
-  });
-
-  const originalApiPrice =
-    selectedTire?.price !== null && selectedTire?.price !== undefined
+  const originalApiPrice = (() => {
+    if (isRengasDuoTire) {
+      const preferred =
+        pricingDetails?.raw_net_price_ex_vat ??
+        pricingDetails?.wholesale_price_ex_vat ??
+        null;
+      if (preferred !== null && preferred !== undefined && Number.isFinite(Number(preferred))) {
+        return Number(preferred);
+      }
+    }
+    return selectedTire?.price !== null && selectedTire?.price !== undefined
       ? Number(selectedTire.price)
+      : null;
+  })();
+  const recyclingFeeExVat =
+    isRengasDuoTire &&
+    pricingDetails?.recycling_fee_ex_vat !== null &&
+    pricingDetails?.recycling_fee_ex_vat !== undefined
+      ? Number(pricingDetails.recycling_fee_ex_vat)
+      : null;
+  const shippingFeeExVat = isRengasDuoTire ? RD_SHIPPING_COST_EX_VAT : null;
+  const costAfterFeesExVat =
+    originalApiPrice !== null && recyclingFeeExVat !== null && shippingFeeExVat !== null
+      ? Number(
+          (
+            originalApiPrice +
+            recyclingFeeExVat +
+            shippingFeeExVat
+          ).toFixed(2)
+        )
       : null;
   const effectiveDraftPrice =
     editData.promo_enabled && editData.promo_price_eur !== null && editData.promo_price_eur !== undefined
       ? Number(editData.promo_price_eur)
       : editData.price_override_eur !== null && editData.price_override_eur !== undefined
         ? Number(editData.price_override_eur)
-        : originalApiPrice;
+        : costAfterFeesExVat ?? originalApiPrice;
+  const { applySupplierMarkup: applySupplierMarkupWithBase, getSupplierLabel: getSupplierLabelWithBase } =
+    useTiresCmsSupplierMarkup({
+      baseApiPrice: costAfterFeesExVat ?? originalApiPrice,
+      language,
+      selectedTire,
+      setEditData,
+      setSaveError,
+      supplierMarkupAmount,
+      supplierMarkupSupplier,
+      supplierOptions: SUPPLIER_OPTIONS,
+    });
 
   const fetchSupplierBulkPage = async (supplierCode: string, offset: number, pageSize: number) => {
     const { data, error } = await supabase.rpc('cms_list_tires_admin_v1', {
@@ -671,15 +927,18 @@ export function TiresCMSPage() {
 
               {/* Section C: Pricing */}
               <TiresPricingSection
+                costAfterFeesExVat={costAfterFeesExVat}
                 editData={editData}
                 effectiveDraftPrice={effectiveDraftPrice}
-                getSupplierLabel={getSupplierLabel}
+                getSupplierLabel={getSupplierLabelWithBase}
                 isDark={isDark}
                 language={language}
-                onApplySupplierMarkup={applySupplierMarkup}
+                onApplySupplierMarkup={applySupplierMarkupWithBase}
                 onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
                 originalApiPrice={originalApiPrice}
+                recyclingFeeExVat={recyclingFeeExVat}
                 selectedTire={selectedTire}
+                shippingFeeExVat={shippingFeeExVat}
                 setSupplierMarkupAmount={setSupplierMarkupAmount}
                 setSupplierMarkupSupplier={setSupplierMarkupSupplier}
                 supplierMarkupAmount={supplierMarkupAmount}
@@ -692,8 +951,8 @@ export function TiresCMSPage() {
                   getBundlePricing={getBundlePricing}
                   isDark={isDark}
                   language={language}
-                  selectedTireFinalPriceEur={selectedTire.final_price_eur}
-                  selectedTirePrice={selectedTire.price}
+                  selectedTireFinalPriceEur={effectiveDraftPrice}
+                  selectedTirePrice={originalApiPrice}
                   setBundleTier={setBundleTier}
                 />
               </TiresPricingSection>
@@ -713,6 +972,12 @@ export function TiresCMSPage() {
               />
 
               <TiresContentSection
+                aiError={
+                  aiGenerationError && aiGenerationErrorField && TIRES_CONTENT_AI_FIELDS.includes(aiGenerationErrorField)
+                    ? aiGenerationError
+                    : null
+                }
+                aiGeneratingField={aiGeneratingField}
                 editData={editData}
                 identityBrand={getEffectiveIdentity(selectedTire).brand}
                 identityModel={getEffectiveIdentity(selectedTire).model}
@@ -720,13 +985,21 @@ export function TiresCMSPage() {
                 isDark={isDark}
                 language={language}
                 onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
+                onGenerateField={handleGenerateAiField}
               />
 
               <TiresSeoSection
+                aiError={
+                  aiGenerationError && aiGenerationErrorField && TIRES_SEO_AI_FIELDS.includes(aiGenerationErrorField)
+                    ? aiGenerationError
+                    : null
+                }
+                aiGeneratingField={aiGeneratingField}
                 editData={editData}
                 isDark={isDark}
                 language={language}
                 onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
+                onGenerateField={handleGenerateAiField}
               />
 
               <TiresVisibilitySection

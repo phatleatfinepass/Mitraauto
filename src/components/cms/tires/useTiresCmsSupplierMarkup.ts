@@ -7,6 +7,7 @@ function getSupplierLabel(code: string | null | undefined, supplierOptions: Arra
 }
 
 export function useTiresCmsSupplierMarkup({
+  baseApiPrice,
   language,
   selectedTire,
   setEditData,
@@ -15,6 +16,7 @@ export function useTiresCmsSupplierMarkup({
   supplierMarkupSupplier,
   supplierOptions,
 }: {
+  baseApiPrice: number | null;
   language: string;
   selectedTire: TireRow | null;
   setEditData: React.Dispatch<React.SetStateAction<Partial<ProductCMS>>>;
@@ -28,8 +30,6 @@ export function useTiresCmsSupplierMarkup({
 
     const selectedSupplier = String(supplierMarkupSupplier ?? '').trim().toUpperCase();
     const tireSupplier = String(selectedTire.supplier_code_best ?? '').trim().toUpperCase();
-    const baseApiPrice =
-      selectedTire.price !== null && selectedTire.price !== undefined ? Number(selectedTire.price) : null;
     const markupAmount = Number(supplierMarkupAmount);
 
     if (!baseApiPrice || !Number.isFinite(baseApiPrice)) {

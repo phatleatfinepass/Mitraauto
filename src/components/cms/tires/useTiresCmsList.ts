@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../../utils/supabase/client';
 import type { TireRow } from './types';
 
-const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v1';
-const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v1';
+const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v3';
+const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v3';
 
 type TiresCmsQueryCacheEntry = {
   totalCount: number;
@@ -130,6 +130,12 @@ function writeTiresCmsCacheStore(cacheStore: TiresCmsCacheStore) {
   window.sessionStorage.setItem(TIRES_CMS_CACHE_KEY, JSON.stringify(cacheStore));
 }
 
+function resolveEffectiveEan(identityEan: unknown, rowDerivedEan: unknown, rowEan: unknown) {
+  const normalizedIdentityEan = String(identityEan ?? '').replace(/\D/g, '');
+  const fallbackEan = String(rowDerivedEan ?? rowEan ?? '').trim();
+  return normalizedIdentityEan || fallbackEan || null;
+}
+
 export function useTiresCmsList(pageSize = 25) {
   const initialState = (() => {
     if (typeof window === 'undefined') {
@@ -153,7 +159,7 @@ export function useTiresCmsList(pageSize = 25) {
       const parsedCache = readTiresCmsCacheStore();
       const initialQueryKey = buildTiresCmsQueryKey({
         searchTerm: typeof parsedState?.searchTerm === 'string' ? parsedState.searchTerm : '',
-        showMissingEanOnly: Boolean(parsedState?.showMissingEanOnly),
+        showMissingEanOnly: false,
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
@@ -174,7 +180,7 @@ export function useTiresCmsList(pageSize = 25) {
         tires: Array.isArray(cachedPage) ? cachedPage : [],
         totalCount: Number.isFinite(cachedQuery?.totalCount) ? cachedQuery.totalCount : 0,
         searchTerm: typeof parsedState?.searchTerm === 'string' ? parsedState.searchTerm : '',
-        showMissingEanOnly: Boolean(parsedState?.showMissingEanOnly),
+        showMissingEanOnly: false,
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
@@ -340,8 +346,7 @@ export function useTiresCmsList(pageSize = 25) {
         for (const row of rows) {
           const cmsData = row.cms_data || null;
           const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
-          const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
-          const ean = (identityEan || row.derived_ean || row.ean || '').trim();
+          const ean = (resolveEffectiveEan(identity?.ean, row.derived_ean, row.ean) || '').trim();
           if (!ean) continue;
           normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
         }
@@ -349,8 +354,8 @@ export function useTiresCmsList(pageSize = 25) {
         return rows.map((row: any) => {
           const cmsData = row.cms_data || null;
           const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
-          const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
-          const resolvedEan = identityEan || row.derived_ean || row.ean || null;
+          const identityEanDigits = String(identity?.ean ?? '').replace(/\D/g, '');
+          const resolvedEan = resolveEffectiveEan(identity?.ean, row.derived_ean, row.ean);
           const euLabel = row.eu_label_json && typeof row.eu_label_json === 'object' ? row.eu_label_json : null;
           const euNoiseClass =
             euLabel?.noise_class ??
@@ -398,11 +403,12 @@ export function useTiresCmsList(pageSize = 25) {
             String(resolvedEan).startsWith('EANMISSING_');
           const duplicateEanConflict = (() => {
             const normalized = (resolvedEan ?? '').trim();
-            return normalized ? (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
+            const keepServerDuplicateFlag =
+              Boolean(row.has_ean_multi_spec_conflict) && identityEanDigits.length === 0;
+            return normalized ? keepServerDuplicateFlag || (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
           })();
           const resolvedPrice = row.final_price_eur ?? row.price ?? null;
           const mandatoryFieldConflict =
-            Boolean(row.has_mandatory_conflict) ||
             missingEan ||
             !row.brand ||
             String(row.brand).trim().length === 0 ||
@@ -431,14 +437,14 @@ export function useTiresCmsList(pageSize = 25) {
                 ? cmsData.promo_price_eur
                 : cmsData?.price_override_eur ?? row.final_price_eur ?? row.price ?? null,
             has_missing_ean: missingEan,
-            has_duplicate_ean_conflict: Boolean(row.has_ean_multi_spec_conflict) || duplicateEanConflict,
+            has_duplicate_ean_conflict: duplicateEanConflict,
             has_mandatory_field_conflict: mandatoryFieldConflict,
             is_non_passenger_auto: autoNonPassenger,
             is_non_passenger_manual: manualNonPassenger,
             is_non_passenger: autoNonPassenger || manualNonPassenger,
             ean_conflict_open:
-              Boolean(row.ean_conflict_open) ||
-              Boolean(row.has_ean_multi_spec_conflict) ||
+              (Boolean(row.ean_conflict_open) && identityEanDigits.length === 0) ||
+              duplicateEanConflict ||
               mandatoryFieldConflict,
             cms_data: cmsData,
           } as TireRow;
@@ -634,18 +640,43 @@ export function useTiresCmsList(pageSize = 25) {
 
   const patchLocalIdentityData = useCallback((variantId: string, specOverrides: any) => {
     const identity = specOverrides?.identity ?? {};
-    const identityEan = String(identity?.ean ?? '').replace(/\D/g, '');
+    const identityEanDigits = String(identity?.ean ?? '').replace(/\D/g, '');
 
     setTires((previous) => {
       const nextPageRows = previous.map((tire) =>
         tire.variant_id === variantId
-          ? {
-              ...tire,
-              brand: identity?.brand ?? tire.brand,
-              model: identity?.model ?? tire.model,
-              size_string: identity?.size_string ?? tire.size_string,
-              derived_ean: identityEan || tire.derived_ean,
-            }
+          ? (() => {
+              const resolvedEan = resolveEffectiveEan(identity?.ean, tire.derived_ean, tire.ean);
+              const missingEan =
+                !resolvedEan ||
+                String(resolvedEan).trim().length === 0 ||
+                String(resolvedEan).startsWith('EANMISSING_');
+              const nextBrand = identity?.brand ?? tire.brand;
+              const nextModel = identity?.model ?? tire.model;
+              const nextSizeString = identity?.size_string ?? tire.size_string;
+              const nextMandatoryFieldConflict =
+                missingEan ||
+                !String(nextBrand ?? '').trim() ||
+                !String(nextModel ?? '').trim() ||
+                !String(nextSizeString ?? '').trim() ||
+                (tire.final_price_eur === null || tire.final_price_eur === undefined);
+
+              return {
+                ...tire,
+                brand: nextBrand,
+                model: nextModel,
+                size_string: nextSizeString,
+                derived_ean: resolvedEan,
+                has_missing_ean: missingEan,
+                has_duplicate_ean_conflict:
+                  identityEanDigits.length === 0 ? tire.has_duplicate_ean_conflict : false,
+                has_mandatory_field_conflict: nextMandatoryFieldConflict,
+                ean_conflict_open:
+                  identityEanDigits.length === 0
+                    ? Boolean(tire.ean_conflict_open) || nextMandatoryFieldConflict
+                    : nextMandatoryFieldConflict,
+              };
+            })()
           : tire,
       );
 

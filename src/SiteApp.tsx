@@ -18,7 +18,7 @@ import { AboutPage } from './components/AboutPage';
 import { LegalPage } from './components/LegalPage';
 import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
-import type { CatalogProduct } from './components/catalog/CatalogPage';
+import { mapProductSearchRow, type CatalogProduct } from './components/catalog/CatalogPage';
 import { CmsGuard } from './components/cms/CmsGuard';
 // NEW PAGES
 import { ContactPage } from './components/ContactPage';
@@ -38,6 +38,7 @@ import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from './utils/supabase/client';
+import { fetchProductSearchRowByIdentifier } from './utils/productsSearch';
 import { 
   Wrench, 
   Scale, 
@@ -137,6 +138,16 @@ function normalizeAppPath(path: string): string {
   }
 
   return path;
+}
+
+function parseCatalogDetailPath(path: string): { productType: 'tire' | 'rim'; identifier: string } | null {
+  const normalizedPath = normalizeAppPath(path);
+  const match = normalizedPath.match(/^\/catalog\/(tire|rim)\/([^/]+)$/);
+  if (!match) return null;
+  return {
+    productType: match[1] as 'tire' | 'rim',
+    identifier: decodeURIComponent(match[2]),
+  };
 }
 
 function CmsRouteFallback() {
@@ -359,6 +370,17 @@ function generateProductImages(productId: string, baseImageUrl: string, productT
 }
 
 function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
+  const cmsImages =
+    Array.isArray(product.gallery_images)
+      ? product.gallery_images
+          .map((value) => String(value ?? '').trim())
+          .filter((value) => value.length > 0)
+      : [];
+  const detailImages =
+    cmsImages.length > 0
+      ? cmsImages
+      : [product.best_image_url].filter((value): value is string => Boolean(String(value ?? '').trim()));
+
   if (product.product_type === 'tire') {
     const parsedSize = parseTireSize(product.size_text);
     const rawSeason = typeof product.season === 'string' ? product.season.toLowerCase() : undefined;
@@ -371,6 +393,8 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
       id: product.id,
       brand: product.brand,
       model: product.model,
+      title: product.title,
+      subtitle: product.subtitle,
       tire_width: parsedSize.width ?? 0,
       aspect_ratio: parsedSize.aspect ?? 0,
       construction: parsedSize.construction ?? 'R',
@@ -389,12 +413,14 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
       three_pmsf: normalizedSeason === 'winter' ? true : undefined,
       best_price_eur: product.best_price_eur,
       best_image_url: product.best_image_url,
-      images: generateProductImages(product.id, product.best_image_url, 'tire'),
-      description: undefined,
+      images: detailImages,
+      short_description: product.short_description,
+      long_description: product.long_description,
+      description: product.long_description ?? product.short_description,
       in_stock: product.in_stock,
       stock_quantity: product.in_stock ? 8 : 0,
-      supplier_name: 'Mitra Auto',
-      delivery_days: product.in_stock ? '1-3 business days' : undefined,
+      supplier_name: undefined,
+      delivery_days: product.delivery_days ?? (product.in_stock ? '1-3 business days' : undefined),
       weight: undefined,
     };
   }
@@ -404,6 +430,8 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
     id: product.id,
     brand: product.brand,
     model: product.model,
+    title: product.title,
+    subtitle: product.subtitle,
     rim_width: product.rim_width,
     rim_diameter: product.rim_diameter,
     pcd: product.pcd,
@@ -415,12 +443,14 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
     weight: undefined,
     best_price_eur: product.best_price_eur,
     best_image_url: product.best_image_url,
-    images: generateProductImages(product.id, product.best_image_url, 'rim'),
-    description: undefined,
+    images: detailImages,
+    short_description: product.short_description,
+    long_description: product.long_description,
+    description: product.long_description ?? product.short_description,
     in_stock: product.in_stock,
     stock_quantity: product.in_stock ? 4 : 0,
-    supplier_name: 'Mitra Auto',
-    delivery_days: product.in_stock ? '2-5 business days' : undefined,
+    supplier_name: undefined,
+    delivery_days: product.delivery_days ?? (product.in_stock ? '2-5 business days' : undefined),
     compatible_vehicles: [],
   };
 }
@@ -681,7 +711,11 @@ function HomePage() {
       startTransition(() => {
         setSelectedProduct(detail);
       });
-      const detailPath = `/catalog/${product.product_type}/${product.id}`;
+      const detailIdentifier =
+        product.product_type === 'tire' && product.seo_slug
+          ? product.seo_slug
+          : product.id;
+      const detailPath = `/catalog/${product.product_type}/${detailIdentifier}`;
       navigate(detailPath, { state: { selectedProduct: detail } });
     },
     [navigate, setSelectedProduct]
@@ -695,6 +729,35 @@ function HomePage() {
     [navigate]
   );
   // Simple client-side routing
+  useEffect(() => {
+    let active = true;
+
+    const loadCatalogDetailFromUrl = async () => {
+      if (currentPage !== 'catalog-detail' || selectedProduct) return;
+
+      const parsed = parseCatalogDetailPath(window.location.pathname);
+      if (!parsed) return;
+
+      try {
+        const row = await fetchProductSearchRowByIdentifier(parsed.productType, parsed.identifier);
+        if (!active || !row) return;
+        const catalogProduct = mapProductSearchRow(row, parsed.productType);
+        const detail = mapCatalogProductToDetail(catalogProduct);
+        startTransition(() => {
+          setSelectedProduct(detail);
+        });
+      } catch (error) {
+        console.error('Failed to load catalog detail from URL:', error);
+      }
+    };
+
+    void loadCatalogDetailFromUrl();
+
+    return () => {
+      active = false;
+    };
+  }, [currentPage, selectedProduct]);
+
   useEffect(() => {
     const handleNavigation = (event?: PopStateEvent) => {
       const path = window.location.pathname;
@@ -776,11 +839,15 @@ function HomePage() {
     try {
       // Logout from Supabase
       const supabase = await import('./utils/supabase/client').then(m => m.getSupabaseClient());
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       
       if (error) {
         console.error('Logout error:', error);
-        throw error;
+        try {
+          await supabase.auth.signOut();
+        } catch (fallbackError) {
+          console.error('Fallback logout error:', fallbackError);
+        }
       }
       
       console.log('Supabase signOut successful');
@@ -877,10 +944,42 @@ function HomePage() {
   ];
 
   const catalogProducts = [
-    { id: 1, name: 'Nokian Hakkapeliitta R5', size: '205/55 R16', seasonKey: 'season.winter', price: '€129' },
-    { id: 2, name: 'Michelin Pilot Sport 4', size: '225/45 R17', seasonKey: 'season.summer', price: '€159' },
-    { id: 3, name: 'Continental AllSeasonContact', size: '195/65 R15', seasonKey: 'season.allSeason', price: '€99' },
-    { id: 4, name: 'Bridgestone Turanza T005', size: '215/60 R16', seasonKey: 'season.summer', price: '€119' },
+    {
+      id: '64bd0d80-7e5c-cc93-32c9-aaf24c6b26f4',
+      name: 'Bridgestone Potenza S001',
+      size: '245/50 R18',
+      seasonKey: 'season.summer',
+      price: '€122.26',
+      imageUrl:
+        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/tires/64bd0d80-7e5c-cc93-32c9-aaf24c6b26f4/1771930113243_3mcjt.jpg',
+    },
+    {
+      id: 'd6ef67f9-41c5-a8ff-6623-450b18b61f44',
+      name: 'Bridgestone Blizzak ICE',
+      size: '235/45 R17',
+      seasonKey: 'season.winter',
+      price: '€104.52',
+      imageUrl:
+        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/tires/d6ef67f9-41c5-a8ff-6623-450b18b61f44/1771926299971_mi10hv.jpeg',
+    },
+    {
+      id: '08d2e1c9-b057-9591-7eca-625e62d3822f',
+      name: 'Firestone VANHAWK MULTISEASON',
+      size: '215/75 R16',
+      seasonKey: 'season.allSeason',
+      price: '€110.00',
+      imageUrl:
+        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/tires/08d2e1c9-b057-9591-7eca-625e62d3822f/1773240319051_75n99i.jpg',
+    },
+    {
+      id: 'ad10bc20-d995-ef6d-233c-e2cce8dc85b7',
+      name: 'Continental WinterContact TS 870 P',
+      size: '215/40 R18',
+      seasonKey: 'season.winter',
+      price: '€134.10',
+      imageUrl:
+        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/tires/ad10bc20-d995-ef6d-233c-e2cce8dc85b7/1773231764553_cuqy58.jpg',
+    },
   ];
 
   const bookingBenefits = [
@@ -1348,7 +1447,7 @@ function HomePage() {
                 >
                   <div className="relative aspect-square overflow-hidden rounded-2xl bg-secondary mb-4 transition-all group-hover:shadow-[0_0_20px_rgba(231,76,60,0.15)]">
                     <ImageWithFallback
-                      src="https://images.unsplash.com/photo-1685270387102-5c0fccf96ad9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcmVtaXVtJTIwdGlyZSUyMGNsb3NlJTIwdXB8ZW58MXx8fHwxNzYwOTMxOTE2fDA&ixlib=rb-4.1.0&q=80&w=1080"
+                      src={product.imageUrl}
                       alt={`${product.name} - ${product.size} ${t(product.seasonKey)}`}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />

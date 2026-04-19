@@ -131,6 +131,21 @@ export function useTiresCmsMutations({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const refreshAdminSnapshot = async () => {
+    const [adminRefresh, publicRefresh] = await Promise.all([
+      supabase.rpc('refresh_cms_tires_admin_mv'),
+      supabase.rpc('refresh_catalog_tires_public_mv'),
+    ]);
+
+    if (adminRefresh.error) {
+      console.warn('Refresh tires CMS snapshot error:', adminRefresh.error);
+    }
+
+    if (publicRefresh.error) {
+      console.warn('Refresh public tire catalog snapshot error:', publicRefresh.error);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedTire) return;
 
@@ -238,6 +253,7 @@ export function useTiresCmsMutations({
         .upsert(payload, { onConflict: 'variant_id' });
 
       if (error) throw error;
+      await refreshAdminSnapshot();
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
         shouldPatchEan
@@ -300,6 +316,7 @@ export function useTiresCmsMutations({
         }, { onConflict: 'variant_id' });
 
       if (error) throw error;
+      await refreshAdminSnapshot();
 
       patchLocalCmsData(tire.variant_id, {
         variant_id: tire.variant_id,
@@ -339,6 +356,7 @@ export function useTiresCmsMutations({
         .eq('variant_id', selectedTire.variant_id);
 
       if (error) throw error;
+      await refreshAdminSnapshot();
 
       patchLocalCmsData(selectedTire.variant_id, null);
       setHasPendingCatalogSync(true);

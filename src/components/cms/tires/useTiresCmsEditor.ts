@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   getPricingRulesFromSpecOverrides,
   setPricingRulesToSpecOverrides,
@@ -6,6 +6,8 @@ import {
   type ProductPricingRules,
 } from '../../../utils/pricing';
 import type { ProductCMS, TireRow } from './types';
+
+export const TIRES_CMS_EDITOR_STATE_KEY = 'mitra.tires-cms.editor.v1';
 
 interface SizeParts {
   width: string;
@@ -22,6 +24,14 @@ const EMPTY_SIZE_PARTS: SizeParts = {
   load_index: '',
   speed_rating: '',
 };
+
+interface PersistedTiresCmsEditorState {
+  selectedTire: TireRow;
+  editData: Partial<ProductCMS>;
+  sizeParts: SizeParts;
+  supplierMarkupSupplier: string;
+  supplierMarkupAmount: string;
+}
 
 function parseTireSize(size?: string | null): SizeParts {
   const cleaned = size?.trim() ?? '';
@@ -74,6 +84,67 @@ export function useTiresCmsEditor({
   const [supplierMarkupSupplier, setSupplierMarkupSupplier] = useState('RD');
   const [supplierMarkupAmount, setSupplierMarkupAmount] = useState('20');
 
+  const populateEditorState = (
+    tire: TireRow,
+    persistedState?: Partial<PersistedTiresCmsEditorState>,
+  ) => {
+    setSelectedTire(tire);
+    setSupplierMarkupSupplier(
+      persistedState?.supplierMarkupSupplier ??
+        (String(tire.supplier_code_best ?? 'RD').trim().toUpperCase() || 'RD'),
+    );
+    setSupplierMarkupAmount(persistedState?.supplierMarkupAmount ?? '20');
+
+    if (persistedState?.editData) {
+      setEditData(persistedState.editData);
+    } else {
+      const cms = tire.cms_data;
+      setEditData({
+        variant_id: tire.variant_id,
+        title: cms?.title ?? '',
+        subtitle: cms?.subtitle ?? '',
+        short_description: cms?.short_description ?? '',
+        long_description: cms?.long_description ?? '',
+        hero_image_url: cms?.hero_image_url ?? null,
+        gallery: cms?.gallery ?? [],
+        seo_slug: cms?.seo_slug ?? '',
+        seo_title: cms?.seo_title ?? '',
+        seo_description: cms?.seo_description ?? '',
+        is_hidden: cms?.is_hidden ?? mustHideFromStore(tire),
+        spec_overrides: cms?.spec_overrides ?? {},
+        price_override_eur: cms?.price_override_eur ?? null,
+        promo_enabled: cms?.promo_enabled ?? false,
+        promo_price_eur: cms?.promo_price_eur ?? null,
+        promo_start: cms?.promo_start ?? null,
+        promo_end: cms?.promo_end ?? null,
+      });
+    }
+
+    if (persistedState?.sizeParts) {
+      setSizeParts({
+        width: persistedState.sizeParts.width ?? '',
+        aspect: persistedState.sizeParts.aspect ?? '',
+        rim: persistedState.sizeParts.rim ?? '',
+        load_index: persistedState.sizeParts.load_index ?? '',
+        speed_rating: String(persistedState.sizeParts.speed_rating ?? '').toUpperCase(),
+      });
+    } else {
+      const cms = tire.cms_data;
+      const sizeSource =
+        (cms?.spec_overrides as any)?.identity?.size_string ??
+        tire.size_string ??
+        '';
+      const parsedSize = parseTireSize(sizeSource);
+      setSizeParts({
+        ...parsedSize,
+        load_index: String((cms?.spec_overrides as any)?.identity?.load_index ?? tire.load_index ?? parsedSize.load_index ?? ''),
+        speed_rating: String((cms?.spec_overrides as any)?.identity?.speed_rating ?? tire.speed_rating ?? tire.speed_index ?? parsedSize.speed_rating ?? '').toUpperCase(),
+      });
+    }
+
+    setDrawerOpen(true);
+  };
+
   const getEffectiveIdentity = (tire: TireRow | null) => {
     const identity = (tire?.cms_data?.spec_overrides as any)?.identity ?? {};
     const baseSize = (identity.size_string?.trim() || tire?.size_string || '').trim();
@@ -94,43 +165,11 @@ export function useTiresCmsEditor({
   };
 
   const openEditor = (tire: TireRow) => {
-    setSelectedTire(tire);
-    setSupplierMarkupSupplier(String(tire.supplier_code_best ?? 'RD').trim().toUpperCase() || 'RD');
-    setSupplierMarkupAmount('20');
+    populateEditorState(tire);
+  };
 
-    const cms = tire.cms_data;
-    setEditData({
-      variant_id: tire.variant_id,
-      title: cms?.title ?? '',
-      subtitle: cms?.subtitle ?? '',
-      short_description: cms?.short_description ?? '',
-      long_description: cms?.long_description ?? '',
-      hero_image_url: cms?.hero_image_url ?? null,
-      gallery: cms?.gallery ?? [],
-      seo_slug: cms?.seo_slug ?? '',
-      seo_title: cms?.seo_title ?? '',
-      seo_description: cms?.seo_description ?? '',
-      is_hidden: cms?.is_hidden ?? mustHideFromStore(tire),
-      spec_overrides: cms?.spec_overrides ?? {},
-      price_override_eur: cms?.price_override_eur ?? null,
-      promo_enabled: cms?.promo_enabled ?? false,
-      promo_price_eur: cms?.promo_price_eur ?? null,
-      promo_start: cms?.promo_start ?? null,
-      promo_end: cms?.promo_end ?? null,
-    });
-
-    const sizeSource =
-      (cms?.spec_overrides as any)?.identity?.size_string ??
-      tire.size_string ??
-      '';
-    const parsedSize = parseTireSize(sizeSource);
-    setSizeParts({
-      ...parsedSize,
-      load_index: String((cms?.spec_overrides as any)?.identity?.load_index ?? tire.load_index ?? parsedSize.load_index ?? ''),
-      speed_rating: String((cms?.spec_overrides as any)?.identity?.speed_rating ?? tire.speed_rating ?? tire.speed_index ?? parsedSize.speed_rating ?? '').toUpperCase(),
-    });
-
-    setDrawerOpen(true);
+  const restoreEditor = (tire: TireRow, persistedState: PersistedTiresCmsEditorState) => {
+    populateEditorState(tire, persistedState);
   };
 
   const closeEditor = () => {
@@ -139,7 +178,33 @@ export function useTiresCmsEditor({
     setEditData({});
     setSizeParts({ ...EMPTY_SIZE_PARTS });
     setDraggedIndex(null);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(TIRES_CMS_EDITOR_STATE_KEY);
+    }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !drawerOpen || !selectedTire) {
+      return;
+    }
+
+    const persistedState: PersistedTiresCmsEditorState = {
+      selectedTire,
+      editData,
+      sizeParts,
+      supplierMarkupSupplier,
+      supplierMarkupAmount,
+    };
+
+    window.sessionStorage.setItem(TIRES_CMS_EDITOR_STATE_KEY, JSON.stringify(persistedState));
+  }, [
+    drawerOpen,
+    editData,
+    selectedTire,
+    sizeParts,
+    supplierMarkupAmount,
+    supplierMarkupSupplier,
+  ]);
 
   const handleImageReorder = (newGallery: string[]) => {
     setEditData((prev) => ({
@@ -373,6 +438,7 @@ export function useTiresCmsEditor({
     handleImageReorder,
     hasEUOverride,
     openEditor,
+    restoreEditor,
     selectedTire,
     setBundleTier,
     setDragIndex: setDraggedIndex,

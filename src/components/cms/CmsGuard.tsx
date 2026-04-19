@@ -23,7 +23,13 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   const [loggingIn, setLoggingIn] = useState(false);
 
   const beginVerification = () => {
-    setAuthState((current) => (current === 'unauthenticated' ? 'verifying' : 'loading'));
+    setAuthState((current) => {
+      if (current === 'authenticated') {
+        return current;
+      }
+
+      return current === 'unauthenticated' ? 'verifying' : 'loading';
+    });
   };
 
   useEffect(() => {

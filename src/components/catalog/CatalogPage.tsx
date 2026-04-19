@@ -3,7 +3,7 @@ import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { useCart } from '../CartContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { TireFilters } from './TireFilters';
+import { DEFAULT_TIRE_FILTERS, TireFilters } from './TireFilters';
 import { RimFilters } from './RimFilters';
 import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
@@ -21,6 +21,7 @@ export interface CatalogProduct {
   id: string;
   brand: string;
   model: string;
+  seo_slug?: string;
   product_type: 'tire' | 'rim';
   best_price_eur?: number;
   best_image_url: string;
@@ -535,7 +536,7 @@ function mapRimRow(row: any): CatalogProduct {
   };
 }
 
-function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim'): CatalogProduct {
+export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim'): CatalogProduct {
   const effectivePrice = row.final_price_eur ?? row.price;
   const priceEur = effectivePrice !== null && effectivePrice !== undefined ? effectivePrice : undefined;
   const sizeParts = parseTireSizeParts(row.size_string);
@@ -620,6 +621,7 @@ function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim')
     id: row.variant_id,
     brand: row.brand_display_name || row.brand,
     model: row.model,
+    seo_slug: row.seo_slug ?? undefined,
     title: cmsTitle || row.card_title || undefined,
     subtitle: cmsSubtitle || undefined,
     short_description: cmsShortDescription,
@@ -673,7 +675,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [filters, setFilters] = useState<any>({});
+  const [filters, setFilters] = useState<any>({ ...DEFAULT_TIRE_FILTERS });
   const [isRestoringState, setIsRestoringState] = useState(false);
   const productsGridRef = React.useRef<HTMLDivElement>(null);
   
@@ -863,7 +865,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             <button
               onClick={() => {
                 setMode('tires');
-                setFilters({});
+                setFilters({ ...DEFAULT_TIRE_FILTERS });
                 setHasSearched(false);
                 setProducts([]);
                 setErrorMessage(null);
@@ -1117,6 +1119,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             className="mb-8"
           >
             <TireFilters 
+              filters={filters}
               onFilterChange={handleFilterChange} 
               onSearch={handleSearch}
               searchMode={searchMode}
@@ -1124,16 +1127,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Results Count */}
-        {hasSearched && (
-          <div ref={productsGridRef} className="flex items-center justify-between mb-6">
-            <p className={theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}>
-              {language === 'fi'
-                ? `${totalCount} tuotetta löydetty`
-                : `${totalCount} products found`}
-            </p>
-          </div>
-        )}
+        {hasSearched && <div ref={productsGridRef} className="mb-0 h-0" aria-hidden="true" />}
 
         {errorMessage && (
           <div className={`mb-4 text-sm ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
@@ -1210,7 +1204,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             </p>
             <Button
               onClick={() => {
-                setFilters({});
+                setFilters({ ...DEFAULT_TIRE_FILTERS });
                 setHasSearched(false);
                 setProducts([]);
                 setCurrentPage(1);

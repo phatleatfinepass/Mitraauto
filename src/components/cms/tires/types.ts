@@ -31,6 +31,9 @@ export interface ProductSearchTire {
   final_price_eur: number | null;
   final_is_hidden: boolean;
   price?: number | null;
+  wholesale_price_ex_vat?: number | null;
+  recycling_fee_ex_vat?: number | null;
+  rd_effective_price_ex_vat?: number | null;
   ean_conflict_open?: boolean | null;
   has_duplicate_ean_conflict?: boolean;
   has_mandatory_field_conflict?: boolean;
@@ -70,6 +73,20 @@ export interface ProductCMS {
 
 export interface TireRow extends ProductSearchTire {
   cms_data?: ProductCMS | null;
+}
+
+export interface TireAdminPricingDetails {
+  variant_id: string;
+  supplier_code_best: string | null;
+  supplier_external_id_best: string | null;
+  catalog_price_ex_vat: number | null;
+  current_catalog_effective_price_ex_vat: number | null;
+  wholesale_price_ex_vat: number | null;
+  consumer_price_ex_vat: number | null;
+  raw_net_price_ex_vat: number | null;
+  raw_price_ex_vat: number | null;
+  raw_retail_price_inc_vat: number | null;
+  recycling_fee_ex_vat: number | null;
 }
 
 export interface TiresWarningTooltipState {

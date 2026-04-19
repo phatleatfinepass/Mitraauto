@@ -44,10 +44,15 @@ export function TiresImagesSection({
             <p className={`text-sm mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {uploadingImages
                 ? (language === 'fi' ? 'Ladataan...' : 'Uploading...')
-                : (language === 'fi' ? 'Klikkaa ladataksesi kuvia' : 'Click to upload images')}
+                : (language === 'fi' ? 'Klikkaa tai liitä kuvia' : 'Click or paste images')}
             </p>
             <p className="text-xs text-gray-500">
               PNG, JPG max 5MB ({editGallery.length}/10)
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {language === 'fi'
+                ? 'Kopioi kuva ja paina Cmd/Ctrl+V editorissa'
+                : 'Copy an image and press Cmd/Ctrl+V in the editor'}
             </p>
           </div>
           <input

@@ -8,6 +8,7 @@ interface SupplierOption {
 }
 
 interface TiresPricingSectionProps {
+  costAfterFeesExVat: number | null;
   children?: ReactNode;
   editData: Partial<ProductCMS>;
   effectiveDraftPrice: number | null;
@@ -16,7 +17,9 @@ interface TiresPricingSectionProps {
   onApplySupplierMarkup: () => void;
   onEditDataChange: (updater: (prev: Partial<ProductCMS>) => Partial<ProductCMS>) => void;
   originalApiPrice: number | null;
+  recyclingFeeExVat: number | null;
   selectedTire: TireRow | null;
+  shippingFeeExVat: number | null;
   supplierMarkupAmount: string;
   supplierMarkupSupplier: string;
   supplierOptions: SupplierOption[];
@@ -27,6 +30,7 @@ interface TiresPricingSectionProps {
 }
 
 export function TiresPricingSection({
+  costAfterFeesExVat,
   children,
   editData,
   effectiveDraftPrice,
@@ -36,7 +40,9 @@ export function TiresPricingSection({
   onApplySupplierMarkup,
   onEditDataChange,
   originalApiPrice,
+  recyclingFeeExVat,
   selectedTire,
+  shippingFeeExVat,
   setSupplierMarkupAmount,
   setSupplierMarkupSupplier,
   supplierMarkupAmount,
@@ -44,6 +50,9 @@ export function TiresPricingSection({
   supplierOptions,
   toPriceWithVat,
 }: TiresPricingSectionProps) {
+  const formatMoney = (value: number | null | undefined) =>
+    value === null || value === undefined ? '—' : `€${value.toFixed(2)}`;
+
   return (
     <div>
       <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -57,7 +66,33 @@ export function TiresPricingSection({
               {language === 'fi' ? 'API / tietokannan alkuperäinen hinta (ilman ALV):' : 'Original API / database price (excl. VAT):'}
             </span>
             <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              €{originalApiPrice?.toFixed(2) || '0.00'}
+              {formatMoney(originalApiPrice)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center mb-2">
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fi' ? 'Kierrätysmaksu (ilman ALV):' : 'Recycling fee (excl. VAT):'}
+            </span>
+            <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+              {formatMoney(recyclingFeeExVat)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center mb-2">
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fi' ? 'Toimitus (ilman ALV):' : 'Shipping (excl. VAT):'}
+            </span>
+            <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+              {formatMoney(shippingFeeExVat)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center mb-2">
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fi'
+                ? 'Kustannus kierrätyksen + toimituksen jälkeen (ilman ALV):'
+                : 'Cost after recycling + shipping excl. VAT:'}
+            </span>
+            <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+              {formatMoney(costAfterFeesExVat)}
             </span>
           </div>
           <div className="flex justify-between items-center">
@@ -65,15 +100,15 @@ export function TiresPricingSection({
               {language === 'fi' ? 'Nykyinen voimassa oleva hinta (ilman ALV):' : 'Current effective price (excl. VAT):'}
             </span>
             <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-              €{effectiveDraftPrice?.toFixed(2) || '0.00'}
+              {formatMoney(effectiveDraftPrice)}
             </span>
           </div>
           <div className="flex justify-between items-center mt-2">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Voimassa oleva hinta ALV 25.5% kanssa:' : 'Effective price incl. VAT 25.5%:'}
+              {language === 'fi' ? 'Lopullinen voimassa oleva hinta ALV 25.5% kanssa:' : 'Final effective price incl. VAT 25.5%:'}
             </span>
             <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-              €{(toPriceWithVat(effectiveDraftPrice ?? null) ?? 0).toFixed(2)}
+              {formatMoney(toPriceWithVat(effectiveDraftPrice ?? null))}
             </span>
           </div>
         </div>

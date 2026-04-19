@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
+
 interface IdentityOverride {
   brand?: string;
   model?: string;
@@ -43,6 +46,67 @@ export function TiresIdentitySection({
   updateSizePart,
 }: TiresIdentitySectionProps) {
   const identityOverride = getIdentityOverride();
+  const [eanCopied, setEanCopied] = useState(false);
+  const currentBaseEan = baseEan || baseDerivedEan || '';
+
+  const fallbackCopyText = (value: string) => {
+    if (typeof document === 'undefined') {
+      return false;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '0';
+    textarea.style.left = '-9999px';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+
+    const selection = document.getSelection();
+    const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
+
+    document.body.removeChild(textarea);
+
+    if (originalRange && selection) {
+      selection.removeAllRanges();
+      selection.addRange(originalRange);
+    }
+
+    return copied;
+  };
+
+  const handleCopyEan = async () => {
+    if (!currentBaseEan) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(currentBaseEan);
+      } else if (!fallbackCopyText(currentBaseEan)) {
+        throw new Error('Clipboard copy is not supported in this browser context.');
+      }
+      setEanCopied(true);
+      window.setTimeout(() => setEanCopied(false), 1500);
+    } catch (error) {
+      const fallbackWorked = fallbackCopyText(currentBaseEan);
+      if (fallbackWorked) {
+        setEanCopied(true);
+        window.setTimeout(() => setEanCopied(false), 1500);
+        return;
+      }
+      console.error('Failed to copy EAN', error);
+    }
+  };
 
   return (
     <div>
@@ -89,9 +153,30 @@ export function TiresIdentitySection({
         </div>
 
         <div>
-          <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            EAN
-          </label>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className={`block text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              EAN
+            </label>
+            <button
+              type="button"
+              onClick={handleCopyEan}
+              disabled={!currentBaseEan}
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                !currentBaseEan
+                  ? isDark
+                    ? 'cursor-not-allowed text-gray-600'
+                    : 'cursor-not-allowed text-gray-400'
+                  : isDark
+                    ? 'bg-white/10 text-gray-200 hover:bg-white/15'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {eanCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {eanCopied
+                ? (language === 'fi' ? 'Kopioitu' : 'Copied')
+                : (language === 'fi' ? 'Kopioi nykyinen' : 'Copy current')}
+            </button>
+          </div>
           <input
             type="text"
             value={identityOverride?.ean ?? ''}
@@ -106,6 +191,11 @@ export function TiresIdentitySection({
               ? 'Syötä oikea EAN korvaamaan puuttuva EAN.'
               : 'Enter real EAN to replace missing EAN.'}
           </p>
+          {currentBaseEan && (
+            <p className={`mt-1 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {language === 'fi' ? 'Nykyinen EAN:' : 'Current EAN:'} {currentBaseEan}
+            </p>
+          )}
         </div>
 
         <div>
