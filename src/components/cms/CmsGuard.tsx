@@ -6,6 +6,15 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Shield, AlertCircle } from 'lucide-react';
 
+const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v3';
+const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v3';
+
+function clearCmsSessionCaches() {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(TIRES_CMS_STATE_KEY);
+  window.sessionStorage.removeItem(TIRES_CMS_CACHE_KEY);
+}
+
 interface CmsGuardProps {
   children: React.ReactNode;
   onNeedLogin: () => void;
@@ -103,9 +112,11 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        clearCmsSessionCaches();
         if (isMounted) beginVerification();
         checkAuth();
       } else {
+        clearCmsSessionCaches();
         if (isMounted) setAuthState('unauthenticated');
       }
     });
@@ -162,6 +173,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
     } catch (error) {
       console.error('CMS guard sign out failed:', error);
     } finally {
+      clearCmsSessionCaches();
       setAuthState('unauthenticated');
       setUserEmail('');
     }

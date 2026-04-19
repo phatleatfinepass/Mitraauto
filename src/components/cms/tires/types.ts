@@ -56,6 +56,17 @@ export interface ProductCMS {
   seo_description: string | null;
   is_hidden: boolean;
   spec_overrides: {
+    i18n?: {
+      en?: {
+        title?: string | null;
+        subtitle?: string | null;
+        short_description?: string | null;
+        long_description?: string | null;
+        seo_slug?: string | null;
+        seo_title?: string | null;
+        seo_description?: string | null;
+      };
+    };
     eu?: {
       fuel_class?: string;
       wet_grip_class?: string;

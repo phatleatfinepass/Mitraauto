@@ -5,6 +5,7 @@ import type { TireRow } from './types';
 
 const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v3';
 const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v3';
+const TIRES_CMS_SYNC_KEY = 'mitra.tires-cms.sync.v1';
 
 type TiresCmsQueryCacheEntry = {
   totalCount: number;
@@ -225,6 +226,8 @@ export function useTiresCmsList(pageSize = 25) {
   const [refreshing, setRefreshing] = useState(false);
   const didMountRef = useRef(false);
   const cacheRef = useRef<TiresCmsCacheStore>(initialState.cacheStore);
+  const initialRevalidatedRef = useRef(false);
+  const lastForcedFetchAtRef = useRef(0);
   const queryKey = buildTiresCmsQueryKey({
     searchTerm: debouncedSearchTerm,
     showMissingEanOnly,
@@ -325,7 +328,17 @@ export function useTiresCmsList(pageSize = 25) {
   }, [cachedPage, cachedQuery?.totalCount, currentPage, pageSize]);
 
   const fetchTires = useCallback(async (options?: { force?: boolean }) => {
-    if (!options?.force && cachedPage) {
+    const force = Boolean(options?.force);
+    const now = Date.now();
+    if (force) {
+      const elapsed = now - lastForcedFetchAtRef.current;
+      if (elapsed < 8000) {
+        return;
+      }
+      lastForcedFetchAtRef.current = now;
+    }
+
+    if (!force && cachedPage) {
       return;
     }
 
@@ -556,6 +569,11 @@ export function useTiresCmsList(pageSize = 25) {
         writeTiresCmsCacheStore(nextCacheStore);
         return;
       } catch (rpcListError: any) {
+        if (cachedPage && force) {
+          console.warn('Background fetch tires refresh failed, keeping cached CMS page:', rpcListError);
+          setError(null);
+          return;
+        }
         throw rpcListError;
       }
     } catch (err: any) {
@@ -583,7 +601,53 @@ export function useTiresCmsList(pageSize = 25) {
   ]);
 
   useEffect(() => {
-    void fetchTires();
+    if (cachedPage && initialRevalidatedRef.current) {
+      return;
+    }
+
+    if (cachedPage) {
+      initialRevalidatedRef.current = true;
+    }
+
+    void fetchTires({ force: Boolean(cachedPage) });
+  }, [cachedPage, fetchTires]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleExternalSync = () => {
+      cacheRef.current = { queries: {} };
+      writeTiresCmsCacheStore(cacheRef.current);
+      lastForcedFetchAtRef.current = 0;
+      void fetchTires({ force: true });
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== TIRES_CMS_SYNC_KEY || !event.newValue) {
+        return;
+      }
+      handleExternalSync();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchTires({ force: true });
+      }
+    };
+
+    const handleWindowFocus = () => {
+      void fetchTires({ force: true });
+    };
+
+    window.addEventListener('storage', handleStorage);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
   }, [fetchTires]);
 
   const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;

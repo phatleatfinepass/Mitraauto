@@ -7,6 +7,10 @@ export type TiresAiCopyField =
   | 'seo_title'
   | 'seo_description';
 
+export type TiresAiGenerationState =
+  | TiresAiCopyField
+  | 'all_fields';
+
 export const TIRES_CONTENT_AI_FIELDS: TiresAiCopyField[] = [
   'title',
   'subtitle',

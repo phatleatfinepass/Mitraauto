@@ -54,6 +54,23 @@ export type ProductSearchRow = {
   pricing_rules?: ProductPricingRules | null;
 };
 
+export type ProductLocaleContent = {
+  title_fi?: string | null;
+  subtitle_fi?: string | null;
+  short_description_fi?: string | null;
+  long_description_fi?: string | null;
+  seo_slug_fi?: string | null;
+  seo_title_fi?: string | null;
+  seo_description_fi?: string | null;
+  title_en?: string | null;
+  subtitle_en?: string | null;
+  short_description_en?: string | null;
+  long_description_en?: string | null;
+  seo_slug_en?: string | null;
+  seo_title_en?: string | null;
+  seo_description_en?: string | null;
+};
+
 const PRODUCT_SEARCH_BASE_SELECT = [
   'variant_id',
   'product_type',
@@ -730,6 +747,29 @@ export async function fetchProductSearchRowByIdentifier(
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data ? ({ ...(data as ProductSearchRow), pricing_rules: null }) : null;
+}
+
+export async function fetchProductLocaleContent(variantId: string): Promise<ProductLocaleContent | null> {
+  const trimmedVariantId = String(variantId ?? '').trim();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmedVariantId);
+  if (!trimmedVariantId || !isUuid) {
+    return null;
+  }
+
+  const { data, error } = await supabase.rpc('catalog_get_product_locale_content_v1', {
+    p_variant_id: trimmedVariantId,
+  });
+
+  if (error) {
+    console.warn('fetchProductLocaleContent error:', error);
+    return null;
+  }
+
+  if (Array.isArray(data)) {
+    return (data[0] as ProductLocaleContent | undefined) ?? null;
+  }
+
+  return (data as ProductLocaleContent | null) ?? null;
 }
 
 export async function fetchProductsSearch(

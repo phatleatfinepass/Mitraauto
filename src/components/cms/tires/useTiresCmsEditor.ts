@@ -238,15 +238,14 @@ export function useTiresCmsEditor({
   const getEUOverride = () => editData.spec_overrides?.eu || null;
 
   const setEUField = (field: string, value: any) => {
-    const currentOverrides = editData.spec_overrides || {};
-    const currentEU = currentOverrides.eu || {};
-    const updatedEU = { ...currentEU, [field]: value };
-
     setEditData((prev) => ({
       ...prev,
       spec_overrides: {
-        ...currentOverrides,
-        eu: updatedEU,
+        ...(prev.spec_overrides || {}),
+        eu: {
+          ...((prev.spec_overrides || {}).eu || {}),
+          [field]: value,
+        },
       },
     }));
   };
@@ -446,6 +445,7 @@ export function useTiresCmsEditor({
     setEUField,
     setFeatureField,
     setIdentityField,
+    setSizeParts,
     setSupplierMarkupAmount,
     setSupplierMarkupSupplier,
     sizeParts,

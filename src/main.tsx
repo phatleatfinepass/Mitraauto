@@ -32,9 +32,21 @@ function bootstrap() {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((error) => {
-      console.error('Service worker registration failed:', error);
-    });
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const shouldUseServiceWorker = isStandalonePwaDeploy || path === '/pwa' || path.startsWith('/pwa/');
+
+    if (shouldUseServiceWorker) {
+      navigator.serviceWorker.register('/sw.js').catch((error) => {
+        console.error('Service worker registration failed:', error);
+      });
+      return;
+    }
+
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch((error) => {
+        console.error('Service worker unregister failed:', error);
+      });
   });
 }
 

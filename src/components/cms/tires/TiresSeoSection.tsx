@@ -1,110 +1,173 @@
-import { Loader2, Wand2 } from 'lucide-react';
+import { useState } from 'react';
 import type { ProductCMS } from './types';
-import type { TiresAiCopyField } from './aiCopy';
+import type { TiresAiGenerationState } from './aiCopy';
 
 interface TiresSeoSectionProps {
   aiError: string | null;
-  aiGeneratingField: TiresAiCopyField | null;
+  aiGeneratingField: TiresAiGenerationState | null;
+  aiGenerationProgress: { current: number; total: number; label: string } | null;
   editData: Partial<ProductCMS>;
   isDark: boolean;
   language: string;
   onEditDataChange: (updater: (prev: Partial<ProductCMS>) => Partial<ProductCMS>) => void;
-  onGenerateField: (field: 'seo_slug' | 'seo_title' | 'seo_description') => void;
 }
+
+type LocaleMode = 'fi' | 'en';
 
 export function TiresSeoSection({
   aiError,
   aiGeneratingField,
+  aiGenerationProgress,
   editData,
   isDark,
   language,
   onEditDataChange,
-  onGenerateField,
 }: TiresSeoSectionProps) {
-  const renderAiButton = (
-    field: 'seo_slug' | 'seo_title' | 'seo_description',
-  ) => {
-    const isGenerating = aiGeneratingField === field;
-
-    return (
-      <button
-        type="button"
-        onClick={() => onGenerateField(field)}
-        disabled={Boolean(aiGeneratingField)}
-        className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
-          isDark
-            ? 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
-            : 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100'
-        } disabled:cursor-not-allowed disabled:opacity-60`}
-      >
-        {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-        {language === 'fi' ? 'AI kirjoitus' : 'AI writing'}
-      </button>
-    );
+  const [localeMode, setLocaleMode] = useState<LocaleMode>('fi');
+  const englishSeo = (editData.spec_overrides as any)?.i18n?.en ?? {};
+  const isFinnish = localeMode === 'fi';
+  const labels = {
+    fi: language === 'fi' ? 'Suomi' : 'Finnish',
+    en: 'English',
   };
+
+  const updateLocalizedField = (
+    field: 'seo_slug' | 'seo_title' | 'seo_description',
+    value: string,
+  ) => {
+    if (isFinnish) {
+      onEditDataChange((prev) => ({ ...prev, [field]: value }));
+      return;
+    }
+
+    onEditDataChange((prev) => {
+      const specOverrides = { ...(prev.spec_overrides || {}) } as Record<string, any>;
+      const i18n = { ...(specOverrides.i18n || {}) };
+      const en = { ...(i18n.en || {}) };
+      en[field] = value;
+      i18n.en = en;
+      specOverrides.i18n = i18n;
+      return {
+        ...prev,
+        spec_overrides: specOverrides,
+      };
+    });
+  };
+
+  const localizedValues = isFinnish
+    ? {
+        seo_slug: editData.seo_slug ?? '',
+        seo_title: editData.seo_title ?? '',
+        seo_description: editData.seo_description ?? '',
+      }
+    : {
+        seo_slug: englishSeo.seo_slug ?? '',
+        seo_title: englishSeo.seo_title ?? '',
+        seo_description: englishSeo.seo_description ?? '',
+      };
 
   return (
     <div>
-      <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        SEO
-      </h3>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            SEO
+          </h3>
+          <div className={`inline-flex rounded-lg p-1 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+            {(['fi', 'en'] as const).map((locale) => (
+              <button
+                key={locale}
+                type="button"
+                onClick={() => setLocaleMode(locale)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  localeMode === locale
+                    ? isDark
+                      ? 'bg-white/15 text-white'
+                      : 'bg-white text-gray-900 shadow-sm'
+                    : isDark
+                      ? 'text-gray-300 hover:text-white'
+                      : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {labels[locale]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
       <div className="space-y-4">
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'URL-tunniste' : 'SEO Slug'}
-            </label>
-            {renderAiButton('seo_slug')}
+        {aiGeneratingField === 'all_fields' && aiGenerationProgress ? (
+          <div className={`rounded-lg border px-3 py-3 ${isDark ? 'border-blue-500/20 bg-blue-500/10' : 'border-blue-200 bg-blue-50'}`}>
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className={isDark ? 'text-blue-100' : 'text-blue-800'}>{aiGenerationProgress.label}</span>
+              <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>
+                {Math.min(aiGenerationProgress.total, aiGenerationProgress.current)}/{aiGenerationProgress.total}
+                {' '}({Math.round((Math.min(aiGenerationProgress.total, aiGenerationProgress.current) / Math.max(1, aiGenerationProgress.total)) * 100)}%)
+              </span>
+            </div>
+            <div className={`h-2 overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-blue-100'}`}>
+              <div
+                className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                style={{ width: `${(Math.min(aiGenerationProgress.total, aiGenerationProgress.current) / Math.max(1, aiGenerationProgress.total)) * 100}%` }}
+              />
+            </div>
           </div>
-          <input
-            type="text"
-            value={editData.seo_slug ?? ''}
-            onChange={(e) => onEditDataChange((prev) => ({ ...prev, seo_slug: e.target.value }))}
-            placeholder="tire-brand-model-size"
-            className={`w-full px-3 py-2 rounded-lg border ${
-              isDark
-                ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-            }`}
-          />
-        </div>
+        ) : null}
 
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'SEO-otsikko' : 'SEO Title'}
-            </label>
-            {renderAiButton('seo_title')}
+        <div className={`rounded-xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+          <div className="mb-3 flex items-center justify-between">
+            <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {labels[localeMode]}
+            </p>
           </div>
-          <input
-            type="text"
-            value={editData.seo_title ?? ''}
-            onChange={(e) => onEditDataChange((prev) => ({ ...prev, seo_title: e.target.value }))}
-            className={`w-full px-3 py-2 rounded-lg border ${
-              isDark
-                ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-            }`}
-          />
-        </div>
-
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'SEO-kuvaus' : 'SEO Description'}
-            </label>
-            {renderAiButton('seo_description')}
+          <div className="space-y-4">
+            <div>
+              <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {language === 'fi' ? 'URL-tunniste' : 'SEO Slug'}
+              </label>
+              <input
+                type="text"
+                value={localizedValues.seo_slug}
+                onChange={(e) => updateLocalizedField('seo_slug', e.target.value)}
+                placeholder="tire-brand-model-size"
+                className={`w-full rounded-lg border px-3 py-2 ${
+                  isDark
+                    ? 'border-white/20 bg-[#1C1C1E] text-white placeholder-gray-500'
+                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
+                }`}
+              />
+            </div>
+            <div>
+              <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {language === 'fi' ? 'SEO-otsikko' : 'SEO Title'}
+              </label>
+              <input
+                type="text"
+                value={localizedValues.seo_title}
+                onChange={(e) => updateLocalizedField('seo_title', e.target.value)}
+                className={`w-full rounded-lg border px-3 py-2 ${
+                  isDark
+                    ? 'border-white/20 bg-[#1C1C1E] text-white placeholder-gray-500'
+                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
+                }`}
+              />
+            </div>
+            <div>
+              <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {language === 'fi' ? 'SEO-kuvaus' : 'SEO Description'}
+              </label>
+              <textarea
+                rows={3}
+                value={localizedValues.seo_description}
+                onChange={(e) => updateLocalizedField('seo_description', e.target.value)}
+                className={`w-full rounded-lg border px-3 py-2 ${
+                  isDark
+                    ? 'border-white/20 bg-[#1C1C1E] text-white placeholder-gray-500'
+                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
+                }`}
+              />
+            </div>
           </div>
-          <textarea
-            rows={3}
-            value={editData.seo_description ?? ''}
-            onChange={(e) => onEditDataChange((prev) => ({ ...prev, seo_description: e.target.value }))}
-            className={`w-full px-3 py-2 rounded-lg border ${
-              isDark
-                ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-            }`}
-          />
         </div>
 
         {aiError ? (

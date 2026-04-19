@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, SearchCheck, RefreshCw } from 'lucide-react';
+import type { TireEanAuditResult } from './eanAudit';
 
 interface IdentityOverride {
   brand?: string;
@@ -17,6 +18,11 @@ interface SizeParts {
 }
 
 interface TiresIdentitySectionProps {
+  auditError: string | null;
+  auditLoading: boolean;
+  auditProgress: number | null;
+  auditResult: TireEanAuditResult | null;
+  applyAuditResult: () => void;
   baseBrand: string;
   baseDerivedEan: string | null;
   baseEan: string | null | undefined;
@@ -26,12 +32,18 @@ interface TiresIdentitySectionProps {
   getIdentityOverride: () => IdentityOverride | undefined;
   isDark: boolean;
   language: string;
+  onAuditByEan: () => void;
   setIdentityField: (field: 'brand' | 'model' | 'ean' | 'size_string' | 'season' | 'load_index' | 'speed_rating', value?: string) => void;
   sizeParts: SizeParts;
   updateSizePart: (field: 'width' | 'aspect' | 'rim' | 'load_index' | 'speed_rating', value: string) => void;
 }
 
 export function TiresIdentitySection({
+  auditError,
+  auditLoading,
+  auditProgress,
+  auditResult,
+  applyAuditResult,
   baseBrand,
   baseDerivedEan,
   baseEan,
@@ -41,6 +53,7 @@ export function TiresIdentitySection({
   getIdentityOverride,
   isDark,
   language,
+  onAuditByEan,
   setIdentityField,
   sizeParts,
   updateSizePart,
@@ -48,6 +61,18 @@ export function TiresIdentitySection({
   const identityOverride = getIdentityOverride();
   const [eanCopied, setEanCopied] = useState(false);
   const currentBaseEan = baseEan || baseDerivedEan || '';
+  const statusClassName = (status: string) => {
+    if (status === 'match') {
+      return isDark ? 'bg-green-500/15 text-green-300 border-green-500/25' : 'bg-green-50 text-green-700 border-green-200';
+    }
+    if (status === 'mismatch') {
+      return isDark ? 'bg-red-500/15 text-red-300 border-red-500/25' : 'bg-red-50 text-red-700 border-red-200';
+    }
+    if (status === 'missing_current') {
+      return isDark ? 'bg-amber-500/15 text-amber-300 border-amber-500/25' : 'bg-amber-50 text-amber-700 border-amber-200';
+    }
+    return isDark ? 'bg-white/5 text-gray-300 border-white/10' : 'bg-gray-100 text-gray-600 border-gray-200';
+  };
 
   const fallbackCopyText = (value: string) => {
     if (typeof document === 'undefined') {
@@ -196,6 +221,55 @@ export function TiresIdentitySection({
               {language === 'fi' ? 'Nykyinen EAN:' : 'Current EAN:'} {currentBaseEan}
             </p>
           )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onAuditByEan}
+              disabled={auditLoading || !String(identityOverride?.ean ?? currentBaseEan ?? '').replace(/\D/g, '')}
+              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                auditLoading || !String(identityOverride?.ean ?? currentBaseEan ?? '').replace(/\D/g, '')
+                  ? isDark
+                    ? 'cursor-not-allowed bg-white/5 text-gray-600'
+                    : 'cursor-not-allowed bg-gray-100 text-gray-400'
+                  : isDark
+                    ? 'bg-blue-500/15 text-blue-200 hover:bg-blue-500/25'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              }`}
+            >
+              {auditLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
+              {auditLoading
+                ? (language === 'fi' ? 'Auditointi...' : 'Auditing...')
+                : (language === 'fi' ? 'EAN Audit' : 'EAN Audit')}
+            </button>
+            {auditResult && (
+              <button
+                type="button"
+                onClick={applyAuditResult}
+                className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  isDark ? 'bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                <Check className="h-3.5 w-3.5" />
+                {language === 'fi' ? 'Apply audit values' : 'Apply audit values'}
+              </button>
+            )}
+          </div>
+          {auditLoading && auditProgress !== null ? (
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>
+                  {language === 'fi' ? 'Auditin eteneminen' : 'Audit progress'}
+                </span>
+                <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{Math.max(0, Math.min(100, Math.round(auditProgress)))}%</span>
+              </div>
+              <div className={`h-2 overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+                <div
+                  className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                  style={{ width: `${Math.max(0, Math.min(100, auditProgress))}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div>
@@ -276,6 +350,91 @@ export function TiresIdentitySection({
           </select>
         </div>
       </div>
+
+      {(auditError || auditResult) && (
+        <div className={`mt-4 rounded-lg border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
+          {auditError && (
+            <p className={`text-sm ${isDark ? 'text-red-300' : 'text-red-600'}`}>{auditError}</p>
+          )}
+
+          {auditResult && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {language === 'fi' ? 'EAN-auditin yhteenveto' : 'EAN audit summary'}
+                  </p>
+                  <p className={`mt-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {auditResult.summary}
+                  </p>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                  auditResult.confidence === 'high'
+                    ? statusClassName('match')
+                    : auditResult.confidence === 'medium'
+                      ? statusClassName('missing_current')
+                      : statusClassName('unknown')
+                }`}>
+                  {language === 'fi' ? 'Luottamus' : 'Confidence'}: {auditResult.confidence}
+                </span>
+              </div>
+
+              {auditResult.source_urls.length > 0 && (
+                <div>
+                  <p className={`mb-2 text-xs font-medium uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {language === 'fi' ? 'Lähteet' : 'Sources'}
+                  </p>
+                  <div className="space-y-1">
+                    {auditResult.source_urls.map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`block truncate text-xs underline ${isDark ? 'text-blue-300' : 'text-blue-700'}`}
+                      >
+                        {url}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {auditResult.checks.length > 0 && (
+                <div className="space-y-2">
+                  {auditResult.checks.map((check) => (
+                    <div
+                      key={check.field}
+                      className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-gray-50'}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{check.label}</p>
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusClassName(check.status)}`}>
+                          {check.status}
+                        </span>
+                      </div>
+                      <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+                        <div>
+                          <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>
+                            {language === 'fi' ? 'Nykyinen' : 'Current'}:
+                          </span>{' '}
+                          <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{check.current_value || '—'}</span>
+                        </div>
+                        <div>
+                          <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>
+                            {language === 'fi' ? 'Auditoitu' : 'Audited'}:
+                          </span>{' '}
+                          <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{check.audited_value || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

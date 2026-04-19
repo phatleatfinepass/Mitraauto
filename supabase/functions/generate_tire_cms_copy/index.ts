@@ -227,6 +227,11 @@ async function generateFieldValue(
   tire: TireCopyContext,
   cms: CmsCopyInput,
 ) {
+  const model = getEnv(
+    "OPENAI_MODEL_COPY",
+    Deno.env.get("OPENAI_MODEL") ?? "gpt-5-nano",
+  );
+
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -234,7 +239,7 @@ async function generateFieldValue(
       Authorization: `Bearer ${getEnv("OPENAI_API_KEY")}`,
     },
     body: JSON.stringify({
-      model: getEnv("OPENAI_MODEL", "gpt-4.1-mini"),
+      model,
       input: buildPrompt(field, language, tire, cms),
       max_output_tokens: field === "long_description" ? 520 : 220,
       text: {
