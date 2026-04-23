@@ -40,6 +40,7 @@ export type ProductSearchRow = {
   supplier_code_best?: string | null;
   best_image_url: string | null;
   hero_image_url?: string | null;
+  gallery?: string[] | null;
   best_image_alt: string | null;
   card_title: string | null;
   subtitle: string | null;
@@ -122,6 +123,11 @@ const PRODUCT_SEARCH_BASE_SELECT = [
   'eu_wet',
   'eu_noise',
   'final_is_hidden',
+].join(',');
+
+const TIRE_PUBLIC_SEARCH_SELECT = [
+  PRODUCT_SEARCH_BASE_SELECT,
+  'gallery',
 ].join(',');
 
 interface FetchOptions {
@@ -727,7 +733,7 @@ export async function fetchProductSearchRowByIdentifier(
   if (productType === 'tire') {
     let query = supabase
       .from('catalog_tires_public_mv')
-      .select(PRODUCT_SEARCH_BASE_SELECT)
+      .select(TIRE_PUBLIC_SEARCH_SELECT)
       .limit(1);
 
     query = isUuid ? query.eq('variant_id', trimmedIdentifier) : query.eq('seo_slug', trimmedIdentifier);

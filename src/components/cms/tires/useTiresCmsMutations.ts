@@ -24,6 +24,149 @@ function normalizeGallery(value: any): string[] {
     .filter((item): item is string => Boolean(item));
 }
 
+function hasOwn(obj: any, key: string) {
+  return Boolean(obj) && Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function getTyreLabelIdentity(specOverrides: any) {
+  return specOverrides?.tyre_label_section?.identity ?? {};
+}
+
+function getTyreLabelBadges(specOverrides: any) {
+  return specOverrides?.tyre_label_section?.badges ?? {};
+}
+
+function getTyreLabelEu(specOverrides: any) {
+  return specOverrides?.tyre_label_section?.eu_label ?? {};
+}
+
+function resolveEffectiveIdentity(specOverrides: any, tire: TireRow) {
+  const identity = specOverrides?.identity ?? {};
+  const tyreLabelIdentity = getTyreLabelIdentity(specOverrides);
+
+  const brand = hasOwn(tyreLabelIdentity, 'supplier_trademark')
+    ? String(tyreLabelIdentity.supplier_trademark ?? '').trim()
+    : hasOwn(tyreLabelIdentity, 'supplier_name')
+      ? String(tyreLabelIdentity.supplier_name ?? '').trim()
+      : hasOwn(identity, 'brand')
+        ? String(identity.brand ?? '').trim()
+        : String(tire.brand ?? '').trim();
+
+  const model = hasOwn(tyreLabelIdentity, 'commercial_name')
+    ? String(tyreLabelIdentity.commercial_name ?? '').trim()
+    : hasOwn(tyreLabelIdentity, 'model')
+      ? String(tyreLabelIdentity.model ?? '').trim()
+      : hasOwn(identity, 'model')
+        ? String(identity.model ?? '').trim()
+        : String(tire.model ?? '').trim();
+
+  const sizeString = hasOwn(tyreLabelIdentity, 'size_designation')
+    ? String(tyreLabelIdentity.size_designation ?? '').trim()
+    : hasOwn(identity, 'size_string')
+      ? String(identity.size_string ?? '').trim()
+      : String(tire.size_string ?? '').trim();
+
+  const season = hasOwn(tyreLabelIdentity, 'season')
+    ? String(tyreLabelIdentity.season ?? '').trim()
+    : hasOwn(identity, 'season')
+      ? String(identity.season ?? '').trim()
+      : String(tire.season ?? '').trim();
+
+  const loadIndex = hasOwn(tyreLabelIdentity, 'load_index')
+    ? String(tyreLabelIdentity.load_index ?? '').trim()
+    : hasOwn(identity, 'load_index')
+      ? String(identity.load_index ?? '').trim()
+      : String(tire.load_index ?? '').trim();
+
+  const speedRating = hasOwn(tyreLabelIdentity, 'speed_symbol')
+    ? String(tyreLabelIdentity.speed_symbol ?? '').trim().toUpperCase()
+    : hasOwn(identity, 'speed_rating')
+      ? String(identity.speed_rating ?? '').trim().toUpperCase()
+      : String(tire.speed_rating ?? tire.speed_index ?? '').trim().toUpperCase();
+
+  const ean = hasOwn(tyreLabelIdentity, 'ean')
+    ? String(tyreLabelIdentity.ean ?? '').replace(/\D/g, '')
+    : hasOwn(identity, 'ean')
+      ? String(identity.ean ?? '').replace(/\D/g, '')
+      : String(tire.ean ?? tire.derived_ean ?? '').replace(/\D/g, '');
+
+  return {
+    brand,
+    model,
+    size_string: sizeString,
+    season,
+    load_index: loadIndex,
+    speed_rating: speedRating,
+    ean,
+  };
+}
+
+function resolveEffectiveFeatures(specOverrides: any, tire: TireRow) {
+  const features = specOverrides?.features ?? {};
+  const badges = getTyreLabelBadges(specOverrides);
+  const euLabel = getTyreLabelEu(specOverrides);
+
+  return {
+    ev_ready: hasOwn(badges, 'ev_ready')
+      ? Boolean(badges.ev_ready)
+      : hasOwn(features, 'ev_ready')
+        ? Boolean(features.ev_ready)
+        : Boolean(tire.ev_ready),
+    runflat: hasOwn(badges, 'runflat')
+      ? Boolean(badges.runflat)
+      : hasOwn(features, 'runflat')
+        ? Boolean(features.runflat)
+        : Boolean(tire.runflat),
+    xl: hasOwn(badges, 'extra_load')
+      ? Boolean(badges.extra_load)
+      : hasOwn(features, 'xl')
+        ? Boolean(features.xl)
+        : Boolean(tire.xl_reinforced),
+    studded: hasOwn(badges, 'studded')
+      ? Boolean(badges.studded)
+      : hasOwn(features, 'studded')
+        ? Boolean(features.studded)
+        : Boolean(tire.studded),
+    threepmsf: hasOwn(badges, 'threepmsf')
+      ? Boolean(badges.threepmsf)
+      : hasOwn(euLabel, 'severe_snow')
+        ? Boolean(euLabel.severe_snow)
+        : hasOwn(features, 'threepmsf')
+          ? Boolean(features.threepmsf)
+          : Boolean(tire.threepmsf),
+    winter_approved: hasOwn(badges, 'winter_approved')
+      ? Boolean(badges.winter_approved)
+      : hasOwn(features, 'winter_approved')
+        ? Boolean(features.winter_approved)
+        : Boolean(tire.winter_approved),
+    ice_approved: hasOwn(euLabel, 'severe_ice')
+      ? Boolean(euLabel.severe_ice)
+      : hasOwn(features, 'ice_approved')
+        ? Boolean(features.ice_approved)
+        : Boolean(tire.ice_approved),
+  };
+}
+
+function resolveEffectiveEu(specOverrides: any, tire: TireRow) {
+  const eu = specOverrides?.eu ?? {};
+  const tyreLabelEu = getTyreLabelEu(specOverrides);
+
+  return {
+    fuel_class: hasOwn(tyreLabelEu, 'fuel_efficiency_class')
+      ? normalizeTextOrNull(tyreLabelEu.fuel_efficiency_class)
+      : normalizeTextOrNull(eu.fuel_class) ?? tire.eu_fuel_class ?? tire.eu_fuel ?? null,
+    wet_grip_class: hasOwn(tyreLabelEu, 'wet_grip_class')
+      ? normalizeTextOrNull(tyreLabelEu.wet_grip_class)
+      : normalizeTextOrNull(eu.wet_grip_class) ?? tire.eu_wet_grip_class ?? tire.eu_wet ?? null,
+    noise_db: hasOwn(tyreLabelEu, 'external_noise_db')
+      ? toNumberOrNull(tyreLabelEu.external_noise_db)
+      : toNumberOrNull(eu.noise_db) ?? tire.eu_noise_db ?? tire.eu_noise ?? null,
+    noise_class: hasOwn(tyreLabelEu, 'external_noise_class')
+      ? normalizeTextOrNull(tyreLabelEu.external_noise_class)
+      : normalizeTextOrNull(eu.noise_class) ?? tire.eu_noise_class ?? null,
+  };
+}
+
 function normalizeSpecOverrides(value: any): any {
   const normalizeNode = (node: any): any => {
     if (node === undefined || node === null) return null;
@@ -106,6 +249,7 @@ function isValidEan13(ean: string) {
 
 export function useTiresCmsMutations({
   editData,
+  eprelMatchId,
   fetchTires,
   invalidateCache,
   hasMissingSupplierPrice,
@@ -118,6 +262,7 @@ export function useTiresCmsMutations({
   setHasPendingCatalogSync,
 }: {
   editData: Partial<ProductCMS>;
+  eprelMatchId?: string | null;
   fetchTires: (options?: { force?: boolean }) => Promise<any>;
   invalidateCache: () => void;
   hasMissingSupplierPrice: (tire: TireRow | null) => boolean;
@@ -138,11 +283,11 @@ export function useTiresCmsMutations({
       supabase.rpc('refresh_catalog_tires_public_mv'),
     ]);
 
-    if (adminRefresh.error) {
+    if (adminRefresh.error && adminRefresh.error.code !== '57014') {
       console.warn('Refresh tires CMS snapshot error:', adminRefresh.error);
     }
 
-    if (publicRefresh.error) {
+    if (publicRefresh.error && publicRefresh.error.code !== '57014') {
       console.warn('Refresh public tire catalog snapshot error:', publicRefresh.error);
     }
   };
@@ -179,11 +324,12 @@ export function useTiresCmsMutations({
 
       const identityOverride = (specOverrides as any)?.identity ?? {};
       let targetVariantId = selectedTire.variant_id;
+      const tyreLabelIdentity = getTyreLabelIdentity(specOverrides);
       const hasEanOverride =
-        Object.prototype.hasOwnProperty.call(identityOverride, 'ean') &&
+        (hasOwn(tyreLabelIdentity, 'ean') || hasOwn(identityOverride, 'ean')) &&
         selectedTire.supplier_code_best &&
         selectedTire.supplier_external_id_best;
-      const eanDigits = String(identityOverride.ean ?? '').replace(/\D/g, '');
+      const eanDigits = resolveEffectiveIdentity(specOverrides, selectedTire).ean;
       const currentEanDigits = String(selectedTire.derived_ean ?? '').replace(/\D/g, '');
       const shouldPatchEan = Boolean(hasEanOverride) && eanDigits !== currentEanDigits;
 
@@ -198,48 +344,17 @@ export function useTiresCmsMutations({
       const draftManualNonPassenger = getManualNonPassengerFlag(specOverrides);
       const draftNonPassenger = Boolean(selectedTire.is_non_passenger_auto) || draftManualNonPassenger;
       const mustBeHidden = hasMissingSupplierPrice(selectedTire) || draftNonPassenger;
-      const effectiveIdentity = {
-        brand: identityOverride.brand ?? selectedTire.brand,
-        model: identityOverride.model ?? selectedTire.model,
-        size_string: identityOverride.size_string ?? selectedTire.size_string,
-        season: identityOverride.season ?? selectedTire.season,
-        load_index: identityOverride.load_index ?? selectedTire.load_index,
-        speed_rating: identityOverride.speed_rating ?? selectedTire.speed_rating ?? selectedTire.speed_index,
-        ean: identityOverride.ean ?? selectedTire.ean ?? selectedTire.derived_ean,
-      };
-      const effectiveFeatures = {
-        ev_ready: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'ev_ready')
-          ? Boolean(specOverrides.features?.ev_ready)
-          : Boolean(selectedTire.ev_ready),
-        runflat: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'runflat')
-          ? Boolean(specOverrides.features?.runflat)
-          : Boolean(selectedTire.runflat),
-        xl: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'xl')
-          ? Boolean(specOverrides.features?.xl)
-          : Boolean(selectedTire.xl_reinforced),
-        studded: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'studded')
-          ? Boolean(specOverrides.features?.studded)
-          : Boolean(selectedTire.studded),
-        threepmsf: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'threepmsf')
-          ? Boolean(specOverrides.features?.threepmsf)
-          : Boolean(selectedTire.threepmsf),
-        winter_approved: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'winter_approved')
-          ? Boolean(specOverrides.features?.winter_approved)
-          : Boolean(selectedTire.winter_approved),
-        ice_approved: Object.prototype.hasOwnProperty.call(specOverrides.features ?? {}, 'ice_approved')
-          ? Boolean(specOverrides.features?.ice_approved)
-          : Boolean(selectedTire.ice_approved),
-      };
-      const effectiveEu = {
-        fuel_class: specOverrides.eu?.fuel_class ?? selectedTire.eu_fuel_class ?? selectedTire.eu_fuel ?? null,
-        wet_grip_class: specOverrides.eu?.wet_grip_class ?? selectedTire.eu_wet_grip_class ?? selectedTire.eu_wet ?? null,
-        noise_db: specOverrides.eu?.noise_db ?? selectedTire.eu_noise_db ?? selectedTire.eu_noise ?? null,
-        noise_class: specOverrides.eu?.noise_class ?? selectedTire.eu_noise_class ?? null,
-      };
+      const effectiveIdentity = resolveEffectiveIdentity(specOverrides, selectedTire);
+      const effectiveFeatures = resolveEffectiveFeatures(specOverrides, selectedTire);
+      const effectiveEu = resolveEffectiveEu(specOverrides, selectedTire);
+      const currentTyreLabelSection = (specOverrides.tyre_label_section ?? {}) as Record<string, any>;
+      const currentTyreLabelIdentity = (currentTyreLabelSection.identity ?? {}) as Record<string, any>;
+      const currentTyreLabelCompliance = (currentTyreLabelSection.compliance ?? {}) as Record<string, any>;
       specOverrides.tyre_label_section = buildTyreLabelSectionData({
         existing: specOverrides.tyre_label_section,
         brand: effectiveIdentity.brand,
         model: effectiveIdentity.model,
+        tyreTypeIdentifier: currentTyreLabelIdentity.tyre_type_identifier ?? null,
         sizeString: effectiveIdentity.size_string,
         season: effectiveIdentity.season,
         loadIndex: effectiveIdentity.load_index,
@@ -257,6 +372,16 @@ export function useTiresCmsMutations({
         euWetGripClass: effectiveEu.wet_grip_class,
         euNoiseDb: effectiveEu.noise_db,
         euNoiseClass: effectiveEu.noise_class,
+        productionStart: currentTyreLabelCompliance.production_start ?? null,
+        productionEnd: currentTyreLabelCompliance.production_end ?? null,
+        marketStart: currentTyreLabelCompliance.market_start ?? null,
+        supplierWebsite: currentTyreLabelCompliance.supplier_website ?? null,
+        supplierContactName: currentTyreLabelCompliance.supplier_contact_name ?? null,
+        supplierContactEmail: currentTyreLabelCompliance.supplier_contact_email ?? null,
+        supplierContactPhone: currentTyreLabelCompliance.supplier_contact_phone ?? null,
+        dataSource: currentTyreLabelCompliance.data_source ?? null,
+        dataSourceUrl: currentTyreLabelCompliance.data_source_url ?? null,
+        lastVerifiedAt: currentTyreLabelCompliance.last_verified_at ?? null,
       });
       const payload: any = {
         variant_id: targetVariantId,
@@ -314,7 +439,18 @@ export function useTiresCmsMutations({
         .upsert(payload, { onConflict: 'variant_id' });
 
       if (error) throw error;
-      await refreshAdminSnapshot();
+
+      if (eprelMatchId) {
+        const { error: eprelApplyError } = await supabase
+          .from('cms_tire_eprel_field_reviews')
+          .update({ applied_to_product: true })
+          .eq('eprel_match_id', eprelMatchId)
+          .eq('review_status', 'accepted');
+
+      if (eprelApplyError) {
+          console.error('Mark EPREL review rows applied error:', eprelApplyError);
+        }
+      }
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
         shouldPatchEan
@@ -337,6 +473,8 @@ export function useTiresCmsMutations({
         patchLocalCmsData(targetVariantId, payload);
         patchLocalIdentityData(targetVariantId, specOverrides);
       }
+
+      void refreshAdminSnapshot();
 
       onCloseEditor();
     } catch (err: any) {
@@ -377,7 +515,6 @@ export function useTiresCmsMutations({
         }, { onConflict: 'variant_id' });
 
       if (error) throw error;
-      await refreshAdminSnapshot();
 
       patchLocalCmsData(tire.variant_id, {
         variant_id: tire.variant_id,
@@ -393,6 +530,8 @@ export function useTiresCmsMutations({
             : 'Visibility change saved. Run "Apply Sync" to publish changes to catalog.'
         );
       }
+
+      void refreshAdminSnapshot();
     } catch (err: any) {
       console.error('Toggle visibility error:', err);
       setCatalogSyncMessage(err.message);
@@ -417,7 +556,6 @@ export function useTiresCmsMutations({
         .eq('variant_id', selectedTire.variant_id);
 
       if (error) throw error;
-      await refreshAdminSnapshot();
 
       patchLocalCmsData(selectedTire.variant_id, null);
       setHasPendingCatalogSync(true);
@@ -426,6 +564,7 @@ export function useTiresCmsMutations({
           ? 'CMS-ohitukset poistettu. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
           : 'CMS overrides cleared. Run "Apply Sync" to publish changes to catalog.'
       );
+      void refreshAdminSnapshot();
       onCloseEditor();
     } catch (err: any) {
       console.error('Reset error:', err);

@@ -60,7 +60,13 @@ export function TiresIdentitySection({
 }: TiresIdentitySectionProps) {
   const identityOverride = getIdentityOverride();
   const [eanCopied, setEanCopied] = useState(false);
-  const currentBaseEan = baseEan || baseDerivedEan || '';
+  const isPlaceholderEan = (value?: string | null) =>
+    !value || String(value).trim().length === 0 || String(value).startsWith('EANMISSING_');
+  const currentBaseEan = isPlaceholderEan(baseEan)
+    ? (baseDerivedEan || '')
+    : (baseEan || baseDerivedEan || '');
+  const hasIdentityEanOverride = Boolean(identityOverride) && Object.prototype.hasOwnProperty.call(identityOverride, 'ean');
+  const effectiveEanValue = hasIdentityEanOverride ? String(identityOverride?.ean ?? '') : currentBaseEan;
   const statusClassName = (status: string) => {
     if (status === 'match') {
       return isDark ? 'bg-green-500/15 text-green-300 border-green-500/25' : 'bg-green-50 text-green-700 border-green-200';
@@ -204,9 +210,9 @@ export function TiresIdentitySection({
           </div>
           <input
             type="text"
-            value={identityOverride?.ean ?? ''}
+            value={effectiveEanValue}
             onChange={(e) => setIdentityField('ean', e.target.value)}
-            placeholder={baseEan || baseDerivedEan || 'EAN'}
+            placeholder="EAN"
             className={`w-full px-3 py-2 rounded-lg border font-mono ${
               isDark ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
             }`}
@@ -225,9 +231,9 @@ export function TiresIdentitySection({
             <button
               type="button"
               onClick={onAuditByEan}
-              disabled={auditLoading || !String(identityOverride?.ean ?? currentBaseEan ?? '').replace(/\D/g, '')}
+              disabled={auditLoading || !String(effectiveEanValue ?? '').replace(/\D/g, '')}
               className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                auditLoading || !String(identityOverride?.ean ?? currentBaseEan ?? '').replace(/\D/g, '')
+                auditLoading || !String(effectiveEanValue ?? '').replace(/\D/g, '')
                   ? isDark
                     ? 'cursor-not-allowed bg-white/5 text-gray-600'
                     : 'cursor-not-allowed bg-gray-100 text-gray-400'
@@ -238,8 +244,8 @@ export function TiresIdentitySection({
             >
               {auditLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
               {auditLoading
-                ? (language === 'fi' ? 'Auditointi...' : 'Auditing...')
-                : (language === 'fi' ? 'EAN Audit' : 'EAN Audit')}
+                ? (language === 'fi' ? 'Haetaan EPREListä...' : 'Fetching EPREL...')
+                : (language === 'fi' ? 'Hae EPREListä' : 'Fetch from EPREL')}
             </button>
             {auditResult && (
               <button
@@ -250,7 +256,7 @@ export function TiresIdentitySection({
                 }`}
               >
                 <Check className="h-3.5 w-3.5" />
-                {language === 'fi' ? 'Apply audit values' : 'Apply audit values'}
+                {language === 'fi' ? 'Käytä EPREL-arvoja' : 'Apply EPREL values'}
               </button>
             )}
           </div>
@@ -362,11 +368,16 @@ export function TiresIdentitySection({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'EAN-auditin yhteenveto' : 'EAN audit summary'}
+                    {language === 'fi' ? 'EPREL-yhteenveto' : 'EPREL summary'}
                   </p>
                   <p className={`mt-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                     {auditResult.summary}
                   </p>
+                  {auditResult.eprel_registration_number ? (
+                    <p className={`mt-2 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      EPREL ID: {auditResult.eprel_registration_number}
+                    </p>
+                  ) : null}
                 </div>
                 <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
                   auditResult.confidence === 'high'
@@ -382,7 +393,7 @@ export function TiresIdentitySection({
               {auditResult.source_urls.length > 0 && (
                 <div>
                   <p className={`mb-2 text-xs font-medium uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi' ? 'Lähteet' : 'Sources'}
+                    {language === 'fi' ? 'EPREL-lähteet' : 'EPREL sources'}
                   </p>
                   <div className="space-y-1">
                     {auditResult.source_urls.map((url) => (
@@ -409,9 +420,24 @@ export function TiresIdentitySection({
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{check.label}</p>
-                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusClassName(check.status)}`}>
-                          {check.status}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusClassName(check.status)}`}>
+                            {check.status}
+                          </span>
+                          {check.review_status ? (
+                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                              check.review_status === 'accepted'
+                                ? (isDark ? 'border-green-500/25 bg-green-500/15 text-green-300' : 'border-green-200 bg-green-50 text-green-700')
+                                : check.review_status === 'rejected'
+                                  ? (isDark ? 'border-red-500/25 bg-red-500/15 text-red-300' : 'border-red-200 bg-red-50 text-red-700')
+                                  : check.review_status === 'kept_current'
+                                    ? (isDark ? 'border-amber-500/25 bg-amber-500/15 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700')
+                                    : (isDark ? 'border-white/10 bg-white/5 text-gray-300' : 'border-gray-200 bg-gray-100 text-gray-600')
+                            }`}>
+                              {check.review_status}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
                         <div>

@@ -8,4 +8,12 @@
   Run `npm i` to install the dependencies.
 
   Run `npm run dev` to start the development server.
+
+  ## EPREL tire CMS
+
+  The tire CMS includes an EPREL-backed enrichment workflow for regulated EU tire label data.
+
+  Operational notes are documented in:
+
+  - [EPREL_TIRE_CMS_RUNBOOK.md](/Users/chandler/Desktop/Mitraauto-main/EPREL_TIRE_CMS_RUNBOOK.md)
   

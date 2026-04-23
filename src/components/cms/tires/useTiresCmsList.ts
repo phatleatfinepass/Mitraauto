@@ -110,6 +110,10 @@ function buildTiresCmsQueryKey(params: {
   });
 }
 
+function isStatementTimeoutError(error: any) {
+  return error?.code === '57014' || String(error?.message ?? '').toLowerCase().includes('statement timeout');
+}
+
 function readTiresCmsCacheStore(): TiresCmsCacheStore {
   if (typeof window === 'undefined') {
     return { queries: {} };
@@ -135,6 +139,60 @@ function resolveEffectiveEan(identityEan: unknown, rowDerivedEan: unknown, rowEa
   const normalizedIdentityEan = String(identityEan ?? '').replace(/\D/g, '');
   const fallbackEan = String(rowDerivedEan ?? rowEan ?? '').trim();
   return normalizedIdentityEan || fallbackEan || null;
+}
+
+function getTyreLabelIdentity(specOverrides: any) {
+  return specOverrides?.tyre_label_section?.identity ?? {};
+}
+
+function resolveEffectiveMandatoryIdentity(specOverrides: any, row: any) {
+  const identity = specOverrides?.identity ?? {};
+  const tyreLabelIdentity = getTyreLabelIdentity(specOverrides);
+  const hasIdentityBrandOverride = Object.prototype.hasOwnProperty.call(identity, 'brand');
+  const hasIdentityModelOverride = Object.prototype.hasOwnProperty.call(identity, 'model');
+  const hasIdentitySizeOverride = Object.prototype.hasOwnProperty.call(identity, 'size_string');
+  const hasIdentityEanOverride = Object.prototype.hasOwnProperty.call(identity, 'ean');
+  const hasTyreLabelSupplierTrademark = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'supplier_trademark');
+  const hasTyreLabelSupplierName = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'supplier_name');
+  const hasTyreLabelCommercialName = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'commercial_name');
+  const hasTyreLabelModel = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'model');
+  const hasTyreLabelSize = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'size_designation');
+  const hasTyreLabelEan = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'ean');
+
+  const effectiveBrand = hasTyreLabelSupplierTrademark
+    ? String(tyreLabelIdentity.supplier_trademark ?? '').trim()
+    : hasTyreLabelSupplierName
+      ? String(tyreLabelIdentity.supplier_name ?? '').trim()
+      : hasIdentityBrandOverride
+        ? String(identity.brand ?? '').trim()
+        : String(row.brand ?? '').trim();
+
+  const effectiveModel = hasTyreLabelCommercialName
+    ? String(tyreLabelIdentity.commercial_name ?? '').trim()
+    : hasTyreLabelModel
+      ? String(tyreLabelIdentity.model ?? '').trim()
+      : hasIdentityModelOverride
+        ? String(identity.model ?? '').trim()
+        : String(row.model ?? '').trim();
+
+  const effectiveSize = hasTyreLabelSize
+    ? String(tyreLabelIdentity.size_designation ?? '').trim()
+    : hasIdentitySizeOverride
+      ? String(identity.size_string ?? '').trim()
+      : String(row.size_string ?? '').trim();
+
+  const effectiveEan = resolveEffectiveEan(
+    hasTyreLabelEan ? tyreLabelIdentity?.ean : hasIdentityEanOverride ? identity?.ean : undefined,
+    row.derived_ean,
+    row.ean,
+  );
+
+  return {
+    effectiveBrand,
+    effectiveModel,
+    effectiveSize,
+    effectiveEan,
+  };
 }
 
 export function useTiresCmsList(pageSize = 25) {
@@ -366,9 +424,16 @@ export function useTiresCmsList(pageSize = 25) {
 
         return rows.map((row: any) => {
           const cmsData = row.cms_data || null;
-          const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
-          const identityEanDigits = String(identity?.ean ?? '').replace(/\D/g, '');
-          const resolvedEan = resolveEffectiveEan(identity?.ean, row.derived_ean, row.ean);
+          const specOverrides = (cmsData?.spec_overrides as any) ?? {};
+          const identity = specOverrides.identity ?? {};
+          const tyreLabelIdentity = getTyreLabelIdentity(specOverrides);
+          const identityEanDigits = String(tyreLabelIdentity?.ean ?? identity?.ean ?? '').replace(/\D/g, '');
+          const {
+            effectiveBrand,
+            effectiveModel,
+            effectiveSize,
+            effectiveEan: resolvedEan,
+          } = resolveEffectiveMandatoryIdentity(specOverrides, row);
           const euLabel = row.eu_label_json && typeof row.eu_label_json === 'object' ? row.eu_label_json : null;
           const euNoiseClass =
             euLabel?.noise_class ??
@@ -423,12 +488,9 @@ export function useTiresCmsList(pageSize = 25) {
           const resolvedPrice = row.final_price_eur ?? row.price ?? null;
           const mandatoryFieldConflict =
             missingEan ||
-            !row.brand ||
-            String(row.brand).trim().length === 0 ||
-            !row.model ||
-            String(row.model).trim().length === 0 ||
-            !row.size_string ||
-            String(row.size_string).trim().length === 0 ||
+            effectiveBrand.length === 0 ||
+            effectiveModel.length === 0 ||
+            effectiveSize.length === 0 ||
             resolvedPrice === null ||
             resolvedPrice === undefined;
           const autoNonPassenger =
@@ -437,9 +499,9 @@ export function useTiresCmsList(pageSize = 25) {
 
           return {
             ...row,
-            brand: identity.brand ?? row.brand,
-            model: identity.model ?? row.model,
-            size_string: identity.size_string ?? row.size_string,
+            brand: effectiveBrand,
+            model: effectiveModel,
+            size_string: effectiveSize,
             derived_ean: resolvedEan,
             eu_fuel_class: euFuel,
             eu_wet_grip_class: euWet,
@@ -465,40 +527,42 @@ export function useTiresCmsList(pageSize = 25) {
       };
 
       try {
-        const [
-          { data: rpcRows, error: rpcError },
-          { data: rpcCount, error: rpcCountError },
-        ] = await Promise.all([
-          supabase.rpc('cms_list_tires_admin_v1', {
-            p_search: trimmedSearch || null,
-            p_missing_ean_only: showMissingEanOnly,
-            p_exclude_non_passenger: hideNonPassenger,
-            p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
-            p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
-            p_missing_image_only: showMissingImagesOnly,
-            p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
-            p_limit: pageSize,
-            p_offset: offset,
-          }),
-          supabase.rpc('cms_count_tires_admin_v1', {
-            p_search: trimmedSearch || null,
-            p_missing_ean_only: showMissingEanOnly,
-            p_exclude_non_passenger: hideNonPassenger,
-            p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
-            p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
-            p_missing_image_only: showMissingImagesOnly,
-            p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
-          }),
-        ]);
+        const { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
+          p_search: trimmedSearch || null,
+          p_missing_ean_only: showMissingEanOnly,
+          p_exclude_non_passenger: hideNonPassenger,
+          p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+          p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+          p_missing_image_only: showMissingImagesOnly,
+          p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
+          p_limit: pageSize,
+          p_offset: offset,
+        });
 
         if (rpcError) {
           throw rpcError;
         }
-        if (rpcCountError) {
-          throw rpcCountError;
-        }
 
-        const resolvedTotalCount = Number(rpcCount ?? 0);
+        let resolvedTotalCount = 0;
+        const { data: rpcCount, error: rpcCountError } = await supabase.rpc('cms_count_tires_admin_v1', {
+          p_search: trimmedSearch || null,
+          p_missing_ean_only: showMissingEanOnly,
+          p_exclude_non_passenger: hideNonPassenger,
+          p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+          p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+          p_missing_image_only: showMissingImagesOnly,
+          p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
+        });
+
+        if (rpcCountError) {
+          if (isStatementTimeoutError(rpcCountError)) {
+            resolvedTotalCount = offset + (Array.isArray(rpcRows) ? rpcRows.length : 0);
+          } else {
+            throw rpcCountError;
+          }
+        } else {
+          resolvedTotalCount = Number(rpcCount ?? 0);
+        }
         let rows = rpcRows ?? [];
 
         const variantIds = (rows as any[])
@@ -570,15 +634,21 @@ export function useTiresCmsList(pageSize = 25) {
         return;
       } catch (rpcListError: any) {
         if (cachedPage && force) {
-          console.warn('Background fetch tires refresh failed, keeping cached CMS page:', rpcListError);
+          if (!isStatementTimeoutError(rpcListError)) {
+            console.warn('Background fetch tires refresh failed, keeping cached CMS page:', rpcListError);
+          }
           setError(null);
           return;
         }
         throw rpcListError;
       }
     } catch (err: any) {
-      console.error('Fetch tires error:', err);
-      setError(err.message);
+      if (isStatementTimeoutError(err) && cachedPage) {
+        setError(null);
+      } else {
+        console.error('Fetch tires error:', err);
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -670,11 +740,14 @@ export function useTiresCmsList(pageSize = 25) {
             : nextCmsData?.price_override_eur ?? tire.price ?? null;
         const manualNonPassenger = getManualNonPassengerFlag(nextCmsData?.spec_overrides);
         const autoNonPassenger = Boolean(tire.is_non_passenger_auto);
-        const identity = (nextCmsData?.spec_overrides as any)?.identity ?? {};
-        const effectiveBrand = String(identity?.brand ?? tire.brand ?? '').trim();
-        const effectiveModel = String(identity?.model ?? tire.model ?? '').trim();
-        const effectiveSize = String(identity?.size_string ?? tire.size_string ?? '').trim();
-        const effectiveEan = resolveEffectiveEan(identity?.ean, tire.derived_ean, tire.ean);
+        const specOverrides = (nextCmsData?.spec_overrides as any) ?? {};
+        const identity = specOverrides.identity ?? {};
+        const {
+          effectiveBrand,
+          effectiveModel,
+          effectiveSize,
+          effectiveEan,
+        } = resolveEffectiveMandatoryIdentity(specOverrides, tire);
         const missingEan =
           !effectiveEan ||
           String(effectiveEan).trim().length === 0 ||
@@ -692,13 +765,18 @@ export function useTiresCmsList(pageSize = 25) {
           (effectivePrice === null || effectivePrice === undefined) ||
           !hasRequiredCmsContent;
         const nextEanConflictOpen =
-          (Boolean(tire.ean_conflict_open) && String(identity?.ean ?? '').replace(/\D/g, '').length === 0) ||
+          (Boolean(tire.ean_conflict_open) &&
+            String(getTyreLabelIdentity(specOverrides)?.ean ?? identity?.ean ?? '').replace(/\D/g, '').length === 0) ||
           Boolean(tire.has_duplicate_ean_conflict) ||
           nextMandatoryFieldConflict;
 
         return {
           ...tire,
           final_price_eur: effectivePrice,
+          brand: effectiveBrand,
+          model: effectiveModel,
+          size_string: effectiveSize,
+          derived_ean: effectiveEan,
           cms_data: nextCmsData,
           is_non_passenger_manual: manualNonPassenger,
           is_non_passenger: autoNonPassenger || manualNonPassenger,
@@ -732,20 +810,23 @@ export function useTiresCmsList(pageSize = 25) {
 
   const patchLocalIdentityData = useCallback((variantId: string, specOverrides: any) => {
     const identity = specOverrides?.identity ?? {};
-    const identityEanDigits = String(identity?.ean ?? '').replace(/\D/g, '');
+    const tyreLabelIdentity = getTyreLabelIdentity(specOverrides);
+    const identityEanDigits = String(tyreLabelIdentity?.ean ?? identity?.ean ?? '').replace(/\D/g, '');
 
     setTires((previous) => {
       const nextPageRows = previous.map((tire) =>
         tire.variant_id === variantId
           ? (() => {
-              const resolvedEan = resolveEffectiveEan(identity?.ean, tire.derived_ean, tire.ean);
+              const {
+                effectiveBrand: nextBrand,
+                effectiveModel: nextModel,
+                effectiveSize: nextSizeString,
+                effectiveEan: resolvedEan,
+              } = resolveEffectiveMandatoryIdentity(specOverrides, tire);
               const missingEan =
                 !resolvedEan ||
                 String(resolvedEan).trim().length === 0 ||
                 String(resolvedEan).startsWith('EANMISSING_');
-              const nextBrand = identity?.brand ?? tire.brand;
-              const nextModel = identity?.model ?? tire.model;
-              const nextSizeString = identity?.size_string ?? tire.size_string;
               const nextMandatoryFieldConflict =
                 missingEan ||
                 !String(nextBrand ?? '').trim() ||

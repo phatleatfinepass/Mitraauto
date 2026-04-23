@@ -146,10 +146,54 @@ export function useTiresCmsEditor({
   };
 
   const getEffectiveIdentity = (tire: TireRow | null) => {
-    const identity = (tire?.cms_data?.spec_overrides as any)?.identity ?? {};
-    const baseSize = (identity.size_string?.trim() || tire?.size_string || '').trim();
-    const loadIndex = String(identity.load_index ?? tire?.load_index ?? '').trim();
-    const speedRaw = String(identity.speed_rating ?? tire?.speed_rating ?? tire?.speed_index ?? '').trim();
+    const draftOverrides = (editData.spec_overrides as any) ?? {};
+    const savedOverrides = (tire?.cms_data?.spec_overrides as any) ?? {};
+    const identity = draftOverrides.identity ?? savedOverrides.identity ?? {};
+    const tyreLabelIdentity = draftOverrides.tyre_label_section?.identity ?? savedOverrides.tyre_label_section?.identity ?? {};
+    const hasIdentityBrandOverride = Object.prototype.hasOwnProperty.call(identity, 'brand');
+    const hasIdentityModelOverride = Object.prototype.hasOwnProperty.call(identity, 'model');
+    const hasIdentitySizeOverride = Object.prototype.hasOwnProperty.call(identity, 'size_string');
+    const hasTyreLabelSupplierTrademark = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'supplier_trademark');
+    const hasTyreLabelSupplierName = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'supplier_name');
+    const hasTyreLabelCommercialName = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'commercial_name');
+    const hasTyreLabelModel = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'model');
+    const hasTyreLabelSize = Object.prototype.hasOwnProperty.call(tyreLabelIdentity, 'size_designation');
+    const effectiveBrand =
+      hasTyreLabelSupplierTrademark
+        ? String(tyreLabelIdentity.supplier_trademark ?? '').trim()
+        : hasTyreLabelSupplierName
+          ? String(tyreLabelIdentity.supplier_name ?? '').trim()
+          : hasIdentityBrandOverride
+            ? String(identity.brand ?? '').trim()
+            : (tire?.brand || '');
+    const effectiveModel =
+      hasTyreLabelCommercialName
+        ? String(tyreLabelIdentity.commercial_name ?? '').trim()
+        : hasTyreLabelModel
+          ? String(tyreLabelIdentity.model ?? '').trim()
+          : hasIdentityModelOverride
+            ? String(identity.model ?? '').trim()
+            : (tire?.model || '');
+    const baseSize = (
+      hasTyreLabelSize
+        ? String(tyreLabelIdentity.size_designation ?? '').trim()
+        : hasIdentitySizeOverride
+          ? String(identity.size_string ?? '').trim()
+          : (tire?.size_string || '')
+    ).trim();
+    const loadIndex = String(
+      tyreLabelIdentity.load_index ??
+      identity.load_index ??
+      tire?.load_index ??
+      ''
+    ).trim();
+    const speedRaw = String(
+      tyreLabelIdentity.speed_symbol ??
+      identity.speed_rating ??
+      tire?.speed_rating ??
+      tire?.speed_index ??
+      ''
+    ).trim();
     const speedIndex = speedRaw.toUpperCase();
     const hasLiSiInSize = /\s\d{2,3}\s?[A-Z]{1,2}$/.test(baseSize.toUpperCase());
     const liSiSuffix = `${loadIndex}${speedIndex ? ` ${speedIndex}` : ''}`.trim();
@@ -158,8 +202,8 @@ export function useTiresCmsEditor({
       : baseSize;
 
     return {
-      brand: identity.brand?.trim() || tire?.brand || '',
-      model: identity.model?.trim() || tire?.model || '',
+      brand: effectiveBrand,
+      model: effectiveModel,
       size_string: sizeWithLiSi,
     };
   };

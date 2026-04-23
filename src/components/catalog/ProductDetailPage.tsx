@@ -313,7 +313,7 @@ function TyreLabelIdentitySection({
   const complianceRows = [
     { label: 'EPREL', value: data.eu_label.eprel_registration_number },
     { label: t('Production start', 'Production start'), value: data.compliance.production_start },
-    { label: t('Production end', 'Production end'), value: data.compliance.production_end },
+    { label: t('Production end', 'Production end'), value: data.compliance.production_end ?? t('No', 'No') },
     { label: t('Market start', 'Market start'), value: data.compliance.market_start },
     { label: t('Source', 'Source'), value: data.compliance.data_source },
   ].filter((row) => row.value && String(row.value).trim().length > 0);

@@ -6,6 +6,22 @@ interface TiresTableSectionProps {
   currentPage: number;
   endItem: number;
   error: string | null;
+  eprelListLoading: boolean;
+  eprelListStatuses: Record<string, {
+    match_status: 'matched' | 'no_match' | 'multiple_matches' | 'wrong_product_group' | 'blocked' | 'unverified' | 'error' | undefined;
+    review_status: 'not_reviewed' | 'pending' | 'accepted' | 'rejected' | 'kept_current' | 'mixed';
+    eprel_registration_number: string | null;
+  }>;
+  eprelPilotSummary: {
+    matched: number;
+    no_match: number;
+    multiple_matches: number;
+    other: number;
+    not_checked: number;
+    pending_review: number;
+    accepted_review: number;
+    mixed_review: number;
+  };
   filteredTires: TireRow[];
   getEffectiveIdentity: (tire: TireRow | null) => { brand: string; model: string; size_string: string };
   getWarningTooltip: (tire: TireRow) => string;
@@ -29,6 +45,9 @@ export function TiresCmsTableSection({
   currentPage,
   endItem,
   error,
+  eprelListLoading,
+  eprelListStatuses,
+  eprelPilotSummary,
   filteredTires,
   getEffectiveIdentity,
   getWarningTooltip,
@@ -47,6 +66,66 @@ export function TiresCmsTableSection({
   totalCount,
   totalPages,
 }: TiresTableSectionProps) {
+  const matchBadgeClasses = (status: string | undefined) => {
+    if (status === 'matched') {
+      return isDark ? 'bg-green-500/15 text-green-200' : 'bg-green-50 text-green-700';
+    }
+    if (status === 'no_match') {
+      return isDark ? 'bg-gray-500/15 text-gray-300' : 'bg-gray-100 text-gray-700';
+    }
+    if (status === 'multiple_matches') {
+      return isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700';
+    }
+    return isDark ? 'bg-red-500/15 text-red-200' : 'bg-red-50 text-red-700';
+  };
+
+  const reviewBadgeClasses = (status: string) => {
+    if (status === 'accepted') return isDark ? 'bg-green-500/15 text-green-200' : 'bg-green-50 text-green-700';
+    if (status === 'pending') return isDark ? 'bg-blue-500/15 text-blue-200' : 'bg-blue-50 text-blue-700';
+    if (status === 'mixed') return isDark ? 'bg-purple-500/15 text-purple-200' : 'bg-purple-50 text-purple-700';
+    if (status === 'rejected') return isDark ? 'bg-red-500/15 text-red-200' : 'bg-red-50 text-red-700';
+    if (status === 'kept_current') return isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700';
+    return isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-700';
+  };
+
+  const formatMatchLabel = (status: string | undefined) => {
+    switch (status) {
+      case 'matched':
+        return language === 'fi' ? 'Osuma' : 'Matched';
+      case 'no_match':
+        return language === 'fi' ? 'Ei osumaa' : 'No match';
+      case 'multiple_matches':
+        return language === 'fi' ? 'Useita osumia' : 'Multiple';
+      case 'wrong_product_group':
+        return language === 'fi' ? 'Väärä ryhmä' : 'Wrong group';
+      case 'blocked':
+        return language === 'fi' ? 'Estetty' : 'Blocked';
+      case 'unverified':
+        return language === 'fi' ? 'Vahvistamaton' : 'Unverified';
+      case 'error':
+        return 'Error';
+      default:
+        return language === 'fi' ? 'Ei tarkistettu' : 'Not checked';
+    }
+  };
+
+  const formatReviewLabel = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Pending';
+      case 'accepted':
+        return language === 'fi' ? 'Hyväksytty' : 'Accepted';
+      case 'rejected':
+        return language === 'fi' ? 'Hylätty' : 'Rejected';
+      case 'kept_current':
+        return language === 'fi' ? 'Pidä nykyinen' : 'Kept current';
+      case 'mixed':
+        return 'Mixed';
+      default:
+        return language === 'fi' ? 'Ei reviewta' : 'No review';
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-20 text-center">
@@ -82,6 +161,29 @@ export function TiresCmsTableSection({
         </div>
       ) : null}
 
+      <div className={`mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+        <span className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+          {language === 'fi' ? 'EPREL-pilotti näkyvissä:' : 'EPREL pilot in view:'}
+        </span>
+        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-green-500/15 text-green-200' : 'bg-green-50 text-green-700'}`}>
+          {language === 'fi' ? 'Osumat' : 'Matched'}: {eprelPilotSummary.matched}
+        </span>
+        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-blue-500/15 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>
+          {language === 'fi' ? 'Pending review' : 'Pending review'}: {eprelPilotSummary.pending_review}
+        </span>
+        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>
+          {language === 'fi' ? 'Useita osumia' : 'Multiple'}: {eprelPilotSummary.multiple_matches}
+        </span>
+        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-gray-500/15 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+          {language === 'fi' ? 'Ei tarkistettu' : 'Not checked'}: {eprelPilotSummary.not_checked}
+        </span>
+        {eprelListLoading ? (
+          <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            {language === 'fi' ? 'Haetaan EPREL-statuksia…' : 'Loading EPREL statuses…'}
+          </span>
+        ) : null}
+      </div>
+
       <div className={`overflow-hidden rounded-lg border ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -91,6 +193,7 @@ export function TiresCmsTableSection({
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Malli' : 'Model'}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Koko' : 'Size'}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>EAN</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>EPREL</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Hinta' : 'Price'}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Näkyvyys' : 'Visible'}</th>
                 <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Toiminnot' : 'Actions'}</th>
@@ -133,6 +236,29 @@ export function TiresCmsTableSection({
                   <td className={`${isDark ? 'text-gray-300' : 'text-gray-700'} px-4 py-3`}>{getEffectiveIdentity(tire).model}</td>
                   <td className={`${isDark ? 'text-gray-400' : 'text-gray-600'} px-4 py-3`}>{getEffectiveIdentity(tire).size_string || '—'}</td>
                   <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{tire.derived_ean || '—'}</td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const status = eprelListStatuses[tire.variant_id];
+                      if (!status) {
+                        return (
+                          <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                            {language === 'fi' ? 'Ei tarkistettu' : 'Not checked'}
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${matchBadgeClasses(status.match_status)}`}>
+                            {formatMatchLabel(status.match_status)}
+                          </span>
+                          <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${reviewBadgeClasses(status.review_status)}`}>
+                            {formatReviewLabel(status.review_status)}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className={`${isDark ? 'text-white' : 'text-gray-900'} px-4 py-3`}>
                     {tire.final_price_eur !== null && tire.final_price_eur !== undefined ? `€${tire.final_price_eur.toFixed(2)}` : '—'}
                     {hasMissingSupplierPrice(tire) && (

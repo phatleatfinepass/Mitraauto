@@ -82,6 +82,7 @@ export interface BuildTyreLabelSectionInput {
   supplierName?: string | null;
   commercialName?: string | null;
   model?: string | null;
+  tyreTypeIdentifier?: string | null;
   sizeString?: string | null;
   widthMm?: number | null;
   aspectRatio?: number | null;
@@ -102,6 +103,16 @@ export interface BuildTyreLabelSectionInput {
   euWetGripClass?: string | null;
   euNoiseDb?: number | null;
   euNoiseClass?: string | null;
+  supplierWebsite?: string | null;
+  supplierContactName?: string | null;
+  supplierContactEmail?: string | null;
+  supplierContactPhone?: string | null;
+  dataSource?: string | null;
+  dataSourceUrl?: string | null;
+  lastVerifiedAt?: string | null;
+  productionStart?: string | null;
+  productionEnd?: string | null;
+  marketStart?: string | null;
 }
 
 const SPEED_RATING_KMH: Record<string, number> = {
@@ -216,45 +227,51 @@ export function buildTyreLabelSectionData(input: BuildTyreLabelSectionInput): Ty
     section_title: normalizeText(existing.section_title) ?? TYRE_LABEL_SECTION_TITLE,
     identity: {
       supplier_name:
+        existingIdentity.supplier_name ??
         normalizeText(input.supplierName) ??
         normalizeText(input.brand) ??
-        existingIdentity.supplier_name ??
         null,
       supplier_trademark:
-        normalizeText(input.brand) ??
         existingIdentity.supplier_trademark ??
+        normalizeText(input.brand) ??
         null,
       commercial_name:
+        existingIdentity.commercial_name ??
         normalizeText(input.commercialName) ??
         normalizeText(input.model) ??
-        existingIdentity.commercial_name ??
         null,
-      model: normalizeText(input.model) ?? existingIdentity.model ?? null,
-      tyre_type_identifier: normalizeText(existingIdentity.tyre_type_identifier) ?? null,
-      tyre_class: normalizeText(existingIdentity.tyre_class) ?? null,
+      model: existingIdentity.model ?? normalizeText(input.model) ?? null,
+      tyre_type_identifier:
+        normalizeText(existingIdentity.tyre_type_identifier) ??
+        normalizeText(input.tyreTypeIdentifier) ??
+        null,
+      tyre_class: existingIdentity.tyre_class ?? null,
       size_designation:
-        formatSizeDesignation(normalizeText(input.sizeString), width, aspectRatio, diameter) ??
         existingIdentity.size_designation ??
+        formatSizeDesignation(normalizeText(input.sizeString), width, aspectRatio, diameter) ??
         null,
       width,
       aspect_ratio: aspectRatio,
       diameter,
       load_index:
-        normalizeText(input.loadIndex) ??
         existingIdentity.load_index ??
+        normalizeText(input.loadIndex) ??
         null,
-      speed_symbol: speedSymbol,
+      speed_symbol: existingIdentity.speed_symbol ?? speedSymbol,
       speed_kmh: getSpeedKmh(speedSymbol) ?? existingIdentity.speed_kmh ?? null,
-      load_version: inferLoadVersion(
-        normalizeText(existingIdentity.load_version),
-        normalizeBoolean(input.xlReinforced),
-      ),
-      ean: normalizeEan(input.ean) ?? existingIdentity.ean ?? null,
+      load_version:
+        existingIdentity.load_version !== undefined
+          ? existingIdentity.load_version
+          : inferLoadVersion(
+              normalizeText(existingIdentity.load_version),
+              normalizeBoolean(input.xlReinforced),
+            ),
+      ean: existingIdentity.ean ?? normalizeEan(input.ean) ?? null,
       supplier_code:
-        normalizeText(input.supplierCodeBest) ??
         existingIdentity.supplier_code ??
+        normalizeText(input.supplierCodeBest) ??
         null,
-      season: normalizeText(input.season) ?? existingIdentity.season ?? null,
+      season: existingIdentity.season ?? normalizeText(input.season) ?? null,
     },
     eu_label: {
       fuel_efficiency_class:
@@ -300,16 +317,19 @@ export function buildTyreLabelSectionData(input: BuildTyreLabelSectionInput): Ty
         null,
     },
     compliance: {
-      production_start: normalizeText(existingCompliance.production_start) ?? null,
-      production_end: normalizeText(existingCompliance.production_end) ?? null,
-      market_start: normalizeText(existingCompliance.market_start) ?? null,
-      supplier_website: normalizeText(existingCompliance.supplier_website) ?? null,
-      supplier_contact_name: normalizeText(existingCompliance.supplier_contact_name) ?? null,
-      supplier_contact_email: normalizeText(existingCompliance.supplier_contact_email) ?? null,
-      supplier_contact_phone: normalizeText(existingCompliance.supplier_contact_phone) ?? null,
-      data_source: normalizeText(existingCompliance.data_source) ?? null,
-      data_source_url: normalizeText(existingCompliance.data_source_url) ?? null,
-      last_verified_at: normalizeText(existingCompliance.last_verified_at) ?? null,
+      production_start: normalizeText(existingCompliance.production_start) ?? normalizeText(input.productionStart) ?? null,
+      production_end: normalizeText(existingCompliance.production_end) ?? normalizeText(input.productionEnd) ?? null,
+      market_start: normalizeText(existingCompliance.market_start) ?? normalizeText(input.marketStart) ?? null,
+      supplier_website: normalizeText(existingCompliance.supplier_website) ?? normalizeText(input.supplierWebsite) ?? null,
+      supplier_contact_name:
+        normalizeText(existingCompliance.supplier_contact_name) ?? normalizeText(input.supplierContactName) ?? null,
+      supplier_contact_email:
+        normalizeText(existingCompliance.supplier_contact_email) ?? normalizeText(input.supplierContactEmail) ?? null,
+      supplier_contact_phone:
+        normalizeText(existingCompliance.supplier_contact_phone) ?? normalizeText(input.supplierContactPhone) ?? null,
+      data_source: normalizeText(existingCompliance.data_source) ?? normalizeText(input.dataSource) ?? null,
+      data_source_url: normalizeText(existingCompliance.data_source_url) ?? normalizeText(input.dataSourceUrl) ?? null,
+      last_verified_at: normalizeText(existingCompliance.last_verified_at) ?? normalizeText(input.lastVerifiedAt) ?? null,
     },
   };
 }

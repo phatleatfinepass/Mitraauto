@@ -547,8 +547,8 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   const cmsSubtitle = String((row as any).subtitle ?? '').trim() || undefined;
   const cmsShortDescription = String((row as any).short_description ?? '').trim() || undefined;
   const cmsLongDescription = String((row as any).long_description ?? '').trim() || undefined;
-  const cmsGallery = Array.isArray((row as any).gallery)
-    ? (row as any).gallery
+  const cmsGallery = Array.isArray(row.gallery)
+    ? row.gallery
         .map((value: unknown) => String(value ?? '').trim())
         .filter((value: string) => value.length > 0)
     : [];
