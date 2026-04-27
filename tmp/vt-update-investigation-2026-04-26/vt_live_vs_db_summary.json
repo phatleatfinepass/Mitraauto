@@ -1,0 +1,542 @@
+{
+  "checked_at_utc": "2026-04-25T23:55:10.558719Z",
+  "live": {
+    "tires_count": 1750,
+    "rims_count": 382,
+    "total_tire_rim_count": 2132,
+    "tire_latest_date_modified": "2026-04-23 11:12:21",
+    "rim_latest_date_modified": "2026-04-24 18:05:30",
+    "tire_date_modified_top": {
+      "2025-12-19": 250,
+      "2025-12-12": 219,
+      "2026-01-22": 186,
+      "2026-03-31": 154,
+      "2025-08-20": 138,
+      "2026-04-16": 102,
+      "2025-08-18": 88,
+      "2026-02-27": 55,
+      "2025-12-18": 45,
+      "2025-12-16": 37
+    },
+    "rim_date_modified_top": {
+      "2025-12-09": 330,
+      "2026-02-24": 13,
+      "2025-03-26": 4,
+      "2026-04-01": 4,
+      "2026-04-13": 4,
+      "2026-04-15": 4,
+      "2025-03-21": 3,
+      "2026-04-16": 2,
+      "2026-02-13": 2,
+      "2023-06-20": 2
+    }
+  },
+  "db": {
+    "vt_offers_count": 2403,
+    "latest_last_seen_at": "2026-02-16T00:12:00.094046+00:00"
+  },
+  "set_comparison": {
+    "live_ids_not_in_db_count": 299,
+    "db_ids_not_in_live_count": 522,
+    "common_ids_count": 1833,
+    "live_ids_not_in_db_sample": [
+      "34113",
+      "43946",
+      "43953",
+      "44446",
+      "48648",
+      "49073",
+      "50361",
+      "50375",
+      "51310",
+      "53550",
+      "53605",
+      "53610",
+      "53644",
+      "53791",
+      "53800",
+      "53809",
+      "54155",
+      "54157",
+      "54257",
+      "54268"
+    ],
+    "db_ids_not_in_live_sample": [
+      "13020",
+      "13021",
+      "13290",
+      "13781",
+      "24799",
+      "24951",
+      "24956",
+      "24959",
+      "25375",
+      "27961",
+      "29354",
+      "34125",
+      "34185",
+      "34187",
+      "34270",
+      "34741",
+      "36773",
+      "40131",
+      "40273",
+      "43866"
+    ]
+  },
+  "value_comparison": {
+    "common_rows_with_price_or_stock_diff_count": 632,
+    "diff_samples": [
+      {
+        "product_type": "tire",
+        "product_id": "29442",
+        "brand": "Nankang",
+        "model": "SW-7",
+        "size": "265/65-17",
+        "date_modified": "2025-08-20 14:27:00",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "9",
+            "db": 12
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "34111",
+        "brand": "Nankang",
+        "model": "NS-2 Ultra Sport",
+        "size": "155/65-14",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "6",
+            "db": 18
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "34122",
+        "brand": "Nankang",
+        "model": "NS-2 Ultra Sport",
+        "size": "185/55-15",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "12",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "34124",
+        "brand": "Nankang",
+        "model": "NS-2 Ultra Sport",
+        "size": "205/50-15",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "6",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "40134",
+        "brand": "Nankang",
+        "model": "SW-7",
+        "size": "225/55-16",
+        "date_modified": "2025-08-20 14:27:00",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "14",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "40931",
+        "brand": "Goodride",
+        "model": "SnowMaster SW612",
+        "size": "225/65-16C",
+        "date_modified": "2025-08-18 13:44:36",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "10",
+            "db": 9
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "43883",
+        "brand": "Nankang",
+        "model": "NS-2 Ultra Sport",
+        "size": "165/50-15",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "8",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "43969",
+        "brand": "Linglong",
+        "model": "GreenMax UHP - Huikea asiakastyytyv\u00e4isyys!",
+        "size": "235/30-20",
+        "date_modified": "2025-12-12 11:40:04",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "10",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "43976",
+        "brand": "Linglong",
+        "model": "GreenMax EcoTouring - Huikea asiakastyytyv\u00e4isyys!",
+        "size": "145/70-13",
+        "date_modified": "2025-12-12 11:39:04",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "4",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "44022",
+        "brand": "Nankang",
+        "model": "RX-615 Comfort Grip",
+        "size": "215/60-14",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "20",
+            "db": 19
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "44025",
+        "brand": "Nankang",
+        "model": "AS-1 Comfort Grip",
+        "size": "255/40-18",
+        "date_modified": "2025-12-19 13:56:01",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "8",
+            "db": 12
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "44028",
+        "brand": "Nankang",
+        "model": "NS-2 Ultra Sport",
+        "size": "155/55-14",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "18",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "44057",
+        "brand": "Goodride",
+        "model": "SC328 Cargo",
+        "size": "195/65-16C",
+        "date_modified": "2026-02-12 13:26:25",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "16",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "44071",
+        "brand": "Nankang",
+        "model": "N-605 TourSport Valkosivu 20mm",
+        "size": "225/70-15",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "8",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "45811",
+        "brand": "Nankang",
+        "model": "SW-7",
+        "size": "175/70-13",
+        "date_modified": "2025-08-20 14:26:59",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "7",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "48074",
+        "brand": "Goodride",
+        "model": "CR976A Kuorma-autoon M+S",
+        "size": "275/70-22.5",
+        "date_modified": "2025-12-18 13:54:21",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "15",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "48671",
+        "brand": "Nankang",
+        "model": "NS-20 Noble Sport",
+        "size": "225/45-16",
+        "date_modified": "2025-12-19 14:03:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "19",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "48731",
+        "brand": "Nankang",
+        "model": "AS-1 Comfort Grip",
+        "size": "265/40-18",
+        "date_modified": "2025-12-19 13:56:01",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "5",
+            "db": 7
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "48775",
+        "brand": "Nankang",
+        "model": "CW-25 Cargo Grip",
+        "size": "175/65-14C",
+        "date_modified": "2025-12-19 13:56:02",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "7",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "49077",
+        "brand": "Nankang",
+        "model": "SP-7 Sport SUV",
+        "size": "265/35-22",
+        "date_modified": "2025-12-19 13:56:02",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "8",
+            "db": 14
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "49078",
+        "brand": "Nankang",
+        "model": "SP-7 Sport SUV",
+        "size": "295/30-22",
+        "date_modified": "2025-12-19 13:56:02",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "11",
+            "db": 7
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "49164",
+        "brand": "Linglong",
+        "model": "T820 Kuorma-autoon",
+        "size": "445/45-19.5",
+        "date_modified": "2026-01-22 11:50:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "14",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "49356",
+        "brand": "Linglong",
+        "model": "F820 Kuorma-autoon",
+        "size": "265/70-19.5",
+        "date_modified": "2026-01-22 11:50:57",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "10",
+            "db": 14
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "49781",
+        "brand": "Nankang",
+        "model": "FT-7 A/T White Letters",
+        "size": "235/70-16",
+        "date_modified": "2026-02-13 10:35:31",
+        "last_seen_at": "2026-02-16T00:09:55.129054+00:00",
+        "diffs": {
+          "stock": {
+            "live": "10",
+            "db": 6
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "50920",
+        "brand": "Nankang",
+        "model": "N-889 Mudstar M/T White Letters",
+        "size": "245/75-16",
+        "date_modified": "2026-02-13 10:35:31",
+        "last_seen_at": "2026-02-16T00:09:55.129054+00:00",
+        "diffs": {
+          "stock": {
+            "live": "20",
+            "db": 17
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "51188",
+        "brand": "Goodride",
+        "model": "Pathfinder SL366 M/T White letters",
+        "size": "31x10.5-15",
+        "date_modified": "2025-12-18 14:09:36",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "13",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "51267",
+        "brand": "Nankang",
+        "model": "SV-1 Nordic Testimenestys!",
+        "size": "215/55-16",
+        "date_modified": "2025-08-20 14:27:00",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "18",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "51328",
+        "brand": "Nankang",
+        "model": "SV-1 Nordic Testimenestys!",
+        "size": "195/55-15",
+        "date_modified": "2025-08-20 14:26:59",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "12",
+            "db": 20
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "51329",
+        "brand": "Nankang",
+        "model": "SV-1 Nordic Testimenestys!",
+        "size": "195/50-15",
+        "date_modified": "2025-08-20 14:26:59",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "17",
+            "db": 18
+          }
+        }
+      },
+      {
+        "product_type": "tire",
+        "product_id": "51412",
+        "brand": "Nankang",
+        "model": "SL-6",
+        "size": "215/75-16C",
+        "date_modified": "2025-08-20 14:27:01",
+        "last_seen_at": "2026-02-16T00:05:01.019003+00:00",
+        "diffs": {
+          "stock": {
+            "live": "7",
+            "db": 15
+          }
+        }
+      }
+    ]
+  }
+}

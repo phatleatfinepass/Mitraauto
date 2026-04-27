@@ -103,6 +103,9 @@ export interface BuildTyreLabelSectionInput {
   euWetGripClass?: string | null;
   euNoiseDb?: number | null;
   euNoiseClass?: string | null;
+  eprelRegistrationNumber?: string | null;
+  eprelQrUrl?: string | null;
+  eprelSheetUrl?: string | null;
   supplierWebsite?: string | null;
   supplierContactName?: string | null;
   supplierContactEmail?: string | null;
@@ -299,11 +302,17 @@ export function buildTyreLabelSectionData(input: BuildTyreLabelSectionInput): Ty
         existingEuLabel.severe_ice ??
         null,
       eprel_registration_number:
-        normalizeText(existingEuLabel.eprel_registration_number) ?? null,
+        normalizeText(existingEuLabel.eprel_registration_number) ??
+        normalizeText(input.eprelRegistrationNumber) ??
+        null,
       eprel_qr_url:
-        normalizeText(existingEuLabel.eprel_qr_url) ?? null,
+        normalizeText(existingEuLabel.eprel_qr_url) ??
+        normalizeText(input.eprelQrUrl) ??
+        null,
       eprel_sheet_url:
-        normalizeText(existingEuLabel.eprel_sheet_url) ?? null,
+        normalizeText(existingEuLabel.eprel_sheet_url) ??
+        normalizeText(input.eprelSheetUrl) ??
+        null,
     },
     badges: {
       runflat: normalizeBoolean(input.runflat) ?? existingBadges.runflat ?? null,

@@ -95,6 +95,7 @@ function buildTiresCmsQueryKey(params: {
   supplierFilter: string;
   missingMetadataFields: string[];
   showMissingImagesOnly: boolean;
+  showWithEprelOnly: boolean;
   missingSeoFields: string[];
   pageSize: number;
 }) {
@@ -105,6 +106,7 @@ function buildTiresCmsQueryKey(params: {
     supplier: params.supplierFilter,
     missingMetadataFields: [...params.missingMetadataFields].sort(),
     missingImages: params.showMissingImagesOnly,
+    withEprel: params.showWithEprelOnly,
     missingSeoFields: [...params.missingSeoFields].sort(),
     pageSize: params.pageSize,
   });
@@ -207,6 +209,7 @@ export function useTiresCmsList(pageSize = 25) {
         supplierFilter: 'all',
         missingMetadataFields: [] as MissingMetadataField[],
         showMissingImagesOnly: false,
+        showWithEprelOnly: false,
         missingSeoFields: [] as MissingSeoField[],
         currentPage: 1,
       };
@@ -224,6 +227,7 @@ export function useTiresCmsList(pageSize = 25) {
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
         missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
         showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
+        showWithEprelOnly: Boolean(parsedState?.showWithEprelOnly),
         missingSeoFields: Array.isArray(parsedState?.missingSeoFields) ? parsedState.missingSeoFields : [],
         pageSize,
       });
@@ -245,6 +249,7 @@ export function useTiresCmsList(pageSize = 25) {
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
         missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
         showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
+        showWithEprelOnly: Boolean(parsedState?.showWithEprelOnly),
         missingSeoFields: Array.isArray(parsedState?.missingSeoFields) ? parsedState.missingSeoFields : [],
         currentPage: initialPage,
       };
@@ -259,6 +264,7 @@ export function useTiresCmsList(pageSize = 25) {
         supplierFilter: 'all',
         missingMetadataFields: [] as MissingMetadataField[],
         showMissingImagesOnly: false,
+        showWithEprelOnly: false,
         missingSeoFields: [] as MissingSeoField[],
         currentPage: 1,
       };
@@ -277,6 +283,7 @@ export function useTiresCmsList(pageSize = 25) {
     initialState.missingMetadataFields,
   );
   const [showMissingImagesOnly, setShowMissingImagesOnly] = useState(initialState.showMissingImagesOnly);
+  const [showWithEprelOnly, setShowWithEprelOnly] = useState(initialState.showWithEprelOnly);
   const [missingSeoFields, setMissingSeoFields] = useState<MissingSeoField[]>(initialState.missingSeoFields);
   const [currentPage, setCurrentPage] = useState(initialState.currentPage);
   const [totalCount, setTotalCount] = useState(initialState.totalCount);
@@ -293,6 +300,7 @@ export function useTiresCmsList(pageSize = 25) {
     supplierFilter,
     missingMetadataFields,
     showMissingImagesOnly,
+    showWithEprelOnly,
     missingSeoFields,
     pageSize,
   });
@@ -346,6 +354,7 @@ export function useTiresCmsList(pageSize = 25) {
     debouncedSearchTerm,
     missingMetadataFields,
     showMissingImagesOnly,
+    showWithEprelOnly,
     missingSeoFields,
   ]);
 
@@ -360,6 +369,7 @@ export function useTiresCmsList(pageSize = 25) {
         supplierFilter,
         missingMetadataFields,
         showMissingImagesOnly,
+        showWithEprelOnly,
         missingSeoFields,
         currentPage,
       })
@@ -372,6 +382,7 @@ export function useTiresCmsList(pageSize = 25) {
     supplierFilter,
     missingMetadataFields,
     showMissingImagesOnly,
+    showWithEprelOnly,
     missingSeoFields,
   ]);
 
@@ -435,6 +446,24 @@ export function useTiresCmsList(pageSize = 25) {
             effectiveEan: resolvedEan,
           } = resolveEffectiveMandatoryIdentity(specOverrides, row);
           const euLabel = row.eu_label_json && typeof row.eu_label_json === 'object' ? row.eu_label_json : null;
+          const eprelCode =
+            extractLabelValue(euLabel, [
+              'eprel_code',
+              'eprel_registration_number',
+              'eprel_id',
+              'eprel',
+              'EPRELId',
+              'EprelCode',
+            ]) ?? null;
+          const eprelRegistrationNumber = eprelCode ? String(eprelCode).trim() : null;
+          const eprelQrUrl =
+            extractLabelValue(euLabel, ['eprel_qr_url', 'qr_url']) ??
+            (eprelRegistrationNumber ? `https://eprel.ec.europa.eu/qr/${eprelRegistrationNumber}` : null);
+          const eprelSheetUrl =
+            extractLabelValue(euLabel, ['eprel_sheet_url', 'eprel_fiche_url', 'fiche_url']) ?? null;
+          const eprelSourceUrl =
+            extractLabelValue(euLabel, ['eprel_url', 'source_url', 'data_source_url', 'register_code']) ??
+            eprelQrUrl;
           const euNoiseClass =
             euLabel?.noise_class ??
             euLabel?.noiseClass ??
@@ -507,6 +536,12 @@ export function useTiresCmsList(pageSize = 25) {
             eu_wet_grip_class: euWet,
             eu_noise_db: euNoise,
             eu_noise_class: typeof euNoiseClass === 'string' ? euNoiseClass : null,
+            eprel_code: eprelRegistrationNumber,
+            eprel_registration_number: eprelRegistrationNumber,
+            eprel_qr_url: eprelQrUrl ? String(eprelQrUrl) : null,
+            eprel_sheet_url: eprelSheetUrl ? String(eprelSheetUrl) : null,
+            eprel_source: euLabel?.source ? String(euLabel.source) : null,
+            eprel_source_url: eprelSourceUrl ? String(eprelSourceUrl) : null,
             final_price_eur:
               cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
                 ? cmsData.promo_price_eur
@@ -534,6 +569,7 @@ export function useTiresCmsList(pageSize = 25) {
           p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
           p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
           p_missing_image_only: showMissingImagesOnly,
+          p_has_eprel_only: showWithEprelOnly,
           p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
           p_limit: pageSize,
           p_offset: offset,
@@ -551,6 +587,7 @@ export function useTiresCmsList(pageSize = 25) {
           p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
           p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
           p_missing_image_only: showMissingImagesOnly,
+          p_has_eprel_only: showWithEprelOnly,
           p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
         });
 
@@ -587,7 +624,9 @@ export function useTiresCmsList(pageSize = 25) {
 
           rows = (rows as any[]).map((row) => ({
             ...row,
-            cms_data: liveCmsByVariantId.has(row.variant_id) ? liveCmsByVariantId.get(row.variant_id) : null,
+            cms_data: liveCmsByVariantId.has(row.variant_id)
+              ? liveCmsByVariantId.get(row.variant_id)
+              : row.cms_data ?? null,
           }));
         }
 
@@ -666,6 +705,7 @@ export function useTiresCmsList(pageSize = 25) {
     supplierFilter,
     missingMetadataFields,
     showMissingImagesOnly,
+    showWithEprelOnly,
     missingSeoFields,
     tires.length,
   ]);
@@ -899,12 +939,14 @@ export function useTiresCmsList(pageSize = 25) {
     setSearchTerm,
     setShowMissingEanOnly,
     setShowMissingImagesOnly,
+    setShowWithEprelOnly,
     setSupplierFilter,
     hideNonPassenger,
     missingMetadataFields,
     missingSeoFields,
     showMissingEanOnly,
     showMissingImagesOnly,
+    showWithEprelOnly,
     startItem,
     tires,
     totalCount,

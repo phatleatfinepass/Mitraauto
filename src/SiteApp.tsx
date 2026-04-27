@@ -84,6 +84,9 @@ const RescueCMSPage = lazy(() =>
 const TiresCMSPage = lazy(() =>
   import('./components/cms/TiresCMSPage').then((module) => ({ default: module.TiresCMSPage }))
 );
+const TiresConflictResolvePage = lazy(() =>
+  import('./components/cms/TiresConflictResolvePage').then((module) => ({ default: module.TiresConflictResolvePage }))
+);
 const RimsCMSPage = lazy(() =>
   import('./components/cms/RimsCMSPageV2').then((module) => ({ default: module.RimsCMSPageV2 }))
 );
@@ -484,7 +487,7 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -666,6 +669,10 @@ function HomePage() {
         transitionNavigationState('cms-beta', null, nextCmsTab);
       } else if (normalizedPath === '/cms/rescue-board') {
         transitionNavigationState('cms-rescue');
+      } else if (normalizedPath === '/cms/tires' || normalizedPath === '/cms-tires') {
+        transitionNavigationState('cms-tires');
+      } else if (normalizedPath === '/cms/tires/conflicts') {
+        transitionNavigationState('cms-tire-conflicts');
       } else if (
         normalizedPath === '/cms/orders' ||
         normalizedPath === '/cms-orders'
@@ -876,7 +883,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-rims', 'cms-orders', 'cms-beta'];
+      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-tire-conflicts', 'cms-rims', 'cms-orders', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         startTransition(() => {
           setCurrentPage('home');
@@ -1199,6 +1206,12 @@ function HomePage() {
           <CmsGuard onNeedLogin={handleLoginNeeded}>
             <Suspense fallback={<CmsRouteFallback />}>
               <TiresCMSPage />
+            </Suspense>
+          </CmsGuard>
+        ) : currentPage === 'cms-tire-conflicts' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <Suspense fallback={<CmsRouteFallback />}>
+              <TiresConflictResolvePage />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-rims' ? (

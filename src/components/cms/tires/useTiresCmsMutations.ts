@@ -24,6 +24,21 @@ function normalizeGallery(value: any): string[] {
     .filter((item): item is string => Boolean(item));
 }
 
+function buildCmsImageUrls(source: Partial<ProductCMS> | null | undefined): string[] {
+  const seen = new Set<string>();
+  const images: string[] = [];
+  const add = (value: any) => {
+    const url = normalizeTextOrNull(value);
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    images.push(url);
+  };
+
+  add(source?.hero_image_url);
+  for (const url of normalizeGallery(source?.gallery)) add(url);
+  return images;
+}
+
 function hasOwn(obj: any, key: string) {
   return Boolean(obj) && Object.prototype.hasOwnProperty.call(obj, key);
 }
@@ -372,6 +387,9 @@ export function useTiresCmsMutations({
         euWetGripClass: effectiveEu.wet_grip_class,
         euNoiseDb: effectiveEu.noise_db,
         euNoiseClass: effectiveEu.noise_class,
+        eprelRegistrationNumber: selectedTire.eprel_registration_number ?? selectedTire.eprel_code ?? null,
+        eprelQrUrl: selectedTire.eprel_qr_url ?? null,
+        eprelSheetUrl: selectedTire.eprel_sheet_url ?? null,
         productionStart: currentTyreLabelCompliance.production_start ?? null,
         productionEnd: currentTyreLabelCompliance.production_end ?? null,
         marketStart: currentTyreLabelCompliance.market_start ?? null,
@@ -379,8 +397,8 @@ export function useTiresCmsMutations({
         supplierContactName: currentTyreLabelCompliance.supplier_contact_name ?? null,
         supplierContactEmail: currentTyreLabelCompliance.supplier_contact_email ?? null,
         supplierContactPhone: currentTyreLabelCompliance.supplier_contact_phone ?? null,
-        dataSource: currentTyreLabelCompliance.data_source ?? null,
-        dataSourceUrl: currentTyreLabelCompliance.data_source_url ?? null,
+        dataSource: currentTyreLabelCompliance.data_source ?? selectedTire.eprel_source ?? null,
+        dataSourceUrl: currentTyreLabelCompliance.data_source_url ?? selectedTire.eprel_source_url ?? null,
         lastVerifiedAt: currentTyreLabelCompliance.last_verified_at ?? null,
       });
       const payload: any = {
@@ -439,6 +457,13 @@ export function useTiresCmsMutations({
         .upsert(payload, { onConflict: 'variant_id' });
 
       if (error) throw error;
+
+      const { error: imageSyncError } = await supabase.rpc('catalog_sync_cms_item_images_v1', {
+        p_selected_item_id: targetVariantId,
+        p_image_urls: buildCmsImageUrls(payload),
+      });
+
+      if (imageSyncError) throw imageSyncError;
 
       if (eprelMatchId) {
         const { error: eprelApplyError } = await supabase
@@ -556,6 +581,13 @@ export function useTiresCmsMutations({
         .eq('variant_id', selectedTire.variant_id);
 
       if (error) throw error;
+
+      const { error: imageSyncError } = await supabase.rpc('catalog_sync_cms_item_images_v1', {
+        p_selected_item_id: selectedTire.variant_id,
+        p_image_urls: [],
+      });
+
+      if (imageSyncError) throw imageSyncError;
 
       patchLocalCmsData(selectedTire.variant_id, null);
       setHasPendingCatalogSync(true);

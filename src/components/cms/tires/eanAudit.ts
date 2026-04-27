@@ -22,6 +22,7 @@ export interface TireAuditExtracted {
   size_string: string | null;
   season: 'summer' | 'winter' | 'all_season' | null;
   metadata: {
+    ean: string | null;
     tyre_type_identifier: string | null;
     tyre_class: string | null;
     load_version: string | null;
@@ -78,12 +79,12 @@ export interface TireEprelIdSuggestion {
 }
 
 export interface TireEanAuditResult {
-  ean: string;
+  ean: string | null;
   eprel_match_id?: string | null;
   match_status?: 'matched' | 'no_match' | 'multiple_matches' | 'wrong_product_group' | 'blocked' | 'unverified' | 'error';
   eprel_registration_number?: string | null;
   eprel_fiche_url?: string | null;
-  fallback_mode?: 'gtin' | 'search';
+  fallback_mode?: 'gtin' | 'search' | 'eprel_id';
   candidates?: TireEprelCandidate[];
   summary: string;
   confidence: TireAuditConfidence;

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
-import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw, Loader2, Wand2 } from 'lucide-react';
+import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw, Loader2, Wand2, ExternalLink } from 'lucide-react';
 import { TiresCmsToolbar } from './tires/TiresCmsToolbar';
 import { TiresImagesSection } from './tires/TiresImagesSection';
 import { TiresBundlePricingSection } from './tires/TiresBundlePricingSection';
@@ -141,6 +141,25 @@ function fromStoredAuditRows(
       model: toAuditString(byField.get('model')?.proposed_value) ?? match.commercial_name,
       size_string: sizeString,
       season: (toAuditString(byField.get('season')?.proposed_value) as any) ?? null,
+      metadata: {
+        ean: toAuditString(byField.get('ean')?.proposed_value) ?? match.gtin_queried ?? null,
+        tyre_type_identifier: null,
+        tyre_class: null,
+        load_version: null,
+        eprel_registration_number: match.eprel_registration_number,
+        eprel_qr_url: match.eprel_registration_number ? `https://eprel.ec.europa.eu/qr/${match.eprel_registration_number}` : null,
+        eprel_sheet_url: match.eprel_fiche_url,
+        production_start: null,
+        production_end: null,
+        market_start: null,
+        supplier_website: null,
+        supplier_contact_name: null,
+        supplier_contact_email: null,
+        supplier_contact_phone: null,
+        data_source: 'EPREL',
+        data_source_url: match.eprel_source_url,
+        last_verified_at: null,
+      },
       badges: {
         runflat: byField.get('runflat')?.proposed_value as boolean | null ?? null,
         xl: byField.get('xl')?.proposed_value as boolean | null ?? null,
@@ -157,6 +176,7 @@ function fromStoredAuditRows(
       },
     },
     checks: [
+      reviewCheck('ean', 'EAN'),
       reviewCheck('brand', 'Brand'),
       reviewCheck('model', 'Model'),
       reviewCheck('size_string', 'Size'),
@@ -180,6 +200,134 @@ const SUPPLIER_OPTIONS = [
   { code: 'VT', label: 'Vannetukku' },
 ];
 
+function navigateToCmsTireConflicts() {
+  window.history.pushState({}, '', '/cms/tires/conflicts');
+  window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+}
+
+function extractEprelRegistrationNumber(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const raw = String(value ?? '').trim();
+    if (!raw) continue;
+
+    const direct = raw.match(/^\d+$/);
+    if (direct) return direct[0];
+
+    const patterns = [
+      /\/qr\/(\d+)/i,
+      /\/screen\/product\/tyres\/(\d+)/i,
+      /\/products\/tyres\/(\d+)/i,
+      /Fiche_(\d+)_/i,
+      /registration(?:Number)?[=/:](\d+)/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = raw.match(pattern);
+      if (match?.[1]) return match[1];
+    }
+  }
+
+  return null;
+}
+
+function TireEprelDrawerSection({
+  auditResult,
+  eprelListStatus,
+  isDark,
+  language,
+  selectedTire,
+}: {
+  auditResult: TireEanAuditResult | null;
+  eprelListStatus?: EprelListVariantStatus;
+  isDark: boolean;
+  language: string;
+  selectedTire: TireRow;
+}) {
+  const catalogRegistrationNumber = extractEprelRegistrationNumber(
+    selectedTire.eprel_registration_number,
+    selectedTire.eprel_code,
+    selectedTire.eprel_qr_url,
+    selectedTire.eprel_source_url,
+  );
+  const catalogQrUrl = selectedTire.eprel_qr_url
+    ?? (catalogRegistrationNumber ? `https://eprel.ec.europa.eu/qr/${catalogRegistrationNumber}` : null);
+  const latestRegistrationNumber = auditResult?.eprel_registration_number
+    ?? auditResult?.extracted?.metadata?.eprel_registration_number
+    ?? eprelListStatus?.eprel_registration_number
+    ?? null;
+  const latestFicheUrl = auditResult?.eprel_fiche_url ?? auditResult?.extracted?.metadata?.eprel_sheet_url ?? null;
+  const latestSourceUrl = auditResult?.source_urls?.[0] ?? auditResult?.extracted?.metadata?.data_source_url ?? null;
+  const latestReviewStatus = eprelListStatus?.review_status ?? 'not_reviewed';
+  const chipClass = isDark
+    ? 'border-white/10 bg-white/5 text-gray-200'
+    : 'border-gray-200 bg-gray-50 text-gray-700';
+  const linkClass = isDark ? 'text-blue-300 hover:text-blue-200' : 'text-blue-700 hover:text-blue-900';
+
+  const Field = ({ label, value }: { label: string; value?: React.ReactNode }) => (
+    <div>
+      <div className={`text-[11px] uppercase tracking-[0.16em] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{label}</div>
+      <div className={`mt-1 text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{value || '—'}</div>
+    </div>
+  );
+
+  const LinkValue = ({ href, label }: { href?: string | null; label: string }) => (
+    href ? (
+      <a href={href} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 ${linkClass}`}>
+        {label}
+        <ExternalLink className="h-3.5 w-3.5" />
+      </a>
+    ) : '—'
+  );
+
+  return (
+    <section className={`rounded-xl border p-4 ${isDark ? 'border-white/10 bg-[#11151D]' : 'border-gray-200 bg-gray-50'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+            {language === 'fi' ? 'EPREL-tuotteet' : 'Items with EPREL'}
+          </h3>
+          <p className={`mt-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            {selectedTire.brand} {selectedTire.model}
+          </p>
+        </div>
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${chipClass}`}>
+          {latestReviewStatus.replace('_', ' ')}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'}`}>
+          <div className={`mb-4 text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+            {language === 'fi' ? 'Catalog item' : 'Catalog item'}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="EPREL ID" value={catalogRegistrationNumber} />
+            <Field label="Source" value={selectedTire.eprel_source || '—'} />
+            <Field label="QR" value={<LinkValue href={catalogQrUrl} label={catalogRegistrationNumber ? `QR ${catalogRegistrationNumber}` : 'Open'} />} />
+            <Field label="Fiche" value={<LinkValue href={selectedTire.eprel_sheet_url} label="Open fiche" />} />
+          </div>
+        </div>
+
+        <div className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'}`}>
+          <div className={`mb-4 text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+            {language === 'fi' ? 'Latest EPREL fetch' : 'Latest EPREL fetch'}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="EPREL ID" value={latestRegistrationNumber} />
+            <Field label="Status" value={auditResult?.match_status ?? eprelListStatus?.match_status ?? '—'} />
+            <Field label="Brand" value={auditResult?.extracted?.brand} />
+            <Field label="Model" value={auditResult?.extracted?.model} />
+            <Field label="Size" value={auditResult?.extracted?.size_string} />
+            <Field label="EAN" value={auditResult?.extracted?.metadata?.ean ?? auditResult?.ean} />
+            <Field label="Source" value={auditResult?.extracted?.metadata?.data_source} />
+            <Field label="Links" value={<LinkValue href={latestFicheUrl ?? latestSourceUrl} label={latestFicheUrl ? 'Open fiche' : 'Open source'} />} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function TiresCMSPage() {
   const { theme } = useTheme();
   const { language } = useLanguage();
@@ -201,6 +349,7 @@ export function TiresCMSPage() {
   const [showNonPassengerDraft, setShowNonPassengerDraft] = useState(false);
   const [missingMetadataFieldsDraft, setMissingMetadataFieldsDraft] = useState<string[]>([]);
   const [showMissingImagesOnlyDraft, setShowMissingImagesOnlyDraft] = useState(false);
+  const [showWithEprelOnlyDraft, setShowWithEprelOnlyDraft] = useState(false);
   const [missingSeoFieldsDraft, setMissingSeoFieldsDraft] = useState<string[]>([]);
   const [pricingDetails, setPricingDetails] = useState<TireAdminPricingDetails | null>(null);
   const [aiGeneratingField, setAiGeneratingField] = useState<TiresAiGenerationState | null>(null);
@@ -217,6 +366,7 @@ export function TiresCMSPage() {
   const [eprelSuggestionResult, setEprelSuggestionResult] = useState<TireEprelIdSuggestion | null>(null);
   const [eprelListStatuses, setEprelListStatuses] = useState<Record<string, EprelListVariantStatus>>({});
   const [eprelListLoading, setEprelListLoading] = useState(false);
+  const [pendingConflictCount, setPendingConflictCount] = useState(0);
 
   const {
     currentPage,
@@ -235,17 +385,43 @@ export function TiresCMSPage() {
     setMissingSeoFields,
     setSearchTerm,
     setShowMissingImagesOnly,
+    setShowWithEprelOnly,
     setSupplierFilter,
     hideNonPassenger,
     missingMetadataFields,
     missingSeoFields,
     showMissingImagesOnly,
+    showWithEprelOnly,
     startItem,
     supplierFilter,
     tires,
     totalCount,
     totalPages,
   } = useTiresCmsList(25);
+
+  const loadPendingConflictCount = useCallback(async () => {
+    try {
+      const { count, error } = await supabase
+        .from('catalog_selected_tire_conflict_queue')
+        .select('selected_item_id', { count: 'exact', head: true })
+        .eq('review_status', 'pending');
+      if (error) throw error;
+      setPendingConflictCount(count ?? 0);
+    } catch (error) {
+      console.error('Load pending tire conflict count failed:', error);
+      setPendingConflictCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPendingConflictCount();
+
+    const handleFocus = () => {
+      void loadPendingConflictCount();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [loadPendingConflictCount]);
 
   const loadEprelListStatuses = useCallback(async (rows: TireRow[]) => {
     const variantIds = Array.from(new Set(rows.map((row) => row.variant_id).filter(Boolean)));
@@ -346,12 +522,14 @@ export function TiresCMSPage() {
     setShowNonPassengerDraft(!hideNonPassenger);
     setMissingMetadataFieldsDraft(missingMetadataFields);
     setShowMissingImagesOnlyDraft(showMissingImagesOnly);
+    setShowWithEprelOnlyDraft(showWithEprelOnly);
     setMissingSeoFieldsDraft(missingSeoFields);
   }, [
     supplierFilter,
     hideNonPassenger,
     missingMetadataFields,
     showMissingImagesOnly,
+    showWithEprelOnly,
     missingSeoFields,
   ]);
 
@@ -388,6 +566,7 @@ export function TiresCMSPage() {
           p_supplier_code: bulkMarkupSupplier,
           p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
           p_missing_image_only: showMissingImagesOnly,
+          p_has_eprel_only: showWithEprelOnly,
           p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
         });
         if (error) throw error;
@@ -418,6 +597,7 @@ export function TiresCMSPage() {
     searchTerm,
     settingsDrawerOpen,
     showMissingImagesOnly,
+    showWithEprelOnly,
   ]);
 
   const toNumberOrNull = (value: any) => {
@@ -908,8 +1088,20 @@ export function TiresCMSPage() {
       selectedTire.derived_ean,
     );
 
-    if (!effectiveEan) {
-      setEanAuditError(language === 'fi' ? 'EAN puuttuu auditointia varten.' : 'EAN is required for audit.');
+    const supplierEprelRegistrationNumber = extractEprelRegistrationNumber(
+      options?.manualRegistrationNumber,
+      selectedTire.eprel_registration_number,
+      selectedTire.eprel_code,
+      selectedTire.eprel_qr_url,
+      selectedTire.eprel_source_url,
+    );
+
+    if (!supplierEprelRegistrationNumber && !effectiveEan) {
+      setEanAuditError(
+        language === 'fi'
+          ? 'EPREL ID tai EAN puuttuu auditointia varten.'
+          : 'EPREL ID or EAN is required for audit.'
+      );
       setEanAuditResult(null);
       return;
     }
@@ -922,11 +1114,12 @@ export function TiresCMSPage() {
       const { data, error } = await supabase.functions.invoke('audit_tire_by_ean', {
         body: {
           variant_id: selectedTire.variant_id,
-          ean: effectiveEan,
-          manual_eprel_registration_number: options?.manualRegistrationNumber ?? null,
+          ean: effectiveEan ?? null,
+          manual_eprel_registration_number: supplierEprelRegistrationNumber,
           use_fallback_search: options?.useFallbackSearch === true,
           language,
           current: {
+            ean: effectiveEan ?? null,
             brand: effectiveIdentity.brand,
             model: effectiveIdentity.model,
             size_string: effectiveIdentity.size_string,
@@ -1047,30 +1240,32 @@ export function TiresCMSPage() {
     field: string,
     status: 'accepted' | 'rejected' | 'kept_current',
   ) => {
-    if (!eanAuditResult?.eprel_match_id) {
+    if (!eanAuditResult) {
       return;
     }
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      if (eanAuditResult.eprel_match_id) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      const payload: Record<string, any> = {
-        review_status: status,
-        reviewed_at: new Date().toISOString(),
-      };
-      if (user?.id) {
-        payload.reviewed_by = user.id;
+        const payload: Record<string, any> = {
+          review_status: status,
+          reviewed_at: new Date().toISOString(),
+        };
+        if (user?.id) {
+          payload.reviewed_by = user.id;
+        }
+
+        const { error } = await supabase
+          .from('cms_tire_eprel_field_reviews')
+          .update(payload)
+          .eq('eprel_match_id', eanAuditResult.eprel_match_id)
+          .eq('field_name', field);
+
+        if (error) throw error;
       }
-
-      const { error } = await supabase
-        .from('cms_tire_eprel_field_reviews')
-        .update(payload)
-        .eq('eprel_match_id', eanAuditResult.eprel_match_id)
-        .eq('field_name', field);
-
-      if (error) throw error;
 
       setEanAuditResult((prev) =>
         prev
@@ -1087,23 +1282,28 @@ export function TiresCMSPage() {
             }
           : prev
       );
+      if (status === 'accepted') {
+        await applyEanAuditResult([field]);
+      }
       await loadEprelListStatuses(filteredTires);
     } catch (error) {
       console.error('Set EPREL review status failed:', error);
     }
   };
 
-  const applyEanAuditResult = async () => {
+  const applyEanAuditResult = async (fieldsToApply?: string[]) => {
     if (!eanAuditResult) {
       return;
     }
 
     const { extracted } = eanAuditResult;
-    const auditedEan = String(eanAuditResult.ean ?? '').replace(/\D/g, '').trim();
+    const selectedFields = fieldsToApply ? new Set(fieldsToApply) : null;
+    const auditedEan = String(extracted.metadata.ean ?? eanAuditResult.ean ?? '').replace(/\D/g, '').trim();
     const reviewStatusByField = new Map(
       eanAuditResult.checks.map((check) => [check.field, check.review_status ?? 'pending'])
     );
     const shouldApplyField = (field: string) => {
+      if (selectedFields && !selectedFields.has(field)) return false;
       const status = reviewStatusByField.get(field);
       return status !== 'rejected' && status !== 'kept_current';
     };
@@ -1144,7 +1344,7 @@ export function TiresCMSPage() {
       const currentTyreLabelEu = { ...(currentTyreLabelSection.eu_label || {}) };
       const currentTyreLabelCompliance = { ...(currentTyreLabelSection.compliance || {}) };
 
-      if (auditedEan) currentIdentity.ean = auditedEan;
+      if (auditedEan && shouldApplyField('ean')) currentIdentity.ean = auditedEan;
       if (extracted.brand && shouldApplyField('brand')) currentIdentity.brand = extracted.brand;
       if (extracted.model && shouldApplyField('model')) currentIdentity.model = extracted.model;
       if (extracted.season && shouldApplyField('season')) currentIdentity.season = extracted.season;
@@ -1211,6 +1411,7 @@ export function TiresCMSPage() {
 
         const persistedReviewFields = new Set([
           'brand',
+          'ean',
           'model',
           'size_string',
           'season',
@@ -1228,6 +1429,7 @@ export function TiresCMSPage() {
 
         const rowsToUpdate = eanAuditResult.checks
           .filter((check) => persistedReviewFields.has(check.field))
+          .filter((check) => !selectedFields || selectedFields.has(check.field))
           .map((check) => {
             const currentStatus = check.review_status ?? 'pending';
             const nextStatus =
@@ -1351,6 +1553,9 @@ export function TiresCMSPage() {
         euWetGripClass: getEUOverride()?.wet_grip_class ?? selectedTire.eu_wet_grip_class ?? selectedTire.eu_wet ?? null,
         euNoiseDb: getEUOverride()?.noise_db ?? selectedTire.eu_noise_db ?? selectedTire.eu_noise ?? null,
         euNoiseClass: getEUOverride()?.noise_class ?? selectedTire.eu_noise_class ?? null,
+        eprelRegistrationNumber: selectedTire.eprel_registration_number ?? selectedTire.eprel_code ?? null,
+        eprelQrUrl: selectedTire.eprel_qr_url ?? null,
+        eprelSheetUrl: selectedTire.eprel_sheet_url ?? null,
         productionStart: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.production_start ?? null,
         productionEnd: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.production_end ?? null,
         marketStart: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.market_start ?? null,
@@ -1358,8 +1563,8 @@ export function TiresCMSPage() {
         supplierContactName: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.supplier_contact_name ?? null,
         supplierContactEmail: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.supplier_contact_email ?? null,
         supplierContactPhone: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.supplier_contact_phone ?? null,
-        dataSource: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.data_source ?? null,
-        dataSourceUrl: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.data_source_url ?? null,
+        dataSource: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.data_source ?? selectedTire.eprel_source ?? null,
+        dataSourceUrl: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.data_source_url ?? selectedTire.eprel_source_url ?? null,
         lastVerifiedAt: (editData.spec_overrides as any)?.tyre_label_section?.compliance?.last_verified_at ?? null,
       })
     : null;
@@ -1497,6 +1702,7 @@ export function TiresCMSPage() {
       p_supplier_code: supplierCode,
       p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
       p_missing_image_only: showMissingImagesOnly,
+      p_has_eprel_only: showWithEprelOnly,
       p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
       p_limit: pageSize,
       p_offset: offset,
@@ -1690,6 +1896,7 @@ export function TiresCMSPage() {
       supplierDraft !== supplierFilter ||
       nextHideNonPassenger !== hideNonPassenger ||
       showMissingImagesOnlyDraft !== showMissingImagesOnly ||
+      showWithEprelOnlyDraft !== showWithEprelOnly ||
       missingMetadataFieldsDraft.join('|') !== missingMetadataFields.join('|') ||
       missingSeoFieldsDraft.join('|') !== missingSeoFields.join('|');
 
@@ -1704,6 +1911,7 @@ export function TiresCMSPage() {
     setHideNonPassenger(nextHideNonPassenger);
     setMissingMetadataFields(missingMetadataFieldsDraft);
     setShowMissingImagesOnly(showMissingImagesOnlyDraft);
+    setShowWithEprelOnly(showWithEprelOnlyDraft);
     setMissingSeoFields(missingSeoFieldsDraft);
     setSettingsDrawerOpen(false);
   };
@@ -1718,6 +1926,7 @@ export function TiresCMSPage() {
         showNonPassengerDraft={showNonPassengerDraft}
         missingMetadataFieldsDraft={missingMetadataFieldsDraft}
         showMissingImagesOnlyDraft={showMissingImagesOnlyDraft}
+        showWithEprelOnlyDraft={showWithEprelOnlyDraft}
         missingSeoFieldsDraft={missingSeoFieldsDraft}
         supplierFilter={supplierFilter}
         supplierDraft={supplierDraft}
@@ -1726,6 +1935,7 @@ export function TiresCMSPage() {
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
         catalogSyncProgress={catalogSyncProgress}
+        pendingConflictCount={pendingConflictCount}
         bulkMarkupAmount={bulkMarkupAmount}
         bulkMarkupPercent={bulkMarkupPercent}
         bulkMarkupSupplier={bulkMarkupSupplier}
@@ -1739,6 +1949,7 @@ export function TiresCMSPage() {
           supplierDraft !== supplierFilter ||
           (!showNonPassengerDraft) !== hideNonPassenger ||
           showMissingImagesOnlyDraft !== showMissingImagesOnly ||
+          showWithEprelOnlyDraft !== showWithEprelOnly ||
           missingMetadataFieldsDraft.join('|') !== missingMetadataFields.join('|') ||
           missingSeoFieldsDraft.join('|') !== missingSeoFields.join('|')
         }
@@ -1746,6 +1957,7 @@ export function TiresCMSPage() {
         onShowNonPassengerDraftChange={setShowNonPassengerDraft}
         onMissingMetadataFieldsDraftChange={setMissingMetadataFieldsDraft}
         onShowMissingImagesOnlyDraftChange={setShowMissingImagesOnlyDraft}
+        onShowWithEprelOnlyDraftChange={setShowWithEprelOnlyDraft}
         onMissingSeoFieldsDraftChange={setMissingSeoFieldsDraft}
         onSupplierDraftChange={setSupplierDraft}
         onBulkMarkupSupplierChange={setBulkMarkupSupplier}
@@ -1766,6 +1978,7 @@ export function TiresCMSPage() {
         onApplyBulkSupplierMarkup={handleApplyBulkSupplierMarkup}
         onRevertBulkSupplierMarkup={handleRevertBulkSupplierMarkup}
         onApplyCatalogSync={handleApplyCatalogSync}
+        onResolveConflict={navigateToCmsTireConflicts}
       />
 
       {/* Main Content */}
@@ -1834,6 +2047,13 @@ export function TiresCMSPage() {
 
             {/* Drawer Content */}
             <div className="px-6 py-6 space-y-8">
+              <TireEprelDrawerSection
+                auditResult={eanAuditResult}
+                eprelListStatus={eprelListStatuses[selectedTire.variant_id]}
+                isDark={isDark}
+                language={language}
+                selectedTire={selectedTire}
+              />
               
               {draftTyreLabelSection && (
                 <TiresTyreLabelSection
@@ -1848,6 +2068,12 @@ export function TiresCMSPage() {
                   baseBrand={selectedTire.brand}
                   baseDerivedEan={selectedTire.derived_ean}
                   baseEan={selectedTire.ean}
+                  baseEprelRegistrationNumber={extractEprelRegistrationNumber(
+                    selectedTire.eprel_registration_number,
+                    selectedTire.eprel_code,
+                    selectedTire.eprel_qr_url,
+                    selectedTire.eprel_source_url,
+                  )}
                   baseModel={selectedTire.model}
                   baseSeason={selectedTire.season}
                   clearEUOverrides={clearEUOverrides}
@@ -1863,7 +2089,6 @@ export function TiresCMSPage() {
                   language={language}
                   onAuditByEan={handleAuditByEan}
                   onSuggestEprelId={handleSuggestEprelId}
-                  onAuditByRegistration={handleAuditByRegistration}
                   onSetAuditReviewStatus={handleSetAuditReviewStatus}
                   onSetEuField={setEUField}
                   onTyreLabelFieldChange={setTyreLabelField}

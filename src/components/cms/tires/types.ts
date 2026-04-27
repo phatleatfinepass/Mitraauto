@@ -25,6 +25,12 @@ export interface ProductSearchTire {
   eu_wet?: string | null;
   eu_noise?: number | null;
   eu_label_json?: any;
+  eprel_code?: string | null;
+  eprel_registration_number?: string | null;
+  eprel_qr_url?: string | null;
+  eprel_sheet_url?: string | null;
+  eprel_source?: string | null;
+  eprel_source_url?: string | null;
   eu_fuel_class: string | null;
   eu_wet_grip_class: string | null;
   eu_noise_db: number | null;

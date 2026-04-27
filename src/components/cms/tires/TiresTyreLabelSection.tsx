@@ -50,6 +50,7 @@ interface TiresTyreLabelSectionProps {
   baseBrand: string;
   baseDerivedEan: string | null;
   baseEan: string | null | undefined;
+  baseEprelRegistrationNumber: string | null;
   baseModel: string;
   baseSeason: string | null;
   clearEUOverrides: () => void;
@@ -65,7 +66,6 @@ interface TiresTyreLabelSectionProps {
   language: string;
   onAuditByEan: () => void;
   onSuggestEprelId: () => void;
-  onAuditByRegistration: (registrationNumber: string) => void;
   onSetAuditReviewStatus: (field: string, status: 'accepted' | 'rejected' | 'kept_current') => void;
   onSetEuField: (field: string, value: any) => void;
   onTyreLabelFieldChange: (group: TyreLabelGroup, field: string, value?: string) => void;
@@ -323,6 +323,7 @@ export function TiresTyreLabelSection({
   baseBrand,
   baseDerivedEan,
   baseEan,
+  baseEprelRegistrationNumber,
   baseModel,
   baseSeason,
   clearEUOverrides,
@@ -338,7 +339,6 @@ export function TiresTyreLabelSection({
   language,
   onAuditByEan,
   onSuggestEprelId,
-  onAuditByRegistration,
   onSetAuditReviewStatus,
   onSetEuField,
   onTyreLabelFieldChange,
@@ -352,10 +352,15 @@ export function TiresTyreLabelSection({
   const identityOverride = getIdentityOverride();
   const euOverride = getEuOverride();
   const [eanCopied, setEanCopied] = useState(false);
-  const [manualEprelInput, setManualEprelInput] = useState('');
   const currentBaseEan = baseEan || baseDerivedEan || '';
   const currentEanDigits = String(identityOverride?.ean ?? currentBaseEan ?? '').replace(/\D/g, '');
-  const manualRegistrationNumber = parseManualEprelRegistration(manualEprelInput);
+  const currentEprelRegistrationNumber =
+    parseManualEprelRegistration(
+      tyreLabelSection.eu_label.eprel_registration_number ??
+        baseEprelRegistrationNumber ??
+        tyreLabelSection.eu_label.eprel_qr_url ??
+        '',
+    ) ?? null;
   const reviewCounts = auditResult?.checks.reduce(
     (acc, check) => {
       const status = check.review_status ?? 'pending';
@@ -427,7 +432,6 @@ export function TiresTyreLabelSection({
 
   const complianceFields = [
     { group: 'eu_label' as const, key: 'eprel_registration_number', label: 'EPREL', value: tyreLabelSection.eu_label.eprel_registration_number ?? '', placeholder: '704060' },
-    { group: 'eu_label' as const, key: 'eprel_qr_url', label: language === 'fi' ? 'EPREL QR URL' : 'EPREL QR URL', value: tyreLabelSection.eu_label.eprel_qr_url ?? '', placeholder: 'https://eprel.ec.europa.eu/qr/704060' },
     { group: 'eu_label' as const, key: 'eprel_sheet_url', label: language === 'fi' ? 'EPREL fiche' : 'EPREL fiche', value: tyreLabelSection.eu_label.eprel_sheet_url ?? '', placeholder: 'https://eprel.ec.europa.eu/fiches/tyres/Fiche_704060_EN.pdf' },
     { group: 'compliance' as const, key: 'production_start', label: language === 'fi' ? 'Tuotannon aloitus' : 'Production start', value: tyreLabelSection.compliance.production_start ?? '', placeholder: '12/23' },
     { group: 'compliance' as const, key: 'production_end', label: language === 'fi' ? 'Tuotannon loppu' : 'Production end', value: tyreLabelSection.compliance.production_end ?? '', placeholder: language === 'fi' ? 'Ei' : 'No' },
@@ -514,9 +518,9 @@ export function TiresTyreLabelSection({
                 <button
                   type="button"
                   onClick={onAuditByEan}
-                  disabled={auditLoading || !currentEanDigits}
+                  disabled={auditLoading || (!currentEprelRegistrationNumber && !currentEanDigits)}
                   className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                    auditLoading || !currentEanDigits
+                    auditLoading || (!currentEprelRegistrationNumber && !currentEanDigits)
                       ? isDark
                         ? 'cursor-not-allowed bg-white/5 text-gray-600'
                         : 'cursor-not-allowed bg-gray-100 text-gray-400'
@@ -528,6 +532,11 @@ export function TiresTyreLabelSection({
                   {auditLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
                   {auditLoading ? (language === 'fi' ? 'Haetaan EPREListä...' : 'Fetching EPREL...') : (language === 'fi' ? 'Hae EPREListä' : 'Fetch from EPREL')}
                 </button>
+                {currentEprelRegistrationNumber ? (
+                  <span className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-mono ${isDark ? 'bg-white/5 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                    EPREL {currentEprelRegistrationNumber}
+                  </span>
+                ) : null}
                 {auditResult && (auditResult.match_status === 'matched' || auditResult.match_status === 'unverified') ? (
                   <button
                     type="button"
@@ -613,25 +622,9 @@ export function TiresTyreLabelSection({
                   </p>
                   {auditSuggestion.suggested_registration_number ? (
                     <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() => onAuditByRegistration(auditSuggestion.suggested_registration_number!)}
-                        disabled={auditLoading}
-                        className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                          auditLoading
-                            ? isDark
-                              ? 'cursor-not-allowed bg-white/5 text-gray-600'
-                              : 'cursor-not-allowed bg-gray-100 text-gray-400'
-                            : isDark
-                              ? 'bg-blue-500/15 text-blue-200 hover:bg-blue-500/25'
-                              : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                        }`}
-                      >
-                        <SearchCheck className="h-3.5 w-3.5" />
-                        {language === 'fi'
-                          ? `Hae EPREL ID:llä ${auditSuggestion.suggested_registration_number}`
-                          : `Fetch using EPREL ID ${auditSuggestion.suggested_registration_number}`}
-                      </button>
+                      <span className={`inline-flex rounded-md px-2.5 py-1 text-[11px] font-mono ${isDark ? 'bg-white/5 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                        EPREL {auditSuggestion.suggested_registration_number}
+                      </span>
                     </div>
                   ) : null}
                   {auditSuggestion.candidates.length > 0 ? (
@@ -643,22 +636,9 @@ export function TiresTyreLabelSection({
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="font-mono">{candidate.registration_number}</span>
-                            <button
-                              type="button"
-                              onClick={() => onAuditByRegistration(candidate.registration_number)}
-                              disabled={auditLoading}
-                              className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                                auditLoading
-                                  ? isDark
-                                    ? 'cursor-not-allowed bg-white/5 text-gray-600'
-                                    : 'cursor-not-allowed bg-gray-100 text-gray-400'
-                                  : isDark
-                                    ? 'bg-blue-500/15 text-blue-200 hover:bg-blue-500/25'
-                                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                              }`}
-                            >
-                              {language === 'fi' ? 'Käytä tätä ID:tä' : 'Use this ID'}
-                            </button>
+                            <span className={`rounded-md px-2.5 py-1 text-[11px] font-mono ${isDark ? 'bg-white/5 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                              ID {candidate.registration_number}
+                            </span>
                           </div>
                           <div className={`mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{candidate.reason}</div>
                           <div className={`mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{candidate.source_hint}</div>
@@ -666,45 +646,6 @@ export function TiresTyreLabelSection({
                       ))}
                     </div>
                   ) : null}
-                </div>
-              ) : null}
-              {auditResult?.match_status === 'no_match' ? (
-                <div className={`mt-3 rounded-lg border p-3 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-gray-50'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {language === 'fi' ? 'Manuaalinen EPREL ID' : 'Manual EPREL ID'}
-                  </p>
-                  <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi'
-                      ? 'Syötä EPREL-rekisterinumero tai liitä fiche-, QR- tai tuotelinkki. Tämä toimii ilman API-avainta.'
-                      : 'Enter an EPREL registration number or paste a fiche, QR, or product URL. This works without an API key.'}
-                  </p>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <div className="min-w-0 flex-1">
-                      <TextInput
-                        isDark={isDark}
-                        value={manualEprelInput}
-                        placeholder="704060 / https://eprel.ec.europa.eu/qr/704060"
-                        onChange={setManualEprelInput}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => manualRegistrationNumber && onAuditByRegistration(manualRegistrationNumber)}
-                      disabled={auditLoading || !manualRegistrationNumber}
-                      className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                        auditLoading || !manualRegistrationNumber
-                          ? isDark
-                            ? 'cursor-not-allowed bg-white/5 text-gray-600'
-                            : 'cursor-not-allowed bg-gray-100 text-gray-400'
-                          : isDark
-                            ? 'bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
-                            : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                      }`}
-                    >
-                      <SearchCheck className="h-3.5 w-3.5" />
-                      {language === 'fi' ? 'Hae EPREL ID:llä' : 'Fetch by EPREL ID'}
-                    </button>
-                  </div>
                 </div>
               ) : null}
               {auditLoading && auditProgress !== null ? (
@@ -832,23 +773,9 @@ export function TiresTyreLabelSection({
                               {candidate.match_reasons.length > 0 ? <span>{candidate.match_reasons.join(', ')}</span> : null}
                             </div>
                             <div className="mt-2">
-                              <button
-                                type="button"
-                                onClick={() => onAuditByRegistration(candidate.registration_number)}
-                                disabled={auditLoading}
-                                className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                                  auditLoading
-                                    ? isDark
-                                      ? 'cursor-not-allowed bg-white/5 text-gray-600'
-                                      : 'cursor-not-allowed bg-gray-100 text-gray-400'
-                                    : isDark
-                                      ? 'bg-blue-500/15 text-blue-200 hover:bg-blue-500/25'
-                                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                                }`}
-                              >
-                                <SearchCheck className="h-3.5 w-3.5" />
-                                {language === 'fi' ? 'Käytä tätä EPREL-osumaa' : 'Use this EPREL match'}
-                              </button>
+                              <span className={`inline-flex rounded-md px-2.5 py-1 text-[11px] font-mono ${isDark ? 'bg-white/5 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                                ID {candidate.registration_number}
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -995,14 +922,6 @@ export function TiresTyreLabelSection({
         <div className="space-y-5">
           <div>
             <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>EPREL & Compliance</h4>
-            <RegulationNote
-              isDark={isDark}
-              text={
-                language === 'fi'
-                  ? 'Vaiheen 2 tavoite: tee EPREL-lähde ja tuotantometatiedot suoraan muokattaviksi.'
-                  : 'Phase 2 objective: make EPREL source and production metadata directly editable.'
-              }
-            />
           </div>
           <div className={`grid gap-4 rounded-xl p-4 md:grid-cols-2 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
             {complianceFields.map((field) => (
@@ -1024,20 +943,12 @@ export function TiresTyreLabelSection({
               <TextInput isDark={isDark} value={tyreLabelSection.compliance.supplier_contact_phone ?? ''} placeholder="+358..." onChange={(value) => onTyreLabelFieldChange('compliance', 'supplier_contact_phone', value)} />
             </div>
           </div>
-          {(tyreLabelSection.eu_label.eprel_qr_url || tyreLabelSection.eu_label.eprel_sheet_url) ? (
+          {tyreLabelSection.eu_label.eprel_sheet_url ? (
             <div className={`flex flex-wrap gap-3 rounded-xl border p-4 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-white'}`}>
-              {tyreLabelSection.eu_label.eprel_qr_url ? (
-                <a href={tyreLabelSection.eu_label.eprel_qr_url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>
-                  <ExternalLink className="h-4 w-4" />
-                  {language === 'fi' ? 'Avaa EPREL QR' : 'Open EPREL QR'}
-                </a>
-              ) : null}
-              {tyreLabelSection.eu_label.eprel_sheet_url ? (
-                <a href={tyreLabelSection.eu_label.eprel_sheet_url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${isDark ? 'bg-blue-500/15 text-blue-200 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}>
-                  <ExternalLink className="h-4 w-4" />
-                  {language === 'fi' ? 'Avaa EPREL fiche' : 'Open EPREL fiche'}
-                </a>
-              ) : null}
+              <a href={tyreLabelSection.eu_label.eprel_sheet_url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${isDark ? 'bg-blue-500/15 text-blue-200 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}>
+                <ExternalLink className="h-4 w-4" />
+                {language === 'fi' ? 'Avaa EPREL fiche' : 'Open EPREL fiche'}
+              </a>
             </div>
           ) : null}
         </div>

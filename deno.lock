@@ -2436,6 +2436,17 @@
       "integrity": "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw=="
     }
   },
+  "redirects": {
+    "https://deno.land/std/http/server.ts": "https://deno.land/std@0.224.0/http/server.ts",
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.104.1"
+  },
+  "remote": {
+    "https://deno.land/std@0.224.0/async/delay.ts": "f90dd685b97c2f142b8069082993e437b1602b8e2561134827eeb7c12b95c499",
+    "https://deno.land/std@0.224.0/http/server.ts": "f9313804bf6467a1704f45f76cb6cd0a3396a3b31c316035e6a4c2035d1ea514",
+    "https://esm.sh/@supabase/supabase-js@2.104.1": "bad73bfa9aac8a6d896e7a1d4449c7c2ece9a01bccca9e9569f1ed0fc76b5222",
+    "https://esm.sh/@supabase/supabase-js@2.44.4": "a96a02bafe801ff76e2e90464d11dae7c1b53bf7be1b8d573d1ba8d817e99a24",
+    "https://esm.sh/fast-xml-parser@4.5.0": "dda1468785f0f4b2aa19b52d3bc32decb360f632628d5648b06737b4a3bc3a0a"
+  },
   "workspace": {
     "packageJson": {
       "dependencies": [

@@ -1,0 +1,18 @@
+[
+  {
+    "type": "tire",
+    "error": {
+      "code": "57014",
+      "message": "canceling statement due to statement timeout"
+    },
+    "rows": []
+  },
+  {
+    "type": "rim",
+    "error": {
+      "code": "57014",
+      "message": "canceling statement due to statement timeout"
+    },
+    "rows": []
+  }
+]

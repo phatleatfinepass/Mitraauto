@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, Search, SlidersHorizontal } from 'lucide-react';
 
 import {
   Sheet,
@@ -45,6 +45,7 @@ interface TiresCmsToolbarProps {
   showNonPassengerDraft: boolean;
   missingMetadataFieldsDraft: string[];
   showMissingImagesOnlyDraft: boolean;
+  showWithEprelOnlyDraft: boolean;
   missingSeoFieldsDraft: string[];
   supplierFilter: string;
   supplierDraft: string;
@@ -53,6 +54,7 @@ interface TiresCmsToolbarProps {
   hasPendingCatalogSync: boolean;
   catalogSyncMessage: string | null;
   catalogSyncProgress: { processed: number; total: number } | null;
+  pendingConflictCount: number;
   bulkMarkupAmount: string;
   bulkMarkupPercent: string;
   bulkMarkupSupplier: string;
@@ -67,6 +69,7 @@ interface TiresCmsToolbarProps {
   onShowNonPassengerDraftChange: (checked: boolean) => void;
   onMissingMetadataFieldsDraftChange: (values: string[]) => void;
   onShowMissingImagesOnlyDraftChange: (checked: boolean) => void;
+  onShowWithEprelOnlyDraftChange: (checked: boolean) => void;
   onMissingSeoFieldsDraftChange: (values: string[]) => void;
   onSupplierDraftChange: (value: string) => void;
   onBulkMarkupSupplierChange: (value: string) => void;
@@ -77,6 +80,7 @@ interface TiresCmsToolbarProps {
   onApplyBulkSupplierMarkup: () => void;
   onRevertBulkSupplierMarkup: () => void;
   onApplyCatalogSync: () => void;
+  onResolveConflict: () => void;
 }
 
 function toggleItem(values: string[], key: string) {
@@ -90,6 +94,7 @@ export function TiresCmsToolbar({
   showNonPassengerDraft,
   missingMetadataFieldsDraft,
   showMissingImagesOnlyDraft,
+  showWithEprelOnlyDraft,
   missingSeoFieldsDraft,
   supplierFilter,
   supplierDraft,
@@ -98,6 +103,7 @@ export function TiresCmsToolbar({
   hasPendingCatalogSync,
   catalogSyncMessage,
   catalogSyncProgress,
+  pendingConflictCount,
   bulkMarkupAmount,
   bulkMarkupPercent,
   bulkMarkupSupplier,
@@ -112,6 +118,7 @@ export function TiresCmsToolbar({
   onShowNonPassengerDraftChange,
   onMissingMetadataFieldsDraftChange,
   onShowMissingImagesOnlyDraftChange,
+  onShowWithEprelOnlyDraftChange,
   onMissingSeoFieldsDraftChange,
   onSupplierDraftChange,
   onBulkMarkupSupplierChange,
@@ -122,6 +129,7 @@ export function TiresCmsToolbar({
   onApplyBulkSupplierMarkup,
   onRevertBulkSupplierMarkup,
   onApplyCatalogSync,
+  onResolveConflict,
 }: TiresCmsToolbarProps) {
   const bulkMarkupSupplierOption =
     bulkMarkupSupplier
@@ -180,6 +188,21 @@ export function TiresCmsToolbar({
             </div>
 
             <div className="flex flex-wrap gap-3 items-center">
+              {pendingConflictCount > 0 && (
+                <button
+                  type="button"
+                  onClick={onResolveConflict}
+                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    isDark
+                      ? 'bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
+                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  }`}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Resolve conflict ({pendingConflictCount})
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => onSettingsDrawerOpenChange(true)}
@@ -325,6 +348,22 @@ export function TiresCmsToolbar({
                   ))}
                 </div>
               </div>
+            </section>
+
+            <section className={`rounded-xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showWithEprelOnlyDraft}
+                  onChange={(e) => onShowWithEprelOnlyDraftChange(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                />
+                <div>
+                  <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {language === 'fi' ? 'Näytä tuotteet joilla on EPREL' : 'Show items with EPREL'}
+                  </p>
+                </div>
+              </label>
             </section>
 
             <section className={`rounded-xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>

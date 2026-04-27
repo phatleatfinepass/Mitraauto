@@ -19,6 +19,7 @@ type AuditInput = {
   use_fallback_search?: boolean | null;
   language?: SupportedLanguage | null;
   current?: {
+    ean?: string | null;
     brand?: string | null;
     model?: string | null;
     size_string?: string | null;
@@ -105,6 +106,7 @@ type TireAuditExtracted = {
   size_string: string | null;
   season: AuditSeason;
   metadata: {
+    ean: string | null;
     tyre_type_identifier: string | null;
     tyre_class: string | null;
     load_version: string | null;
@@ -228,12 +230,44 @@ function normalizeLanguage(value: unknown): SupportedLanguage {
   return value === "fi" ? "fi" : "en";
 }
 
-function normalizeEan(value: unknown) {
+function normalizeOptionalEan(value: unknown) {
   const digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.length === 0) return null;
   if (digits.length < 8) {
     throw new Error("Valid EAN is required for audit");
   }
   return digits;
+}
+
+function normalizeRequiredEan(value: unknown) {
+  const ean = normalizeOptionalEan(value);
+  if (!ean) {
+    throw new Error("Valid EAN is required for audit");
+  }
+  return ean;
+}
+
+function normalizeEprelRegistrationNumber(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const direct = raw.match(/^\d+$/);
+  if (direct) return direct[0];
+
+  const patterns = [
+    /\/qr\/(\d+)/i,
+    /\/screen\/product\/tyres\/(\d+)/i,
+    /\/products\/tyres\/(\d+)/i,
+    /Fiche_(\d+)_/i,
+    /registration(?:Number)?[=/:](\d+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = raw.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+
+  return "";
 }
 
 function normalizeVariantId(value: unknown) {
@@ -278,6 +312,37 @@ function buildSizeString(detail: EprelModel) {
   const loadIndex = normalizeInteger(detail.loadCapacityIndex);
   const speed = String(detail.speedCategorySymbol ?? "").trim().toUpperCase();
   return [sizeDesignation, loadIndex ? String(loadIndex) : null, speed || null].filter(Boolean).join(" ") || null;
+}
+
+function extractDetailEan(detail: EprelModel): string | null {
+  const candidateValues = [
+    detail.gtin,
+    detail.gtin13,
+    detail.GTIN,
+    detail.ean,
+    detail.ean13,
+    detail.EAN,
+    detail.eanCode,
+    detail.barcode,
+    detail.productCode,
+    detail.productCodes,
+    detail.tradeItemIdentification,
+    detail.tradeItemIdentifications,
+  ];
+
+  for (const value of candidateValues) {
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      if (item && typeof item === "object") {
+        const nested: string | null = extractDetailEan(item as EprelModel);
+        if (nested) return nested;
+      }
+      const digits = String(item ?? "").replace(/\D/g, "");
+      if (digits.length >= 8 && digits.length <= 14) return digits;
+    }
+  }
+
+  return null;
 }
 
 function parseTireSizeParts(size?: string | null) {
@@ -542,6 +607,7 @@ function buildExtracted(detail: EprelModel): TireAuditExtracted {
     size_string: buildSizeString(detail),
     season: null,
     metadata: {
+      ean: extractDetailEan(detail),
       tyre_type_identifier: String(detail.modelIdentifier ?? "").trim() || null,
       tyre_class: String(detail.tyreClass ?? "").trim() || null,
       load_version: String(detail.loadCapacityIndicator ?? "").trim().toUpperCase() || null,
@@ -735,6 +801,13 @@ function buildChecks(language: SupportedLanguage, current: NonNullable<AuditInpu
 
   return [
     {
+      field: "ean",
+      label: "EAN",
+      current_value: current.ean ?? null,
+      audited_value: extracted.metadata.ean,
+      status: compareValues(current.ean ?? null, extracted.metadata.ean),
+    },
+    {
       field: "brand",
       label: "Brand",
       current_value: current.brand ?? null,
@@ -884,7 +957,7 @@ function buildSummary(
   matchStatus: MatchStatus,
   detail: EprelModel | null,
   options?: {
-    fallbackMode?: "gtin" | "search";
+    fallbackMode?: "gtin" | "search" | "eprel_id";
     candidateCount?: number;
     matchReason?: string | null;
   },
@@ -924,7 +997,7 @@ function buildSummary(
 
 async function persistMatchAndReviews(params: {
   variantId: string | null;
-  ean: string;
+  ean: string | null;
   current: NonNullable<AuditInput["current"]>;
   detail: EprelModel | null;
   extracted: TireAuditExtracted | null;
@@ -946,7 +1019,7 @@ async function persistMatchAndReviews(params: {
     .from("cms_tire_eprel_matches")
     .insert({
       variant_id: params.variantId,
-      gtin_queried: params.ean,
+      gtin_queried: params.ean ?? "",
       eprel_registration_number: registrationNumber,
       product_group: params.detail?.productGroup ?? null,
       match_status: params.matchStatus,
@@ -1001,6 +1074,7 @@ async function persistMatchAndReviews(params: {
   pushReview("eprel_fiche_url", null, params.ficheUrl);
 
   if (params.extracted) {
+    pushReview("ean", params.current.ean ?? null, params.extracted.metadata.ean);
     pushReview("brand", params.current.brand ?? null, params.extracted.brand);
     pushReview("model", params.current.model ?? null, params.extracted.model);
     pushReview("size_string", params.current.size_string ?? null, params.extracted.size_string);
@@ -1035,15 +1109,17 @@ Deno.serve((request) =>
 
     const body = (await request.json().catch(() => ({}))) as AuditInput;
     const language = normalizeLanguage(body?.language);
-    const ean = normalizeEan(body?.ean);
     const variantId = normalizeVariantId(body?.variant_id);
     const current = body?.current ?? {};
-    const manualRegistrationNumber = String(body?.manual_eprel_registration_number ?? "").trim();
+    const manualRegistrationNumber = normalizeEprelRegistrationNumber(body?.manual_eprel_registration_number);
+    const ean = manualRegistrationNumber
+      ? normalizeOptionalEan(body?.ean)
+      : normalizeRequiredEan(body?.ean);
     const useFallbackSearch = body?.use_fallback_search === true;
 
     const lookupResult = manualRegistrationNumber
       ? { response: null, data: null }
-      : await eprelFetch(`/product/gtin/${encodeURIComponent(ean)}`);
+      : await eprelFetch(`/product/gtin/${encodeURIComponent(ean ?? "")}`);
     const candidates = manualRegistrationNumber ? [] : toModelList(lookupResult.data).filter(hasLookupSignal);
 
     const tyreCandidates = candidates.filter((model) => String(model.productGroup ?? "").trim().toLowerCase() === "tyres");
@@ -1052,12 +1128,12 @@ Deno.serve((request) =>
     let matchReason: string | null = null;
     let detail: EprelModel | null = null;
     let ficheUrl: string | null = null;
-    let fallbackMode: "gtin" | "search" = "gtin";
+    let fallbackMode: "gtin" | "search" | "eprel_id" = manualRegistrationNumber ? "eprel_id" : "gtin";
     let fallbackCandidates: EprelCandidate[] = [];
     let fallbackRawPayload: unknown = null;
 
     if (manualRegistrationNumber) {
-      fallbackMode = "search";
+      fallbackMode = "eprel_id";
       try {
         const detailResult = await eprelFetch(`/products/tyres/${encodeURIComponent(manualRegistrationNumber)}`);
         detail = ((detailResult.data && typeof detailResult.data === "object")
@@ -1230,7 +1306,7 @@ Deno.serve((request) =>
 
     const persistedMatchId = await persistMatchAndReviews({
       variantId,
-      ean,
+      ean: ean ?? "",
       current,
       detail,
       extracted,
@@ -1272,6 +1348,7 @@ Deno.serve((request) =>
         size_string: null,
         season: null,
         metadata: {
+          ean: null,
           tyre_type_identifier: null,
           tyre_class: null,
           load_version: null,

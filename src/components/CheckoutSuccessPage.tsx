@@ -8,6 +8,8 @@ import { Separator } from './ui/separator';
 import { CheckCircle2, ArrowRight, AlertTriangle, Package, CreditCard, Calendar } from 'lucide-react';
 import { getSupabaseClient } from '../utils/supabase/client';
 import { projectId } from '../utils/supabase/info';
+import { parseCheckoutReference } from '../utils/paytrail';
+import { clearCheckoutDraft } from './CheckoutPage';
 import { toast } from 'sonner';
 
 interface CheckoutSuccessPageProps {
@@ -50,10 +52,9 @@ const parseCheckoutParams = (search: string): CheckoutInfo => {
       : null;
   const totalEuros = amountCents != null ? (amountCents / 100).toFixed(2) : null;
 
-  const orderId =
-    reference && reference.startsWith('ORDER-')
-      ? reference.substring('ORDER-'.length)
-      : null;
+  const parsedReference = parseCheckoutReference(reference);
+  const parsedStamp = parseCheckoutReference(params.get('checkout-stamp'));
+  const orderId = parsedReference.normalizedOrderId ?? parsedStamp.normalizedOrderId;
 
   return {
     checkoutStatus: params.get('checkout-status'),
@@ -131,6 +132,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   useEffect(() => {
     if (isSuccessfulPayment && !hasClearedCartRef.current) {
       clearCart();
+      clearCheckoutDraft();
       hasClearedCartRef.current = true;
     }
   }, [isSuccessfulPayment, clearCart]);

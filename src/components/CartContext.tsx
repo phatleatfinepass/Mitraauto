@@ -24,6 +24,27 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+function resolveCartBasePrice(item: any) {
+  const candidates = [
+    item?.base_price,
+    item?.price,
+    item?.best_price_eur,
+    item?.final_price_eur,
+    item?.price_eur,
+    item?.product?.best_price_eur,
+    item?.product?.final_price_eur,
+    item?.product?.price_eur,
+    item?.product?.price,
+  ];
+
+  for (const candidate of candidates) {
+    const value = Number(candidate);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+
+  return 0;
+}
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -36,8 +57,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsed = JSON.parse(savedCart);
         if (Array.isArray(parsed)) {
           const normalizedItems = parsed.map((item: any) => {
-            const basePrice = Number(item?.base_price ?? item?.price ?? 0);
-            const safeBasePrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 0;
+            const safeBasePrice = resolveCartBasePrice(item);
             return {
               ...item,
               price: safeBasePrice,
@@ -71,8 +91,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Update quantity of existing item
         const updatedItems = [...prevItems];
         const existingItem = updatedItems[existingItemIndex];
-        const basePrice = Number(product.best_price_eur ?? product.price ?? existingItem.base_price ?? existingItem.price ?? 0);
-        const safeBasePrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 0;
+        const safeBasePrice = resolveCartBasePrice({ ...existingItem, product });
         updatedItems[existingItemIndex] = {
           ...existingItem,
           quantity: existingItem.quantity + quantity,
@@ -83,8 +102,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return updatedItems;
       } else {
         // Add new item to cart
-        const basePrice = Number(product.best_price_eur || product.price || 0);
-        const safeBasePrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 0;
+        const safeBasePrice = resolveCartBasePrice(product);
         const newItem: CartItem = {
           id: `${product.id}-${Date.now()}`,
           product,

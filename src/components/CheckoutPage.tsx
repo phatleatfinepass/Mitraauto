@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCart } from './CartContext';
 import { useTheme } from './ThemeContext';
 import { useLanguage } from './LanguageContext';
@@ -18,6 +18,73 @@ import { FINNISH_PHONE_PREFIX, hasFinnishPhoneValue, normalizeFinnishPhone, norm
 const VAT_RATE = 0.255;
 const VAT_PERCENT = 25.5;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
+const CHECKOUT_DRAFT_STORAGE_KEY = 'mitra-auto-checkout-draft';
+
+const defaultCheckoutFormData = {
+  // Contact Information
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: FINNISH_PHONE_PREFIX,
+  
+  // Billing Address
+  billingAddress: '',
+  billingCity: '',
+  billingPostalCode: '',
+  billingCountry: 'Finland',
+  
+  // Shipping Address
+  shippingAddress: '',
+  shippingCity: '',
+  shippingPostalCode: '',
+  shippingCountry: 'Finland',
+  
+  // Options
+  sameAsShipping: true,
+  acceptTerms: false,
+  
+  // Notes
+  orderNotes: '',
+};
+
+type CheckoutFormData = typeof defaultCheckoutFormData;
+
+function loadCheckoutDraft(): CheckoutFormData {
+  if (typeof window === 'undefined') return defaultCheckoutFormData;
+
+  try {
+    const rawDraft = window.sessionStorage.getItem(CHECKOUT_DRAFT_STORAGE_KEY);
+    if (!rawDraft) return defaultCheckoutFormData;
+    const parsed = JSON.parse(rawDraft);
+    if (!parsed || typeof parsed !== 'object') return defaultCheckoutFormData;
+
+    return {
+      ...defaultCheckoutFormData,
+      ...parsed,
+      phone: String(parsed.phone || FINNISH_PHONE_PREFIX),
+      sameAsShipping: parsed.sameAsShipping !== false,
+      acceptTerms: parsed.acceptTerms === true,
+    };
+  } catch (error) {
+    console.warn('Failed to restore checkout draft:', error);
+    return defaultCheckoutFormData;
+  }
+}
+
+function saveCheckoutDraft(formData: CheckoutFormData) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(CHECKOUT_DRAFT_STORAGE_KEY, JSON.stringify(formData));
+  } catch (error) {
+    console.warn('Failed to save checkout draft:', error);
+  }
+}
+
+export function clearCheckoutDraft() {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(CHECKOUT_DRAFT_STORAGE_KEY);
+}
 
 interface CheckoutPageProps {
   onBack: () => void;
@@ -29,34 +96,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
   const { theme } = useTheme();
   const { language } = useLanguage();
 
-  const [formData, setFormData] = useState({
-    // Contact Information
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: FINNISH_PHONE_PREFIX,
-    
-    // Billing Address
-    billingAddress: '',
-    billingCity: '',
-    billingPostalCode: '',
-    billingCountry: 'Finland',
-    
-    // Shipping Address
-    shippingAddress: '',
-    shippingCity: '',
-    shippingPostalCode: '',
-    shippingCountry: 'Finland',
-    
-    // Options
-    sameAsShipping: true,
-    acceptTerms: false,
-    
-    // Notes
-    orderNotes: '',
-  });
+  const [formData, setFormData] = useState<CheckoutFormData>(() => loadCheckoutDraft());
 
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    saveCheckoutDraft(formData);
+  }, [formData]);
 
   const t = (key: string) => {
     const translations: Record<string, { fi: string; en: string }> = {
@@ -190,6 +236,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     }
 
     setIsProcessing(true);
+    saveCheckoutDraft(formData);
 
     try {
       // Build items array in correct Paytrail format
@@ -200,7 +247,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           item.pricing_rules ?? item.product?.pricing_rules ?? null,
         );
         const unitPriceWithVatCents = Math.round(linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER * 100);
-        const productName = `${item.product.brand || 'Product'} ${item.product.model || ''}`.trim();
+        const productName = String(
+          item.product.title ||
+          item.product.name ||
+          `${item.product.brand || ''} ${item.product.model || ''}`.trim() ||
+          'Product'
+        ).trim();
         const sku = item.product.id || item.id;
         
         return {
@@ -212,17 +264,42 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         };
       });
 
+      const shippingCents = Math.round(shippingCost * 100);
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mitra-auto.fi';
+      const billingAddress = formData.sameAsShipping
+        ? {
+          streetAddress: formData.shippingAddress,
+          postalCode: formData.shippingPostalCode,
+          city: formData.shippingCity,
+          country: formData.shippingCountry,
+        }
+        : {
+          streetAddress: formData.billingAddress,
+          postalCode: formData.billingPostalCode,
+          city: formData.billingCity,
+          country: formData.billingCountry,
+        };
+
       // Build payload for Paytrail payment
       const payload = {
         items: paytrailItems,
         currency: 'EUR',
+        shipping_cents: shippingCents,
         customer: {
           email: formData.email,
           phone: normalizedPhone,
           firstName: formData.firstName,
           lastName: formData.lastName,
         },
-        return_url: 'https://mitra-auto.fi/checkout/result',
+        shipping_address: {
+          streetAddress: formData.shippingAddress,
+          postalCode: formData.shippingPostalCode,
+          city: formData.shippingCity,
+          country: formData.shippingCountry,
+        },
+        billing_address: billingAddress,
+        success_url: `${origin}/checkout/success`,
+        cancel_url: `${origin}/checkout/cancel`,
         idempotency_key: crypto.randomUUID()
       };
 
@@ -246,6 +323,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       if (error) {
         console.error('Payment creation error:', error);
         setIsProcessing(false);
+        saveCheckoutDraft(formData);
         toast.error(
           language === 'fi'
             ? 'Maksun aloitus epäonnistui. Yritä uudelleen.'
@@ -258,6 +336,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       if (data && data.error) {
         console.error('Backend error:', data);
         setIsProcessing(false);
+        saveCheckoutDraft(formData);
         toast.error(
           language === 'fi'
             ? `Virhe: ${data.message || 'Maksun aloitus epäonnistui'}`
@@ -270,6 +349,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       if (!data || !data.redirect_url) {
         console.error('Invalid payment response - no redirect_url:', data);
         setIsProcessing(false);
+        saveCheckoutDraft(formData);
         toast.error(
           language === 'fi'
             ? 'Virheellinen vastaus palvelimelta'
@@ -280,11 +360,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
 
       // Success - redirect to Paytrail
       console.log('Payment initiated successfully, redirecting to:', data.redirect_url);
+      saveCheckoutDraft(formData);
       window.location.href = data.redirect_url;
 
     } catch (error) {
       console.error('Checkout error:', error);
       setIsProcessing(false);
+      saveCheckoutDraft(formData);
       
       toast.error(
         language === 'fi'
@@ -302,7 +384,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
   };
 
   const vatAmount = totalPrice * VAT_RATE;
-  const shippingCost = totalPrice > 200 ? 0 : 15;
+  const shippingCost = 0;
   const subtotalWithVat = totalPrice * VAT_MULTIPLIER;
   const finalTotal = subtotalWithVat + shippingCost;
 
