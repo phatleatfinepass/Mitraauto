@@ -125,9 +125,11 @@ const PRODUCT_SEARCH_BASE_SELECT = [
   'final_is_hidden',
 ].join(',');
 
-const TIRE_PUBLIC_SEARCH_SELECT = [
-  PRODUCT_SEARCH_BASE_SELECT,
+const WEBSHOP_TIRE_PUBLIC_SELECT = [
+  PRODUCT_SEARCH_BASE_SELECT.replace(',final_is_hidden', ''),
   'gallery',
+  'is_visible',
+  'publish_status',
 ].join(',');
 
 interface FetchOptions {
@@ -732,8 +734,11 @@ export async function fetchProductSearchRowByIdentifier(
 
   if (productType === 'tire') {
     let query = supabase
-      .from('catalog_tires_public_mv')
-      .select(TIRE_PUBLIC_SEARCH_SELECT)
+      .from('webshop_items')
+      .select(WEBSHOP_TIRE_PUBLIC_SELECT)
+      .eq('product_type', 'tire')
+      .eq('is_visible', true)
+      .eq('publish_status', 'published')
       .limit(1);
 
     query = isUuid ? query.eq('variant_id', trimmedIdentifier) : query.eq('seo_slug', trimmedIdentifier);

@@ -4,7 +4,6 @@ import { useLanguage } from '../LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,18 +15,9 @@ import {
   AlertDialogTitle,
 } from '../ui/alert-dialog';
 import { Textarea } from '../ui/textarea';
-import {
-  Unlock,
-  Square,
-  Pencil,
-  Save,
-  CheckSquare,
-  Lock,
-  PlusCircle,
-} from 'lucide-react';
 import { getSupabaseClient } from '../../utils/supabase/client';
 import { formatDateForSupabase } from '../../utils/date';
-import { buildScheduleTimeSlots, generateScheduleSlots, ScheduleBlockedSlot, ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
+import { buildScheduleTimeSlots, ScheduleBlockedSlot, ScheduleBooking, ScheduleTimeSlot } from '../../utils/schedule';
 import {
   getLocalizedServiceCategories,
   localizeStoredServiceName,
@@ -48,101 +38,6 @@ import { useBookingReservationState } from './schedule/useBookingReservationStat
 
 interface AdminSchedulePageProps {
   onLogout?: () => void;
-}
-
-interface AdminSlotActionDialogProps {
-  blockReason: string;
-  formatDate: (date: Date) => string;
-  language: string;
-  onBlockReasonChange: (value: string) => void;
-  onCreateBooking: () => void;
-  onOpenChange: (open: boolean) => void;
-  onStartBatchBlock: () => void;
-  onBlockSlot: () => void;
-  open: boolean;
-  selectedDate: Date;
-  slot: ScheduleTimeSlot | null;
-  slotTime: string | null;
-  t: (key: string) => string;
-  theme: string;
-}
-
-function AdminSlotActionDialog({
-  blockReason,
-  formatDate,
-  language,
-  onBlockReasonChange,
-  onCreateBooking,
-  onOpenChange,
-  onStartBatchBlock,
-  onBlockSlot,
-  open,
-  selectedDate,
-  slot,
-  slotTime,
-  t,
-  theme,
-}: AdminSlotActionDialogProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}>
-        <DialogHeader>
-          <DialogTitle>{t('slotActions')}</DialogTitle>
-          <DialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
-            {t('slotActionsDescription')}
-          </DialogDescription>
-        </DialogHeader>
-
-        {slotTime && (
-          <div className="space-y-4">
-            <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-gray-50'}`}>
-              <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{t('slotSummary')}</p>
-              <p className={`mt-2 text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {formatDate(selectedDate)} — {slotTime}
-              </p>
-              {slot?.isBlocked && (
-                <p className="mt-2 text-sm text-red-500">{slot.blockReason || t('slotBlocked')}</p>
-              )}
-            </div>
-
-            {!slot?.isBlocked && (
-              <div className="space-y-2">
-                <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {t('reasonOptional')}
-                </label>
-                <Textarea
-                  value={blockReason}
-                  onChange={(event) => onBlockReasonChange(event.target.value)}
-                  placeholder={language === 'fi' ? 'Esim. Huoltokatko' : 'e.g. Maintenance'}
-                  className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}
-                  rows={3}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Button variant="outline" onClick={onCreateBooking} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            {t('createInThisSlot')}
-          </Button>
-          <Button
-            onClick={onBlockSlot}
-            disabled={Boolean(slot?.isBlocked)}
-            className="bg-[#FF6B35] hover:bg-[#FF6B35]/90"
-          >
-            <Lock className="mr-2 h-4 w-4" />
-            {t('blockThisSlot')}
-          </Button>
-          <Button variant="outline" onClick={onStartBatchBlock} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
-            <CheckSquare className="mr-2 h-4 w-4" />
-            {t('blockMultipleTimeSlots')}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 interface AdminCancelBookingDialogProps {
@@ -317,9 +212,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [resendCounts, setResendCounts] = useState<Record<string, number>>({});
   const [confirmingBookingId, setConfirmingBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<string[]>([]);
-  const [slotActionTime, setSlotActionTime] = useState<string | null>(null);
-  const [slotActionSlot, setSlotActionSlot] = useState<ScheduleTimeSlot | null>(null);
-  const [isSlotActionDialogOpen, setIsSlotActionDialogOpen] = useState(false);
   const [archivedBookingModal, setArchivedBookingModal] = useState<ScheduleBooking | null>(null);
   const [restoreArchivedBookingTarget, setRestoreArchivedBookingTarget] = useState<ScheduleBooking | null>(null);
   const [sendRestoreEmail, setSendRestoreEmail] = useState(true);
@@ -365,7 +257,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       status: { fi: 'Tila', en: 'Status' },
       noNotes: { fi: 'Ei lisätietoja', en: 'No notes' },
       blockSelectedSlots: { fi: 'Estä', en: 'Block' },
-      selectSlotsToBlock: { fi: 'Hallitse aikoja', en: 'Manage slots' },
+      selectSlotsToBlock: { fi: 'Estä', en: 'Block' },
       cancelSelection: { fi: 'Peru valinta', en: 'Cancel selection' },
       slotsSelected: { fi: 'aikaa valittu', en: 'slots selected' },
       clearSelection: { fi: 'Tyhjennä valinta', en: 'Clear selection' },
@@ -481,11 +373,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       noSearchResults: { fi: 'Hakutuloksia ei löytynyt', en: 'No matching bookings found' },
       searchHint: { fi: 'Haku käy myös peruttuihin varauksiin.', en: 'Search includes cancelled bookings too.' },
       sundayLabel: { fi: 'Su', en: 'Su' },
-      createInThisSlot: { fi: 'Luo varaus tähän aikaan', en: 'Create booking in this time slot' },
-      slotActions: { fi: 'Ajan toiminnot', en: 'Time slot actions' },
-      slotActionsDescription: { fi: 'Valitse, mitä haluat tehdä tällä ajalla.', en: 'Choose what you want to do with this time slot.' },
-      blockMultipleTimeSlots: { fi: 'Estä useita aikoja', en: 'Block multiple time slots' },
-      batchBlockActivated: { fi: 'Moniaikojen esto aktivoitu. Valitse estettävät ajat kalenterista.', en: 'Multi-slot blocking enabled. Choose the time slots to block from the schedule.' },
       archivedBookingDetails: { fi: 'Arkistoidun varauksen tiedot', en: 'Archived booking details' },
       restoreBooking: { fi: 'Palauta varaus', en: 'Restore booking' },
       restoreBookingConfirmTitle: { fi: 'Palautetaanko varaus?', en: 'Restore this booking?' },
@@ -809,48 +696,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     return true;
   };
 
-  // Block a single slot
-  const handleBlockSlot = async (time: string, untilEndOfDay: boolean = false) => {
-    const dateStr = formatDateForSupabase(selectedDate);
-    const supabase = getSupabaseClient();
-
-    try {
-      let endTime: string;
-      if (untilEndOfDay) {
-        const slots = generateScheduleSlots(selectedDate);
-        const lastSlot = slots[slots.length - 1];
-        const [hours, minutes] = lastSlot.split(':').map(Number);
-        endTime = `${(minutes === 30 ? hours + 1 : hours).toString().padStart(2, '0')}:00`;
-      } else {
-        // Calculate end time (30 minutes later)
-        const [hours, minutes] = time.split(':').map(Number);
-        const endMinutes = minutes + 30;
-        if (endMinutes >= 60) {
-          endTime = `${(hours + 1).toString().padStart(2, '0')}:00`;
-        } else {
-          endTime = `${hours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
-        }
-      }
-
-      const { error } = await supabase.from('blocked_slots').insert({
-        date: dateStr,
-        start_time: time,
-        end_time: endTime,
-        reason: blockReason.trim() || null,
-      });
-
-      if (error) throw error;
-
-      toast.success(t('blockSuccessful'));
-      setBlockReason('');
-      setIsDrawerOpen(false);
-      fetchScheduleData(selectedDate);
-    } catch (error) {
-      console.error('Error blocking slot:', error);
-      toast.error(t('errorBlocking'));
-    }
-  };
-
   const handleBatchSlotToggle = (time: string) => {
     setSelectedBlockTimes((current) =>
       current.includes(time) ? current.filter((item) => item !== time) : [...current, time].sort(),
@@ -1080,32 +925,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     setIsDrawerOpen(true);
   };
 
-  const handleOpenSlotActionDialog = (slot: ScheduleTimeSlot, time: string) => {
-    setSlotActionSlot(slot);
-    setSlotActionTime(time);
-    setBlockReason('');
-    setIsSlotActionDialogOpen(true);
-  };
-
-  const handleStartCreateBookingFromSlotAction = () => {
-    if (!slotActionTime) return;
-    setSelectedSlot(slotActionSlot);
-    setSelectedSlotTime(slotActionTime);
-    handleOpenCreateBookingForm(slotActionTime);
-    setIsSlotActionDialogOpen(false);
-    setIsDrawerOpen(true);
-  };
-
-  const handleStartBatchBlockFromSlotAction = () => {
-    if (!slotActionTime) return;
-    setIsBatchBlockMode(true);
-    setSelectedBlockTimes([slotActionTime]);
-    setSelectedSlot(slotActionSlot);
-    setSelectedSlotTime(slotActionTime);
-    setIsSlotActionDialogOpen(false);
-    toast.success(t('batchBlockActivated'));
-  };
-
   const handleRestoreBooking = async (booking: ScheduleBooking, sendEmail: boolean) => {
     setRestoringBookingId(booking.id);
     try {
@@ -1203,11 +1022,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       return;
     }
 
-    if (slot.bookings.length === 0) {
-      handleOpenSlotActionDialog(slot, time);
-      return;
-    }
-
     setSelectedSlot(slot);
     setSelectedSlotTime(time);
     closeCreateBookingForm();
@@ -1286,6 +1100,18 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const inputSurfaceClass = theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : 'bg-white';
   const createFormPanelClass = theme === 'dark' ? 'bg-[#252525] border-white/10' : 'bg-gray-50 border-gray-200';
 
+  const startManageSlots = () => {
+    setIsBatchBlockMode(true);
+    setSelectedBlockTimes([]);
+    setBlockReason('');
+  };
+
+  const cancelManageSlots = () => {
+    setIsBatchBlockMode(false);
+    setSelectedBlockTimes([]);
+    setBlockReason('');
+  };
+
   const openCreateBookingDrawer = () => {
     setSelectedSlot(null);
     setSelectedSlotTime('');
@@ -1301,27 +1127,15 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     <div className={`rounded-lg border ${shellClass}`}>
       <div className="grid gap-0 xl:grid-cols-[340px_minmax(0,1fr)]">
         <AdminScheduleSidebar
-          blockReason={blockReason}
           formatDate={formatDate}
-          applyManageSlotsButtonClass={manageActionButtonClass}
-          applyManageSlotsLabel={manageActionLabel}
-          applyManageSlotsDisabled={selectedBlockTimes.length === 0}
-          isBatchBlockMode={isBatchBlockMode}
           isSunday={isSunday}
           language={language}
-          manageModeHasBlockingSelection={hasBlockingSelections}
-          manageModeHint={manageModeHint}
           mutedPanelClass={mutedPanelClass}
           mutedTextClass={mutedTextClass}
           outlineButtonClass={outlineButtonClass}
-          onApplyManageSlots={handleBlockSelectedSlots}
           onLogout={onLogout}
           panelClass={panelClass}
-          selectedBlockTimes={selectedBlockTimes}
           selectedDate={selectedDate}
-          setBlockReason={setBlockReason}
-          setIsBatchBlockMode={setIsBatchBlockMode}
-          setSelectedBlockTimes={setSelectedBlockTimes}
           setSelectedDate={setSelectedDate}
           t={t}
           theme={theme}
@@ -1331,16 +1145,26 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         <section className="space-y-4 p-4">
           <AdminScheduleBookingPanel
             activeBookingsTab={activeBookingsTab}
+            applyManageSlotsButtonClass={manageActionButtonClass}
+            applyManageSlotsDisabled={selectedBlockTimes.length === 0}
+            applyManageSlotsLabel={manageActionLabel}
+            blockReason={blockReason}
             formatBookingGroupLabel={formatBookingGroupLabel}
             getBookingServiceNameForCms={getBookingServiceNameForCms}
             reservationBookingGroups={reservationDisplayGroups}
             inputSurfaceClass={inputSurfaceClass}
+            isBatchBlockMode={isBatchBlockMode}
             language={language}
+            manageModeHasBlockingSelection={hasBlockingSelections}
+            manageModeHint={manageModeHint}
             mutedTextClass={mutedTextClass}
+            onApplyManageSlots={handleBlockSelectedSlots}
             onBookingsTabChange={handleBookingsTabChange}
+            onCancelManageSlots={cancelManageSlots}
             onCreateBooking={openCreateBookingDrawer}
             onOpenBooking={openBookingFromList}
             onOpenSearchDialog={() => setIsSearchDialogOpen(true)}
+            onStartManageSlots={startManageSlots}
             onToggleArchivedBookings={(checked) => {
               setShowArchivedBookings(checked);
               setShowArchivedInline(checked);
@@ -1357,6 +1181,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
             outlineButtonClass={outlineButtonClass}
             panelClass={panelClass}
             searchQuery={searchQuery}
+            setBlockReason={setBlockReason}
             showArchivedInline={showArchivedInline}
             showArchivedBookings={showArchivedBookings}
             subtleTextClass={subtleTextClass}
@@ -1475,28 +1300,6 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         onReply={handleOpenMessageComposer}
         onSend={handleSendBookingMessage}
         onSync={(bookingId) => void handleSyncBookingConversation(bookingId)}
-      />
-
-      <AdminSlotActionDialog
-        blockReason={blockReason}
-        formatDate={formatDate}
-        language={language}
-        onBlockReasonChange={setBlockReason}
-        onCreateBooking={handleStartCreateBookingFromSlotAction}
-        onOpenChange={setIsSlotActionDialogOpen}
-        onStartBatchBlock={handleStartBatchBlockFromSlotAction}
-        onBlockSlot={() => {
-          if (slotActionTime) {
-            void handleBlockSlot(slotActionTime, false);
-            setIsSlotActionDialogOpen(false);
-          }
-        }}
-        open={isSlotActionDialogOpen}
-        selectedDate={selectedDate}
-        slot={slotActionSlot}
-        slotTime={slotActionTime}
-        t={t}
-        theme={theme}
       />
 
       <AdminArchivedBookingDialog

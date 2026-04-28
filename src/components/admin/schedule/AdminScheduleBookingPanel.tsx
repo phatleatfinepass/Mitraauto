@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search } from 'lucide-react';
+import { CheckSquare, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 import { Badge } from '../../ui/badge';
@@ -43,20 +43,32 @@ function isBookingAwaitingCustomerCompletion(booking: ScheduleBooking, language:
 
 interface AdminScheduleBookingPanelProps {
   activeBookingsTab: 'schedule' | 'reservation';
+  applyManageSlotsButtonClass: string;
+  applyManageSlotsDisabled: boolean;
+  applyManageSlotsLabel: string;
+  blockReason: string;
   formatBookingGroupLabel: (dateValue: string) => string;
   getBookingServiceNameForCms: (serviceName?: string | null) => string;
   reservationBookingGroups: BookingListGroup[];
   inputSurfaceClass: string;
+  isBatchBlockMode: boolean;
   language: string;
+  manageModeHasBlockingSelection: boolean;
+  manageModeHint: string;
   mutedTextClass: string;
+  onApplyManageSlots: () => void;
   onBookingsTabChange: (value: string) => void;
+  onCancelManageSlots: () => void;
   onCreateBooking: () => void;
   onOpenBooking: (booking: ScheduleBooking) => void;
   onOpenSearchDialog: () => void;
+  onStartManageSlots: () => void;
   onToggleArchivedBookings: (checked: boolean) => void;
   onToggleArchivedInline: (checked: boolean) => void;
+  outlineButtonClass: string;
   panelClass: string;
   searchQuery: string;
+  setBlockReason: React.Dispatch<React.SetStateAction<string>>;
   showArchivedBookings: boolean;
   showArchivedInline: boolean;
   subtleTextClass: string;
@@ -177,20 +189,32 @@ function BookingGroupSection({
 
 export function AdminScheduleBookingPanel({
   activeBookingsTab,
+  applyManageSlotsButtonClass,
+  applyManageSlotsDisabled,
+  applyManageSlotsLabel,
+  blockReason,
   formatBookingGroupLabel,
   getBookingServiceNameForCms,
   reservationBookingGroups,
   inputSurfaceClass,
+  isBatchBlockMode,
   language,
+  manageModeHasBlockingSelection,
+  manageModeHint,
   mutedTextClass,
+  onApplyManageSlots,
   onBookingsTabChange,
+  onCancelManageSlots,
   onCreateBooking,
   onOpenBooking,
   onOpenSearchDialog,
+  onStartManageSlots,
   onToggleArchivedBookings,
   onToggleArchivedInline,
+  outlineButtonClass,
   panelClass,
   searchQuery,
+  setBlockReason,
   showArchivedBookings,
   showArchivedInline,
   subtleTextClass,
@@ -231,11 +255,48 @@ export function AdminScheduleBookingPanel({
               </span>
             </button>
 
+            {activeBookingsTab === 'schedule' && (
+              <Button onClick={onStartManageSlots} className="bg-red-600 text-white hover:bg-red-700" disabled={isBatchBlockMode}>
+                <CheckSquare className="mr-2 h-4 w-4" />
+                {t('selectSlotsToBlock')}
+              </Button>
+            )}
+
             <Button onClick={onCreateBooking} className="bg-emerald-600 text-white hover:bg-emerald-700">
               {t('createBooking')}
             </Button>
           </div>
         </div>
+
+        {activeBookingsTab === 'schedule' && isBatchBlockMode && (
+          <div className={`mt-4 rounded-lg border p-3 ${theme === 'dark' ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-red-100' : 'text-red-900'}`}>{t('selectSlotsToBlock')}</p>
+                <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-red-100/80' : 'text-red-800'}`}>{manageModeHint}</p>
+                {manageModeHasBlockingSelection && (
+                  <textarea
+                    value={blockReason}
+                    onChange={(event) => setBlockReason(event.target.value)}
+                    placeholder={language === 'fi' ? 'Syy estolle (valinnainen)' : 'Reason for blocking (optional)'}
+                    className={`mt-3 min-h-[78px] w-full rounded-md border px-3 py-2 text-sm ${
+                      theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white placeholder:text-gray-500' : 'border-red-200 bg-white text-gray-900 placeholder:text-gray-500'
+                    }`}
+                  />
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 lg:w-[280px]">
+                <Button variant="outline" onClick={onCancelManageSlots} className={outlineButtonClass}>
+                  {t('cancel')}
+                </Button>
+                <Button onClick={onApplyManageSlots} className={applyManageSlotsButtonClass} disabled={applyManageSlotsDisabled}>
+                  {applyManageSlotsLabel}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       {activeBookingsTab === 'reservation' && (

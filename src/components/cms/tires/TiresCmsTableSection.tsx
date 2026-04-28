@@ -9,7 +9,7 @@ interface TiresTableSectionProps {
   eprelListLoading: boolean;
   eprelListStatuses: Record<string, {
     match_status: 'matched' | 'no_match' | 'multiple_matches' | 'wrong_product_group' | 'blocked' | 'unverified' | 'error' | undefined;
-    review_status: 'not_reviewed' | 'pending' | 'accepted' | 'rejected' | 'kept_current' | 'mixed';
+    review_status: 'not_reviewed' | 'pending' | 'accepted' | 'rejected' | 'kept_current' | 'mixed' | 'audited';
     eprel_registration_number: string | null;
   }>;
   eprelPilotSummary: {
@@ -82,6 +82,7 @@ export function TiresCmsTableSection({
   const reviewBadgeClasses = (status: string) => {
     if (status === 'accepted') return isDark ? 'bg-green-500/15 text-green-200' : 'bg-green-50 text-green-700';
     if (status === 'pending') return isDark ? 'bg-blue-500/15 text-blue-200' : 'bg-blue-50 text-blue-700';
+    if (status === 'audited') return isDark ? 'bg-emerald-500/15 text-emerald-200' : 'bg-emerald-50 text-emerald-700';
     if (status === 'mixed') return isDark ? 'bg-purple-500/15 text-purple-200' : 'bg-purple-50 text-purple-700';
     if (status === 'rejected') return isDark ? 'bg-red-500/15 text-red-200' : 'bg-red-50 text-red-700';
     if (status === 'kept_current') return isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700';
@@ -115,6 +116,8 @@ export function TiresCmsTableSection({
         return 'Pending';
       case 'accepted':
         return language === 'fi' ? 'Hyväksytty' : 'Accepted';
+      case 'audited':
+        return language === 'fi' ? 'Auditoitu' : 'Audited';
       case 'rejected':
         return language === 'fi' ? 'Hylätty' : 'Rejected';
       case 'kept_current':

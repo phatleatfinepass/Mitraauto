@@ -1241,6 +1241,10 @@ function assertManageActionAllowed(booking: BookingRow, action: BookingManageAct
     throw new Error("This booking can no longer be changed");
   }
 
+  if (action === "complete_missing_fields") {
+    return;
+  }
+
   if (action !== "cancel_booking" && !isBookingMutable(booking)) {
     throw new Error("This booking can no longer be changed");
   }

@@ -8,7 +8,7 @@ import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Card } from './ui/card';
 import { Checkbox } from './ui/checkbox';
-import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Building, Home, Lock } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Building, Warehouse, Mailbox, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '../utils/supabase/client';
@@ -19,6 +19,13 @@ const VAT_RATE = 0.255;
 const VAT_PERCENT = 25.5;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
 const CHECKOUT_DRAFT_STORAGE_KEY = 'mitra-auto-checkout-draft';
+const HOME_DELIVERY_FEE_EUR = 50;
+const GARAGE_SHIPPING_ADDRESS = {
+  streetAddress: 'Mitra Auto',
+  postalCode: '00390',
+  city: 'Helsinki',
+  country: 'Finland',
+};
 
 const defaultCheckoutFormData = {
   // Contact Information
@@ -38,6 +45,7 @@ const defaultCheckoutFormData = {
   shippingCity: '',
   shippingPostalCode: '',
   shippingCountry: 'Finland',
+  shippingMethod: 'garage',
   
   // Options
   sameAsShipping: true,
@@ -134,6 +142,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       items: { fi: 'tuotetta', en: 'items' },
       perPcs: { fi: 'kpl', en: 'pcs' },
       freeShipping: { fi: 'Ilmainen toimitus', en: 'Free Shipping' },
+      shipToGarage: { fi: 'Toimitus korjaamolle', en: 'Ship to garage' },
+      shipToAddress: { fi: 'Toimitus kotiin', en: 'Ship to address' },
+      deliveryMethod: { fi: 'Toimitustapa', en: 'Delivery method' },
+      garageDeliveryOption: { fi: 'Mitra Autolle', en: 'Mitra Auto' },
+      homeDeliveryOption: { fi: 'Kotiinkuljetus', en: 'Home delivery' },
+      deliveryToGarage: { fi: 'Toimitus Mitra Autolle', en: 'Delivery to Mitra Auto' },
+      homeDelivery: { fi: 'Kotiinkuljetus', en: 'Home delivery' },
+      garageShippingDescription: { fi: 'Tuotteet toimitetaan Mitra Autolle asennusta tai noutoa varten.', en: 'Products ship to Mitra Auto for fitting or pickup.' },
+      homeShippingDescription: { fi: 'Toimitus asiakkaan osoitteeseen Suomessa.', en: 'Delivery to the customer address in Finland.' },
+      garageAddress: { fi: 'Mitra Auto, Helsinki', en: 'Mitra Auto, Helsinki' },
       secureCheckout: { fi: 'Turvallinen maksu', en: 'Secure Checkout' },
       cancelOrder: { fi: 'Peruuta tilaus', en: 'Cancel order' },
     };
@@ -195,44 +213,42 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       return;
     }
 
-    // Validate shipping address
-    if (!formData.shippingAddress) {
-      toast.error(
-        language === 'fi'
-          ? 'Anna toimitusosoite'
-          : 'Please enter shipping address'
-      );
-      return;
-    }
+    if (formData.shippingMethod === 'home') {
+      if (!formData.shippingAddress) {
+        toast.error(
+          language === 'fi'
+            ? 'Anna toimitusosoite'
+            : 'Please enter shipping address'
+        );
+        return;
+      }
 
-    // Validate city
-    if (!formData.shippingCity) {
-      toast.error(
-        language === 'fi'
-          ? 'Anna kaupunki'
-          : 'Please enter city'
-      );
-      return;
-    }
+      if (!formData.shippingCity) {
+        toast.error(
+          language === 'fi'
+            ? 'Anna kaupunki'
+            : 'Please enter city'
+        );
+        return;
+      }
 
-    // Validate postal code
-    if (!formData.shippingPostalCode) {
-      toast.error(
-        language === 'fi'
-          ? 'Anna postinumero'
-          : 'Please enter postal code'
-      );
-      return;
-    }
+      if (!formData.shippingPostalCode) {
+        toast.error(
+          language === 'fi'
+            ? 'Anna postinumero'
+            : 'Please enter postal code'
+        );
+        return;
+      }
 
-    // Validate country
-    if (!formData.shippingCountry) {
-      toast.error(
-        language === 'fi'
-          ? 'Anna maa'
-          : 'Please enter country'
-      );
-      return;
+      if (!formData.shippingCountry) {
+        toast.error(
+          language === 'fi'
+            ? 'Anna maa'
+            : 'Please enter country'
+        );
+        return;
+      }
     }
 
     setIsProcessing(true);
@@ -266,13 +282,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
 
       const shippingCents = Math.round(shippingCost * 100);
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mitra-auto.fi';
-      const billingAddress = formData.sameAsShipping
+      const shippingAddress = formData.shippingMethod === 'home'
         ? {
           streetAddress: formData.shippingAddress,
           postalCode: formData.shippingPostalCode,
           city: formData.shippingCity,
           country: formData.shippingCountry,
         }
+        : GARAGE_SHIPPING_ADDRESS;
+      const billingAddress = formData.sameAsShipping
+        ? shippingAddress
         : {
           streetAddress: formData.billingAddress,
           postalCode: formData.billingPostalCode,
@@ -291,12 +310,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           firstName: formData.firstName,
           lastName: formData.lastName,
         },
-        shipping_address: {
-          streetAddress: formData.shippingAddress,
-          postalCode: formData.shippingPostalCode,
-          city: formData.shippingCity,
-          country: formData.shippingCountry,
-        },
+        shipping_address: shippingAddress,
         billing_address: billingAddress,
         success_url: `${origin}/checkout/success`,
         cancel_url: `${origin}/checkout/cancel`,
@@ -384,7 +398,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
   };
 
   const vatAmount = totalPrice * VAT_RATE;
-  const shippingCost = 0;
+  const shippingCost = formData.shippingMethod === 'home' ? HOME_DELIVERY_FEE_EUR : 0;
   const subtotalWithVat = totalPrice * VAT_MULTIPLIER;
   const finalTotal = subtotalWithVat + shippingCost;
 
@@ -520,45 +534,75 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
               <Card className={`p-6 ${
                 theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-[#E2E8F0]'
               }`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Truck className={`size-5 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`} />
-                  <h2 className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
-                    {t('shippingAddress')}
-                  </h2>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="shipping-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                      {t('address')} <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="shipping-address-line1"
-                      name="shipping address-line1"
-                      autoComplete="shipping address-line1"
-                      required
-                      value={formData.shippingAddress}
-                      onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
-                      className={`mt-1 ${
-                        theme === 'dark'
-                          ? 'bg-white/5 border-white/10 text-white'
-                          : 'bg-white border-[#E2E8F0] text-[#0F172A]'
-                      }`}
-                    />
+                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+	                    <Truck className={`size-5 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`} />
+	                    <h2 className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
+	                      {t('deliveryMethod')}
+	                    </h2>
+	                  </div>
+
+                  <div className={`inline-grid grid-cols-2 rounded-xl border p-1 ${
+                    theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-[#E2E8F0] bg-[#F8FAFC]'
+                  }`}>
+	                    {([
+                      { value: 'garage', label: t('garageDeliveryOption'), icon: Warehouse },
+                      { value: 'home', label: t('homeDeliveryOption'), icon: Mailbox },
+	                    ] as const).map((option) => {
+                      const Icon = option.icon;
+                      const active = formData.shippingMethod === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handleInputChange('shippingMethod', option.value)}
+                          className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            active
+                              ? 'bg-[#FF6B00] text-white shadow-sm'
+                              : theme === 'dark'
+                                ? 'text-gray-300 hover:bg-white/10'
+                                : 'text-[#475569] hover:bg-white'
+                          }`}
+                        >
+                          <Icon className="size-4" />
+                          <span>{option.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  
-                  <div className="grid sm:grid-cols-2 gap-4">
+                </div>
+
+                {formData.shippingMethod === 'garage' ? (
+                  <div className={`rounded-xl border p-4 ${
+                    theme === 'dark' ? 'border-green-500/20 bg-green-500/10' : 'border-green-200 bg-green-50'
+                  }`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-green-200' : 'text-green-800'}`}>
+                          {t('garageAddress')}
+                        </p>
+                        <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#475569]'}`}>
+                          {t('garageShippingDescription')}
+                        </p>
+                      </div>
+                      <span className="whitespace-nowrap rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white">
+                        {t('freeShipping')}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="shipping-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                        {t('city')} <span className="text-red-500">*</span>
+                      <Label htmlFor="shipping-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                        {t('address')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="shipping-address-level2"
-                        name="shipping address-level2"
-                        autoComplete="shipping address-level2"
+                        id="shipping-address-line1"
+                        name="shipping address-line1"
+                        autoComplete="shipping address-line1"
                         required
-                        value={formData.shippingCity}
-                        onChange={(e) => handleInputChange('shippingCity', e.target.value)}
+                        value={formData.shippingAddress}
+                        onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
                         className={`mt-1 ${
                           theme === 'dark'
                             ? 'bg-white/5 border-white/10 text-white'
@@ -567,27 +611,51 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       />
                     </div>
                     
-                    <div>
-                      <Label htmlFor="shipping-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                        {t('postalCode')} <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="shipping-postal-code"
-                        name="shipping postal-code"
-                        autoComplete="shipping postal-code"
-                        inputMode="numeric"
-                        required
-                        value={formData.shippingPostalCode}
-                        onChange={(e) => handleInputChange('shippingPostalCode', e.target.value)}
-                        className={`mt-1 ${
-                          theme === 'dark'
-                            ? 'bg-white/5 border-white/10 text-white'
-                            : 'bg-white border-[#E2E8F0] text-[#0F172A]'
-                        }`}
-                      />
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="shipping-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                          {t('city')} <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="shipping-address-level2"
+                          name="shipping address-level2"
+                          autoComplete="shipping address-level2"
+                          required
+                          value={formData.shippingCity}
+                          onChange={(e) => handleInputChange('shippingCity', e.target.value)}
+                          className={`mt-1 ${
+                            theme === 'dark'
+                              ? 'bg-white/5 border-white/10 text-white'
+                              : 'bg-white border-[#E2E8F0] text-[#0F172A]'
+                          }`}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="shipping-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
+                          {t('postalCode')} <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="shipping-postal-code"
+                          name="shipping postal-code"
+                          autoComplete="shipping postal-code"
+                          inputMode="numeric"
+                          required
+                          value={formData.shippingPostalCode}
+                          onChange={(e) => handleInputChange('shippingPostalCode', e.target.value)}
+                          className={`mt-1 ${
+                            theme === 'dark'
+                              ? 'bg-white/5 border-white/10 text-white'
+                              : 'bg-white border-[#E2E8F0] text-[#0F172A]'
+                          }`}
+                        />
+                      </div>
                     </div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                      {t('homeShippingDescription')} €{HOME_DELIVERY_FEE_EUR.toFixed(2)}
+                    </p>
                   </div>
-                </div>
+                )}
               </Card>
 
               {/* Billing Address */}
@@ -795,7 +863,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className={theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}>
-                    {t('shipping')}
+                    {formData.shippingMethod === 'home' ? t('homeDelivery') : t('deliveryToGarage')}
                   </span>
                   <span className={`${
                     shippingCost === 0 ? 'text-green-600' : theme === 'dark' ? 'text-white' : 'text-[#0F172A]'

@@ -26,19 +26,19 @@ export function useTiresCmsCatalogSync({
     setCatalogSyncProgress({ processed: 0, total: 2 });
 
     try {
-      // Tires CMS changes are now read live from product_cms in both the catalog fetch path
-      // and the CMS list overlay path. Apply Sync only needs to clear local stale caches and
-      // reload the current page view instead of rebuilding the full catalog search surface.
-      invalidateCache();
+      const { error: refreshError } = await supabase.rpc('refresh_webshop_tire_items_v1');
+      if (refreshError) throw refreshError;
       setCatalogSyncProgress({ processed: 1, total: 2 });
+
+      invalidateCache();
 
       await fetchTires({ force: true });
       setCatalogSyncProgress({ processed: 2, total: 2 });
       setHasPendingCatalogSync(false);
       setCatalogSyncMessage(
         language === 'fi'
-          ? 'Renkaiden muutokset synkronoitu paikalliseen näkymään.'
-          : 'Tires changes synced to the local view.'
+          ? 'Renkaiden muutokset julkaistu webshoppiin.'
+          : 'Tire changes published to the webshop.'
       );
     } catch (err: any) {
       console.error('Catalog sync error:', err);

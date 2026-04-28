@@ -253,6 +253,8 @@ export function useBookingEditorState({
           console.error('Booking created but customer email failed:', emailError);
           emailFailureMessage = bookingEmailWarning;
         }
+      } else {
+        emailFailureMessage = t('noEmailAddress');
       }
 
       const { error: pushError } = await supabase.functions.invoke('send_booking_push', {

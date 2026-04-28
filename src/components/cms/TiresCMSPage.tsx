@@ -63,7 +63,7 @@ type EprelFieldReviewRow = {
 
 type EprelListVariantStatus = {
   match_status: TireEanAuditResult['match_status'];
-  review_status: 'not_reviewed' | 'pending' | 'accepted' | 'rejected' | 'kept_current' | 'mixed';
+  review_status: 'not_reviewed' | 'pending' | 'accepted' | 'rejected' | 'kept_current' | 'mixed' | 'audited';
   eprel_registration_number: string | null;
 };
 
@@ -493,7 +493,7 @@ export function TiresCMSPage() {
             else reviewStatusByMatchId.set(matchId, 'not_reviewed');
             continue;
           }
-          reviewStatusByMatchId.set(matchId, 'mixed');
+          reviewStatusByMatchId.set(matchId, 'audited');
         }
       }
 
@@ -1508,7 +1508,7 @@ export function TiresCMSPage() {
 
       if (status.review_status === 'pending') acc.pending_review += 1;
       else if (status.review_status === 'accepted') acc.accepted_review += 1;
-      else if (status.review_status === 'mixed') acc.mixed_review += 1;
+      else if (status.review_status === 'mixed' || status.review_status === 'audited') acc.mixed_review += 1;
 
       return acc;
     },
