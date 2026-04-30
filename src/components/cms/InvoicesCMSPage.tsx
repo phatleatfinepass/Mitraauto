@@ -1,311 +1,368 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, RefreshCcw, Save, Search, Settings, Upload } from 'lucide-react';
+import { ChevronDown, FileText, RefreshCcw, Save, Search, Settings, Trash2, Upload } from 'lucide-react';
 import { supabase } from '../../utils/supabase/client';
+import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
+import { getLocalizedServiceCategories, getServiceIdsFromStoredServiceName } from '../../utils/serviceCatalog';
+import {
+  calculateDraftLine,
+  calculateDraftTotals,
+  centsToMoney,
+  documentNumber,
+  documentSourceKey,
+  documentStatus,
+  documentTone,
+  emptyLine,
+  formatDate,
+  getOrderCustomerName,
+  getOrderItems,
+  getOrderTitle,
+  initialDraft,
+  initialTemplateDraft,
+  sourceKey,
+  templateDraftFromRow,
+  validateInvoiceDraft,
+} from './invoices/helpers';
+import { InvoicePreviewModal } from './invoices/InvoicePreviewModal';
+import { InvoiceTemplateModal } from './invoices/InvoiceTemplateModal';
+import type {
+  BookingRow,
+  DocumentDraft,
+  DraftLine,
+  InvoiceSummaryRow,
+  InvoiceTemplateRow,
+  OrderRow,
+  SourceRecord,
+  SourceTab,
+  SourceType,
+  TemplateDraft,
+} from './invoices/types';
+import { Badge, Button, Input, Select, TextArea } from './invoices/ui';
 
-type SourceType = 'order' | 'booking' | 'manual';
-type DocumentType = 'receipt' | 'invoice';
-type SourceTab = 'all' | 'orders' | 'bookings' | 'drafts' | 'sent';
-
-type OrderRow = {
-  id: string;
-  created_at: string | null;
-  status: string | null;
-  paytrail_status: string | null;
-  paytrail_transaction_id: string | null;
-  paytrail_reference: string | null;
-  email: string | null;
-  phone: string | null;
-  grand_total_cents: number | null;
-  cart_snapshot: any;
+type ImportedInvoiceLine = {
+  description?: string;
+  quantity?: number;
+  unit_gross_eur?: number;
+  vat_rate?: number;
 };
 
-type BookingRow = {
-  id: string;
-  created_at: string | null;
-  status: string | null;
-  booking_date: string | null;
-  booking_time: string | null;
-  booking_language: string | null;
-  license_plate: string | null;
-  service_name: string | null;
-  customer_name: string | null;
-  customer_phone: string | null;
-  customer_email: string | null;
-  notes: string | null;
+type ImportedInvoiceDocument = {
+  document_type?: 'receipt' | 'invoice' | 'unknown';
+  language?: 'fi' | 'en' | 'unknown';
+  confidence?: 'low' | 'medium' | 'high';
+  receipt?: {
+    receipt_number?: string;
+    work_order_number?: string;
+    sale_date?: string;
+  };
+  vehicle?: {
+    license_plate?: string;
+    vehicle?: string;
+    mileage_km?: string;
+    vin?: string;
+    engine_code?: string;
+    first_registered?: string;
+  };
+  customer?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    business_id?: string;
+    vat_id?: string;
+    address_line1?: string;
+    address_line2?: string;
+    postal_code?: string;
+    city?: string;
+  };
+  payment?: {
+    provider?: string;
+    transaction_id?: string;
+  };
+  supply_date?: string;
+  work_summary?: string;
+  work_summary_fi?: string;
+  work_summary_en?: string;
+  notes?: string;
+  lines?: ImportedInvoiceLine[];
 };
 
-type InvoiceSummaryRow = {
-  id: string;
-  document_number: string;
-  document_type: DocumentType | 'credit_note' | 'refund_receipt' | 'proforma';
-  source_type: SourceType;
-  order_id: string | null;
-  booking_id: string | null;
-  status: 'draft' | 'issued' | 'sent' | 'paid' | 'partially_paid' | 'credited' | 'void' | 'cancelled';
-  language: 'fi' | 'en';
-  currency: string;
-  issue_date: string | null;
-  due_date: string | null;
-  supply_date?: string | null;
-  sent_at: string | null;
-  paid_at: string | null;
-  issued_at?: string | null;
-  subtotal_cents: number | null;
-  shipping_cents: number | null;
-  vat_cents: number | null;
-  total_cents: number | null;
-  paid_cents: number | null;
-  balance_cents: number | null;
-  validation_tier?: string | null;
-  validation_errors?: unknown;
-  customer_name: string | null;
-  customer_email: string | null;
-  customer_phone: string | null;
-  payment_status: string | null;
-  payment_provider: string | null;
-  transaction_id: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-};
+function normalizePaymentProvider(value: unknown) {
+  const normalized = String(value ?? '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (!normalized) return '';
+  if (['card', 'cash', 'bank_transfer'].includes(normalized)) return normalized;
+  if (normalized.includes('cash')) return 'cash';
+  if (normalized.includes('card') || normalized.includes('visa') || normalized.includes('mastercard')) return 'card';
+  return 'bank_transfer';
+}
 
-type SourceRecord = {
-  key: string;
-  sourceType: SourceType;
-  sourceId: string | null;
-  createdAt: string | null;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  title: string;
-  amountCents: number;
-  status: string;
-  document?: InvoiceSummaryRow;
-  raw: OrderRow | BookingRow | InvoiceSummaryRow;
-};
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
 
-type DraftLine = {
-  id: string;
-  description: string;
-  quantity: string;
-  unitGross: string;
-  vatRate: string;
-};
+function formatImportedNotes(imported: ImportedInvoiceDocument, fileName: string) {
+  const receipt = imported.receipt ?? {};
+  const vehicle = imported.vehicle ?? {};
+  const customer = imported.customer ?? {};
+  const blocks: string[] = [];
 
-type DocumentDraft = {
-  documentType: DocumentType;
-  sourceType: SourceType;
-  sourceId: string | null;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  customerBusinessId: string;
-  customerVatId: string;
-  customerAddressLine1: string;
-  customerAddressLine2: string;
-  customerPostalCode: string;
-  customerCity: string;
-  language: 'fi' | 'en';
-  supplyDate: string;
-  paymentProvider: string;
-  transactionId: string;
-  lines: DraftLine[];
-  notes: string;
-  importSource: string;
-};
+  const receiptLines = [
+    receipt.receipt_number ? `Receipt number: ${receipt.receipt_number}` : '',
+    receipt.work_order_number ? `Work order: ${receipt.work_order_number}` : '',
+    firstText(imported.supply_date, receipt.sale_date) ? `Sale date: ${firstText(imported.supply_date, receipt.sale_date)}` : '',
+    `Imported from: ${fileName}`,
+  ].filter(Boolean);
+  if (receiptLines.length > 0) blocks.push(['Receipt', ...receiptLines].join('\n'));
 
-const emptyLine = (): DraftLine => ({
-  id: crypto.randomUUID(),
-  description: '',
-  quantity: '1',
-  unitGross: '0.00',
-  vatRate: '25.5',
-});
+  const vehicleLines = [
+    vehicle.license_plate ? `License plate: ${vehicle.license_plate}` : '',
+    vehicle.vehicle ? `Vehicle: ${vehicle.vehicle}` : '',
+    vehicle.mileage_km ? `Mileage: ${vehicle.mileage_km} km` : '',
+    vehicle.vin ? `VIN: ${vehicle.vin}` : '',
+    vehicle.engine_code ? `Engine code: ${vehicle.engine_code}` : '',
+    vehicle.first_registered ? `First registered: ${vehicle.first_registered}` : '',
+  ].filter(Boolean);
+  if (vehicleLines.length > 0) blocks.push(['Vehicle', ...vehicleLines].join('\n'));
 
-const initialDraft = (): DocumentDraft => ({
-  documentType: 'receipt',
-  sourceType: 'manual',
-  sourceId: null,
-  customerName: '',
-  customerEmail: '',
-  customerPhone: '',
-  customerBusinessId: '',
-  customerVatId: '',
-  customerAddressLine1: '',
-  customerAddressLine2: '',
-  customerPostalCode: '',
-  customerCity: '',
-  language: 'fi',
-  supplyDate: new Date().toISOString().slice(0, 10),
-  paymentProvider: '',
-  transactionId: '',
-  lines: [emptyLine()],
-  notes: '',
-  importSource: '',
-});
+  const customerLines = [
+    customer.name ? `Customer: ${customer.name}` : '',
+    customer.phone ? `Phone: ${customer.phone}` : '',
+    customer.email ? `Email: ${customer.email}` : '',
+  ].filter(Boolean);
+  if (customerLines.length > 0) blocks.push(['Customer', ...customerLines].join('\n'));
 
-function Button({
-  children,
-  color = 'secondary',
-  iconLeading,
-  isDisabled,
-  isLoading,
-  size: _size,
-  className = '',
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  color?: 'primary' | 'secondary';
-  iconLeading?: React.ReactNode;
-  isDisabled?: boolean;
-  isLoading?: boolean;
-  size?: 'sm';
-}) {
-  const colorClass = color === 'primary'
-    ? 'border-[#F97316] bg-[#F97316] text-white hover:bg-[#EA580C]'
-    : 'border-[#D2D2D7] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7]';
+  const workSummaryFi = firstText(imported.work_summary_fi, imported.work_summary);
+  const workSummaryEn = firstText(imported.work_summary_en);
+  if (workSummaryFi || workSummaryEn) {
+    const workLines = ['Work performed'];
+    if (workSummaryFi) workLines.push(`FI: ${workSummaryFi}`);
+    if (workSummaryEn) workLines.push(`EN: ${workSummaryEn}`);
+    blocks.push(workLines.join('\n'));
+  }
 
-  return (
-    <button
-      {...props}
-      disabled={isDisabled || isLoading || props.disabled}
-      className={`inline-flex h-9 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${colorClass} ${className}`}
-    >
-      {iconLeading}
-      {isLoading ? 'Saving...' : children}
-    </button>
+  if (imported.notes?.trim()) {
+    blocks.push(['Additional notes', imported.notes.trim()].join('\n'));
+  }
+
+  return blocks.join('\n\n');
+}
+
+function getOrderPaymentProvider(order: OrderRow) {
+  const snapshot = order.cart_snapshot ?? {};
+  return firstText(
+    snapshot.payment_provider,
+    snapshot.payment?.provider,
+    snapshot.paytrail?.provider,
+    snapshot.paymentMethod,
+    snapshot.payment_method
   );
 }
 
-function Input({
-  label,
-  value,
-  onChange,
-  inputClassName = '',
-  size: _size,
-  className = '',
-  ...props
-}: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'size'> & {
-  label?: string;
-  inputClassName?: string;
-  size?: 'sm';
-  onChange?: (value: string) => void;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      {label ? <span className="mb-1 block text-xs font-medium text-[#6E6E73]">{label}</span> : null}
-      <input
-        {...props}
-        value={value ?? ''}
-        onChange={(event) => onChange?.(event.target.value)}
-        className={`h-10 w-full rounded-md border border-[#D2D2D7] bg-white px-3 text-sm text-[#1D1D1F] outline-none transition-colors placeholder:text-[#98989D] focus:border-[#F97316] ${inputClassName}`}
-      />
-    </label>
+function getOrderTransactionId(order: OrderRow) {
+  const snapshot = order.cart_snapshot ?? {};
+  return firstText(
+    order.paytrail_transaction_id,
+    order.paytrail_reference,
+    snapshot.paytrail_transaction_id,
+    snapshot.paytrail_reference,
+    snapshot.transaction_id,
+    snapshot.transactionId,
+    snapshot.payment?.transaction_id,
+    snapshot.payment?.transactionId,
+    snapshot.payment?.reference,
+    snapshot.paytrail?.transaction_id,
+    snapshot.paytrail?.transactionId,
+    snapshot.paytrail?.reference
   );
 }
 
-function TextArea({
-  label,
-  value,
-  onChange,
-  textAreaClassName = '',
-  className = '',
-  ...props
-}: Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange'> & {
-  label?: string;
-  textAreaClassName?: string;
-  onChange?: (value: string) => void;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      {label ? <span className="mb-1 block text-xs font-medium text-[#6E6E73]">{label}</span> : null}
-      <textarea
-        {...props}
-        value={value ?? ''}
-        onChange={(event) => onChange?.(event.target.value)}
-        className={`w-full rounded-md border border-[#D2D2D7] bg-white px-3 py-2 text-sm text-[#1D1D1F] outline-none transition-colors placeholder:text-[#98989D] focus:border-[#F97316] ${textAreaClassName}`}
-      />
-    </label>
-  );
+function canDeleteInvoiceSource(source: SourceRecord) {
+  if (!source.document) return false;
+  if (source.document.sent_at) return false;
+  return !['sent', 'paid', 'partially_paid'].includes(source.document.status);
 }
 
-function Badge({
-  children,
-  tone = 'gray',
-}: {
-  children: React.ReactNode;
-  tone?: 'gray' | 'success' | 'warning';
-  size?: 'sm';
-}) {
-  const toneClass =
-    tone === 'success'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : tone === 'warning'
-        ? 'border-amber-200 bg-amber-50 text-amber-700'
-        : 'border-gray-200 bg-gray-50 text-gray-700';
+function getBookingAmountCents(booking: BookingRow) {
+  const ids = getServiceIdsFromStoredServiceName(booking.service_name);
+  if (ids.length === 0) return 0;
 
-  return (
-    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${toneClass}`}>
-      {children}
-    </span>
-  );
+  const services = getLocalizedServiceCategories('en').flatMap((category) => category.services);
+  const total = ids.reduce((sum, id) => {
+    const service = services.find((item) => item.id === id);
+    return sum + Math.round((service?.price ?? 0) * 100);
+  }, 0);
+
+  return total;
 }
 
-function centsToMoney(cents: number | null | undefined) {
-  return `€${((cents ?? 0) / 100).toFixed(2)}`;
-}
-
-function moneyToCents(value: string) {
-  const normalized = value.replace(',', '.').replace(/[^\d.-]/g, '');
-  const parsed = Number.parseFloat(normalized);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return '-';
-  return new Date(value).toLocaleString('fi-FI', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
+    reader.readAsDataURL(file);
   });
 }
 
-function getOrderCustomerName(order: OrderRow) {
-  const snapshot = order.cart_snapshot ?? {};
-  const fromSnapshot = [snapshot.customer?.firstName, snapshot.customer?.lastName].filter(Boolean).join(' ').trim();
-  return fromSnapshot || snapshot.customer?.name || snapshot.billing?.name || snapshot.shipping?.name || 'Customer';
+function isSupportedImportFile(file: File) {
+  return file.type === 'application/pdf';
 }
 
-function getOrderItems(order: OrderRow) {
-  const snapshot = order.cart_snapshot ?? {};
-  const candidates = [
-    snapshot.items,
-    snapshot.cart_items,
-    snapshot.cart?.items,
-    snapshot.order?.items,
-    snapshot.line_items,
-  ];
-  return candidates.find((value) => Array.isArray(value)) ?? [];
+function normalizeImportedDate(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  const match = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (!match) return '';
+
+  const [, day, month, year] = match;
+  const fullYear = year.length === 2 ? `20${year}` : year;
+  return `${fullYear.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
-function getOrderTitle(order: OrderRow) {
-  const items = getOrderItems(order);
-  const first = items[0] ?? {};
-  const product = first.product ?? first;
-  const title = [product.brand, product.model].filter(Boolean).join(' ').trim() || product.name || product.title;
-  if (title && items.length > 1) return `${title} + ${items.length - 1} more`;
-  return title || 'Webshop order';
+function linesFromImportedDocument(imported: ImportedInvoiceDocument): DraftLine[] {
+  const lines = Array.isArray(imported.lines) ? imported.lines : [];
+  const draftLines = lines
+    .filter((line) => String(line.description ?? '').trim())
+    .map((line) => ({
+      id: crypto.randomUUID(),
+      description: String(line.description ?? '').trim(),
+      quantity: String(Number.isFinite(line.quantity) && Number(line.quantity) > 0 ? line.quantity : 1),
+      unitGross: (Number(line.unit_gross_eur ?? 0) || 0).toFixed(2),
+      vatRate: String(Number.isFinite(line.vat_rate) ? line.vat_rate : 25.5),
+    }));
+
+  return draftLines.length > 0 ? draftLines : [emptyLine()];
 }
 
-function sourceKey(type: SourceType, id: string | null) {
-  return `${type}:${id ?? 'new'}`;
+function InfoTile({
+  label,
+  value,
+  isDark,
+  mono,
+}: {
+  label: string;
+  value?: string | null;
+  isDark: boolean;
+  mono?: boolean;
+}) {
+  return (
+    <div className={`rounded-md border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-[#FAFAFA]'}`}>
+      <p className={`text-[11px] font-medium uppercase tracking-[0.08em] ${isDark ? 'text-gray-500' : 'text-[#6E6E73]'}`}>
+        {label}
+      </p>
+      <p className={`mt-1 min-h-[20px] break-words text-sm font-medium ${mono ? 'font-mono' : ''} ${isDark ? 'text-gray-100' : 'text-[#1D1D1F]'}`}>
+        {value?.trim() || '-'}
+      </p>
+    </div>
+  );
 }
 
-function documentSourceKey(document: InvoiceSummaryRow) {
-  if (document.source_type === 'order') return sourceKey('order', document.order_id);
-  if (document.source_type === 'booking') return sourceKey('booking', document.booking_id);
-  return `document:${document.id}`;
+function ImportedReceiptPanel({
+  imported,
+  isDark,
+  mutedClass,
+  onChange,
+}: {
+  imported: ImportedInvoiceDocument | null;
+  isDark: boolean;
+  mutedClass: string;
+  onChange: (next: ImportedInvoiceDocument) => void;
+}) {
+  if (!imported) {
+    return (
+      <div className={`rounded-lg border border-dashed p-4 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-[#D2D2D7] bg-[#FAFAFA]'}`}>
+        <p className={`text-sm ${mutedClass}`}>
+          Upload a supported receipt PDF to populate receipt, vehicle, customer, work summary, and line item data.
+        </p>
+      </div>
+    );
+  }
+
+  const receipt = imported.receipt ?? {};
+  const vehicle = imported.vehicle ?? {};
+  const customer = imported.customer ?? {};
+  const payment = imported.payment ?? {};
+  const workSummaryFi = firstText(imported.work_summary_fi, imported.work_summary);
+  const workSummaryEn = firstText(imported.work_summary_en);
+  const updateSection = (
+    section: 'receipt' | 'vehicle' | 'customer' | 'payment',
+    key: string,
+    value: string,
+  ) => {
+    onChange({
+      ...imported,
+      [section]: {
+        ...((imported as any)[section] ?? {}),
+        [key]: value,
+      },
+    });
+  };
+  const updateRoot = (key: keyof ImportedInvoiceDocument, value: string) => {
+    onChange({ ...imported, [key]: value });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="space-y-3">
+          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold">Receipt</h3>
+              <span className={`rounded border px-2 py-0.5 text-xs font-medium ${isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                {imported.confidence ?? 'parsed'}
+              </span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input isDark={isDark} label="Receipt no." value={receipt.receipt_number ?? ''} onChange={(value) => updateSection('receipt', 'receipt_number', String(value))} />
+              <Input isDark={isDark} label="Work order" value={receipt.work_order_number ?? ''} onChange={(value) => updateSection('receipt', 'work_order_number', String(value))} />
+              <Input isDark={isDark} label="Sale date" value={firstText(imported.supply_date, receipt.sale_date)} onChange={(value) => updateRoot('supply_date', String(value))} />
+              <Input isDark={isDark} label="Payment" value={payment.provider ?? ''} onChange={(value) => updateSection('payment', 'provider', String(value))} />
+            </div>
+          </div>
+
+          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
+            <h3 className="mb-3 text-sm font-semibold">Customer</h3>
+            <div className="grid gap-2">
+              <Input isDark={isDark} label="Name" value={customer.name ?? ''} onChange={(value) => updateSection('customer', 'name', String(value))} />
+              <Input isDark={isDark} label="Phone" value={customer.phone ?? ''} onChange={(value) => updateSection('customer', 'phone', String(value))} />
+              <Input isDark={isDark} label="Email" value={customer.email ?? ''} onChange={(value) => updateSection('customer', 'email', String(value))} />
+            </div>
+          </div>
+        </div>
+
+        <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">Vehicle</h3>
+            <span className={`font-mono text-xl font-semibold leading-none ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+              {vehicle.license_plate || '-'}
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input isDark={isDark} label="Vehicle" value={vehicle.vehicle ?? ''} onChange={(value) => updateSection('vehicle', 'vehicle', String(value))} className="sm:col-span-2" />
+            <Input isDark={isDark} label="Mileage" value={vehicle.mileage_km ?? ''} onChange={(value) => updateSection('vehicle', 'mileage_km', String(value))} />
+            <Input isDark={isDark} label="VIN" value={vehicle.vin ?? ''} onChange={(value) => updateSection('vehicle', 'vin', String(value))} />
+            <Input isDark={isDark} label="Engine" value={vehicle.engine_code ?? ''} onChange={(value) => updateSection('vehicle', 'engine_code', String(value))} />
+            <Input isDark={isDark} label="Registered" value={vehicle.first_registered ?? ''} onChange={(value) => updateSection('vehicle', 'first_registered', String(value))} />
+            <Input isDark={isDark} label="License plate" value={vehicle.license_plate ?? ''} onChange={(value) => updateSection('vehicle', 'license_plate', String(value))} />
+          </div>
+        </div>
+      </div>
+
+      {(workSummaryFi || workSummaryEn) && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
+            <TextArea isDark={isDark} label="Work summary FI" value={workSummaryFi} onChange={(value) => updateRoot('work_summary_fi', String(value))} rows={8} textAreaClassName="min-h-[220px]" />
+          </div>
+          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
+            <TextArea isDark={isDark} label="Work summary EN" value={workSummaryEn} onChange={(value) => updateRoot('work_summary_en', String(value))} rows={8} textAreaClassName="min-h-[220px]" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function buildDraftFromSource(source: SourceRecord): DocumentDraft {
@@ -320,7 +377,7 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
       customerEmail: document.customer_email ?? source.customerEmail,
       customerPhone: document.customer_phone ?? source.customerPhone,
       language: document.language ?? 'fi',
-      paymentProvider: document.payment_provider ?? '',
+      paymentProvider: normalizePaymentProvider(document.payment_provider),
       transactionId: document.transaction_id ?? '',
       lines: [{
         ...emptyLine(),
@@ -361,14 +418,15 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
       customerName: source.customerName,
       customerEmail: source.customerEmail,
       customerPhone: source.customerPhone,
-      paymentProvider: order.cart_snapshot?.payment_provider ?? order.cart_snapshot?.payment?.provider ?? '',
-      transactionId: order.paytrail_transaction_id ?? '',
+      paymentProvider: normalizePaymentProvider(getOrderPaymentProvider(order)),
+      transactionId: getOrderTransactionId(order),
       lines,
     };
   }
 
   if (source.sourceType === 'booking') {
     const booking = source.raw as BookingRow;
+    const amountCents = getBookingAmountCents(booking);
     return {
       ...initialDraft(),
       sourceType: 'booking',
@@ -380,6 +438,7 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
       lines: [{
         ...emptyLine(),
         description: source.title,
+        unitGross: amountCents > 0 ? (amountCents / 100).toFixed(2) : '0.00',
       }],
       notes: booking.license_plate ? `Vehicle: ${booking.license_plate}` : '',
     };
@@ -388,100 +447,10 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
   return initialDraft();
 }
 
-function calculateDraftTotals(lines: DraftLine[]) {
-  return lines.reduce(
-    (acc, line) => {
-      const quantity = Number.parseFloat(line.quantity.replace(',', '.')) || 0;
-      const unitGrossCents = moneyToCents(line.unitGross);
-      const vatRate = Number.parseFloat(line.vatRate.replace(',', '.')) || 0;
-      const grossCents = Math.round(quantity * unitGrossCents);
-      const netCents = vatRate > 0 ? Math.round(grossCents / (1 + vatRate / 100)) : grossCents;
-      acc.subtotalCents += netCents;
-      acc.vatCents += grossCents - netCents;
-      acc.totalCents += grossCents;
-      return acc;
-    },
-    { subtotalCents: 0, vatCents: 0, totalCents: 0 }
-  );
-}
-
-function calculateDraftLine(line: DraftLine) {
-  const quantity = Number.parseFloat(line.quantity.replace(',', '.')) || 0;
-  const unitGrossCents = moneyToCents(line.unitGross);
-  const vatRate = Number.parseFloat(line.vatRate.replace(',', '.')) || 0;
-  const grossCents = Math.round(quantity * unitGrossCents);
-  const netCents = vatRate > 0 ? Math.round(grossCents / (1 + vatRate / 100)) : grossCents;
-  const unitNetCents = vatRate > 0 ? Math.round(unitGrossCents / (1 + vatRate / 100)) : unitGrossCents;
-
-  return {
-    quantity,
-    unitGrossCents,
-    unitNetCents,
-    vatRate,
-    netCents,
-    vatCents: grossCents - netCents,
-    grossCents,
-  };
-}
-
-function documentStatus(source: SourceRecord) {
-  return source.document?.status ?? null;
-}
-
-function documentNumber(source: SourceRecord) {
-  return source.document?.document_number ?? null;
-}
-
-function documentTone(status: string | null) {
-  if (status === 'sent' || status === 'paid' || status === 'issued') return 'success';
-  if (status === 'draft' || status === 'partially_paid') return 'warning';
-  return 'gray';
-}
-
-function invoiceRequiresFullDetails(draft: DocumentDraft, totalCents: number) {
-  return draft.documentType === 'invoice' || totalCents > 40000 || Boolean(draft.customerBusinessId || draft.customerVatId);
-}
-
-function validateInvoiceDraft(draft: DocumentDraft, totals: ReturnType<typeof calculateDraftTotals>) {
-  const errors: string[] = [];
-  const fullRequired = invoiceRequiresFullDetails(draft, totals.totalCents);
-  if (!draft.customerName.trim()) errors.push('Customer name is required.');
-  if (fullRequired) {
-    if (!draft.customerAddressLine1.trim()) errors.push('Customer address is required for full invoice.');
-    if (!draft.customerPostalCode.trim()) errors.push('Customer postal code is required for full invoice.');
-    if (!draft.customerCity.trim()) errors.push('Customer city is required for full invoice.');
-    if (!draft.supplyDate.trim()) errors.push('Supply/service date is required for full invoice.');
-  }
-  draft.lines.forEach((line, index) => {
-    if (!line.description.trim()) errors.push(`Line ${index + 1}: description is required.`);
-  });
-
-  const tier = errors.length > 0
-    ? 'blocked'
-    : fullRequired ? 'full_ok' : 'simplified_ok';
-
-  return { fullRequired, tier, errors };
-}
-
-function parsePastedInvoiceText(text: string) {
-  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? '';
-  const phone = text.match(/(?:\+358|0)\s?[\d\s-]{6,}/)?.[0]?.replace(/\s+/g, '') ?? '';
-  const totalMatch = [...text.matchAll(/(?:total|yhteens[aä]|summa|maksettava)[^\d]*(\d+[,.]\d{2})/gi)].at(-1)?.[1] ?? '';
-  const firstMeaningfulLine = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 2 && !line.includes('@') && !/^\d/.test(line));
-
-  return {
-    email,
-    phone,
-    total: totalMatch.replace(',', '.'),
-    customerName: firstMeaningfulLine ?? '',
-  };
-}
-
 export function InvoicesCMSPage() {
   const { theme } = useTheme();
+  const { t } = useLanguage();
+  const ti = useCallback((key: string) => t(`invoiceCms.${key}`), [t]);
   const isDark = theme === 'dark';
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
@@ -490,11 +459,20 @@ export function InvoicesCMSPage() {
   const [selectedKey, setSelectedKey] = useState<string>('manual:new');
   const [searchTerm, setSearchTerm] = useState('');
   const [draft, setDraft] = useState<DocumentDraft>(() => initialDraft());
-  const [pasteText, setPasteText] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateDraft, setTemplateDraft] = useState<TemplateDraft>(() => initialTemplateDraft());
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showCustomerInvoiceDetails, setShowCustomerInvoiceDetails] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
+  const [importingDocument, setImportingDocument] = useState(false);
+  const [importDragActive, setImportDragActive] = useState(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importedReceiptData, setImportedReceiptData] = useState<ImportedInvoiceDocument | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -527,11 +505,11 @@ export function InvoicesCMSPage() {
       setBookings((bookingsResult.data ?? []) as BookingRow[]);
       setInvoiceDocuments((invoiceDocumentsResult.data ?? []) as InvoiceSummaryRow[]);
     } catch (err: any) {
-      setError(err.message ?? 'Failed to load invoice data');
+      setError(err.message ?? ti('failedLoadInvoiceData'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ti]);
 
   useEffect(() => {
     void loadData();
@@ -637,9 +615,10 @@ export function InvoicesCMSPage() {
   const selectSource = async (source: SourceRecord) => {
     setSelectedKey(source.key);
     const nextDraft = buildDraftFromSource(source);
+    setImportedReceiptData(null);
 
     if (source.document) {
-      const [documentResult, linesResult, partiesResult] = await Promise.all([
+      const [documentResult, linesResult, partiesResult, paymentResult] = await Promise.all([
         supabase
           .from('invoice_documents')
           .select('internal_notes, payload, supply_date')
@@ -654,12 +633,18 @@ export function InvoicesCMSPage() {
           .from('invoice_parties')
           .select('role, business_id, vat_id, address_line1, address_line2, postal_code, city, country_code')
           .eq('document_id', source.document.id),
+        supabase
+          .from('invoice_payment_details')
+          .select('payment_provider, transaction_id, reference_number')
+          .eq('document_id', source.document.id)
+          .maybeSingle(),
       ]);
 
       if (!documentResult.error && documentResult.data) {
         nextDraft.notes = documentResult.data.internal_notes ?? nextDraft.notes;
         nextDraft.importSource = documentResult.data.payload?.import_source ?? nextDraft.importSource;
         nextDraft.supplyDate = documentResult.data.supply_date ?? nextDraft.supplyDate;
+        setImportedReceiptData((documentResult.data.payload?.imported_receipt ?? null) as ImportedInvoiceDocument | null);
       }
 
       if (!linesResult.error && Array.isArray(linesResult.data) && linesResult.data.length > 0) {
@@ -683,16 +668,96 @@ export function InvoicesCMSPage() {
           nextDraft.customerCity = buyer.city ?? '';
         }
       }
+
+      if (!paymentResult.error && paymentResult.data) {
+        nextDraft.paymentProvider = normalizePaymentProvider(paymentResult.data.payment_provider ?? nextDraft.paymentProvider);
+        nextDraft.transactionId = firstText(paymentResult.data.transaction_id, paymentResult.data.reference_number, nextDraft.transactionId);
+      }
     }
 
     setDraft(nextDraft);
-    setSavedMessage(null);
+    setShowCustomerInvoiceDetails(
+      nextDraft.documentType === 'invoice'
+      || Boolean(
+        nextDraft.customerBusinessId
+        || nextDraft.customerVatId
+        || nextDraft.customerAddressLine1
+        || nextDraft.customerAddressLine2
+        || nextDraft.customerPostalCode
+        || nextDraft.customerCity
+      )
+    );
   };
 
   const startManualDraft = () => {
     setSelectedKey('manual:new');
     setDraft(initialDraft());
-    setSavedMessage(null);
+    setShowCustomerInvoiceDetails(false);
+    setImportedReceiptData(null);
+  };
+
+  const loadTemplateSettings = useCallback(async () => {
+    setTemplateLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: templateError } = await supabase
+        .from('invoice_templates')
+        .select('id, template_key, display_name, company_name, business_id, vat_id, address_line1, address_line2, country_code, email, phone, iban, bic, payment_terms, footer_text, is_default')
+        .eq('is_default', true)
+        .maybeSingle();
+
+      if (templateError) throw templateError;
+
+      setTemplateDraft(templateDraftFromRow(data as InvoiceTemplateRow | null));
+    } catch (err: any) {
+      setError(err.message ?? ti('failedLoadTemplate'));
+    } finally {
+      setTemplateLoading(false);
+    }
+  }, [ti]);
+
+  const openTemplateSettings = async () => {
+    setTemplateOpen(true);
+    await loadTemplateSettings();
+  };
+
+  const saveTemplateSettings = async () => {
+    setTemplateSaving(true);
+    setError(null);
+
+    try {
+      const row = {
+        template_key: 'default',
+        display_name: templateDraft.displayName.trim() || 'Default',
+        company_name: templateDraft.companyName.trim() || 'Mitra Auto Oy',
+        business_id: templateDraft.businessId.trim() || '3408833-8',
+        vat_id: templateDraft.vatId.trim() || 'FI34088338',
+        address_line1: templateDraft.addressLine1.trim(),
+        address_line2: templateDraft.addressLine2.trim(),
+        country_code: templateDraft.countryCode.trim() || 'FI',
+        email: templateDraft.email.trim(),
+        phone: templateDraft.phone.trim(),
+        iban: templateDraft.iban.trim() || null,
+        bic: templateDraft.bic.trim() || null,
+        payment_terms: templateDraft.paymentTerms.trim() || null,
+        footer_text: templateDraft.footerText.trim() || null,
+        is_default: true,
+      };
+
+      const result = templateDraft.id
+        ? await supabase.from('invoice_templates').update(row).eq('id', templateDraft.id).select('id').single()
+        : await supabase.from('invoice_templates').upsert(row, { onConflict: 'template_key' }).select('id').single();
+
+      if (result.error) throw result.error;
+
+      setTemplateDraft((current) => ({ ...current, id: result.data.id }));
+      setTemplateOpen(false);
+    } catch (err: any) {
+      setError(err.message ?? ti('failedSaveTemplate'));
+    } finally {
+      setTemplateSaving(false);
+    }
   };
 
   const updateLine = (lineId: string, patch: Partial<DraftLine>) => {
@@ -705,7 +770,6 @@ export function InvoicesCMSPage() {
   const saveDraft = async () => {
     setSaving(true);
     setError(null);
-    setSavedMessage(null);
 
     try {
       const now = new Date();
@@ -748,6 +812,7 @@ export function InvoicesCMSPage() {
         document_type: draft.documentType,
         notes: draft.notes,
         import_source: draft.importSource,
+        imported_receipt: importedReceiptData,
         validation: validateInvoiceDraft(draft, totals),
         original_source: existingFinalSource ? {
           source_type: selectedSource?.sourceType ?? draft.sourceType,
@@ -910,94 +975,227 @@ export function InvoicesCMSPage() {
       });
       if (eventResult.error) throw eventResult.error;
 
-      setSavedMessage(`Draft saved: ${result.data.document_number}`);
       await loadData();
       setSelectedKey(`document:${documentId}`);
     } catch (err: any) {
-      setError(err.message ?? 'Failed to save draft');
+      setError(err.message ?? ti('failedSaveDraft'));
     } finally {
       setSaving(false);
     }
   };
 
-  const applyPaste = () => {
-    const parsed = parsePastedInvoiceText(pasteText);
-    setDraft((current) => ({
-      ...current,
-      customerName: current.customerName || parsed.customerName,
-      customerEmail: current.customerEmail || parsed.email,
-      customerPhone: current.customerPhone || parsed.phone,
-      importSource: pasteText,
-      lines: current.lines.map((line, index) => index === 0 && parsed.total ? { ...line, unitGross: parsed.total } : line),
-    }));
-  };
-
-  const handleFileUpload = async (file: File | null) => {
-    if (!file) return;
-    const importSource = file.type === 'text/plain' ? await file.text() : `Uploaded file: ${file.name}`;
-    setDraft((current) => ({ ...current, importSource }));
-  };
-
   const runDocumentAction = async (action: 'preview' | 'issue' | 'send') => {
     const documentId = selectedSource?.document?.id;
     if (!documentId) {
-      setError('Save the draft before preview, issue, or send.');
+      setError(ti('saveBeforeAction'));
       return;
     }
 
     setSaving(true);
     setError(null);
-    setSavedMessage(null);
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('invoice_document_issue', {
         method: 'POST',
         body: { documentId, action },
       });
       if (invokeError) throw invokeError;
-      if (data?.url && (action === 'preview' || action === 'issue')) {
+      if (data?.url && action === 'preview') {
+        setPreviewUrl(String(data.url).replace('download=1', 'download=0'));
+      } else if (data?.url && action === 'issue') {
         window.open(data.url, '_blank', 'noopener,noreferrer');
       }
-      setSavedMessage(action === 'send' ? 'Document sent.' : 'Document ready.');
       await loadData();
     } catch (err: any) {
-      setError(err.message ?? `Failed to ${action} document`);
+      setError(err.message ?? `${ti('failedDocumentAction')}: ${action}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteInvoiceDocument = async (source: SourceRecord) => {
+    if (!source.document || !canDeleteInvoiceSource(source)) return;
+    const confirmed = window.confirm(ti('deleteDocumentConfirm'));
+    if (!confirmed) return;
+
+    setDeletingDocumentId(source.document.id);
+    setError(null);
+    try {
+      const { error: deleteError } = await supabase
+        .from('invoice_documents')
+        .delete()
+        .eq('id', source.document.id);
+      if (deleteError) throw deleteError;
+
+      if (selectedKey === source.key || selectedKey === `document:${source.document.id}`) {
+        setSelectedKey('manual:new');
+        setDraft(initialDraft());
+        setShowCustomerInvoiceDetails(false);
+      }
+      await loadData();
+    } catch (err: any) {
+      setError(err.message ?? ti('failedDeleteDocument'));
+    } finally {
+      setDeletingDocumentId(null);
+    }
+  };
+
+  const applyImportedDocument = (imported: ImportedInvoiceDocument, fileName: string) => {
+    const customer = imported.customer ?? {};
+    const payment = imported.payment ?? {};
+    const vehicle = imported.vehicle ?? {};
+    const nextLines = linesFromImportedDocument(imported);
+    const importedNotes = formatImportedNotes(imported, fileName);
+    setImportedReceiptData(imported);
+
+    setDraft((current) => ({
+      ...current,
+      documentType: imported.document_type === 'invoice' ? 'invoice' : imported.document_type === 'receipt' ? 'receipt' : current.documentType,
+      customerName: firstText(customer.name, vehicle.license_plate, current.customerName),
+      customerEmail: firstText(customer.email, current.customerEmail),
+      customerPhone: firstText(customer.phone, current.customerPhone),
+      customerBusinessId: firstText(customer.business_id, current.customerBusinessId),
+      customerVatId: firstText(customer.vat_id, current.customerVatId),
+      customerAddressLine1: firstText(customer.address_line1, current.customerAddressLine1),
+      customerAddressLine2: firstText(customer.address_line2, current.customerAddressLine2),
+      customerPostalCode: firstText(customer.postal_code, current.customerPostalCode),
+      customerCity: firstText(customer.city, current.customerCity),
+      language: imported.language === 'fi' || imported.language === 'en' ? imported.language : current.language,
+      supplyDate: firstText(normalizeImportedDate(imported.supply_date), current.supplyDate),
+      paymentProvider: normalizePaymentProvider(firstText(payment.provider, current.paymentProvider)),
+      transactionId: firstText(payment.transaction_id, current.transactionId),
+      lines: nextLines,
+      notes: current.notes ? `${current.notes}\n\n${importedNotes}` : importedNotes,
+      importSource: `Imported from ${fileName}`,
+    }));
+
+    setShowCustomerInvoiceDetails(Boolean(
+      customer.business_id
+      || customer.vat_id
+      || customer.address_line1
+      || customer.address_line2
+      || customer.postal_code
+      || customer.city
+      || imported.document_type === 'invoice'
+    ));
+    setImportMessage(`${ti('documentImported')} ${imported.confidence ? `(${ti('confidence')}: ${imported.confidence})` : ''}`);
+  };
+
+  const importDocumentFile = async (file: File) => {
+    if (!isSupportedImportFile(file)) {
+      setError(ti('unsupportedImportFile'));
+      return;
+    }
+
+    setImportingDocument(true);
+    setError(null);
+    setImportMessage(null);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const { data, error: invokeError } = await supabase.functions.invoke('invoice_import_document', {
+        method: 'POST',
+        body: {
+          fileName: file.name,
+          mimeType: file.type,
+          dataUrl,
+        },
+      });
+      if (invokeError) {
+        const functionError = typeof data === 'object' && data && 'error' in data ? String((data as { error?: unknown }).error ?? '') : '';
+        if (functionError) throw new Error(functionError);
+        throw invokeError;
+      }
+      if (typeof data === 'object' && data && 'error' in data) {
+        throw new Error(String((data as { error?: unknown }).error ?? ti('failedImportDocument')));
+      }
+      applyImportedDocument(data as ImportedInvoiceDocument, file.name);
+    } catch (err: any) {
+      let message = err.message ?? ti('failedImportDocument');
+      const context = err?.context;
+      if (context && typeof context.clone === 'function') {
+        try {
+          const response = context.clone();
+          const contentType = response.headers?.get?.('content-type') ?? '';
+          if (contentType.includes('application/json')) {
+            const body = await response.json();
+            message = String(body?.error ?? body?.message ?? message);
+          } else {
+            const bodyText = await response.text();
+            if (bodyText.trim()) message = bodyText.trim();
+          }
+        } catch {
+          // Keep the original Supabase error when the response body cannot be read.
+        }
+      }
+      setError(message);
+    } finally {
+      setImportingDocument(false);
+      setImportDragActive(false);
+    }
+  };
+
+  const importDocumentFiles = async (files: FileList | File[]) => {
+    const file = Array.from(files).find(isSupportedImportFile);
+    if (!file) {
+      setError(ti('unsupportedImportFile'));
+      return;
+    }
+    await importDocumentFile(file);
+  };
+
+  const handleDocumentWorkspaceDrop = async (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setImportDragActive(false);
+    if (event.dataTransfer.files.length > 0) {
+      await importDocumentFiles(event.dataTransfer.files);
+    }
+  };
+
+  const handleDocumentWorkspacePaste = async (event: React.ClipboardEvent<HTMLElement>) => {
+    if (event.clipboardData.files.length > 0) {
+      await importDocumentFiles(event.clipboardData.files);
     }
   };
 
   const panelClass = isDark ? 'border-white/10 bg-[#11141A] text-white' : 'border-[#D2D2D7] bg-white text-[#1D1D1F]';
   const mutedClass = isDark ? 'text-gray-400' : 'text-[#6E6E73]';
   const tabs: Array<{ id: SourceTab; label: string }> = [
-    { id: 'all', label: 'All' },
-    { id: 'orders', label: 'Orders' },
-    { id: 'bookings', label: 'Bookings' },
-    { id: 'drafts', label: 'Drafts' },
-    { id: 'sent', label: 'Sent' },
+    { id: 'all', label: ti('all') },
+    { id: 'orders', label: ti('orders') },
+    { id: 'bookings', label: ti('bookings') },
+    { id: 'drafts', label: ti('drafts') },
+    { id: 'sent', label: ti('sent') },
   ];
+  const paymentProviderOptions = [
+    { value: '', label: ti('selectPaymentProvider') },
+    { value: 'card', label: ti('card') },
+    { value: 'cash', label: ti('cash') },
+    { value: 'bank_transfer', label: ti('bankTransfer') },
+  ];
+  const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? ti('all');
+  const customerInvoiceDetailsVisible = draft.documentType === 'invoice' || showCustomerInvoiceDetails;
 
   return (
-    <div className={`min-h-[760px] p-4 sm:p-6 ${isDark ? 'bg-[#0B0D12]' : 'bg-[#FAFAFA]'}`}>
+    <div className={`min-h-[760px] rounded-[16px] p-4 sm:p-6 ${isDark ? 'bg-[#0B0D12]' : 'bg-[#FAFAFA]'}`}>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-[#F97316]" />
-            <h1 className="text-2xl font-semibold tracking-tight">Invoice</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{ti('title')}</h1>
           </div>
           <p className={`mt-1 text-sm ${mutedClass}`}>
-            Create receipts and invoices from orders, bookings, or manual drafts.
+            {ti('subtitle')}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" color="secondary" iconLeading={<RefreshCcw className="h-4 w-4" />} onClick={() => void loadData()} isDisabled={loading}>
-            Refresh
+          <Button isDark={isDark} size="sm" color="secondary" iconLeading={<RefreshCcw className="h-4 w-4" />} onClick={() => void loadData()} isDisabled={loading}>
+            {ti('refresh')}
           </Button>
-          <Button size="sm" color="secondary" iconLeading={<Settings className="h-4 w-4" />}>
-            Template settings
+          <Button isDark={isDark} size="sm" color="secondary" iconLeading={<Settings className="h-4 w-4" />} onClick={() => void openTemplateSettings()}>
+            {ti('templateSettings')}
           </Button>
           <Button size="sm" color="primary" onClick={startManualDraft}>
-            Create draft
+            {ti('createDraft')}
           </Button>
         </div>
       </div>
@@ -1007,37 +1205,36 @@ export function InvoicesCMSPage() {
           {error}
         </div>
       )}
-      {savedMessage && (
-        <div className="mb-4 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {savedMessage}
-        </div>
-      )}
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(420px,0.95fr)_minmax(560px,1.05fr)]">
-        <section className={`rounded-lg border ${panelClass}`}>
-          <div className="border-b border-inherit p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap gap-1">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                      activeTab === tab.id
-                        ? 'bg-[#F97316] text-white'
-                        : isDark ? 'text-gray-300 hover:bg-white/10' : 'text-[#475569] hover:bg-[#F5F5F7]'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(340px,0.72fr)_minmax(620px,1.28fr)]">
+        <section className={`flex h-[calc(100vh-220px)] min-h-[640px] flex-col overflow-hidden rounded-lg border ${panelClass}`}>
+          <div className="border-b border-inherit p-3">
+            <div className="flex items-center gap-2">
+              <div className="relative w-[132px] shrink-0">
+                <select
+                  aria-label={ti('source')}
+                  value={activeTab}
+                  onChange={(event) => setActiveTab(event.target.value as SourceTab)}
+                  className={`h-10 w-full appearance-none rounded-md border px-3 pr-9 text-sm font-medium outline-none transition-colors ${
+                    isDark
+                      ? 'border-white/10 bg-[#11141A] text-white hover:bg-white/5'
+                      : 'border-[#D2D2D7] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7]'
+                  }`}
+                >
+                  {tabs.map((tab) => (
+                    <option key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 ${mutedClass}`} />
+                <span className="sr-only">{activeTabLabel}</span>
               </div>
-              <div className="relative min-w-[240px]">
+              <div className="relative min-w-0 flex-1">
                 <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${mutedClass}`} />
                 <Input
-                  aria-label="Search invoice sources"
-                  placeholder="Search customer, ID, transaction"
+                  isDark={isDark}
+                  aria-label={ti('searchSources')}
+                  placeholder={ti('searchSources')}
                   value={searchTerm}
                   onChange={(value) => setSearchTerm(String(value))}
                   size="sm"
@@ -1046,145 +1243,221 @@ export function InvoicesCMSPage() {
               </div>
             </div>
           </div>
-
-          <div className="max-h-[640px] overflow-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {loading ? (
-              <div className={`p-6 text-sm ${mutedClass}`}>Loading invoice sources...</div>
+              <div className={`p-6 text-sm ${mutedClass}`}>{ti('loadingSources')}</div>
             ) : filteredSources.length === 0 ? (
-              <div className={`p-6 text-sm ${mutedClass}`}>No sources found.</div>
+              <div className={`p-6 text-sm ${mutedClass}`}>{ti('noSources')}</div>
             ) : (
-              <table className="w-full min-w-[720px] border-collapse text-sm">
-                <thead className={isDark ? 'bg-white/5 text-gray-400' : 'bg-[#F5F5F7] text-[#6E6E73]'}>
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">Source</th>
-                    <th className="px-3 py-2 text-left font-medium">Customer</th>
-                    <th className="px-3 py-2 text-left font-medium">Status</th>
-                    <th className="px-3 py-2 text-right font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSources.map((source) => (
-                    <tr
+              <div className="space-y-2">
+                {filteredSources.map((source) => {
+                  const selected = selectedKey === source.key;
+                  const sourceLabel = `${source.sourceType.toUpperCase()} ${source.sourceId ?? documentNumber(source)}`;
+                  const amount = centsToMoney(source.amountCents || source.document?.total_cents);
+                  const deletable = canDeleteInvoiceSource(source);
+                  const deleting = deletingDocumentId === source.document?.id;
+                  return (
+                    <div
                       key={source.key}
-                      onClick={() => void selectSource(source)}
-                      className={`cursor-pointer border-t border-inherit ${
-                        selectedKey === source.key
-                          ? isDark ? 'bg-orange-500/15' : 'bg-orange-50'
-                          : isDark ? 'hover:bg-white/5' : 'hover:bg-[#FAFAFA]'
+                      className={`rounded-md border text-sm transition-colors ${
+                        selected
+                          ? isDark ? 'border-orange-400/60 bg-orange-500/15' : 'border-orange-300 bg-orange-50'
+                          : isDark ? 'border-white/10 bg-white/[0.03] hover:bg-white/5' : 'border-[#E5E7EB] bg-white hover:bg-[#FAFAFA]'
                       }`}
                     >
-                      <td className="px-3 py-3 align-top">
-                        <div className="font-medium">{source.title}</div>
-                        <div className={`mt-1 font-mono text-xs ${mutedClass}`}>
-                          {source.sourceType.toUpperCase()} {source.sourceId ?? documentNumber(source)}
+                      <button
+                        type="button"
+                        onClick={() => void selectSource(source)}
+                        className="block w-full p-3 text-left"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate font-semibold">{source.title}</div>
+                            <div className={`mt-1 font-mono text-[11px] uppercase ${mutedClass}`}>
+                              {sourceLabel}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right font-mono text-sm font-semibold">
+                            {amount}
+                          </div>
                         </div>
-                        <div className={`mt-1 text-xs ${mutedClass}`}>{formatDate(source.createdAt)}</div>
-                      </td>
-                      <td className="px-3 py-3 align-top">
-                        <div className="font-medium">{source.customerName}</div>
-                        <div className={`mt-1 text-xs ${mutedClass}`}>{source.customerEmail || source.customerPhone || '-'}</div>
-                      </td>
-                      <td className="px-3 py-3 align-top">
-                        <div className="flex flex-wrap gap-1">
-                          <Badge size="sm" tone={documentTone(documentStatus(source))}>
-                            {documentStatus(source) ?? 'Needs document'}
-                          </Badge>
-                          <Badge size="sm" tone="gray">{source.status}</Badge>
+
+                        <div className={`mt-3 grid gap-2 rounded-md p-2 ${isDark ? 'bg-black/20' : 'bg-[#F8FAFC]'}`}>
+                          <div className="min-w-0">
+                            <div className={`text-[11px] font-medium uppercase tracking-[0.08em] ${mutedClass}`}>
+                              {ti('customer')}
+                            </div>
+                            <div className="mt-1 truncate font-medium">{source.customerName}</div>
+                            <div className={`mt-0.5 truncate text-xs ${mutedClass}`}>
+                              {source.customerEmail || source.customerPhone || '-'}
+                            </div>
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-3 py-3 text-right align-top font-mono font-semibold">
-                        {centsToMoney(source.amountCents || source.document?.total_cents)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 flex-wrap gap-1">
+                            <Badge isDark={isDark} size="sm" tone={documentTone(documentStatus(source))}>
+                              {documentStatus(source) ?? ti('needsDocument')}
+                            </Badge>
+                            <Badge isDark={isDark} size="sm" tone="gray">{source.status}</Badge>
+                          </div>
+                          <div className={`shrink-0 text-right text-[11px] ${mutedClass}`}>
+                            {formatDate(source.createdAt)}
+                          </div>
+                        </div>
+                      </button>
+
+                      {deletable && (
+                        <div className={`border-t px-3 py-2 ${isDark ? 'border-white/10' : 'border-[#E5E7EB]'}`}>
+                          <button
+                            type="button"
+                            onClick={() => void deleteInvoiceDocument(source)}
+                            disabled={deleting}
+                            className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                              isDark ? 'text-red-300 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+                            }`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {deleting ? ti('deleting') : ti('deleteDocument')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </section>
 
-        <section className={`rounded-lg border ${panelClass}`}>
+        <section
+          className={`rounded-lg border transition-colors ${
+            importDragActive
+              ? isDark ? 'border-blue-400 bg-blue-500/10 text-white' : 'border-blue-300 bg-blue-50 text-[#1D1D1F]'
+              : panelClass
+          }`}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setImportDragActive(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setImportDragActive(true);
+          }}
+          onDragLeave={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+            setImportDragActive(false);
+          }}
+          onDrop={(event) => void handleDocumentWorkspaceDrop(event)}
+          onPaste={(event) => void handleDocumentWorkspacePaste(event)}
+        >
           <div className="border-b border-inherit p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Document workspace</h2>
+                <h2 className="text-lg font-semibold">{ti('documentWorkspace')}</h2>
                 <p className={`mt-1 text-sm ${mutedClass}`}>
-                  {selectedSource ? `${selectedSource.sourceType} source ${selectedSource.sourceId ?? ''}` : 'Manual draft'}
+                  {selectedSource ? `${selectedSource.sourceType} ${ti('sourceRecord')} ${selectedSource.sourceId ?? ''}` : ti('manualDraft')}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div
+                role="radiogroup"
+                aria-label={ti('documentWorkspace')}
+                className={`grid h-10 grid-cols-2 rounded-md border p-1 ${
+                  isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-[#F5F5F7]'
+                }`}
+              >
                 {(['receipt', 'invoice'] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
+                    role="radio"
+                    aria-checked={draft.documentType === type}
                     onClick={() => setDraft((current) => ({ ...current, documentType: type }))}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize ${
-                      draft.documentType === type ? 'bg-[#F97316] text-white' : isDark ? 'bg-white/5 text-gray-300' : 'bg-[#F5F5F7] text-[#475569]'
+                    className={`min-w-[96px] rounded px-3 text-sm font-medium capitalize transition-colors ${
+                      draft.documentType === type
+                        ? 'bg-[#F97316] text-white shadow-sm'
+                        : isDark ? 'text-gray-300 hover:bg-white/10' : 'text-[#475569] hover:bg-white'
                     }`}
                   >
-                    {type}
+                    {ti(type)}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
+          <div className="border-b border-inherit p-4">
+            <ImportedReceiptPanel
+              imported={importedReceiptData}
+              isDark={isDark}
+              mutedClass={mutedClass}
+              onChange={setImportedReceiptData}
+            />
+          </div>
+
           <div className="grid gap-4 p-4 lg:grid-cols-2">
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Customer</h3>
-              <Input label="Name" value={draft.customerName} onChange={(value) => setDraft((current) => ({ ...current, customerName: String(value) }))} size="sm" />
-              <Input label="Email" value={draft.customerEmail} onChange={(value) => setDraft((current) => ({ ...current, customerEmail: String(value) }))} size="sm" />
-              <Input label="Phone" value={draft.customerPhone} onChange={(value) => setDraft((current) => ({ ...current, customerPhone: String(value) }))} size="sm" />
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Input label="Y-tunnus / Business ID" value={draft.customerBusinessId} onChange={(value) => setDraft((current) => ({ ...current, customerBusinessId: String(value) }))} size="sm" />
-                <Input label="ALV / VAT ID" value={draft.customerVatId} onChange={(value) => setDraft((current) => ({ ...current, customerVatId: String(value) }))} size="sm" />
-              </div>
-              <Input label="Address" value={draft.customerAddressLine1} onChange={(value) => setDraft((current) => ({ ...current, customerAddressLine1: String(value) }))} size="sm" />
-              <Input label="Address 2" value={draft.customerAddressLine2} onChange={(value) => setDraft((current) => ({ ...current, customerAddressLine2: String(value) }))} size="sm" />
-              <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
-                <Input label="Postal code" value={draft.customerPostalCode} onChange={(value) => setDraft((current) => ({ ...current, customerPostalCode: String(value) }))} size="sm" />
-                <Input label="City" value={draft.customerCity} onChange={(value) => setDraft((current) => ({ ...current, customerCity: String(value) }))} size="sm" />
-              </div>
+              <h3 className="text-sm font-semibold">{ti('customer')}</h3>
+              <Input isDark={isDark} label={ti('name')} value={draft.customerName} onChange={(value) => setDraft((current) => ({ ...current, customerName: String(value) }))} size="sm" />
+              <Input isDark={isDark} label={ti('email')} value={draft.customerEmail} onChange={(value) => setDraft((current) => ({ ...current, customerEmail: String(value) }))} size="sm" />
+              <Input isDark={isDark} label={ti('phone')} value={draft.customerPhone} onChange={(value) => setDraft((current) => ({ ...current, customerPhone: String(value) }))} size="sm" />
+              {draft.documentType !== 'invoice' && (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerInvoiceDetails((current) => !current)}
+                  className={`inline-flex h-8 w-fit items-center rounded-md px-2 text-xs font-medium transition-colors ${
+                    isDark ? 'text-gray-300 hover:bg-white/10' : 'text-[#475569] hover:bg-[#F5F5F7]'
+                  }`}
+                >
+                  {customerInvoiceDetailsVisible ? ti('hideInvoiceDetails') : ti('addInvoiceDetails')}
+                </button>
+              )}
+
+              {customerInvoiceDetailsVisible && (
+                <div className={`space-y-3 rounded-md border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-[#F5F5F7]'}`}>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input isDark={isDark} label={ti('businessId')} value={draft.customerBusinessId} onChange={(value) => setDraft((current) => ({ ...current, customerBusinessId: String(value) }))} size="sm" />
+                    <Input isDark={isDark} label={ti('vatId')} value={draft.customerVatId} onChange={(value) => setDraft((current) => ({ ...current, customerVatId: String(value) }))} size="sm" />
+                  </div>
+                  <Input isDark={isDark} label={ti('address')} value={draft.customerAddressLine1} onChange={(value) => setDraft((current) => ({ ...current, customerAddressLine1: String(value) }))} size="sm" />
+                  <Input isDark={isDark} label={ti('address2')} value={draft.customerAddressLine2} onChange={(value) => setDraft((current) => ({ ...current, customerAddressLine2: String(value) }))} size="sm" />
+                  <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
+                    <Input isDark={isDark} label={ti('postalCode')} value={draft.customerPostalCode} onChange={(value) => setDraft((current) => ({ ...current, customerPostalCode: String(value) }))} size="sm" />
+                    <Input isDark={isDark} label={ti('city')} value={draft.customerCity} onChange={(value) => setDraft((current) => ({ ...current, customerCity: String(value) }))} size="sm" />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Payment and source</h3>
-              <Input label="Supply / service date" type="date" value={draft.supplyDate} onChange={(value) => setDraft((current) => ({ ...current, supplyDate: String(value) }))} size="sm" />
-              <Input label="Payment provider" value={draft.paymentProvider} onChange={(value) => setDraft((current) => ({ ...current, paymentProvider: String(value) }))} size="sm" />
-              <Input label="Transaction" value={draft.transactionId} onChange={(value) => setDraft((current) => ({ ...current, transactionId: String(value) }))} size="sm" />
-              <div className={`rounded-md border p-3 text-xs ${isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-[#F5F5F7]'}`}>
-                <div className={mutedClass}>Template</div>
-                <div className="mt-1 font-medium">Mitra Auto Oy · Y-tunnus 3408833-8 · FI34088338</div>
-                <div className={`mt-1 ${mutedClass}`}>Template settings will affect future documents only.</div>
-              </div>
-              <div className={`rounded-md border p-3 text-xs ${draftValidation.errors.length ? 'border-amber-300 bg-amber-50 text-amber-800' : isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
-                <div className="font-semibold">{draftValidation.fullRequired ? 'Full invoice validation' : 'Simplified receipt validation'}</div>
-                {draftValidation.errors.length ? (
-                  <ul className="mt-2 list-disc space-y-1 pl-4">
-                    {draftValidation.errors.map((item) => <li key={item}>{item}</li>)}
-                  </ul>
-                ) : (
-                  <div className="mt-1">Ready to issue.</div>
-                )}
-              </div>
+              <h3 className="text-sm font-semibold">{ti('paymentAndSource')}</h3>
+              <Input isDark={isDark} label={ti('supplyDate')} type="date" value={draft.supplyDate} onChange={(value) => setDraft((current) => ({ ...current, supplyDate: String(value) }))} size="sm" />
+              <Select isDark={isDark} label={ti('paymentProvider')} value={draft.paymentProvider} onChange={(value) => setDraft((current) => ({ ...current, paymentProvider: String(value) }))}>
+                {paymentProviderOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <Input isDark={isDark} label={ti('transaction')} value={draft.transactionId} onChange={(value) => setDraft((current) => ({ ...current, transactionId: String(value) }))} size="sm" />
             </div>
           </div>
 
           <div className="border-t border-inherit p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Line items</h3>
-              <Button size="sm" color="secondary" onClick={() => setDraft((current) => ({ ...current, lines: [...current.lines, emptyLine()] }))}>
-                Add line
+              <h3 className="text-sm font-semibold">{ti('lineItems')}</h3>
+              <Button isDark={isDark} size="sm" color="secondary" onClick={() => setDraft((current) => ({ ...current, lines: [...current.lines, emptyLine()] }))}>
+                {ti('addLine')}
               </Button>
             </div>
 
             <div className="space-y-2">
               {draft.lines.map((line) => (
                 <div key={line.id} className="grid gap-2 lg:grid-cols-[1fr_90px_120px_90px]">
-                  <Input aria-label="Description" value={line.description} onChange={(value) => updateLine(line.id, { description: String(value) })} placeholder="Description" size="sm" />
-                  <Input aria-label="Quantity" value={line.quantity} onChange={(value) => updateLine(line.id, { quantity: String(value) })} placeholder="Qty" size="sm" />
-                  <Input aria-label="Unit gross" value={line.unitGross} onChange={(value) => updateLine(line.id, { unitGross: String(value) })} placeholder="€/unit" size="sm" />
-                  <Input aria-label="VAT rate" value={line.vatRate} onChange={(value) => updateLine(line.id, { vatRate: String(value) })} placeholder="VAT %" size="sm" />
+                  <Input isDark={isDark} aria-label={ti('description')} value={line.description} onChange={(value) => updateLine(line.id, { description: String(value) })} placeholder={ti('description')} size="sm" />
+                  <Input isDark={isDark} aria-label={ti('quantity')} value={line.quantity} onChange={(value) => updateLine(line.id, { quantity: String(value) })} placeholder={ti('quantity')} size="sm" />
+                  <Input isDark={isDark} aria-label={ti('unitGross')} value={line.unitGross} onChange={(value) => updateLine(line.id, { unitGross: String(value) })} placeholder={ti('unitGross')} size="sm" />
+                  <Input isDark={isDark} aria-label={ti('vatRate')} value={line.vatRate} onChange={(value) => updateLine(line.id, { vatRate: String(value) })} placeholder={ti('vatRate')} size="sm" />
                 </div>
               ))}
             </div>
@@ -1192,62 +1465,91 @@ export function InvoicesCMSPage() {
             <div className={`mt-4 rounded-md border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-[#F5F5F7]'}`}>
               <div className="grid gap-2 text-sm sm:grid-cols-3">
                 <div>
-                  <div className={mutedClass}>Net subtotal</div>
+                  <div className={mutedClass}>{ti('netSubtotal')}</div>
                   <div className="font-mono font-semibold">{centsToMoney(totals.subtotalCents)}</div>
                 </div>
                 <div>
-                  <div className={mutedClass}>VAT</div>
+                  <div className={mutedClass}>{ti('vat')}</div>
                   <div className="font-mono font-semibold">{centsToMoney(totals.vatCents)}</div>
                 </div>
                 <div>
-                  <div className={mutedClass}>Total</div>
+                  <div className={mutedClass}>{ti('total')}</div>
                   <div className="font-mono text-lg font-semibold text-[#F97316]">{centsToMoney(totals.totalCents)}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-4 border-t border-inherit p-4 lg:grid-cols-2">
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Import</h3>
-              <TextArea
-                label="Copy and paste source text"
-                value={pasteText}
-                onChange={(value) => setPasteText(String(value))}
-                rows={5}
-                textAreaClassName="min-h-[120px]"
-                placeholder="Paste invoice or receipt text here..."
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" color="secondary" onClick={applyPaste}>Extract to draft</Button>
-                <label className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-medium ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-[#D2D2D7] hover:bg-[#F5F5F7]'}`}>
-                  <Upload className="h-4 w-4" />
-                  Upload PDF
-                  <input className="hidden" type="file" accept="application/pdf,text/plain" onChange={(event) => void handleFileUpload(event.target.files?.[0] ?? null)} />
-                </label>
+          <div className="space-y-3 border-t border-inherit p-4">
+            {importMessage && (
+              <div className={`rounded-md border px-3 py-2 text-xs ${isDark ? 'border-blue-400/30 bg-blue-500/10 text-blue-100' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
+                {importMessage}
               </div>
-            </div>
+            )}
+            <TextArea
+              isDark={isDark}
+              label={ti('internalNotes')}
+              value={draft.notes}
+              onChange={(value) => setDraft((current) => ({ ...current, notes: String(value) }))}
+              rows={3}
+              textAreaClassName="min-h-[76px]"
+              placeholder={ti('internalNotesPlaceholder')}
+            />
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+              <label className={`inline-flex h-9 w-fit cursor-pointer items-center justify-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 ${importingDocument ? 'cursor-not-allowed opacity-60' : ''}`}>
+                <Upload className="h-4 w-4" />
+                {importingDocument ? ti('importingDocument') : ti('uploadDoc')}
+                <input
+                  className="hidden"
+                  type="file"
+                  accept="application/pdf"
+                  disabled={importingDocument}
+                  onChange={(event) => {
+                    const files = event.target.files;
+                    if (files) void importDocumentFiles(files);
+                    event.currentTarget.value = '';
+                  }}
+                />
+              </label>
 
-            <div className="space-y-3">
-              <TextArea
-                label="Internal notes"
-                value={draft.notes}
-                onChange={(value) => setDraft((current) => ({ ...current, notes: String(value) }))}
-                rows={5}
-                placeholder="Notes for admin only..."
-              />
-              <div className="flex flex-wrap justify-end gap-2 pt-2">
-                <Button size="sm" color="secondary" onClick={() => void runDocumentAction('preview')}>Preview PDF</Button>
-                <Button size="sm" color="secondary" onClick={() => void runDocumentAction('send')} isDisabled={draftValidation.errors.length > 0}>Send receipt</Button>
-                <Button size="sm" color="secondary" onClick={() => void runDocumentAction('issue')} isDisabled={draftValidation.errors.length > 0}>Issue PDF</Button>
-                <Button size="sm" color="primary" iconLeading={<Save className="h-4 w-4" />} onClick={() => void saveDraft()} isLoading={saving}>
-                  Save draft
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button isDark={isDark} size="sm" color="secondary" onClick={() => void runDocumentAction('preview')}>{ti('previewPdf')}</Button>
+                <Button isDark={isDark} size="sm" color="secondary" onClick={() => void runDocumentAction('send')} isDisabled={draftValidation.errors.length > 0}>{ti('sendReceipt')}</Button>
+                <Button isDark={isDark} size="sm" color="secondary" onClick={() => void runDocumentAction('issue')} isDisabled={draftValidation.errors.length > 0}>{ti('issuePdf')}</Button>
+                <Button isDark={isDark} size="sm" color="primary" iconLeading={<Save className="h-4 w-4" />} onClick={() => void saveDraft()} isLoading={saving}>
+                  {ti('saveDraft')}
                 </Button>
               </div>
             </div>
           </div>
         </section>
       </div>
+
+      {templateOpen && (
+        <InvoiceTemplateModal
+          isDark={isDark}
+          mutedClass={mutedClass}
+          panelClass={panelClass}
+          templateDraft={templateDraft}
+          templateLoading={templateLoading}
+          templateSaving={templateSaving}
+          t={ti}
+          onClose={() => setTemplateOpen(false)}
+          onSave={() => void saveTemplateSettings()}
+          onTemplateDraftChange={setTemplateDraft}
+        />
+      )}
+
+      {previewUrl && (
+        <InvoicePreviewModal
+          isDark={isDark}
+          mutedClass={mutedClass}
+          panelClass={panelClass}
+          previewUrl={previewUrl}
+          t={ti}
+          onClose={() => setPreviewUrl(null)}
+        />
+      )}
     </div>
   );
 }

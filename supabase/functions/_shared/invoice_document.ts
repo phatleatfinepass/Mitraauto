@@ -128,10 +128,10 @@ function partyByRole(parties: InvoiceParty[], role: string) {
 function validationFor(invoice: LoadedInvoice) {
   const document = invoice.document;
   const buyer = partyByRole(invoice.parties, "buyer");
-  const fullRequired = document.document_type === "invoice" || document.total_cents > 40000 || Boolean(buyer?.business_id || buyer?.vat_id);
+  const fullRequired = document.document_type === "invoice" || Boolean(buyer?.business_id || buyer?.vat_id);
   const errors: string[] = [];
-  if (!buyer?.name?.trim()) errors.push("Missing buyer name");
   if (fullRequired) {
+    if (!buyer?.name?.trim()) errors.push("Missing buyer name");
     if (!buyer?.address_line1?.trim()) errors.push("Missing buyer address");
     if (!buyer?.postal_code?.trim()) errors.push("Missing buyer postal code");
     if (!buyer?.city?.trim()) errors.push("Missing buyer city");
@@ -256,114 +256,187 @@ export async function renderInvoicePdf(invoice: LoadedInvoice) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  let page = pdf.addPage([595.28, 841.89]);
-  const width = page.getWidth();
-  const margin = 44;
-  let y = 790;
-
-  const draw = (text: string, x: number, size = 10, fontRef = font, color = rgb(0.07, 0.09, 0.14)) => {
-    page.drawText(sanitizePdfText(text), { x, y, size, font: fontRef, color });
-  };
-  const nextPageIfNeeded = (space = 40) => {
-    if (y > space) return;
-    page = pdf.addPage([595.28, 841.89]);
-    y = 790;
-  };
-
   const { document, lines, vatBreakdowns } = invoice;
   const language = normalizeLanguage(document.language);
   const seller = partyByRole(invoice.parties, "seller");
   const buyer = partyByRole(invoice.parties, "buyer");
-  draw(documentLabel(document, language), margin, 24, bold);
-  y -= 34;
-  draw(`${language === "fi" ? "Numero" : "Number"}: ${document.document_number}`, margin, 11, bold);
-  y -= 16;
-  draw(`${language === "fi" ? "Paivays" : "Issue date"}: ${dateText(document.issue_date ?? document.issued_at, language)}`, margin);
-  y -= 14;
-  draw(`${language === "fi" ? "Suorituspaiva" : "Supply date"}: ${dateText(document.supply_date ?? document.issue_date, language)}`, margin);
-  y -= 24;
 
-  draw(language === "fi" ? "Myyja / Seller" : "Seller / Myyja", margin, 11, bold);
-  draw(language === "fi" ? "Asiakas / Customer" : "Customer / Asiakas", 330, 11, bold);
-  y -= 16;
+  const pageSize: [number, number] = [595.28, 841.89];
+  const margin = 42;
+  const contentWidth = pageSize[0] - margin * 2;
+  const ink = rgb(0.07, 0.09, 0.14);
+  const muted = rgb(0.38, 0.45, 0.55);
+  const border = rgb(0.87, 0.89, 0.92);
+  const soft = rgb(0.97, 0.98, 0.99);
+  const orange = rgb(0.98, 0.45, 0.05);
+  let page = pdf.addPage(pageSize);
+  let y = 790;
+
+  const drawText = (text: string, x: number, atY: number, size = 10, fontRef = font, color = ink) => {
+    page.drawText(sanitizePdfText(text), { x, y: atY, size, font: fontRef, color });
+  };
+  const textWidth = (text: string, size = 10, fontRef = font) => fontRef.widthOfTextAtSize(sanitizePdfText(text), size);
+  const drawRight = (text: string, rightX: number, atY: number, size = 10, fontRef = font, color = ink) => {
+    drawText(text, rightX - textWidth(text, size, fontRef), atY, size, fontRef, color);
+  };
+  const drawWrapped = (text: string, x: number, atY: number, maxWidth: number, size = 10, fontRef = font, color = ink, lineGap = 12) => {
+    const words = sanitizePdfText(text).split(/\s+/).filter(Boolean);
+    const out: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const candidate = `${line} ${word}`.trim();
+      if (line && textWidth(candidate, size, fontRef) > maxWidth) {
+        out.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) out.push(line);
+    const rows = out.length ? out : [""];
+    rows.forEach((row, index) => drawText(row, x, atY - index * lineGap, size, fontRef, color));
+    return atY - rows.length * lineGap;
+  };
+  const newPage = () => {
+    page = pdf.addPage(pageSize);
+    y = 790;
+  };
+  const ensureSpace = (height: number) => {
+    if (y - height > 54) return;
+    newPage();
+  };
+  const drawCard = (x: number, top: number, w: number, h: number, fill = rgb(1, 1, 1)) => {
+    page.drawRectangle({ x, y: top - h, width: w, height: h, color: fill, borderColor: border, borderWidth: 1 });
+  };
+  const drawLabel = (label: string, x: number, atY: number) => drawText(label.toUpperCase(), x, atY, 7.5, bold, muted);
+
+  const isInvoice = document.document_type === "invoice";
+  const title = isInvoice
+    ? (language === "fi" ? "LASKU" : "INVOICE")
+    : (language === "fi" ? "KUITTI" : "RECEIPT");
+  const titleSub = isInvoice
+    ? (language === "fi" ? "Invoice" : "Lasku")
+    : (language === "fi" ? "Receipt" : "Kuitti");
+  const buyerName = String(buyer?.name ?? "").trim();
+  const hasRealBuyerName = Boolean(buyerName && !["customer", "-"].includes(buyerName.toLowerCase()));
+  const hasBuyerDetails = hasRealBuyerName || Boolean(
+    buyer?.address_line1 || buyer?.address_line2 || buyer?.postal_code || buyer?.city || buyer?.business_id || buyer?.vat_id || buyer?.email || buyer?.phone
+  );
+  const buyerLines = [
+    hasRealBuyerName ? buyerName : "",
+    buyer?.address_line1 ?? "",
+    buyer?.address_line2 ?? "",
+    [buyer?.postal_code, buyer?.city].filter(Boolean).join(" "),
+    buyer?.business_id ? `Y-tunnus: ${buyer.business_id}` : "",
+    buyer?.vat_id ? `ALV: ${buyer.vat_id}` : "",
+    buyer?.email ?? "",
+    buyer?.phone ?? "",
+  ].filter(Boolean);
   const sellerLines = [
     seller?.name ?? "Mitra Auto Oy",
     seller?.address_line1 ?? "",
     seller?.address_line2 ?? "",
-    `Y-tunnus / Business ID: ${seller?.business_id ?? ""}`,
-    `ALV / VAT ID: ${seller?.vat_id ?? ""}`,
+    `Y-tunnus: ${seller?.business_id ?? "3408833-8"}`,
+    `ALV: ${seller?.vat_id ?? "FI34088338"}`,
     seller?.email ?? "",
     seller?.phone ?? "",
   ].filter(Boolean);
-  const buyerLines = [
-    buyer?.name ?? "-",
-    buyer?.address_line1 ?? "",
-    buyer?.address_line2 ?? "",
-    [buyer?.postal_code, buyer?.city].filter(Boolean).join(" "),
-    buyer?.business_id ? `Y-tunnus / Business ID: ${buyer.business_id}` : "",
-    buyer?.vat_id ? `ALV / VAT ID: ${buyer.vat_id}` : "",
-    buyer?.email ?? "",
-    buyer?.phone ?? "",
-  ].filter(Boolean);
-  const maxPartyRows = Math.max(sellerLines.length, buyerLines.length);
-  for (let i = 0; i < maxPartyRows; i += 1) {
-    if (sellerLines[i]) draw(sellerLines[i], margin);
-    if (buyerLines[i]) draw(buyerLines[i], 330);
-    y -= 13;
-  }
-  y -= 20;
 
-  draw(language === "fi" ? "Rivit" : "Lines", margin, 13, bold);
-  y -= 18;
-  page.drawLine({ start: { x: margin, y: y + 5 }, end: { x: width - margin, y: y + 5 }, thickness: 1, color: rgb(0.1, 0.1, 0.1) });
-  draw(language === "fi" ? "Tuote tai palvelu" : "Goods or services", margin, 9, bold);
-  draw("Qty", 330, 9, bold);
-  draw("VAT", 390, 9, bold);
-  draw("Total", 480, 9, bold);
-  y -= 16;
+  drawText("Mitra Auto", margin, y, 22, bold, ink);
+  drawRight(title, pageSize[0] - margin, y + 1, 24, bold, orange);
+  y -= 20;
+  drawText(titleSub, margin, y, 9, font, muted);
+  y -= 26;
+
+  drawCard(margin, y, contentWidth, 82, soft);
+  const metaTop = y - 20;
+  drawLabel(isInvoice ? (language === "fi" ? "Laskunumero" : "Invoice number") : (language === "fi" ? "Kuittinumero" : "Receipt number"), margin + 18, metaTop);
+  drawText(document.document_number, margin + 18, metaTop - 16, 11, bold);
+  drawLabel(language === "fi" ? "Paivays" : "Issue date", margin + 210, metaTop);
+  drawText(dateText(document.issue_date ?? document.issued_at, language), margin + 210, metaTop - 16, 11, bold);
+  drawLabel(isInvoice ? (language === "fi" ? "Erapaiva" : "Due date") : (language === "fi" ? "Suorituspaiva" : "Supply date"), margin + 350, metaTop);
+  drawText(dateText(isInvoice ? (document.due_date ?? document.issue_date) : (document.supply_date ?? document.issue_date), language), margin + 350, metaTop - 16, 11, bold);
+  y -= 104;
+
+  const cardW = (contentWidth - 14) / 2;
+  if (isInvoice || hasBuyerDetails) {
+    drawCard(margin, y, cardW, 118);
+    drawCard(margin + cardW + 14, y, cardW, 118);
+    drawLabel(language === "fi" ? "Myyja" : "Seller", margin + 16, y - 18);
+    drawLabel(language === "fi" ? "Asiakas" : "Customer", margin + cardW + 30, y - 18);
+    sellerLines.slice(0, 7).forEach((line, index) => {
+      drawWrapped(line, margin + 16, y - 38 - index * 13, cardW - 32, index === 0 ? 10 : 9, index === 0 ? bold : font, index === 0 ? ink : muted, 11);
+    });
+    const visibleBuyerLines = buyerLines.length ? buyerLines : [language === "fi" ? "Ei asiakastietoja" : "No customer details"];
+    visibleBuyerLines.slice(0, 7).forEach((line, index) => {
+      drawWrapped(line, margin + cardW + 30, y - 38 - index * 13, cardW - 32, index === 0 ? 10 : 9, index === 0 && buyerLines.length ? bold : font, index === 0 && buyerLines.length ? ink : muted, 11);
+    });
+    y -= 144;
+  } else {
+    drawCard(margin, y, contentWidth, 98);
+    drawLabel(language === "fi" ? "Myyja" : "Seller", margin + 16, y - 18);
+    sellerLines.slice(0, 5).forEach((line, index) => {
+      drawWrapped(line, margin + 16, y - 38 - index * 13, 260, index === 0 ? 10 : 9, index === 0 ? bold : font, index === 0 ? ink : muted, 11);
+    });
+    drawLabel(language === "fi" ? "Maksu" : "Payment", margin + 340, y - 18);
+    drawText(invoice.payment?.payment_provider ?? (language === "fi" ? "Maksettu" : "Paid"), margin + 340, y - 38, 10, bold);
+    if (invoice.payment?.transaction_id) drawWrapped(`Transaction: ${invoice.payment.transaction_id}`, margin + 340, y - 53, 155, 8, font, muted, 10);
+    y -= 124;
+  }
+
+  drawText(language === "fi" ? "Rivit" : "Items", margin, y, 14, bold);
+  y -= 20;
+  page.drawRectangle({ x: margin, y: y - 24, width: contentWidth, height: 24, color: rgb(0.09, 0.11, 0.16) });
+  drawText(language === "fi" ? "Tuote tai palvelu" : "Goods or services", margin + 12, y - 15, 8, bold, rgb(1, 1, 1));
+  drawRight(language === "fi" ? "Maara" : "Qty", margin + 308, y - 15, 8, bold, rgb(1, 1, 1));
+  drawRight(language === "fi" ? "Yks." : "Unit", margin + 386, y - 15, 8, bold, rgb(1, 1, 1));
+  drawRight("ALV", margin + 444, y - 15, 8, bold, rgb(1, 1, 1));
+  drawRight(language === "fi" ? "Summa" : "Total", margin + contentWidth - 12, y - 15, 8, bold, rgb(1, 1, 1));
+  y -= 30;
 
   for (const line of lines) {
-    nextPageIfNeeded(90);
-    const titleLines = wrapText(line.title, 46);
-    for (const [index, titleLine] of titleLines.entries()) {
-      draw(titleLine, margin, 9, index === 0 ? bold : font);
-      if (index === 0) {
-        draw(`${line.quantity} ${line.unit_label}`, 330, 9);
-        draw(`${line.vat_rate}%`, 390, 9);
-        draw(money(line.line_total_cents), 480, 9, bold);
-      }
-      y -= 12;
-    }
-    if (line.description) {
-      for (const descLine of wrapText(line.description, 46).slice(0, 2)) {
-        draw(descLine, margin, 8, font, rgb(0.38, 0.45, 0.55));
-        y -= 10;
-      }
-    }
-    y -= 4;
+    const titleRows = wrapText(line.title, 54).slice(0, 3);
+    const rowHeight = Math.max(42, 18 + titleRows.length * 12 + (line.description ? 12 : 0));
+    ensureSpace(rowHeight + 8);
+    page.drawRectangle({ x: margin, y: y - rowHeight, width: contentWidth, height: rowHeight, color: rgb(1, 1, 1), borderColor: border, borderWidth: 0.6 });
+    let rowTextY = y - 16;
+    titleRows.forEach((row, index) => {
+      drawText(row, margin + 12, rowTextY - index * 12, 9.5, index === 0 ? bold : font);
+    });
+    if (line.description) drawWrapped(line.description, margin + 12, rowTextY - titleRows.length * 12, 260, 8, font, muted, 10);
+    drawRight(`${line.quantity} ${line.unit_label}`, margin + 308, rowTextY, 9);
+    drawRight(money(line.unit_price_excl_vat_cents), margin + 386, rowTextY, 9);
+    drawRight(`${line.vat_rate}%`, margin + 444, rowTextY, 9);
+    drawRight(money(line.line_total_cents), margin + contentWidth - 12, rowTextY, 9.5, bold);
+    y -= rowHeight;
   }
+  y -= 22;
 
-  y -= 10;
-  page.drawLine({ start: { x: 350, y: y + 5 }, end: { x: width - margin, y: y + 5 }, thickness: 0.5, color: rgb(0.8, 0.82, 0.86) });
-  draw(language === "fi" ? "Veroton" : "Net", 350);
-  draw(money(document.subtotal_cents), 480, 10, bold);
-  y -= 15;
-  draw("ALV / VAT", 350);
-  draw(money(document.vat_cents), 480, 10, bold);
-  y -= 18;
-  draw(language === "fi" ? "Yhteensa" : "Total", 350, 14, bold);
-  draw(money(document.total_cents), 480, 14, bold, rgb(1, 0.42, 0));
-  y -= 32;
+  ensureSpace(160);
+  const summaryX = margin + 300;
+  const summaryW = contentWidth - 300;
+  drawCard(summaryX, y, summaryW, 96, soft);
+  drawText(language === "fi" ? "Veroton" : "Net subtotal", summaryX + 14, y - 20, 9, font, muted);
+  drawRight(money(document.subtotal_cents), summaryX + summaryW - 14, y - 20, 9, bold);
+  drawText("ALV / VAT", summaryX + 14, y - 40, 9, font, muted);
+  drawRight(money(document.vat_cents), summaryX + summaryW - 14, y - 40, 9, bold);
+  page.drawLine({ start: { x: summaryX + 14, y: y - 56 }, end: { x: summaryX + summaryW - 14, y: y - 56 }, thickness: 0.8, color: border });
+  drawText(language === "fi" ? "Yhteensa" : "Total", summaryX + 14, y - 78, 14, bold);
+  drawRight(money(document.total_cents), summaryX + summaryW - 14, y - 78, 15, bold, orange);
 
-  draw("ALV / VAT breakdown", margin, 11, bold);
-  y -= 15;
+  drawText("ALV / VAT breakdown", margin, y - 12, 10, bold);
+  let vatY = y - 32;
   for (const row of vatBreakdowns) {
-    draw(`${row.vat_rate}%`, margin);
-    draw(`${money(row.base_cents)} + ${money(row.vat_cents)} = ${money(row.total_cents)}`, 130);
-    y -= 13;
+    drawText(`${row.vat_rate}%`, margin, vatY, 9, bold);
+    drawText(`${money(row.base_cents)} + ${money(row.vat_cents)} = ${money(row.total_cents)}`, margin + 54, vatY, 9, font, muted);
+    vatY -= 14;
   }
-  y -= 18;
-  draw(`${language === "fi" ? "Lahetetty / tulostettu" : "Sent / printed"} ${new Date().toLocaleString(language === "fi" ? "fi-FI" : "en-GB", { timeZone: "Europe/Helsinki" })}`, margin, 8, font, rgb(0.38, 0.45, 0.55));
+  y -= 126;
+
+  const printed = new Date().toLocaleString(language === "fi" ? "fi-FI" : "en-GB", { timeZone: "Europe/Helsinki" });
+  page.drawLine({ start: { x: margin, y: 48 }, end: { x: pageSize[0] - margin, y: 48 }, thickness: 0.6, color: border });
+  drawText(`${language === "fi" ? "Lahetetty / tulostettu" : "Sent / printed"} ${printed}`, margin, 31, 8, font, muted);
+  drawRight(`${seller?.name ?? "Mitra Auto Oy"} · ${seller?.business_id ?? "3408833-8"}`, pageSize[0] - margin, 31, 8, font, muted);
 
   return await pdf.save();
 }
@@ -458,7 +531,7 @@ export async function prepareInvoiceDocument(documentId: string, action: "previe
   const pdfBytes = await renderInvoicePdf(invoice);
   const pdfExport = await uploadExport(document, pdfBytes, "pdf", "application/pdf");
   const html = renderInvoiceHtml(invoice);
-  const htmlExport = await uploadExport(document, new TextEncoder().encode(html), "html", "text/html; charset=utf-8");
+  const htmlExport = await uploadExport(document, new TextEncoder().encode(html), "html", "text/html");
 
   if (action !== "preview") {
     await supabaseAdmin
