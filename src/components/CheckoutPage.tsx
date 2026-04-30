@@ -94,6 +94,40 @@ export function clearCheckoutDraft() {
   window.sessionStorage.removeItem(CHECKOUT_DRAFT_STORAGE_KEY);
 }
 
+function resolveCheckoutProductImage(product: any) {
+  const candidates = [
+    product?.image_url,
+    product?.hero_image_url,
+    product?.best_image_url,
+    product?.gallery_images?.[0],
+    product?.images?.[0],
+    product?.gallery?.[0],
+    product?.image,
+  ];
+
+  for (const candidate of candidates) {
+    const value = String(candidate ?? '').trim();
+    if (value) return value;
+  }
+
+  return '';
+}
+
+function resolveCheckoutProductSize(product: any) {
+  if (product?.product_type === 'tire' || product?.type === 'tire') {
+    return String(
+      product?.size_text ||
+      product?.size_string ||
+      `${product?.tire_width ?? ''}/${product?.aspect_ratio ?? ''} ${product?.construction ?? 'R'}${product?.rim_diameter ?? ''}`
+    ).trim();
+  }
+
+  return String(
+    product?.size_text ||
+    `${product?.rim_width ?? ''}×${product?.rim_diameter ?? ''}" ET${product?.et_offset ?? ''}`
+  ).trim();
+}
+
 interface CheckoutPageProps {
   onBack: () => void;
   onComplete: () => void;
@@ -276,7 +310,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           client_unit_price_cents: unitPriceWithVatCents,
           sku: sku,
           name: productName,
-          vatPercentage: VAT_PERCENT
+          vatPercentage: VAT_PERCENT,
+          image_url: resolveCheckoutProductImage(item.product),
+          brand: item.product.brand || null,
+          model: item.product.model || null,
+          size_text: resolveCheckoutProductSize(item.product),
+          product_type: item.product.product_type || item.product.type || null,
+          line_total_cents: unitPriceWithVatCents * item.quantity,
         };
       });
 
@@ -303,6 +343,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       const payload = {
         items: paytrailItems,
         currency: 'EUR',
+        language,
         shipping_cents: shippingCents,
         customer: {
           email: formData.email,

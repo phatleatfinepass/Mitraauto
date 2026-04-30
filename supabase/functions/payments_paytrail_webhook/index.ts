@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendOrderConfirmationEmail } from "../_shared/order_email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -64,6 +65,33 @@ function parseOrderId(reference: string | null, stamp: string | null) {
   return stamp?.trim() || null;
 }
 
+async function readCallbackParams(req: Request, url: URL) {
+  const params = new URLSearchParams(url.search);
+  if (req.method !== "POST") return params;
+
+  const contentType = req.headers.get("content-type") ?? "";
+  const bodyText = await req.text().catch(() => "");
+  if (!bodyText) return params;
+
+  if (contentType.includes("application/json")) {
+    const body = JSON.parse(bodyText);
+    if (body && typeof body === "object") {
+      for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+        if (!params.has(key) && value !== null && value !== undefined) {
+          params.set(key, String(value));
+        }
+      }
+    }
+    return params;
+  }
+
+  const bodyParams = new URLSearchParams(bodyText);
+  for (const [key, value] of bodyParams.entries()) {
+    if (!params.has(key)) params.set(key, value);
+  }
+  return params;
+}
+
 function normalizeStatus(status: string | null) {
   const normalized = (status ?? "").trim().toLowerCase();
   if (normalized === "ok") return "ok";
@@ -77,7 +105,8 @@ function normalizeStatus(status: string | null) {
 async function updateOrder(orderId: string | null, params: Record<string, string>, signatureValid: boolean) {
   if (!orderId) return null;
 
-  const paytrailStatus = normalizeStatus(params["checkout-status"] ?? null);
+  const incomingStatus = normalizeStatus(params["checkout-status"] ?? null);
+  let paytrailStatus = incomingStatus;
   const patch: Record<string, unknown> = {
     status: paytrailStatus === "ok" ? "paid" : paytrailStatus === "failed" ? "cancelled" : "pending_payment",
     paytrail_status: paytrailStatus,
@@ -89,13 +118,25 @@ async function updateOrder(orderId: string | null, params: Record<string, string
 
   const { data: existing } = await supabase
     .from("orders")
-    .select("cart_snapshot")
+    .select("cart_snapshot, paytrail_status")
     .eq("id", orderId)
     .maybeSingle();
 
   const snapshot = typeof existing?.cart_snapshot === "object" && existing.cart_snapshot
     ? existing.cart_snapshot
     : {};
+  const existingPaytrailStatus = normalizeStatus(existing?.paytrail_status ?? null);
+  const existingSnapshotStatus = normalizeStatus((snapshot as any)?.payment_status ?? null);
+  const existingSnapshotPaytrailStatus = normalizeStatus((snapshot as any)?.paytrail?.status ?? null);
+  const wasAlreadyPaid = [existingPaytrailStatus, existingSnapshotStatus, existingSnapshotPaytrailStatus]
+    .some((status) => status === "ok" || status === "paid" || status === "purchased" || status === "success");
+
+  if (wasAlreadyPaid && paytrailStatus === "failed") {
+    paytrailStatus = existingPaytrailStatus === "unknown" ? "ok" : existingPaytrailStatus;
+  }
+
+  patch.status = paytrailStatus === "ok" ? "paid" : paytrailStatus === "failed" ? "cancelled" : "pending_payment";
+  patch.paytrail_status = paytrailStatus;
 
   patch.cart_snapshot = {
     ...snapshot,
@@ -105,6 +146,7 @@ async function updateOrder(orderId: string | null, params: Record<string, string
       ...(snapshot as any)?.paytrail,
       signature_valid: signatureValid,
       status: paytrailStatus,
+      incoming_status: incomingStatus,
       transaction_id: params["checkout-transaction-id"] ?? null,
       provider: params["checkout-provider"] ?? null,
       amount_cents: params["checkout-amount"] ? Number(params["checkout-amount"]) : null,
@@ -129,8 +171,9 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const params = Object.fromEntries(url.searchParams.entries());
-    const signatureValid = await verifyQuerySignature(url.searchParams);
+    const callbackParams = await readCallbackParams(req, url);
+    const params = Object.fromEntries(callbackParams.entries());
+    const signatureValid = await verifyQuerySignature(callbackParams);
     const status = normalizeStatus(params["checkout-status"] ?? null);
     const orderId = parseOrderId(params["checkout-reference"] ?? null, params["checkout-stamp"] ?? null);
 
@@ -161,6 +204,14 @@ serve(async (req) => {
       payload: params,
       signature_valid: true,
     });
+
+    if (orderId && (status === "ok" || status === "failed")) {
+      try {
+        await sendOrderConfirmationEmail(orderId);
+      } catch (emailError) {
+        console.error("Order confirmation email failed", emailError);
+      }
+    }
 
     return jsonResponse({
       ok: true,

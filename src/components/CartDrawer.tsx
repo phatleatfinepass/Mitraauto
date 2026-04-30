@@ -19,6 +19,27 @@ import { X, Plus, Minus, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { calculateLinePricing } from '../utils/pricing';
 
+const VAT_MULTIPLIER = 1.255;
+
+function resolveCartProductImage(product: any) {
+  const candidates = [
+    product?.image_url,
+    product?.hero_image_url,
+    product?.best_image_url,
+    product?.gallery_images?.[0],
+    product?.images?.[0],
+    product?.gallery?.[0],
+    product?.image,
+  ];
+
+  for (const candidate of candidates) {
+    const value = String(candidate ?? '').trim();
+    if (value) return value;
+  }
+
+  return '';
+}
+
 interface CartDrawerProps {
   onCheckout: () => void;
 }
@@ -134,6 +155,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                     item.quantity,
                     item.pricing_rules ?? item.product?.pricing_rules ?? null,
                   );
+                  const lineTotalWithVat = linePricing.lineTotalEur * VAT_MULTIPLIER;
+                  const unitPriceWithVat = linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER;
+                  const productImage = resolveCartProductImage(item.product);
 
                   return (
                   <motion.div
@@ -154,9 +178,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                       <div className={`size-20 rounded-lg overflow-hidden flex-shrink-0 ${
                         theme === 'dark' ? 'bg-[#2C2C2E]' : 'bg-white'
                       }`}>
-                        {item.product.image_url ? (
+                        {productImage ? (
                           <img
-                            src={item.product.image_url}
+                            src={productImage}
                             alt={`${item.product.brand} ${item.product.model}`}
                             className="w-full h-full object-cover"
                           />
@@ -220,12 +244,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
 
                           <div className="text-right">
                             <p className="text-sm text-[#FF6B00]">
-                              €{linePricing.lineTotalEur.toFixed(2)}
+                              €{lineTotalWithVat.toFixed(2)}
                             </p>
                             <p className={`text-xs ${
                               theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'
                             }`}>
-                              €{linePricing.effectiveUnitPriceEur.toFixed(2)} / {t('perPcs')}
+                              €{unitPriceWithVat.toFixed(2)} / {t('perPcs')}
                             </p>
                           </div>
                         </div>
@@ -264,7 +288,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                   <span className={`text-lg ${
                     theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
                   }`}>
-                    €{totalPrice.toFixed(2)}
+                    €{(totalPrice * VAT_MULTIPLIER).toFixed(2)}
                   </span>
                 </div>
                 <p className={`text-xs ${

@@ -176,7 +176,7 @@ export function TiresCmsToolbar({
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
               <input
                 type="text"
-                placeholder={language === 'fi' ? 'Hae brändin, mallin tai EAN:n mukaan...' : 'Search by brand, model, or EAN...'}
+                placeholder={language === 'fi' ? 'Hae brändin, mallin, koon tai EAN:n mukaan...' : 'Search by brand, model, size, or EAN...'}
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2 rounded-lg border ${

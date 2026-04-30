@@ -34,7 +34,8 @@ const ORDER_MARK_STATUSES = [
 ] as const;
 type OrderMarkStatus = (typeof ORDER_MARK_STATUSES)[number];
 type PaymentMethod = 'card' | 'cash' | 'paytrail';
-type PaymentResult = 'purchased' | 'fail';
+type PaymentResult = 'purchased' | 'pending' | 'fail';
+type PaymentInfo = { method: PaymentMethod; result: PaymentResult };
 type OrderCreateForm = {
   firstName: string;
   lastName: string;
@@ -74,6 +75,7 @@ interface SelectedOrderModalProps {
   getItemEan: (item: any) => string | null;
   getItemSku: (item: any) => string | null;
   getItemTitle: (item: any) => string;
+  getPaymentInfo: (order: OrderRow) => PaymentInfo;
   getStatusBadgeClass: (status: string) => string;
   getStatusMeta: (status: string) => { icon: React.ComponentType<{ className?: string }>; tone: 'gray' | 'purple' | 'green' | 'blue' | 'red' | 'orange' };
   isDark: boolean;
@@ -98,6 +100,7 @@ function SelectedOrderModal({
   getItemEan,
   getItemSku,
   getItemTitle,
+  getPaymentInfo,
   getStatusBadgeClass,
   getStatusMeta,
   isDark,
@@ -111,6 +114,21 @@ function SelectedOrderModal({
   onClose,
 }: SelectedOrderModalProps) {
   if (!order) return null;
+
+  const payment = getPaymentInfo(order);
+  const paymentBadgeClass =
+    payment.result === 'purchased'
+      ? isDark ? 'border-green-500/30 bg-green-500/20 text-green-300' : 'border-green-300 bg-green-100 text-green-700'
+      : payment.result === 'pending'
+        ? isDark ? 'border-amber-500/30 bg-amber-500/20 text-amber-300' : 'border-amber-300 bg-amber-100 text-amber-700'
+        : isDark ? 'border-red-500/30 bg-red-500/20 text-red-300' : 'border-red-300 bg-red-100 text-red-700';
+  const paymentMethodLabel = payment.method === 'paytrail' ? 'Paytrail' : payment.method === 'card' ? 'Card' : 'Cash';
+  const paymentResultLabel =
+    payment.result === 'purchased'
+      ? language === 'fi' ? 'Maksettu' : 'Purchased'
+      : payment.result === 'pending'
+        ? language === 'fi' ? 'Odottaa' : 'Pending'
+        : language === 'fi' ? 'Epäonnistui' : 'Fail';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -142,12 +160,8 @@ function SelectedOrderModal({
             <p><strong>{language === 'fi' ? 'Päivä' : 'Date'}:</strong> {formatDate(order.created_at)}</p>
             <p className="mt-1">
               <strong>{language === 'fi' ? 'Maksun tila' : 'Payment status'}:</strong>{' '}
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${getStatusBadgeClass(getDisplayStatus(order))}`}>
-                {(() => {
-                  const Icon = getStatusMeta(getDisplayStatus(order)).icon;
-                  return <Icon className="h-3 w-3" />;
-                })()}
-                {formatStatusLabel(getDisplayStatus(order))}
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${paymentBadgeClass}`}>
+                {paymentMethodLabel} · {paymentResultLabel}
               </span>
             </p>
             <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> {formatMoney(orderTotals?.subtotalCents ?? null)}</p>
@@ -672,6 +686,12 @@ function OrdersTableSection({
                 const deletionInfo = getScheduledDeletionInfo(order);
                 const PaymentIcon = payment.method === 'cash' ? Banknote : payment.method === 'paytrail' ? Globe : CreditCard;
                 const methodLabel = payment.method === 'paytrail' ? 'Paytrail' : payment.method === 'card' ? 'Card' : 'Cash';
+                const paymentResultLabel =
+                  payment.result === 'purchased'
+                    ? 'Purchased'
+                    : payment.result === 'pending'
+                      ? 'Pending'
+                      : 'Fail';
 
                 return (
                   <tr key={order.id} className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${getRowStatusClass(displayStatus)}`}>
@@ -702,11 +722,13 @@ function OrdersTableSection({
                         className={`mt-1 inline-flex items-center gap-1 text-xs ${
                           payment.result === 'purchased'
                             ? (isDark ? 'text-green-300' : 'text-green-700')
+                            : payment.result === 'pending'
+                              ? (isDark ? 'text-amber-300' : 'text-amber-700')
                             : (isDark ? 'text-red-300' : 'text-red-700')
                         } ${deletionInfo ? 'line-through' : ''}`}
                       >
                         <PaymentIcon className="h-3 w-3" />
-                        {methodLabel} · {payment.result === 'purchased' ? 'Purchased' : 'Fail'}
+                        {methodLabel} · {paymentResultLabel}
                       </span>
                       {deletionInfo && (
                         <p className={`mt-1 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
@@ -1029,7 +1051,7 @@ export function OrdersCMSPage() {
     return { dbStatus: null, error: lastError, usedSnapshotFallback: false, snapshot: null };
   };
 
-  const getPaymentInfo = (order: OrderRow) => {
+  const getPaymentInfo = (order: OrderRow): PaymentInfo => {
     const snapshot = getSnapshot(order);
     const paymentMethodRaw = String(snapshot?.payment_method ?? '').toLowerCase();
     const hasPaytrail = Boolean(order.paytrail_transaction_id || order.paytrail_reference || normalizeStatus(order.paytrail_status));
@@ -1044,12 +1066,18 @@ export function OrdersCMSPage() {
 
     const paytrail = normalizeStatus(order.paytrail_status);
     const snapshotResult = normalizeStatus(snapshot?.payment_status);
+    const snapshotPaytrail = normalizeStatus(snapshot?.paytrail?.status);
+    const orderStatus = normalizeStatus(order.status);
+    const successSignals = new Set(['purchased', 'paid', 'ok', 'success']);
+    const failureSignals = new Set(['fail', 'failed', 'cancelled', 'canceled', 'create_failed', 'rejected', 'error']);
+    const pendingSignals = new Set(['pending', 'pending_payment', 'new', 'delayed', 'unknown']);
+    const signals = [snapshotResult, paytrail, snapshotPaytrail, orderStatus].filter(Boolean);
     const result: PaymentResult = (() => {
-      if (snapshotResult === 'purchased' || snapshotResult === 'paid') return 'purchased';
-      if (snapshotResult === 'fail' || snapshotResult === 'failed') return 'fail';
-      if (paytrail === 'paid' || paytrail === 'ok' || paytrail === 'success') return 'purchased';
-      if (paytrail === 'failed' || paytrail === 'cancelled' || paytrail === 'canceled') return 'fail';
-      return method === 'cash' ? 'purchased' : 'fail';
+      if (signals.some((signal) => successSignals.has(signal))) return 'purchased';
+      if (signals.some((signal) => failureSignals.has(signal))) return 'fail';
+      if (method === 'cash') return 'purchased';
+      if (signals.some((signal) => pendingSignals.has(signal))) return 'pending';
+      return 'pending';
     })();
 
     return { method, result };
@@ -1863,6 +1891,7 @@ export function OrdersCMSPage() {
           getItemEan={getItemEan}
           getItemSku={getItemSku}
           getItemTitle={getItemTitle}
+          getPaymentInfo={getPaymentInfo}
           getStatusBadgeClass={getStatusBadgeClass}
           getStatusMeta={getStatusMeta}
           isDark={isDark}

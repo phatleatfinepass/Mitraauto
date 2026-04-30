@@ -462,9 +462,13 @@ begin
       null::numeric(12,2) as recycling_fee_eur,
       coalesce(v.wholesale_price_eur, v.consumer_price_eur) as final_base_price_eur,
       coalesce(v.wholesale_price_eur, v.consumer_price_eur) as raw_supplier_price_ex_vat,
-      null::numeric(12,2) as shipping_fee_ex_vat,
-      coalesce(v.wholesale_price_eur, v.consumer_price_eur) as fair_cost_ex_vat,
-      'vt_wholesale_or_consumer_price'::text as fair_cost_reason,
+      20::numeric(12,2) as shipping_fee_ex_vat,
+      case
+        when coalesce(v.wholesale_price_eur, v.consumer_price_eur) is not null
+          then (coalesce(v.wholesale_price_eur, v.consumer_price_eur) + 20)::numeric(12,2)
+        else null
+      end as fair_cost_ex_vat,
+      'vt_wholesale_plus_fixed_shipping_20'::text as fair_cost_reason,
       lower(coalesce(v.raw_payload->>'Runflat', '')) in ('yes', 'true', '1') as runflat,
       null::boolean as xl_reinforced,
       lower(coalesce(v.raw_payload->>'Studded', '')) in ('yes', 'true', '1') as studded,
@@ -600,8 +604,18 @@ begin
       order by
         c.in_stock desc,
         (coalesce(c.stock_qty, 0) > 0) desc,
-        (c.fair_cost_ex_vat is null) asc,
-        c.fair_cost_ex_vat asc nulls last,
+        (
+          case
+            when c.supplier_code = 'VT' and c.raw_supplier_price_ex_vat is not null
+              then (c.raw_supplier_price_ex_vat + 4.95)::numeric(12,2)
+            else c.fair_cost_ex_vat
+          end is null
+        ) asc,
+        case
+          when c.supplier_code = 'VT' and c.raw_supplier_price_ex_vat is not null
+            then (c.raw_supplier_price_ex_vat + 4.95)::numeric(12,2)
+          else c.fair_cost_ex_vat
+        end asc nulls last,
         c.metadata_score desc,
         (c.supplier_code = 'RD') desc,
         c.last_seen_at desc,

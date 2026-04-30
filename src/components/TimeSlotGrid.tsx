@@ -5,6 +5,7 @@ export interface TimeSlot {
   time: string;
   available: boolean;
   id: string;
+  unavailableReason?: string;
 }
 
 interface TimeSlotGridProps {
@@ -60,8 +61,8 @@ export function TimeSlotGrid({
               role="radio"
               aria-checked={isSelected}
               className={`
-                h-12 rounded-lg transition-all duration-200
-                flex items-center justify-center
+                min-h-12 rounded-lg px-2 py-2 transition-all duration-200
+                flex flex-col items-center justify-center
                 ${
                   isSelected
                     ? 'bg-primary text-primary-foreground shadow-md scale-105 ring-2 ring-primary/50'
@@ -72,6 +73,11 @@ export function TimeSlotGrid({
               `}
             >
               <span className="font-medium">{slot.time}</span>
+              {!slot.available && slot.unavailableReason ? (
+                <span className="mt-0.5 max-w-full truncate text-[10px] leading-3" title={slot.unavailableReason}>
+                  {slot.unavailableReason}
+                </span>
+              ) : null}
             </button>
           );
         })}

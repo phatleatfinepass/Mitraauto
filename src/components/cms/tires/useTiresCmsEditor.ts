@@ -31,6 +31,7 @@ interface PersistedTiresCmsEditorState {
   sizeParts: SizeParts;
   supplierMarkupSupplier: string;
   supplierMarkupAmount: string;
+  supplierMarkupPercent: string;
 }
 
 function parseTireSize(size?: string | null): SizeParts {
@@ -82,7 +83,8 @@ export function useTiresCmsEditor({
   const [sizeParts, setSizeParts] = useState<SizeParts>({ ...EMPTY_SIZE_PARTS });
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [supplierMarkupSupplier, setSupplierMarkupSupplier] = useState('RD');
-  const [supplierMarkupAmount, setSupplierMarkupAmount] = useState('20');
+  const [supplierMarkupAmount, setSupplierMarkupAmount] = useState('');
+  const [supplierMarkupPercent, setSupplierMarkupPercent] = useState('');
 
   const populateEditorState = (
     tire: TireRow,
@@ -93,7 +95,8 @@ export function useTiresCmsEditor({
       persistedState?.supplierMarkupSupplier ??
         (String(tire.supplier_code_best ?? 'RD').trim().toUpperCase() || 'RD'),
     );
-    setSupplierMarkupAmount(persistedState?.supplierMarkupAmount ?? '20');
+    setSupplierMarkupAmount(persistedState?.supplierMarkupAmount ?? '');
+    setSupplierMarkupPercent(persistedState?.supplierMarkupPercent ?? '');
 
     if (persistedState?.editData) {
       setEditData(persistedState.editData);
@@ -238,6 +241,7 @@ export function useTiresCmsEditor({
       sizeParts,
       supplierMarkupSupplier,
       supplierMarkupAmount,
+      supplierMarkupPercent,
     };
 
     window.sessionStorage.setItem(TIRES_CMS_EDITOR_STATE_KEY, JSON.stringify(persistedState));
@@ -247,6 +251,7 @@ export function useTiresCmsEditor({
     selectedTire,
     sizeParts,
     supplierMarkupAmount,
+    supplierMarkupPercent,
     supplierMarkupSupplier,
   ]);
 
@@ -491,9 +496,11 @@ export function useTiresCmsEditor({
     setIdentityField,
     setSizeParts,
     setSupplierMarkupAmount,
+    setSupplierMarkupPercent,
     setSupplierMarkupSupplier,
     sizeParts,
     supplierMarkupAmount,
+    supplierMarkupPercent,
     supplierMarkupSupplier,
     updateSizePart,
   };

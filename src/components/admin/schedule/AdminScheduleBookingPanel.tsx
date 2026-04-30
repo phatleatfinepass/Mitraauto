@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 import { Badge } from '../../ui/badge';
@@ -46,7 +46,8 @@ interface AdminScheduleBookingPanelProps {
   applyManageSlotsButtonClass: string;
   applyManageSlotsDisabled: boolean;
   applyManageSlotsLabel: string;
-  blockReason: string;
+  blockReasonEn: string;
+  blockReasonFi: string;
   formatBookingGroupLabel: (dateValue: string) => string;
   getBookingServiceNameForCms: (serviceName?: string | null) => string;
   reservationBookingGroups: BookingListGroup[];
@@ -68,7 +69,8 @@ interface AdminScheduleBookingPanelProps {
   outlineButtonClass: string;
   panelClass: string;
   searchQuery: string;
-  setBlockReason: React.Dispatch<React.SetStateAction<string>>;
+  setBlockReasonEn: React.Dispatch<React.SetStateAction<string>>;
+  setBlockReasonFi: React.Dispatch<React.SetStateAction<string>>;
   showArchivedBookings: boolean;
   showArchivedInline: boolean;
   subtleTextClass: string;
@@ -192,7 +194,8 @@ export function AdminScheduleBookingPanel({
   applyManageSlotsButtonClass,
   applyManageSlotsDisabled,
   applyManageSlotsLabel,
-  blockReason,
+  blockReasonEn,
+  blockReasonFi,
   formatBookingGroupLabel,
   getBookingServiceNameForCms,
   reservationBookingGroups,
@@ -214,7 +217,8 @@ export function AdminScheduleBookingPanel({
   outlineButtonClass,
   panelClass,
   searchQuery,
-  setBlockReason,
+  setBlockReasonEn,
+  setBlockReasonFi,
   showArchivedBookings,
   showArchivedInline,
   subtleTextClass,
@@ -231,62 +235,45 @@ export function AdminScheduleBookingPanel({
   return (
     <>
       <Card className={`rounded-lg p-4 shadow-none ${panelClass}`}>
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <Tabs value={activeBookingsTab} onValueChange={onBookingsTabChange} className="gap-0">
-            <TabsList className={`h-10 rounded-md p-1 ${theme === 'dark' ? 'bg-[#11141A]' : 'bg-gray-100'}`}>
-              <TabsTrigger value="schedule" className="rounded-sm px-3">
-                {t('scheduleTab')}
-              </TabsTrigger>
-              <TabsTrigger value="reservation" className="rounded-sm px-3">
-                {t('reservationTab')}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-            <button
-              type="button"
-              onClick={onOpenSearchDialog}
-              className={`flex h-10 min-w-0 items-center rounded-md border px-3 text-left text-sm transition-colors lg:w-[360px] ${inputSurfaceClass} ${theme === 'dark' ? 'hover:bg-[#15171C]' : 'hover:bg-gray-50'}`}
-            >
-              <Search className={`mr-2 h-4 w-4 shrink-0 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
-              <span className={`min-w-0 truncate ${searchQuery.trim() ? titleClass : mutedTextClass}`}>
-                {searchQuery.trim() || t('searchBookingsPlaceholder')}
-              </span>
-            </button>
-
-            {activeBookingsTab === 'schedule' && (
-              <Button onClick={onStartManageSlots} className="bg-red-600 text-white hover:bg-red-700" disabled={isBatchBlockMode}>
-                <CheckSquare className="mr-2 h-4 w-4" />
-                {t('selectSlotsToBlock')}
-              </Button>
-            )}
-
-            <Button onClick={onCreateBooking} className="bg-emerald-600 text-white hover:bg-emerald-700">
-              {t('createBooking')}
-            </Button>
-          </div>
-        </div>
-
         {activeBookingsTab === 'schedule' && isBatchBlockMode && (
-          <div className={`mt-4 rounded-lg border p-3 ${theme === 'dark' ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className={`rounded-lg border p-3 ${theme === 'dark' ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
+            <div className="flex flex-col gap-3">
               <div className="min-w-0 flex-1">
                 <p className={`text-sm font-medium ${theme === 'dark' ? 'text-red-100' : 'text-red-900'}`}>{t('selectSlotsToBlock')}</p>
                 <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-red-100/80' : 'text-red-800'}`}>{manageModeHint}</p>
                 {manageModeHasBlockingSelection && (
-                  <textarea
-                    value={blockReason}
-                    onChange={(event) => setBlockReason(event.target.value)}
-                    placeholder={language === 'fi' ? 'Syy estolle (valinnainen)' : 'Reason for blocking (optional)'}
-                    className={`mt-3 min-h-[78px] w-full rounded-md border px-3 py-2 text-sm ${
-                      theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white placeholder:text-gray-500' : 'border-red-200 bg-white text-gray-900 placeholder:text-gray-500'
-                    }`}
-                  />
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <label className="block">
+                      <span className={`text-xs font-medium ${theme === 'dark' ? 'text-red-100/80' : 'text-red-800'}`}>
+                        {language === 'fi' ? 'Syy suomeksi' : 'Reason in Finnish'}
+                      </span>
+                      <textarea
+                        value={blockReasonFi}
+                        onChange={(event) => setBlockReasonFi(event.target.value)}
+                        placeholder={language === 'fi' ? 'Esim. Vappu' : 'e.g. Vappu'}
+                        className={`mt-1 min-h-[78px] w-full rounded-md border px-3 py-2 text-sm ${
+                          theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white placeholder:text-gray-500' : 'border-red-200 bg-white text-gray-900 placeholder:text-gray-500'
+                        }`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className={`text-xs font-medium ${theme === 'dark' ? 'text-red-100/80' : 'text-red-800'}`}>
+                        {language === 'fi' ? 'Syy englanniksi' : 'Reason in English'}
+                      </span>
+                      <textarea
+                        value={blockReasonEn}
+                        onChange={(event) => setBlockReasonEn(event.target.value)}
+                        placeholder={language === 'fi' ? 'Esim. May Day holiday' : 'e.g. May Day holiday'}
+                        className={`mt-1 min-h-[78px] w-full rounded-md border px-3 py-2 text-sm ${
+                          theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white placeholder:text-gray-500' : 'border-red-200 bg-white text-gray-900 placeholder:text-gray-500'
+                        }`}
+                      />
+                    </label>
+                  </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 lg:w-[280px]">
+              <div className="grid grid-cols-2 gap-2 sm:w-[280px] sm:self-end">
                 <Button variant="outline" onClick={onCancelManageSlots} className={outlineButtonClass}>
                   {t('cancel')}
                 </Button>
@@ -294,6 +281,44 @@ export function AdminScheduleBookingPanel({
                   {applyManageSlotsLabel}
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {!(activeBookingsTab === 'schedule' && isBatchBlockMode) && (
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <Tabs value={activeBookingsTab} onValueChange={onBookingsTabChange} className="gap-0">
+              <TabsList className={`h-10 rounded-md p-1 ${theme === 'dark' ? 'bg-[#11141A]' : 'bg-gray-100'}`}>
+                <TabsTrigger value="schedule" className="rounded-sm px-3">
+                  {t('scheduleTab')}
+                </TabsTrigger>
+                <TabsTrigger value="reservation" className="rounded-sm px-3">
+                  {t('reservationTab')}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+              <button
+                type="button"
+                onClick={onOpenSearchDialog}
+                className={`flex h-10 min-w-0 items-center rounded-md border px-3 text-left text-sm transition-colors lg:w-[360px] ${inputSurfaceClass} ${theme === 'dark' ? 'hover:bg-[#15171C]' : 'hover:bg-gray-50'}`}
+              >
+                <Search className={`mr-2 h-4 w-4 shrink-0 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                <span className={`min-w-0 truncate ${searchQuery.trim() ? titleClass : mutedTextClass}`}>
+                  {searchQuery.trim() || t('searchBookingsPlaceholder')}
+                </span>
+              </button>
+
+              {activeBookingsTab === 'schedule' && (
+                <Button onClick={onStartManageSlots} className="bg-red-600 text-white hover:bg-red-700" disabled={isBatchBlockMode}>
+                  {t('selectSlotsToBlock')}
+                </Button>
+              )}
+
+              <Button onClick={onCreateBooking} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                {t('createBooking')}
+              </Button>
             </div>
           </div>
         )}

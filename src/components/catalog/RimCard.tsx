@@ -7,7 +7,7 @@ import { buildProductImageFallback } from '../../utils/productImage';
 import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
 
 interface RimCardProps {
-  product: {
+  product?: {
     id: string;
     brand: string;
     model: string;
@@ -23,15 +23,33 @@ interface RimCardProps {
     best_image_url: string;
     in_stock: boolean;
   };
+  href?: string;
   index?: number;
   onClick?: () => void;
   onAddToCart?: (e: React.MouseEvent) => void;
 }
 
-export function RimCard({ product, index: _index = 0, onClick, onAddToCart }: RimCardProps) {
+const PREVIEW_RIM_PRODUCT: NonNullable<RimCardProps['product']> = {
+  id: 'preview-rim',
+  brand: 'Mitra',
+  model: 'Alloy Sport',
+  rim_width: 7.5,
+  rim_diameter: 17,
+  pcd: '5x112',
+  et_offset: 35,
+  cb: 66.6,
+  color: 'Silver',
+  material: 'alloy',
+  best_price_eur: 129,
+  best_image_url: '',
+  in_stock: true,
+};
+
+export function RimCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart }: RimCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const product = productProp ?? PREVIEW_RIM_PRODUCT;
 
   const fallbackImage = React.useMemo(
     () => buildProductImageFallback(product.brand, product.model),
@@ -76,6 +94,16 @@ export function RimCard({ product, index: _index = 0, onClick, onAddToCart }: Ri
       : { label: language === 'fi' ? 'Tilapäisesti loppu' : 'Out of stock' },
   ].filter(Boolean) as Array<{ label: string; accent?: boolean }>;
 
+  const handleCardLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!onClick) return;
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+    onClick();
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!onClick) return;
     if (event.key === 'Enter' || event.key === ' ') {
@@ -84,7 +112,7 @@ export function RimCard({ product, index: _index = 0, onClick, onAddToCart }: Ri
     }
   };
 
-  const interactiveProps = onClick
+  const interactiveProps = onClick && !href
     ? {
         role: 'button' as const,
         tabIndex: 0,
@@ -100,9 +128,17 @@ export function RimCard({ product, index: _index = 0, onClick, onAddToCart }: Ri
     <motion.div
       whileHover={{ y: -3 }}
       transition={{ duration: 0.24 }}
-      className={`h-full ${onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2' : ''}`}
+      className={`relative h-full ${onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2' : ''}`}
       {...interactiveProps}
     >
+      {href && (
+        <a
+          href={href}
+          aria-label={`${product.brand} ${product.model}`}
+          className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2"
+          onClick={handleCardLinkClick}
+        />
+      )}
       <article className={`flex h-full flex-col overflow-hidden rounded-2xl border ${isDark ? 'border-white/10 bg-[#11161d] text-white' : 'border-gray-200 bg-white text-gray-900'} transition-shadow duration-200 ${isDark ? 'hover:shadow-[0_12px_40px_rgba(0,0,0,0.28)]' : 'hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]'}`}>
         <div className={`border-b px-5 py-4 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
           <div className="flex items-start justify-between gap-4">
@@ -196,8 +232,9 @@ export function RimCard({ product, index: _index = 0, onClick, onAddToCart }: Ri
 
           <button
             disabled={!product.in_stock}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF6B35]/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="pointer-events-auto relative z-20 mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF6B35]/90 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={(event) => {
+              event.preventDefault();
               event.stopPropagation();
               onAddToCart?.(event);
             }}

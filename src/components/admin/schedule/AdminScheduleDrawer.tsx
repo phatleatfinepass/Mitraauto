@@ -1,8 +1,11 @@
 import React from 'react';
 import {
   Ban,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
+  CircleAlert,
+  FileText,
   Mail,
   MailPlus,
   Pencil,
@@ -11,6 +14,7 @@ import {
   Save,
   Send,
   StickyNote,
+  Trash2,
   User,
   Wrench,
   X,
@@ -20,12 +24,15 @@ import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import { Checkbox } from '../../ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { Input } from '../../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../ui/sheet';
 import { Textarea } from '../../ui/textarea';
+import { toast } from 'sonner';
 import type { SupportedBookingLanguage } from '../../../utils/serviceCatalog';
 import type { ScheduleBooking, ScheduleTimeSlot } from '../../../utils/schedule';
+import { getSupabaseClient } from '../../../utils/supabase/client';
 import { AdminBookingEditPanel } from '../AdminBookingEditPanel';
 import type { BookingConversationMessage } from '../communication/types';
 import type { AdminBookingFormState } from './AdminSchedule.types';
@@ -217,52 +224,70 @@ function BookingServiceSelector({
 function BookingDetails({
   booking,
   getBookingServiceNameForCms,
+  language,
   t,
   theme,
 }: {
   booking: ScheduleBooking;
   getBookingServiceNameForCms: (serviceName?: string | null) => string;
+  language: string;
   t: (key: string) => string;
   theme: string;
 }) {
+  const serviceItems = getBookingServiceItems(booking.service_name, getBookingServiceNameForCms);
+
   return (
     <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-12">
-      {booking.service_name && (
+      {serviceItems.length > 0 && (
         <div className={`min-w-0 rounded-md border p-4 sm:col-span-2 xl:col-span-12 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
           <dt className={`mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             <Wrench className="h-4 w-4 shrink-0" />
             {t('serviceName')}
           </dt>
-          <dd className={`text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-            {getBookingServiceNameForCms(booking.service_name)}
+          <dd className={`space-y-2 text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+            {serviceItems.map((service) => (
+              <div key={service} className="flex min-w-0 gap-2">
+                <span className="shrink-0 opacity-70">-</span>
+                <span className="min-w-0 break-words">{service}</span>
+              </div>
+            ))}
           </dd>
         </div>
       )}
-      {booking.customer_name && (
-        <div className={`min-w-0 rounded-md border p-4 xl:col-span-4 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
-          <dt className={`mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+      {(booking.customer_name || booking.customer_phone || booking.customer_email) && (
+        <div className={`min-w-0 rounded-md border p-4 sm:col-span-2 xl:col-span-12 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
+          <dt className={`mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             <User className="h-4 w-4 shrink-0" />
             {t('customerName')}
           </dt>
-          <dd className={`text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{booking.customer_name}</dd>
-        </div>
-      )}
-      {booking.customer_phone && (
-        <div className={`min-w-0 rounded-md border p-4 xl:col-span-4 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
-          <dt className={`mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            <Phone className="h-4 w-4 shrink-0" />
-            {t('customerPhone')}
-          </dt>
-          <dd className={`text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{booking.customer_phone}</dd>
-        </div>
-      )}
-      {booking.customer_email && (
-        <div className={`min-w-0 rounded-md border p-4 sm:col-span-2 xl:col-span-4 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
-          <dt className={`mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            <Mail className="h-4 w-4 shrink-0" />
-            {t('customerEmail')}
-          </dt>
-          <dd className={`break-all text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{booking.customer_email}</dd>
+          <dd className="space-y-3">
+            <div className="min-w-0">
+              <p className={`text-[11px] font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                {language === 'fi' ? 'Nimi' : 'Name'}
+              </p>
+              <p className={`mt-1 break-words text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                {booking.customer_name || '—'}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className={`flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                <Phone className="h-4 w-4 shrink-0" />
+                {t('customerPhone')}
+              </p>
+              <p className={`mt-1 break-words text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                {booking.customer_phone || '—'}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className={`flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                <Mail className="h-4 w-4 shrink-0" />
+                {t('customerEmail')}
+              </p>
+              <p className={`mt-1 break-all text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                {booking.customer_email || '—'}
+              </p>
+            </div>
+          </dd>
         </div>
       )}
       <div className={`min-w-0 rounded-md border p-4 sm:col-span-2 xl:col-span-12 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
@@ -276,7 +301,42 @@ function BookingDetails({
   );
 }
 
+function getBookingServiceItems(
+  serviceName: string | null | undefined,
+  getBookingServiceNameForCms: (serviceName?: string | null) => string,
+) {
+  const label = getBookingServiceNameForCms(serviceName).trim();
+  if (!label) return [];
+
+  return label
+    .split(/\s*,\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getCollapsedServicePreview(serviceItems: string[], language: string) {
+  if (serviceItems.length === 0) return ['—'];
+  if (serviceItems.length <= 2) return serviceItems;
+
+  const remainingCount = serviceItems.length - 2;
+  const moreLabel = language === 'fi'
+    ? `${remainingCount} lisää`
+    : `${remainingCount} more`;
+
+  return [
+    serviceItems[0],
+    `${serviceItems[1]}, + ${moreLabel}`,
+  ];
+}
+
 const awaitingCustomerCompletionStatus = 'awaiting_customer_completion';
+
+type BookingReceiptLine = {
+  id: string;
+  title: string;
+  quantity: string;
+  unitPrice: string;
+};
 
 function normalizeBookingStatus(status?: string | null) {
   return (status || 'confirmed').trim().toLowerCase();
@@ -303,6 +363,16 @@ function getMissingCompletionFields(
 
 function isBookingAwaitingCustomerCompletion(booking: Partial<ScheduleBooking> | AdminBookingFormState, language: string) {
   return normalizeBookingStatus(booking.status) === awaitingCustomerCompletionStatus || getMissingCompletionFields(booking, language).length > 0;
+}
+
+function parseEuroToCents(value: string) {
+  const numeric = Number.parseFloat(value.replace(',', '.'));
+  if (!Number.isFinite(numeric) || numeric < 0) return 0;
+  return Math.round(numeric * 100);
+}
+
+function centsToEuro(cents: number) {
+  return (cents / 100).toFixed(2);
 }
 
 export function AdminScheduleDrawer({
@@ -360,8 +430,100 @@ export function AdminScheduleDrawer({
 }: AdminScheduleDrawerProps) {
   const createBookingCompletionMode = isBookingAwaitingCustomerCompletion(createBookingForm, language);
   const createBookingMissingFields = getMissingCompletionFields(createBookingForm, language);
+  const [receiptBooking, setReceiptBooking] = React.useState<ScheduleBooking | null>(null);
+  const [receiptLines, setReceiptLines] = React.useState<BookingReceiptLine[]>([]);
+  const [receiptNotes, setReceiptNotes] = React.useState('');
+  const [sendingReceipt, setSendingReceipt] = React.useState(false);
+
+  const openReceiptDialog = (booking: ScheduleBooking) => {
+    const serviceItems = getBookingServiceItems(booking.service_name, getBookingServiceNameForCms);
+    setReceiptBooking(booking);
+    setReceiptLines(
+      (serviceItems.length > 0 ? serviceItems : [language === 'fi' ? 'Palvelu' : 'Service']).map((service, index) => ({
+        id: `${Date.now()}-${index}`,
+        title: service,
+        quantity: '1',
+        unitPrice: '',
+      })),
+    );
+    setReceiptNotes('');
+  };
+
+  const receiptTotalCents = receiptLines.reduce((sum, line) => {
+    const quantity = Math.max(1, Number.parseInt(line.quantity, 10) || 1);
+    return sum + parseEuroToCents(line.unitPrice) * quantity;
+  }, 0);
+  const receiptVatCents = Math.round(receiptTotalCents - receiptTotalCents / 1.255);
+
+  const updateReceiptLine = (lineId: string, patch: Partial<BookingReceiptLine>) => {
+    setReceiptLines((current) => current.map((line) => (line.id === lineId ? { ...line, ...patch } : line)));
+  };
+
+  const addReceiptLine = () => {
+    setReceiptLines((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${current.length}`,
+        title: '',
+        quantity: '1',
+        unitPrice: '',
+      },
+    ]);
+  };
+
+  const removeReceiptLine = (lineId: string) => {
+    setReceiptLines((current) => current.length > 1 ? current.filter((line) => line.id !== lineId) : current);
+  };
+
+  const sendReceipt = async () => {
+    if (!receiptBooking) return;
+    if (!receiptBooking.customer_email) {
+      toast.error(language === 'fi' ? 'Sähköposti puuttuu' : 'Missing customer email');
+      return;
+    }
+    const validLines = receiptLines
+      .map((line) => {
+        const quantity = Math.max(1, Number.parseInt(line.quantity, 10) || 1);
+        const unitCents = parseEuroToCents(line.unitPrice);
+        return {
+          title: line.title.trim(),
+          quantity,
+          unit_cents: unitCents,
+          line_total_cents: unitCents * quantity,
+          vat_rate: 25.5,
+        };
+      })
+      .filter((line) => line.title && line.line_total_cents >= 0);
+
+    if (validLines.length === 0) {
+      toast.error(language === 'fi' ? 'Lisää vähintään yksi kuittirivi' : 'Add at least one receipt line');
+      return;
+    }
+
+    setSendingReceipt(true);
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.functions.invoke('send_booking_receipt', {
+        method: 'POST',
+        body: {
+          bookingId: receiptBooking.id,
+          recipientEmail: receiptBooking.customer_email,
+          notes: receiptNotes,
+          lines: validLines,
+        },
+      });
+      if (error) throw error;
+      toast.success(language === 'fi' ? 'Kuitti lähetetty' : 'Receipt sent');
+      setReceiptBooking(null);
+    } catch (error: any) {
+      toast.error(error?.message ?? (language === 'fi' ? 'Kuitin lähetys epäonnistui' : 'Failed to send receipt'));
+    } finally {
+      setSendingReceipt(false);
+    }
+  };
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -520,12 +682,12 @@ export function AdminScheduleDrawer({
             </Card>
           )}
 
-          {selectedSlotTime && (
-            <div className={`rounded-lg border px-4 py-3 ${theme === 'dark' ? 'border-white/10 bg-[#16181D]' : 'border-gray-200 bg-white'}`}>
-              <div className="grid gap-3 sm:grid-cols-4">
-                <div>
-                  <p className="text-xs text-gray-500">{t('slotSummary')}</p>
-                  <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+	          {selectedSlotTime && (
+	            <div className={`rounded-lg border px-4 py-3 ${theme === 'dark' ? 'border-white/10 bg-[#16181D]' : 'border-gray-200 bg-white'}`}>
+	              <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+	                <div className="min-w-0">
+	                  <p className="text-xs text-gray-500">{t('slotSummary')}</p>
+	                  <p className={`mt-1 whitespace-nowrap text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {selectedDate.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
                       weekday: 'short',
                       month: 'short',
@@ -545,15 +707,9 @@ export function AdminScheduleDrawer({
                   <p className="text-xs text-gray-500">{t('slotBookingsCount')}</p>
                   <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{selectedSlot?.bookings.length || 0}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">{t('blockReason')}</p>
-                  <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {selectedSlot?.isBlocked ? selectedSlot.blockReason || t('noBlockReason') : '—'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+	              </div>
+	            </div>
+	          )}
 
           <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#16181D]' : 'border-gray-200 bg-white'}`}>
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -573,71 +729,80 @@ export function AdminScheduleDrawer({
 
             {selectedSlot?.bookings && selectedSlot.bookings.length > 0 ? (
               <div className="space-y-3">
-                {selectedSlot.bookings.map((booking) => {
-                  const isExpanded = isBookingExpanded(booking.id);
-                  const editForm = editBookingForms[booking.id];
-                  const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, language);
-                  const bookingMissingFields = getMissingCompletionFields(booking, language);
+	                {selectedSlot.bookings.map((booking) => {
+	                  const isExpanded = isBookingExpanded(booking.id);
+	                  const editForm = editBookingForms[booking.id];
+	                  const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, language);
+	                  const bookingMissingFields = getMissingCompletionFields(booking, language);
+	                  const serviceItems = getBookingServiceItems(booking.service_name, getBookingServiceNameForCms);
+	                  const collapsedServicePreview = getCollapsedServicePreview(serviceItems, language);
 
                   return (
                     <Card
                       key={booking.id}
-                      className={`overflow-hidden p-0 shadow-none ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-white'}`}
-                    >
-                      <div className="space-y-5 p-4 sm:p-5">
-                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                          <div className="min-w-0 flex-1 space-y-4">
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className={`font-mono text-[2rem] font-semibold tracking-[-0.04em] ${theme === 'dark' ? 'text-white' : 'text-gray-950'}`}>
-                                {booking.license_plate}
-                              </span>
-                              <span
-                                className={`inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-medium ${
-                                  theme === 'dark' ? 'border-white/10 text-gray-300' : 'border-gray-300 text-gray-700'
-                                }`}
-                              >
-                                {t('resendCount')}: {resendCounts[booking.id] || 0}
-                              </span>
-                              <Badge variant={bookingCompletionMode ? 'secondary' : 'outline'}>
-                                {bookingCompletionMode ? t('awaitingCustomerCompletion') : (booking.status || 'confirmed')}
-                              </Badge>
-                            </div>
-                            {bookingCompletionMode && bookingMissingFields.length > 0 && (
-                              <p className={`text-sm ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
-                                {t('incompleteBookingWarning')}: {bookingMissingFields.join(', ')}
-                              </p>
-                            )}
+	                      className={`overflow-hidden p-0 shadow-none ${theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-gray-200 bg-white'}`}
+	                    >
+	                      <div className="space-y-5 p-4 sm:p-5">
+		                        <div className="space-y-3">
+					                          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(2.5rem,1fr)] items-center gap-3">
+				                            <div className="min-w-0">
+				                              <div className="flex h-10 min-w-0 items-center gap-2">
+				                                <span className={`min-w-0 truncate font-mono text-2xl font-semibold leading-10 tracking-[-0.03em] ${theme === 'dark' ? 'text-white' : 'text-gray-950'}`}>
+				                                  {booking.license_plate || '—'}
+			                                </span>
+				                                <span
+				                                  title={bookingCompletionMode ? t('awaitingCustomerCompletion') : (booking.status || 'confirmed')}
+				                                  className={`inline-flex h-10 w-6 shrink-0 items-center justify-center ${
+				                                    bookingCompletionMode
+				                                      ? theme === 'dark'
+				                                        ? 'text-amber-300'
+				                                        : 'text-amber-700'
+				                                      : theme === 'dark'
+				                                        ? 'text-emerald-300'
+				                                        : 'text-emerald-700'
+				                                  }`}
+				                                >
+				                                  {bookingCompletionMode ? <CircleAlert className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+			                                </span>
+			                              </div>
+			                            </div>
+					                            <span
+					                              className={`inline-flex h-10 shrink-0 items-center justify-self-center px-2 text-sm font-medium ${
+					                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+					                              }`}
+				                            >
+			                              {t('resendCount')}: {resendCounts[booking.id] || 0}
+			                            </span>
+		                            <Button
+		                              size="icon"
+				                              variant="outline"
+				                              aria-label={isExpanded ? t('collapseInformation') : t('fullInformation')}
+				                              onClick={() => handleToggleBookingExpanded(booking, !isExpanded)}
+				                              className={`h-10 w-10 shrink-0 justify-self-end rounded-md border-0 bg-transparent shadow-none ${theme === 'dark' ? 'text-white hover:bg-white/5' : 'hover:bg-gray-100'}`}
+			                            >
+		                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+		                            </Button>
+			                          </div>
 
-                            <div className="grid gap-3 sm:grid-cols-3">
-                              <div className={`rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
-                                <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">{t('bookingSummaryService')}</p>
-                                <p className={`mt-2 text-sm font-medium leading-6 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-                                  {getBookingServiceNameForCms(booking.service_name)}
-                                </p>
-                              </div>
-                              <div className={`rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
-                                <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">{t('bookingSummaryCustomer')}</p>
-                                <p className={`mt-2 text-sm font-medium leading-6 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{booking.customer_name || '—'}</p>
-                              </div>
-                              <div className={`rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#15171C]' : 'border-gray-200 bg-[#FCFCFC]'}`}>
-                                <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">{t('createdAt')}</p>
-                                <p className={`mt-2 text-sm leading-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                  {new Date(booking.created_at).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+			                          {!isExpanded && (
+			                            <div className="min-h-[44px] space-y-1" title={serviceItems.join(', ')}>
+			                              {collapsedServicePreview.map((service, index) => (
+			                                <p
+			                                  key={`${service}-${index}`}
+			                                  className={`truncate text-sm font-medium leading-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}
+			                                >
+			                                  - {service}
+			                                </p>
+			                              ))}
+			                            </div>
+			                          )}
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleToggleBookingExpanded(booking, !isExpanded)}
-                            className={`min-w-[220px] justify-center rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
-                          >
-                            {isExpanded ? <ChevronUp className="mr-2 h-4 w-4" /> : <ChevronDown className="mr-2 h-4 w-4" />}
-                            {isExpanded ? t('collapseInformation') : t('fullInformation')}
-                          </Button>
-                        </div>
+	                          {bookingCompletionMode && bookingMissingFields.length > 0 && (
+	                            <p className={`rounded-md px-3 py-2 text-sm ${theme === 'dark' ? 'bg-amber-500/10 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+	                              {t('incompleteBookingWarning')}: {bookingMissingFields.join(', ')}
+	                            </p>
+	                          )}
+	                        </div>
 
                         {isExpanded && (
                           <div className="space-y-4 border-t pt-5">
@@ -688,6 +853,16 @@ export function AdminScheduleDrawer({
                               </Button>
                               <Button
                                 size="sm"
+                                variant="outline"
+                                onClick={() => openReceiptDialog(booking)}
+                                disabled={!booking.customer_email}
+                                className={`justify-start rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
+                              >
+                                <FileText className="mr-2 h-4 w-4 shrink-0" />
+                                {language === 'fi' ? 'Lähetä kuitti' : 'Send receipt'}
+                              </Button>
+                              <Button
+                                size="sm"
                                 variant="destructive"
                                 onClick={() => handleOpenCancelBookingDialog(booking)}
                                 disabled={cancellingBookingId === booking.id}
@@ -696,9 +871,9 @@ export function AdminScheduleDrawer({
                                 <Ban className="mr-2 h-4 w-4 shrink-0" />
                                 {cancellingBookingId === booking.id ? t('cancelling') : t('cancelBooking')}
                               </Button>
-                            </div>
+	                          </div>
 
-                            <BookingDetails booking={booking} getBookingServiceNameForCms={getBookingServiceNameForCms} t={t} theme={theme} />
+                            <BookingDetails booking={booking} getBookingServiceNameForCms={getBookingServiceNameForCms} language={language} t={t} theme={theme} />
 
                             {editingBookingId === booking.id && editForm && (
                               (() => {
@@ -733,34 +908,7 @@ export function AdminScheduleDrawer({
                               })()
                             )}
 
-                            {booking.customer_email && (
-                              <div className={`rounded-md border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#18181B]' : 'border-gray-200 bg-white'}`}>
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <h4 className={theme === 'dark' ? 'font-medium text-white' : 'font-medium text-gray-900'}>
-                                      {language === 'fi' ? 'Viestintä' : 'Communication'}
-                                    </h4>
-                                    <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                      {language === 'fi'
-                                        ? 'Avaa viestintäkeskus nähdäksesi ketjun ja vastataksesi asiakkaalle.'
-                                        : 'Open the communication hub to review the thread and reply to the customer.'}
-                                    </p>
-                                  </div>
-
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleOpenMessageComposer(booking)}
-                                    disabled={sendingMessageBookingId === booking.id}
-                                    className={`justify-start rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
-                                  >
-                                    <MailPlus className="mr-2 h-4 w-4 shrink-0" />
-                                    {language === 'fi' ? 'Avaa viestit' : 'Open messages'}
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+	                          </div>
                         )}
                       </div>
                     </Card>
@@ -774,5 +922,124 @@ export function AdminScheduleDrawer({
         </div>
       </SheetContent>
     </Sheet>
+    <Dialog open={Boolean(receiptBooking)} onOpenChange={(open) => !open && !sendingReceipt && setReceiptBooking(null)}>
+      <DialogContent className={`max-h-[90vh] overflow-y-auto sm:max-w-3xl ${theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}`}>
+        <DialogHeader>
+          <DialogTitle>{language === 'fi' ? 'Lähetä kuitti' : 'Send receipt'}</DialogTitle>
+          <DialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+            {receiptBooking
+              ? `${receiptBooking.license_plate || '—'} · ${receiptBooking.booking_date} ${receiptBooking.booking_time?.slice(0, 5)}`
+              : ''}
+          </DialogDescription>
+        </DialogHeader>
+
+        {receiptBooking && (
+          <div className="space-y-4">
+            <div className={`grid gap-3 rounded-md border p-3 sm:grid-cols-3 ${theme === 'dark' ? 'border-white/10 bg-[#11141A]' : 'border-gray-200 bg-gray-50'}`}>
+              <div>
+                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{language === 'fi' ? 'Asiakas' : 'Customer'}</p>
+                <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{receiptBooking.customer_name || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{language === 'fi' ? 'Sähköposti' : 'Email'}</p>
+                <p className={`mt-1 break-all text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{receiptBooking.customer_email || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{language === 'fi' ? 'Puhelin' : 'Phone'}</p>
+                <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{receiptBooking.customer_phone || '—'}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h4 className={`text-sm font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                  {language === 'fi' ? 'Kuittirivit' : 'Receipt lines'}
+                </h4>
+                <Button type="button" size="sm" variant="outline" onClick={addReceiptLine} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {language === 'fi' ? 'Lisää rivi' : 'Add line'}
+                </Button>
+              </div>
+
+              {receiptLines.map((line) => {
+                const quantity = Math.max(1, Number.parseInt(line.quantity, 10) || 1);
+                const lineTotal = parseEuroToCents(line.unitPrice) * quantity;
+
+                return (
+                  <div key={line.id} className={`grid gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_80px_120px_90px_auto] ${theme === 'dark' ? 'border-white/10 bg-[#11141A]' : 'border-gray-200 bg-white'}`}>
+                    <Input
+                      value={line.title}
+                      onChange={(event) => updateReceiptLine(line.id, { title: event.target.value })}
+                      placeholder={language === 'fi' ? 'Palvelun nimi' : 'Service name'}
+                      className={theme === 'dark' ? 'border-white/10 bg-[#15171C] text-white' : ''}
+                    />
+                    <Input
+                      value={line.quantity}
+                      onChange={(event) => updateReceiptLine(line.id, { quantity: event.target.value.replace(/[^\d]/g, '') || '1' })}
+                      inputMode="numeric"
+                      className={theme === 'dark' ? 'border-white/10 bg-[#15171C] text-white' : ''}
+                    />
+                    <Input
+                      value={line.unitPrice}
+                      onChange={(event) => updateReceiptLine(line.id, { unitPrice: event.target.value })}
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className={theme === 'dark' ? 'border-white/10 bg-[#15171C] text-white' : ''}
+                    />
+                    <div className={`flex h-10 items-center justify-end text-sm font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                      €{centsToEuro(lineTotal)}
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => removeReceiptLine(line.id)}
+                      disabled={receiptLines.length === 1}
+                      className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2">
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                {language === 'fi' ? 'Lisäviesti sähköpostiin' : 'Extra email note'}
+              </label>
+              <Textarea
+                value={receiptNotes}
+                onChange={(event) => setReceiptNotes(event.target.value)}
+                rows={3}
+                className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}
+              />
+            </div>
+
+            <div className={`ml-auto w-full max-w-sm rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#11141A]' : 'border-gray-200 bg-gray-50'}`}>
+              <div className="flex justify-between text-sm">
+                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{language === 'fi' ? 'ALV 25,5%' : 'VAT 25.5%'}</span>
+                <span className={theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}>€{centsToEuro(receiptVatCents)}</span>
+              </div>
+              <div className="mt-2 flex justify-between text-lg font-semibold">
+                <span>{language === 'fi' ? 'Yhteensä' : 'Total'}</span>
+                <span className="text-[#FF6B35]">€{centsToEuro(receiptTotalCents)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setReceiptBooking(null)} disabled={sendingReceipt} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
+            {t('cancel')}
+          </Button>
+          <Button onClick={sendReceipt} disabled={sendingReceipt || !receiptBooking?.customer_email} className="bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90">
+            <Send className="mr-2 h-4 w-4" />
+            {sendingReceipt ? t('sending') : (language === 'fi' ? 'Lähetä kuitti' : 'Send receipt')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

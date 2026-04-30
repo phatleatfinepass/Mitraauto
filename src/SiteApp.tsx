@@ -416,6 +416,7 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
       ev_ready: rawSeason === 'all_season' ? true : undefined,
       three_pmsf: normalizedSeason === 'winter' ? true : undefined,
       tyre_label_section: buildTyreLabelSectionData({
+        existing: product.tyre_label_section,
         brand: product.brand,
         supplierName: product.supplier_name,
         model: product.model,
@@ -430,10 +431,12 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
         threepmsf: normalizedSeason === 'winter' ? true : undefined,
         winterApproved: normalizedSeason === 'winter' || normalizedSeason === 'all_season',
         iceApproved: undefined,
+        ean: product.ean,
         euFuelClass: product.eu_fuel ? String(product.eu_fuel) : undefined,
         euWetGripClass: product.eu_wet ? String(product.eu_wet) : undefined,
         euNoiseDb: typeof product.eu_noise === 'number' ? product.eu_noise : undefined,
       }),
+      ean: product.ean,
       best_price_eur: product.best_price_eur,
       best_image_url: product.best_image_url,
       images: detailImages,
@@ -487,6 +490,11 @@ function HomePage() {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [preSelectedService, setPreSelectedService] = useState<string>('');
+  const [bookingPrefill, setBookingPrefill] = useState<{
+    installToken?: string;
+    earliestDate?: string;
+    contact?: { name?: string; phone?: string; email?: string };
+  } | null>(null);
   const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
@@ -534,6 +542,46 @@ function HomePage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const shouldOpenBooking = params.get('booking') === '1';
+    const installToken = params.get('install_token');
+
+    if (installToken) {
+      let cancelled = false;
+      supabase.functions.invoke('order_install_booking', {
+        method: 'POST',
+        body: {
+          action: 'context',
+          token: installToken,
+        },
+      }).then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          toast.error(language === 'fi' ? 'Asennusvarauksen linkki ei ole voimassa.' : 'The install booking link is not valid.');
+          return;
+        }
+        setPreSelectedService(data?.serviceId || 'tire-change-car');
+        setBookingPrefill({
+          installToken,
+          earliestDate: data?.recommendedDate,
+          contact: data?.customer,
+        });
+        setBookingModalOpen(true);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (shouldOpenBooking) {
+      setBookingPrefill(null);
+      setPreSelectedService('');
+      setBookingModalOpen(true);
+    }
+  }, [language]);
 
 
 
@@ -1079,6 +1127,7 @@ function HomePage() {
           open={bookingModalOpen}
           onOpenChange={setBookingModalOpen}
           preSelectedService={preSelectedService}
+          prefill={bookingPrefill}
         />
       ) : null}
 

@@ -511,6 +511,7 @@ function buildTextBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
   const dateLabel = formatHumanDate(booking.booking_date, language);
   const timeLabel = formatHumanTime(booking.booking_time);
   const subjectService = booking.service_name?.trim() || (language === "fi" ? "Huolto" : "Service");
+  const newBookingUrl = `${baseSiteUrl()}${language === "en" ? "/en" : ""}/?booking=1`;
   const completionPending = getMissingCustomerFields(booking).length > 0;
   const actionLines = manageUrl
     ? [
@@ -539,8 +540,8 @@ function buildTextBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
 
   if (type === "cancellation") {
     return language === "fi"
-      ? `Varauksesi ${subjectService} ajalle ${dateLabel} klo ${timeLabel} on peruttu.\n${booking.cancellation_note ? `Syy: ${booking.cancellation_note}\n` : ""}${manageLine}`.trim()
-      : `Your ${subjectService} booking for ${dateLabel} at ${timeLabel} has been cancelled.\n${booking.cancellation_note ? `Reason: ${booking.cancellation_note}\n` : ""}${manageLine}`.trim();
+      ? `Varauksesi ${subjectService} ajalle ${dateLabel} klo ${timeLabel} on peruttu.\n${booking.cancellation_note ? `Syy: ${booking.cancellation_note}\n` : ""}Luo uusi varaus: ${newBookingUrl}`.trim()
+      : `Your ${subjectService} booking for ${dateLabel} at ${timeLabel} has been cancelled.\n${booking.cancellation_note ? `Reason: ${booking.cancellation_note}\n` : ""}Create a new booking: ${newBookingUrl}`.trim();
   }
 
   if (type === "message") {
@@ -564,7 +565,10 @@ function buildHtmlBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
     : "";
   const completionPending = getMissingCustomerFields(booking).length > 0;
   let manageCta = "";
-  if (manageUrl) {
+  if (type === "cancellation") {
+    const newBookingUrl = `${baseSiteUrl()}${language === "en" ? "/en" : ""}/?booking=1`;
+    manageCta = `<div style="margin-top:24px;"><a href="${escapeHtml(newBookingUrl)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;">${escapeHtml(language === "fi" ? "Luo uusi varaus" : "Create new booking")}</a></div>`;
+  } else if (manageUrl) {
     const token = new URL(manageUrl).searchParams.get("token") ?? "";
     const links = token
       ? [
@@ -1011,14 +1015,16 @@ async function sendEmail(args: {
       }
     : await getLatestConversationAnchor(args.booking.id, mailboxEmail);
 
-  const finalSubject = args.subject.trim();
-  const shouldThread = args.type === "message";
+  const shouldThread = Boolean(existingThread?.provider_thread_id || anchor.messageIdHeader);
+  const finalSubject = shouldThread && existingThread?.subject
+    ? existingThread.subject
+    : args.subject.trim();
   const rawMessage = buildRawMessage({
     subject: finalSubject,
     text: args.text,
     html: args.html,
-    inReplyTo: shouldThread ? (anchor.messageIdHeader ?? null) : null,
-    referencesHeader: shouldThread ? (anchor.referencesHeader ?? anchor.messageIdHeader ?? null) : null,
+    inReplyTo: shouldThread ? anchor.messageIdHeader ?? null : null,
+    referencesHeader: shouldThread ? anchor.referencesHeader ?? anchor.messageIdHeader ?? null : null,
     icsContent: args.icsContent,
     icsFilename: args.icsFilename,
   });

@@ -198,7 +198,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [selectedSlot, setSelectedSlot] = useState<ScheduleTimeSlot | null>(null);
   const [selectedSlotTime, setSelectedSlotTime] = useState<string>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [blockReason, setBlockReason] = useState('');
+  const [blockReasonFi, setBlockReasonFi] = useState('');
+  const [blockReasonEn, setBlockReasonEn] = useState('');
   const [cancelBookingTarget, setCancelBookingTarget] = useState<ScheduleBooking | null>(null);
   const [cancelBookingNote, setCancelBookingNote] = useState('');
   const [loading, setLoading] = useState(false);
@@ -267,6 +268,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       },
       batchBlockSuccessful: { fi: 'Valittujen aikojen muutokset tallennettiin', en: 'Selected slot changes saved' },
       bookedSlotsNotManageable: { fi: 'Varattuja aikoja ei voi hallita tässä tilassa', en: 'Booked slots cannot be changed in this mode' },
+      selectAllDaySlots: { fi: 'Valitse koko päivä', en: 'Select whole day' },
+      allDaySlotsSelected: { fi: 'Koko päivä valittu', en: 'Whole day selected' },
       resendConfirmation: { fi: 'Lähetä uudelleen', en: 'Resend confirmation' },
       resendSuccessful: { fi: 'Vahvistusviesti lähetetty uudelleen', en: 'Confirmation email sent again' },
       resendFailed: { fi: 'Vahvistusviestin uudelleenlähetys epäonnistui', en: 'Failed to resend confirmation email' },
@@ -459,7 +462,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       // Fetch blocked slots
       const { data: blockedData, error: blockedError } = await supabase
         .from('blocked_slots')
-        .select('id, date, start_time, end_time, reason, created_at')
+        .select('id, date, start_time, end_time, reason, reason_fi, reason_en, created_at')
         .eq('date', dateStr);
 
       if (blockedError) {
@@ -477,7 +480,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       }
 
       // Build time slots
-      const timeSlotsData = buildScheduleTimeSlots(date, bookingsData || [], blockedData || []);
+      const timeSlotsData = buildScheduleTimeSlots(date, bookingsData || [], blockedData || [], language);
 
       console.log('[CMS] Time slots built:', timeSlotsData.filter(s => s.bookings.length > 0).length, 'with bookings');
       setTimeSlots(timeSlotsData);
@@ -702,6 +705,17 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
     );
   };
 
+  const manageableDaySlotTimes = timeSlots
+    .filter((slot) => slot.bookings.length === 0)
+    .map((slot) => slot.time);
+
+  const allManageableDaySlotsSelected =
+    manageableDaySlotTimes.length > 0 && manageableDaySlotTimes.every((time) => selectedBlockTimes.includes(time));
+
+  const handleSelectDaySlots = () => {
+    setSelectedBlockTimes((current) => [...new Set([...current, ...manageableDaySlotTimes])].sort());
+  };
+
   const handleBlockSelectedSlots = async () => {
     if (selectedBlockTimes.length === 0) return;
 
@@ -730,7 +744,9 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           date: dateStr,
           start_time: time,
           end_time: endTime,
-          reason: blockReason.trim() || null,
+          reason: (language === 'fi' ? blockReasonFi : blockReasonEn).trim() || blockReasonFi.trim() || blockReasonEn.trim() || null,
+          reason_fi: blockReasonFi.trim() || null,
+          reason_en: blockReasonEn.trim() || null,
         };
       });
 
@@ -750,7 +766,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       }
 
       toast.success(t('batchBlockSuccessful'));
-      setBlockReason('');
+      setBlockReasonFi('');
+      setBlockReasonEn('');
       setSelectedBlockTimes([]);
       setIsBatchBlockMode(false);
       fetchScheduleData(selectedDate);
@@ -1103,13 +1120,15 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const startManageSlots = () => {
     setIsBatchBlockMode(true);
     setSelectedBlockTimes([]);
-    setBlockReason('');
+    setBlockReasonFi('');
+    setBlockReasonEn('');
   };
 
   const cancelManageSlots = () => {
     setIsBatchBlockMode(false);
     setSelectedBlockTimes([]);
-    setBlockReason('');
+    setBlockReasonFi('');
+    setBlockReasonEn('');
   };
 
   const openCreateBookingDrawer = () => {
@@ -1148,7 +1167,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
             applyManageSlotsButtonClass={manageActionButtonClass}
             applyManageSlotsDisabled={selectedBlockTimes.length === 0}
             applyManageSlotsLabel={manageActionLabel}
-            blockReason={blockReason}
+            blockReasonEn={blockReasonEn}
+            blockReasonFi={blockReasonFi}
             formatBookingGroupLabel={formatBookingGroupLabel}
             getBookingServiceNameForCms={getBookingServiceNameForCms}
             reservationBookingGroups={reservationDisplayGroups}
@@ -1181,7 +1201,8 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
             outlineButtonClass={outlineButtonClass}
             panelClass={panelClass}
             searchQuery={searchQuery}
-            setBlockReason={setBlockReason}
+            setBlockReasonEn={setBlockReasonEn}
+            setBlockReasonFi={setBlockReasonFi}
             showArchivedInline={showArchivedInline}
             showArchivedBookings={showArchivedBookings}
             subtleTextClass={subtleTextClass}
@@ -1192,12 +1213,15 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
           {activeBookingsTab === 'schedule' && (
             <AdminScheduleGrid
+              allManageableSlotsSelected={allManageableDaySlotsSelected}
               handleSlotClick={handleSlotClick}
               isBatchBlockMode={isBatchBlockMode}
               isSunday={isSunday}
               loading={loading}
               managedSlotIntent={getManagedSlotIntent}
+              manageableSlotCount={manageableDaySlotTimes.length}
               mutedTextClass={mutedTextClass}
+              onSelectDaySlots={handleSelectDaySlots}
               panelClass={panelClass}
               selectedDateLabel={formatGridDate(selectedDate)}
               selectedBlockTimes={selectedBlockTimes}

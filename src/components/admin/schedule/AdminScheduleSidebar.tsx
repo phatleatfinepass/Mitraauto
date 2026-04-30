@@ -1,34 +1,20 @@
 import React from 'react';
-import { Calendar as CalendarIcon, CheckSquare, ChevronRight } from 'lucide-react';
 
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Calendar } from '../../ui/calendar';
 import { Card } from '../../ui/card';
-import { Textarea } from '../../ui/textarea';
 
 interface AdminScheduleSidebarProps {
-  applyManageSlotsButtonClass: string;
-  applyManageSlotsLabel: string;
-  applyManageSlotsDisabled: boolean;
-  blockReason: string;
   formatDate: (date: Date) => string;
-  isBatchBlockMode: boolean;
   isSunday: boolean;
   language: string;
-  manageModeHasBlockingSelection: boolean;
-  manageModeHint: string;
   mutedPanelClass: string;
   mutedTextClass: string;
   outlineButtonClass: string;
-  onApplyManageSlots: () => void;
   onLogout?: () => void;
   panelClass: string;
-  selectedBlockTimes: string[];
   selectedDate: Date;
-  setBlockReason: React.Dispatch<React.SetStateAction<string>>;
-  setIsBatchBlockMode: React.Dispatch<React.SetStateAction<boolean>>;
-  setSelectedBlockTimes: React.Dispatch<React.SetStateAction<string[]>>;
   setSelectedDate: React.Dispatch<React.SetStateAction<Date>>;
   t: (key: string) => string;
   theme: string;
@@ -36,27 +22,15 @@ interface AdminScheduleSidebarProps {
 }
 
 export function AdminScheduleSidebar({
-  applyManageSlotsButtonClass,
-  applyManageSlotsLabel,
-  applyManageSlotsDisabled,
-  blockReason,
   formatDate,
-  isBatchBlockMode,
   isSunday,
   language,
-  manageModeHasBlockingSelection,
-  manageModeHint,
   mutedPanelClass,
   mutedTextClass,
   outlineButtonClass,
-  onApplyManageSlots,
   onLogout,
   panelClass,
-  selectedBlockTimes,
   selectedDate,
-  setBlockReason,
-  setIsBatchBlockMode,
-  setSelectedBlockTimes,
   setSelectedDate,
   t,
   theme,

@@ -19,6 +19,8 @@ export interface ScheduleBlockedSlot {
   start_time: string;
   end_time: string;
   reason?: string | null;
+  reason_fi?: string | null;
+  reason_en?: string | null;
   created_at: string;
 }
 
@@ -68,6 +70,7 @@ export function buildScheduleTimeSlots(
   date: Date,
   bookings: ScheduleBooking[],
   blockedSlots: ScheduleBlockedSlot[],
+  language: 'fi' | 'en' | string = 'en',
 ): ScheduleTimeSlot[] {
   return generateScheduleSlots(date).map((time) => {
     const slotBookings = bookings.filter((booking) => {
@@ -84,8 +87,14 @@ export function buildScheduleTimeSlots(
       time,
       bookings: slotBookings,
       isBlocked: Boolean(blockedSlot),
-      blockReason: blockedSlot?.reason || undefined,
+      blockReason: getLocalizedBlockReason(blockedSlot, language),
       available: !blockedSlot && slotBookings.length === 0,
     };
   });
+}
+
+function getLocalizedBlockReason(blockedSlot: ScheduleBlockedSlot | undefined, language: 'fi' | 'en' | string) {
+  if (!blockedSlot) return undefined;
+  const localizedReason = language === 'fi' ? blockedSlot.reason_fi : blockedSlot.reason_en;
+  return localizedReason?.trim() || blockedSlot.reason?.trim() || undefined;
 }

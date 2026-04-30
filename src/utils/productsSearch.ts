@@ -53,6 +53,8 @@ export type ProductSearchRow = {
   eu_wet?: string | null;
   eu_noise?: number | null;
   final_is_hidden?: boolean | null;
+  ean?: string | null;
+  derived_ean?: string | null;
   pricing_rules?: ProductPricingRules | null;
   tyre_label_section?: TyreLabelSectionData;
 };
@@ -123,6 +125,8 @@ const PRODUCT_SEARCH_BASE_SELECT = [
   'eu_wet',
   'eu_noise',
   'final_is_hidden',
+  'ean',
+  'derived_ean',
 ].join(',');
 
 const WEBSHOP_TIRE_PUBLIC_SELECT = [
@@ -162,7 +166,30 @@ function parseFloatOrNull(value: unknown): number | null {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function isRetreadedTire(row: ProductSearchRow): boolean {
+  const blob = [
+    row.brand,
+    row.brand_display_name,
+    row.model,
+    row.size_string,
+    row.card_title,
+    row.subtitle,
+    row.seo_slug,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return blob.includes('pinnoitettu') || blob.includes('pinoitettu');
+}
+
 function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>): boolean {
+  const eanFilter = String(filters.ean ?? '').replace(/\D/g, '');
+  if (eanFilter) {
+    const rowEan = String((row as any).ean ?? (row as any).derived_ean ?? '').replace(/\D/g, '');
+    if (!rowEan.includes(eanFilter)) return false;
+  }
+
   if (filters.search) {
     const q = String(filters.search).toLowerCase().trim();
     if (q) {
@@ -188,6 +215,7 @@ function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>)
   if (filters.xl && !row.xl_reinforced) return false;
   if (filters.studded && !row.studded) return false;
   if (filters.inStockOnly && !row.in_stock) return false;
+  if (!filters.includeRetreaded && isRetreadedTire(row)) return false;
 
   return true;
 }
@@ -449,6 +477,8 @@ async function fetchProductsByVariantIds(
     'eu_wet',
     'eu_noise',
     'final_is_hidden',
+    'ean',
+    'derived_ean',
   ].join(',');
 
   const { data, error } = await supabase
@@ -566,6 +596,12 @@ async function fetchTireProductsBySizePattern(
       .ilike('size_string', pattern);
 
     if (filters.season && filters.season !== 'all') query = query.eq('season', filters.season);
+    if (filters.ean) {
+      const ean = String(filters.ean).replace(/\D/g, '');
+      if (ean) {
+        query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
+      }
+    }
     if (filters.runflat) query = query.eq('runflat', true);
     if (filters.xl) query = query.eq('xl_reinforced', true);
     if (filters.studded) query = query.eq('studded', true);
@@ -675,11 +711,59 @@ async function fetchTireCatalogRpc(
   const season =
     filters.season && filters.season !== 'all' ? String(filters.season) : null;
   const search = normalizeSearchTerm(filters.search) || null;
+  const ean = String(filters.ean ?? '').replace(/\D/g, '') || null;
   const sortBy =
     typeof filters.sortBy === 'string' && filters.sortBy.length > 0 ? filters.sortBy : 'brand_asc';
+  const includeRetreaded = Boolean(filters.includeRetreaded);
 
-  const [{ data: rows, error: listError }, { data: countValue, error: countError }] = await Promise.all([
-    supabase.rpc('catalog_list_tires_v1', {
+  const listArgs = {
+    p_search: search,
+    p_brands: brands,
+    p_width: width,
+    p_aspect_ratio: aspectRatio,
+    p_diameter: diameter,
+    p_season: season,
+    p_ean: ean,
+    p_runflat: Boolean(filters.runflat),
+    p_xl: Boolean(filters.xl),
+    p_studded: Boolean(filters.studded),
+    p_in_stock: Boolean(filters.inStockOnly),
+    p_include_retreaded: includeRetreaded,
+    p_sort_by: sortBy,
+    p_limit: limit,
+    p_offset: offset,
+  };
+
+  const countArgs = {
+    p_search: search,
+    p_brands: brands,
+    p_width: width,
+    p_aspect_ratio: aspectRatio,
+    p_diameter: diameter,
+    p_season: season,
+    p_ean: ean,
+    p_runflat: Boolean(filters.runflat),
+    p_xl: Boolean(filters.xl),
+    p_studded: Boolean(filters.studded),
+    p_in_stock: Boolean(filters.inStockOnly),
+    p_include_retreaded: includeRetreaded,
+  };
+
+  let [{ data: rows, error: listError }, { data: countValue, error: countError }] = await Promise.all([
+    supabase.rpc('catalog_list_tires_v1', listArgs),
+    supabase.rpc('catalog_count_tires_v1', countArgs),
+  ]);
+
+  const shouldRetryWithoutRetreadParam =
+    (listError || countError) &&
+    String(listError?.message ?? countError?.message ?? '').toLowerCase().includes('p_include_retreaded');
+  const shouldRetryWithoutEanParam =
+    (listError || countError) &&
+    String(listError?.message ?? countError?.message ?? '').toLowerCase().includes('p_ean');
+
+  if (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam) {
+    const [{ data: retryRows, error: retryListError }, { data: retryCountValue, error: retryCountError }] = await Promise.all([
+      supabase.rpc('catalog_list_tires_v1', {
       p_search: search,
       p_brands: brands,
       p_width: width,
@@ -693,8 +777,8 @@ async function fetchTireCatalogRpc(
       p_sort_by: sortBy,
       p_limit: limit,
       p_offset: offset,
-    }),
-    supabase.rpc('catalog_count_tires_v1', {
+      }),
+      supabase.rpc('catalog_count_tires_v1', {
       p_search: search,
       p_brands: brands,
       p_width: width,
@@ -705,8 +789,13 @@ async function fetchTireCatalogRpc(
       p_xl: Boolean(filters.xl),
       p_studded: Boolean(filters.studded),
       p_in_stock: Boolean(filters.inStockOnly),
-    }),
-  ]);
+      }),
+    ]);
+    rows = retryRows;
+    listError = retryListError;
+    countValue = retryCountValue;
+    countError = retryCountError;
+  }
 
   if (listError) throw listError;
   if (countError) throw countError;
@@ -715,11 +804,17 @@ async function fetchTireCatalogRpc(
     ...row,
     pricing_rules: null,
     final_is_hidden: false,
-  }));
+  }))
+    .filter((row) => includeRetreaded || !isRetreadedTire(row))
+    .filter((row) => {
+      if (!ean) return true;
+      const rowEan = String((row as any).ean ?? (row as any).derived_ean ?? '').replace(/\D/g, '');
+      return rowEan.includes(ean);
+    });
 
   return {
     items,
-    total: Number(countValue ?? items.length),
+    total: (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam) && (!includeRetreaded || ean) ? items.length : Number(countValue ?? items.length),
   };
 }
 
@@ -852,6 +947,12 @@ export async function fetchProductsSearch(
         if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
         if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
         if (filters.season && filters.season !== 'all') query = query.eq('season', filters.season);
+        if (filters.ean) {
+          const ean = String(filters.ean).replace(/\D/g, '');
+          if (ean) {
+            query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
+          }
+        }
         if (filters.runflat) query = query.eq('runflat', true);
         if (filters.xl) query = query.eq('xl_reinforced', true);
         if (filters.studded) query = query.eq('studded', true);

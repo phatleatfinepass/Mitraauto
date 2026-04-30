@@ -1,11 +1,5 @@
 import type { ProductCMS, TireRow } from './types';
 
-function getSupplierLabel(code: string | null | undefined, supplierOptions: Array<{ code: string; label: string }>) {
-  const normalized = String(code ?? '').trim().toUpperCase();
-  const known = supplierOptions.find((option) => option.code === normalized);
-  return known?.label ?? (normalized || 'Unknown supplier');
-}
-
 export function useTiresCmsSupplierMarkup({
   baseApiPrice,
   language,
@@ -13,8 +7,7 @@ export function useTiresCmsSupplierMarkup({
   setEditData,
   setSaveError,
   supplierMarkupAmount,
-  supplierMarkupSupplier,
-  supplierOptions,
+  supplierMarkupPercent,
 }: {
   baseApiPrice: number | null;
   language: string;
@@ -22,48 +15,54 @@ export function useTiresCmsSupplierMarkup({
   setEditData: React.Dispatch<React.SetStateAction<Partial<ProductCMS>>>;
   setSaveError: React.Dispatch<React.SetStateAction<string | null>>;
   supplierMarkupAmount: string | number;
-  supplierMarkupSupplier: string | null | undefined;
-  supplierOptions: Array<{ code: string; label: string }>;
+  supplierMarkupPercent: string | number;
 }) {
   const applySupplierMarkup = () => {
     if (!selectedTire) return;
 
-    const selectedSupplier = String(supplierMarkupSupplier ?? '').trim().toUpperCase();
-    const tireSupplier = String(selectedTire.supplier_code_best ?? '').trim().toUpperCase();
-    const markupAmount = Number(supplierMarkupAmount);
+    const amountText = String(supplierMarkupAmount ?? '').trim();
+    const percentText = String(supplierMarkupPercent ?? '').trim();
+    const markupAmount = amountText === '' ? 0 : Number(amountText);
+    const markupPercent = percentText === '' ? 0 : Number(percentText);
 
     if (!baseApiPrice || !Number.isFinite(baseApiPrice)) {
       setSaveError(language === 'fi' ? 'API-hintaa ei löytynyt tälle tuotteelle.' : 'No API price was found for this tire.');
       return;
     }
 
-    if (!Number.isFinite(markupAmount)) {
+    if (!Number.isFinite(markupAmount) || !Number.isFinite(markupPercent)) {
       setSaveError(
         language === 'fi'
           ? 'Hintaeron pitää olla numero.'
-          : 'Markup or discount amount must be a number.'
+          : 'Markup or discount must be numeric.'
       );
       return;
     }
 
-    if (selectedSupplier !== tireSupplier) {
-      setSaveError(
-        language === 'fi'
-          ? `Valittu toimittaja (${getSupplierLabel(selectedSupplier, supplierOptions)}) ei vastaa renkaan toimittajaa (${getSupplierLabel(tireSupplier, supplierOptions)}).`
-          : `Selected supplier (${getSupplierLabel(selectedSupplier, supplierOptions)}) does not match this tire's supplier (${getSupplierLabel(tireSupplier, supplierOptions)}).`
-      );
+    if (amountText === '' && percentText === '') {
+      setEditData((prev) => ({
+        ...prev,
+        price_override_eur: null,
+      }));
+      setSaveError(null);
+      return;
+    }
+
+    const nextPrice = baseApiPrice * (1 + markupPercent / 100) + markupAmount;
+
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) {
+      setSaveError(language === 'fi' ? 'Lopullinen hinta ei ole kelvollinen.' : 'Final price is not valid.');
       return;
     }
 
     setSaveError(null);
     setEditData((prev) => ({
       ...prev,
-      price_override_eur: Math.round((baseApiPrice + markupAmount) * 100) / 100,
+      price_override_eur: Math.round(nextPrice * 100) / 100,
     }));
   };
 
   return {
     applySupplierMarkup,
-    getSupplierLabel: (code: string | null | undefined) => getSupplierLabel(code, supplierOptions),
   };
 }

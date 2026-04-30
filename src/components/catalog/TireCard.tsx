@@ -8,7 +8,7 @@ import { buildProductImageFallback } from '../../utils/productImage';
 import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
 
 interface TireCardProps {
-  product: {
+  product?: {
     id: string;
     brand: string;
     model: string;
@@ -31,14 +31,27 @@ interface TireCardProps {
     best_image_url: string;
     in_stock: boolean;
   };
+  href?: string;
   index?: number;
   onClick?: () => void;
   onAddToCart?: (e: React.MouseEvent) => void;
 }
 
-export function TireCard({ product, index: _index = 0, onClick, onAddToCart }: TireCardProps) {
+const PREVIEW_TIRE_PRODUCT: NonNullable<TireCardProps['product']> = {
+  id: 'preview-tire',
+  brand: 'Nokian',
+  model: 'Hakkapeliitta R5',
+  size_text: '205/55 R16',
+  season: 'winter',
+  best_price_eur: 119,
+  best_image_url: '',
+  in_stock: true,
+};
+
+export function TireCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart }: TireCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const product = productProp ?? PREVIEW_TIRE_PRODUCT;
 
   const fallbackImage = React.useMemo(
     () => buildProductImageFallback(product.brand, product.model),
@@ -113,6 +126,16 @@ export function TireCard({ product, index: _index = 0, onClick, onAddToCart }: T
     { key: 'ice', show: Boolean(product.ice_approved), label: language === 'fi' ? 'Jää' : 'Ice Approved' },
   ].filter((badge) => badge.show);
 
+  const handleCardLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!onClick) return;
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+    onClick();
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!onClick) return;
     if (event.key === 'Enter' || event.key === ' ') {
@@ -121,7 +144,7 @@ export function TireCard({ product, index: _index = 0, onClick, onAddToCart }: T
     }
   };
 
-  const interactiveProps = onClick
+  const interactiveProps = onClick && !href
     ? {
         role: 'button' as const,
         tabIndex: 0,
@@ -144,6 +167,14 @@ export function TireCard({ product, index: _index = 0, onClick, onAddToCart }: T
       }`}
       {...interactiveProps}
     >
+      {href && (
+        <a
+          href={href}
+          aria-label={`${product.brand} ${product.model}`}
+          className="absolute inset-0 z-10 rounded-[24px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#FF6B35]"
+          onClick={handleCardLinkClick}
+        />
+      )}
       <div className={`relative rounded-[24px] size-full transition-all duration-500 ${theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-gray-50'} ${theme === 'dark' ? 'group-hover:shadow-[0_8px_32px_rgba(255,107,53,0.15)]' : 'group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'}`}>
         <div className="size-full">
           <div className="box-border content-stretch flex flex-col gap-[24px] items-start overflow-clip p-[24px] relative size-full">
@@ -476,8 +507,9 @@ export function TireCard({ product, index: _index = 0, onClick, onAddToCart }: T
                 {/* Add Button */}
                 <button
                   disabled={!product.in_stock}
-                  className="bg-[#ff6b35] hover:bg-[#ff6b35]/90 box-border content-stretch flex gap-[14px] h-[40px] items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] shrink-0 w-full text-white transition-all duration-300 hover:shadow-[0px_6px_20px_0px_rgba(255,107,53,0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="pointer-events-auto z-20 bg-[#ff6b35] hover:bg-[#ff6b35]/90 box-border content-stretch flex gap-[14px] h-[40px] items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] shrink-0 w-full text-white transition-all duration-300 hover:shadow-[0px_6px_20px_0px_rgba(255,107,53,0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                   onClick={(event) => {
+                    event.preventDefault();
                     event.stopPropagation();
                     onAddToCart?.(event);
                   }}

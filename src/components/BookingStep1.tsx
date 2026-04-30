@@ -20,7 +20,9 @@ interface BookingStep1Props {
   onTimeSlotChange: (slotId: string) => void;
   onContinue: () => void;
   onCancel: () => void;
+  language: string;
   t: (key: string) => string;
+  minimumDate?: Date;
 }
 
 export function BookingStep1({
@@ -32,7 +34,9 @@ export function BookingStep1({
   onTimeSlotChange,
   onContinue,
   onCancel,
+  language,
   t,
+  minimumDate,
 }: BookingStep1Props) {
   const [plateError, setPlateError] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +45,7 @@ export function BookingStep1({
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const firstSelectableDate = minimumDate && minimumDate > today ? minimumDate : today;
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +70,7 @@ export function BookingStep1({
             .eq('booking_date', dateStr),
           supabase
             .from('blocked_slots')
-            .select('id, date, start_time, end_time, reason, created_at')
+            .select('id, date, start_time, end_time, reason, reason_fi, reason_en, created_at')
             .eq('date', dateStr),
         ]);
 
@@ -77,7 +82,7 @@ export function BookingStep1({
           throw blockedError;
         }
 
-        const slots = buildScheduleTimeSlots(date, bookingsData || [], blockedData || []).map((slot) => {
+        const slots = buildScheduleTimeSlots(date, bookingsData || [], blockedData || [], language).map((slot) => {
           const [hours, minutes] = slot.time.split(':').map(Number);
           const slotMinutes = hours * 60 + minutes;
           const isPastHourForToday = dateStr === todayStr && slotMinutes < currentHourStartMinutes;
@@ -88,6 +93,7 @@ export function BookingStep1({
             // Public booking should only respect admin blocks and same-day cutoff.
             // Existing bookings remain visible in CMS but do not close the slot.
             available: !slot.isBlocked && !isPastHourForToday,
+            unavailableReason: slot.isBlocked ? slot.blockReason : undefined,
           };
         });
 
@@ -112,7 +118,7 @@ export function BookingStep1({
     return () => {
       cancelled = true;
     };
-  }, [date]);
+  }, [date, language]);
 
   const validateAndContinue = async () => {
     setPlateError('');
@@ -196,8 +202,8 @@ export function BookingStep1({
                 setCalendarOpen(false);
               }}
               today={today}
-              fromDate={today}
-              disabled={{ before: today }}
+              fromDate={firstSelectableDate}
+              disabled={{ before: firstSelectableDate }}
               modifiers={{ sunday: { dayOfWeek: [0] } }}
               modifiersClassNames={{
                 sunday: 'text-muted-foreground opacity-60',

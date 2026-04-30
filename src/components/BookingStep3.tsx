@@ -28,6 +28,7 @@ interface BookingStep3Props {
   onConfirm: () => void;
   t: (key: string) => string;
   locale?: string;
+  orderInstallToken?: string | null;
 }
 
 export function BookingStep3({
@@ -43,6 +44,7 @@ export function BookingStep3({
   onConfirm,
   t,
   locale = 'fi-FI',
+  orderInstallToken,
 }: BookingStep3Props) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -81,7 +83,6 @@ export function BookingStep3({
 
     setLoading(true);
     try {
-      // Save booking to Supabase
       const supabase = getSupabaseClient();
       
       // Format date as YYYY-MM-DD in local time to avoid timezone drift
@@ -101,12 +102,41 @@ export function BookingStep3({
       };
 
       console.log('[BOOKING] Creating booking with data:', bookingData);
-      
-      // Create booking record
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert([bookingData])
-        .select();
+
+      const bookingResult = orderInstallToken
+        ? await supabase.functions.invoke('order_install_booking', {
+            method: 'POST',
+            body: {
+              action: 'create',
+              token: orderInstallToken,
+              licensePlate: bookingData.license_plate,
+              bookingDate,
+              bookingTime: timeSlot,
+              serviceName,
+              customerName: contactInfo.name,
+              customerPhone: normalizedPhone,
+              customerEmail: contactInfo.email || null,
+              language,
+              notes: contactInfo.notes || null,
+            },
+          })
+        : await supabase
+            .from('bookings')
+            .insert([bookingData])
+            .select();
+
+      const data = orderInstallToken
+        ? bookingResult.data?.booking
+          ? [{
+              id: bookingResult.data.booking.id,
+              license_plate: bookingResult.data.booking.licensePlate,
+              booking_date: bookingResult.data.booking.bookingDate,
+              booking_time: bookingResult.data.booking.bookingTime,
+              service_name: bookingResult.data.booking.serviceName,
+            }]
+          : null
+        : bookingResult.data;
+      const error = bookingResult.error;
 
       if (error) {
         console.error('[BOOKING] Error creating booking:', error);
@@ -145,7 +175,7 @@ export function BookingStep3({
         }
       }
 
-      if (contactInfo.email && data?.[0]?.id) {
+      if (!orderInstallToken && contactInfo.email && data?.[0]?.id) {
         const { error: emailError } = await supabase.functions.invoke(
           'send_booking_confirmation',
           {

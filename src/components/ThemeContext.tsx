@@ -7,10 +7,21 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const fallbackThemeContext: ThemeContextType = {
+  theme: 'light',
+  toggleTheme: () => {
+    // Ignore theme changes when previewed without the provider.
+  },
+};
+
+const ThemeContext = createContext<ThemeContextType>(fallbackThemeContext);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') {
+      return 'light';
+    }
+
     // Check if user has a preference saved
     const savedTheme = localStorage.getItem('theme') as Theme | null;
     if (savedTheme) {
@@ -51,8 +62,5 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
   return context;
 }

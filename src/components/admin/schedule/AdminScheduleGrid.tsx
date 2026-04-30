@@ -2,16 +2,20 @@ import React from 'react';
 import { AlertCircle, Clock, Lock } from 'lucide-react';
 
 import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import type { ScheduleTimeSlot } from '../../../utils/schedule';
 
 interface AdminScheduleGridProps {
+  allManageableSlotsSelected: boolean;
   handleSlotClick: (slot: ScheduleTimeSlot, time: string) => void;
   isBatchBlockMode: boolean;
   isSunday: boolean;
   loading: boolean;
   managedSlotIntent: (slot: ScheduleTimeSlot) => 'block' | 'unblock' | 'none';
+  manageableSlotCount: number;
   mutedTextClass: string;
+  onSelectDaySlots: () => void;
   panelClass: string;
   selectedDateLabel: string;
   selectedBlockTimes: string[];
@@ -22,12 +26,15 @@ interface AdminScheduleGridProps {
 }
 
 export function AdminScheduleGrid({
+  allManageableSlotsSelected,
   handleSlotClick,
   isBatchBlockMode,
   isSunday,
   loading,
   managedSlotIntent,
+  manageableSlotCount,
   mutedTextClass,
+  onSelectDaySlots,
   panelClass,
   selectedDateLabel,
   selectedBlockTimes,
@@ -38,9 +45,20 @@ export function AdminScheduleGrid({
 }: AdminScheduleGridProps) {
   return (
     <Card className={`rounded-lg p-4 shadow-none ${panelClass}`}>
-      <div className="mb-4 flex items-start justify-between gap-4">
+      <div className="mb-4 grid items-start gap-3 sm:grid-cols-[1fr_auto_1fr]">
         <h3 className={`text-base font-semibold ${titleClass} font-bold`}>{t('timeSlots')}</h3>
-        <p className={`font-semibold ${titleClass} text-[16px]`}>{selectedDateLabel}</p>
+        {isBatchBlockMode && !isSunday && !loading && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={onSelectDaySlots}
+            disabled={manageableSlotCount === 0}
+            className="h-8 bg-red-600 px-3 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {allManageableSlotsSelected ? t('allDaySlotsSelected') : t('selectAllDaySlots')}
+          </Button>
+        )}
+        <p className={`text-right font-semibold ${titleClass} text-[16px]`}>{selectedDateLabel}</p>
       </div>
 
       {isSunday ? (

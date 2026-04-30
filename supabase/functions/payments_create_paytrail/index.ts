@@ -76,6 +76,10 @@ function toCountryCode(value: unknown) {
   return /^[A-Z]{2}$/.test(raw) ? raw : "FI";
 }
 
+function normalizeLanguage(value: unknown) {
+  return String(value ?? "").trim().toLowerCase() === "en" ? "en" : "fi";
+}
+
 async function hmacHex(secret: string, payload: string) {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -113,6 +117,7 @@ function buildOrderSnapshot(
   return {
     created_by: "webshop",
     created_at: nowIso,
+    language: normalizeLanguage(input?.language),
     fulfillment_status: "receive",
     fulfillment_status_updated_at: nowIso,
     subtotal_cents: Math.max(0, amount - shippingCents),
@@ -134,8 +139,24 @@ function buildOrderSnapshot(
       qty: item.units,
       sku: item.productCode,
       client_unit_price_cents: item.unitPrice,
+      line_total_cents: item.unitPrice * item.units,
       vatPercentage: item.vatPercentage,
+      image_url: item.imageUrl ?? null,
+      brand: item.brand ?? null,
+      model: item.model ?? null,
+      size_text: item.sizeText ?? null,
+      product_type: item.productType ?? null,
     })),
+  };
+}
+
+function toPaytrailPaymentItem(item: any) {
+  return {
+    unitPrice: item.unitPrice,
+    units: item.units,
+    vatPercentage: item.vatPercentage,
+    productCode: item.productCode,
+    description: item.description,
   };
 }
 
@@ -203,6 +224,11 @@ serve(async (req) => {
         vatPercentage: Number(item.vatPercentage ?? 25.5),
         productCode: cleanString(item.sku || `item-${index + 1}`, 100),
         description: cleanString(item.name || `Item ${index + 1}`, 1000),
+        imageUrl: cleanString((item as any).image_url, 1000) || null,
+        brand: cleanString((item as any).brand, 120) || null,
+        model: cleanString((item as any).model, 160) || null,
+        sizeText: cleanString((item as any).size_text, 120) || null,
+        productType: cleanString((item as any).product_type, 40) || null,
       };
     });
 
@@ -254,8 +280,8 @@ serve(async (req) => {
       reference,
       amount,
       currency: "EUR",
-      language: "FI",
-      items: paytrailItems,
+      language: normalizeLanguage(input?.language).toUpperCase(),
+      items: paytrailItems.map(toPaytrailPaymentItem),
       customer: {
         email,
         firstName: cleanString(input.customer?.firstName, 50) || undefined,
@@ -335,15 +361,28 @@ serve(async (req) => {
       }, 502);
     }
 
-    await supabase
+    const { error: orderPaymentUpdateError } = await supabase
       .from("orders")
       .update({
         paytrail_transaction_id: paytrailData.transactionId ?? null,
         paytrail_reference: paytrailData.reference ?? reference,
         paytrail_status: "new",
         paytrail_redirect_url: paytrailData.href ?? null,
+        cart_snapshot: {
+          ...orderSnapshot,
+          payment_method: "paytrail",
+          payment_status: "pending",
+          paytrail: {
+            status: "new",
+            transaction_id: paytrailData.transactionId ?? null,
+            reference: paytrailData.reference ?? reference,
+            redirect_url: paytrailData.href ?? null,
+            updated_at: new Date().toISOString(),
+          },
+        },
       })
       .eq("id", orderId);
+    if (orderPaymentUpdateError) throw orderPaymentUpdateError;
 
     return jsonResponse({
       order_id: orderId,

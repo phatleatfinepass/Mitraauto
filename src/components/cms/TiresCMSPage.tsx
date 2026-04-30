@@ -38,6 +38,7 @@ const EU_NOISE_CLASS_OPTIONS = ['A', 'B', 'C'];
 const VAT_RATE = 0.255;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
 const RD_SHIPPING_COST_EX_VAT = 12;
+const VT_TIRE_FIXED_SHIPPING_EX_VAT = 20;
 
 type EprelMatchRow = {
   id: string;
@@ -647,9 +648,11 @@ export function TiresCMSPage() {
     setIdentityField,
     setSizeParts,
     setSupplierMarkupAmount,
+    setSupplierMarkupPercent,
     setSupplierMarkupSupplier,
     sizeParts,
     supplierMarkupAmount,
+    supplierMarkupPercent,
     supplierMarkupSupplier,
     updateSizePart,
   } = useTiresCmsEditor({ mustHideFromStore });
@@ -677,6 +680,7 @@ export function TiresCMSPage() {
         };
         supplierMarkupSupplier?: string;
         supplierMarkupAmount?: string;
+        supplierMarkupPercent?: string;
       };
 
       if (!parsedState?.selectedTire?.variant_id) {
@@ -699,7 +703,8 @@ export function TiresCMSPage() {
           speed_rating: parsedState.sizeParts?.speed_rating ?? '',
         },
         supplierMarkupSupplier: parsedState.supplierMarkupSupplier ?? 'RD',
-        supplierMarkupAmount: parsedState.supplierMarkupAmount ?? '20',
+        supplierMarkupAmount: parsedState.supplierMarkupAmount ?? '',
+        supplierMarkupPercent: parsedState.supplierMarkupPercent ?? '',
       });
     } catch (error) {
       console.error('Restore tire editor state error:', error);
@@ -1644,12 +1649,26 @@ export function TiresCMSPage() {
     .trim()
     .toUpperCase();
   const isRengasDuoTire = supplierCodeForPricing === 'RD';
+  const isVannetukkuTire = supplierCodeForPricing === 'VT';
+  const vtShippingFeeExVat = Number(pricingDetails?.shipping_fee_ex_vat ?? VT_TIRE_FIXED_SHIPPING_EX_VAT);
 
   const originalApiPrice = (() => {
     if (isRengasDuoTire) {
       const preferred =
         pricingDetails?.raw_net_price_ex_vat ??
         pricingDetails?.wholesale_price_ex_vat ??
+        null;
+      if (preferred !== null && preferred !== undefined && Number.isFinite(Number(preferred))) {
+        return Number(preferred);
+      }
+    }
+    if (isVannetukkuTire) {
+      const preferred =
+        pricingDetails?.raw_price_ex_vat ??
+        pricingDetails?.wholesale_price_ex_vat ??
+        (selectedTire?.price !== null && selectedTire?.price !== undefined
+          ? Number(selectedTire.price) - vtShippingFeeExVat
+          : null) ??
         null;
       if (preferred !== null && preferred !== undefined && Number.isFinite(Number(preferred))) {
         return Number(preferred);
@@ -1665,14 +1684,18 @@ export function TiresCMSPage() {
     pricingDetails?.recycling_fee_ex_vat !== undefined
       ? Number(pricingDetails.recycling_fee_ex_vat)
       : null;
-  const shippingFeeExVat = isRengasDuoTire ? RD_SHIPPING_COST_EX_VAT : null;
+  const shippingFeeExVat = isRengasDuoTire
+    ? RD_SHIPPING_COST_EX_VAT
+    : isVannetukkuTire
+      ? vtShippingFeeExVat
+      : null;
   const costAfterFeesExVat =
-    originalApiPrice !== null && recyclingFeeExVat !== null && shippingFeeExVat !== null
+    originalApiPrice !== null && (recyclingFeeExVat !== null || shippingFeeExVat !== null)
       ? Number(
           (
             originalApiPrice +
-            recyclingFeeExVat +
-            shippingFeeExVat
+            (recyclingFeeExVat ?? 0) +
+            (shippingFeeExVat ?? 0)
           ).toFixed(2)
         )
       : null;
@@ -1682,17 +1705,15 @@ export function TiresCMSPage() {
       : editData.price_override_eur !== null && editData.price_override_eur !== undefined
         ? Number(editData.price_override_eur)
         : costAfterFeesExVat ?? originalApiPrice;
-  const { applySupplierMarkup: applySupplierMarkupWithBase, getSupplierLabel: getSupplierLabelWithBase } =
-    useTiresCmsSupplierMarkup({
-      baseApiPrice: costAfterFeesExVat ?? originalApiPrice,
-      language,
-      selectedTire,
-      setEditData,
-      setSaveError,
-      supplierMarkupAmount,
-      supplierMarkupSupplier,
-      supplierOptions: SUPPLIER_OPTIONS,
-    });
+  const { applySupplierMarkup: applySupplierMarkupWithBase } = useTiresCmsSupplierMarkup({
+    baseApiPrice: costAfterFeesExVat ?? originalApiPrice,
+    language,
+    selectedTire,
+    setEditData,
+    setSaveError,
+    supplierMarkupAmount,
+    supplierMarkupPercent,
+  });
 
   const fetchSupplierBulkPage = async (supplierCode: string, offset: number, pageSize: number) => {
     const { data, error } = await supabase.rpc('cms_list_tires_admin_v1', {
@@ -2106,7 +2127,6 @@ export function TiresCMSPage() {
                 costAfterFeesExVat={costAfterFeesExVat}
                 editData={editData}
                 effectiveDraftPrice={effectiveDraftPrice}
-                getSupplierLabel={getSupplierLabelWithBase}
                 isDark={isDark}
                 language={language}
                 onApplySupplierMarkup={applySupplierMarkupWithBase}
@@ -2116,10 +2136,9 @@ export function TiresCMSPage() {
                 selectedTire={selectedTire}
                 shippingFeeExVat={shippingFeeExVat}
                 setSupplierMarkupAmount={setSupplierMarkupAmount}
-                setSupplierMarkupSupplier={setSupplierMarkupSupplier}
+                setSupplierMarkupPercent={setSupplierMarkupPercent}
                 supplierMarkupAmount={supplierMarkupAmount}
-                supplierMarkupSupplier={supplierMarkupSupplier}
-                supplierOptions={SUPPLIER_OPTIONS}
+                supplierMarkupPercent={supplierMarkupPercent}
                 toPriceWithVat={toPriceWithVat}
               >
                 <TiresBundlePricingSection

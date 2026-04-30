@@ -125,6 +125,7 @@ export interface TireAdminPricingDetails {
   raw_price_ex_vat: number | null;
   raw_retail_price_inc_vat: number | null;
   recycling_fee_ex_vat: number | null;
+  shipping_fee_ex_vat?: number | null;
 }
 
 export interface TiresWarningTooltipState {

@@ -14,9 +14,18 @@ interface BookingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preSelectedService?: string;
+  prefill?: {
+    installToken?: string;
+    earliestDate?: string;
+    contact?: {
+      name?: string;
+      phone?: string;
+      email?: string;
+    };
+  } | null;
 }
 
-export function BookingModal({ open, onOpenChange, preSelectedService }: BookingModalProps) {
+export function BookingModal({ open, onOpenChange, preSelectedService, prefill }: BookingModalProps) {
   const { t, language } = useLanguage();
   
   // Current step
@@ -52,7 +61,18 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
       setSelectedServiceIds([]);
     }
     setSelectedServiceId(null);
-  }, [open, preSelectedService]);
+    if (prefill?.earliestDate) {
+      setDate(new Date(`${prefill.earliestDate}T12:00:00`));
+    }
+    if (prefill?.contact) {
+      setContactInfo((current) => ({
+        ...current,
+        name: prefill.contact?.name || current.name,
+        phone: prefill.contact?.phone || current.phone,
+        email: prefill.contact?.email || current.email,
+      }));
+    }
+  }, [open, preSelectedService, prefill]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -231,7 +251,9 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               onTimeSlotChange={setSelectedTimeSlot}
               onContinue={handleStep1Continue}
               onCancel={handleClose}
+              language={language}
               t={t}
+              minimumDate={prefill?.earliestDate ? new Date(`${prefill.earliestDate}T12:00:00`) : undefined}
             />
           )}
 
@@ -249,6 +271,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService }: Booking
               onContinue={handleStep2Continue}
               t={t}
               locale={language === 'fi' ? 'fi-FI' : 'en-US'}
+              orderInstallToken={prefill?.installToken}
             />
           )}
 

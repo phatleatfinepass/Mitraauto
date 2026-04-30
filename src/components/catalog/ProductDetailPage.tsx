@@ -62,6 +62,7 @@ export interface TireProduct {
   ev_ready?: boolean;
   three_pmsf?: boolean;
   tyre_label_section?: TyreLabelSectionData;
+  ean?: string;
   best_price_eur?: number;
   seo_slug?: string;
   pricing_rules?: ProductPricingRules | null;
@@ -292,7 +293,6 @@ function TyreLabelIdentitySection({
 
   const t = (fi: string, en: string) => (language === 'fi' ? fi : en);
   const identityRows = [
-    { label: t('Supplier', 'Supplier'), value: data.identity.supplier_name },
     { label: t('Trademark', 'Trademark'), value: data.identity.supplier_trademark },
     { label: t('Commercial name', 'Commercial name'), value: data.identity.commercial_name },
     { label: t('Tyre type ID', 'Tyre type ID'), value: data.identity.tyre_type_identifier },
@@ -307,7 +307,6 @@ function TyreLabelIdentitySection({
       value: data.identity.load_version,
     },
     { label: 'EAN', value: data.identity.ean },
-    { label: t('Supplier code', 'Supplier code'), value: data.identity.supplier_code },
   ].filter((row) => row.value && String(row.value).trim().length > 0);
 
   const complianceRows = [

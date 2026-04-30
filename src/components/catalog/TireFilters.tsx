@@ -26,6 +26,8 @@ interface TireFiltersProps {
     xl: boolean;
     studded: boolean;
     inStockOnly: boolean;
+    includeRetreaded: boolean;
+    ean: string;
     sortBy: string;
     search: string;
   };
@@ -41,6 +43,8 @@ export const DEFAULT_TIRE_FILTERS = {
   xl: false,
   studded: false,
   inStockOnly: false,
+  includeRetreaded: false,
+  ean: '',
   sortBy: 'price_asc',
   search: '',
 };
@@ -248,8 +252,8 @@ export function TireFilters({ onFilterChange, onSearch, searchMode, filters: ext
 
           {showAdvanced && (
             <div className={`space-y-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
-              {/* Season & Sort Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Season, Sort & EAN Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className={`${textClass} mb-2 block text-sm`}>
                     {language === 'fi' ? 'Kausi' : 'Season'}
@@ -297,10 +301,23 @@ export function TireFilters({ onFilterChange, onSearch, searchMode, filters: ext
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div>
+                  <Label className={`${textClass} mb-2 block text-sm`}>
+                    EAN
+                  </Label>
+                  <Input
+                    inputMode="numeric"
+                    value={filters.ean}
+                    onChange={(event) => updateFilter('ean', event.target.value)}
+                    placeholder="6419440..."
+                    className={`${inputBgClass} ${borderClass} ${textClass}`}
+                  />
+                </div>
               </div>
 
               {/* Feature Toggles */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {/* RunFlat */}
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -342,6 +359,18 @@ export function TireFilters({ onFilterChange, onSearch, searchMode, filters: ext
                   />
                   <Label className={`${textClass} text-sm`}>
                     {language === 'fi' ? 'Varastossa' : 'In Stock'}
+                  </Label>
+                </div>
+
+                {/* Retreaded */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={filters.includeRetreaded}
+                    onCheckedChange={(checked) => updateFilter('includeRetreaded', checked)}
+                    className="data-[state=checked]:bg-[#FF6B35]"
+                  />
+                  <Label className={`${textClass} text-sm`}>
+                    {language === 'fi' ? 'Pinnoitetut' : 'Retreaded'}
                   </Label>
                 </div>
               </div>

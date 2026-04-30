@@ -2,11 +2,6 @@ import type { ReactNode } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { ProductCMS, TireRow } from './types';
 
-interface SupplierOption {
-  code: string;
-  label: string;
-}
-
 interface TiresPricingSectionProps {
   costAfterFeesExVat: number | null;
   children?: ReactNode;
@@ -21,12 +16,10 @@ interface TiresPricingSectionProps {
   selectedTire: TireRow | null;
   shippingFeeExVat: number | null;
   supplierMarkupAmount: string;
-  supplierMarkupSupplier: string;
-  supplierOptions: SupplierOption[];
+  supplierMarkupPercent: string;
   toPriceWithVat: (priceWithoutVat: number | null | undefined) => number | null;
-  getSupplierLabel: (code: string | null | undefined) => string;
   setSupplierMarkupAmount: (value: string) => void;
-  setSupplierMarkupSupplier: (value: string) => void;
+  setSupplierMarkupPercent: (value: string) => void;
 }
 
 export function TiresPricingSection({
@@ -34,7 +27,6 @@ export function TiresPricingSection({
   children,
   editData,
   effectiveDraftPrice,
-  getSupplierLabel,
   isDark,
   language,
   onApplySupplierMarkup,
@@ -44,14 +36,70 @@ export function TiresPricingSection({
   selectedTire,
   shippingFeeExVat,
   setSupplierMarkupAmount,
-  setSupplierMarkupSupplier,
+  setSupplierMarkupPercent,
   supplierMarkupAmount,
-  supplierMarkupSupplier,
-  supplierOptions,
+  supplierMarkupPercent,
   toPriceWithVat,
 }: TiresPricingSectionProps) {
   const formatMoney = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : `€${value.toFixed(2)}`;
+  const baseEffectivePrice = costAfterFeesExVat ?? originalApiPrice;
+  const hasPriceOverride = editData.price_override_eur !== null && editData.price_override_eur !== undefined;
+  const hasPercentAdjustmentInput = supplierMarkupPercent.trim() !== '' && Number.isFinite(Number(supplierMarkupPercent));
+  const hasAmountAdjustmentInput = supplierMarkupAmount.trim() !== '' && Number.isFinite(Number(supplierMarkupAmount));
+  const hasActiveDraftPriceAdjustment = (hasPercentAdjustmentInput || hasAmountAdjustmentInput) && !editData.promo_enabled;
+  const showOverridePreview =
+    hasActiveDraftPriceAdjustment &&
+    hasPriceOverride &&
+    baseEffectivePrice !== null &&
+    baseEffectivePrice !== undefined &&
+    Number(editData.price_override_eur) !== Number(baseEffectivePrice);
+  const finalBasePriceWithVat = toPriceWithVat(baseEffectivePrice ?? null);
+  const finalDraftPriceWithVat = toPriceWithVat(effectiveDraftPrice ?? null);
+  const priceTextClass = isDark ? 'text-gray-200' : 'text-gray-800';
+  const applyDraftPriceAdjustment = (nextPercent: string, nextAmount: string) => {
+    if (!selectedTire) return;
+    if (baseEffectivePrice === null || baseEffectivePrice === undefined || !Number.isFinite(Number(baseEffectivePrice))) return;
+
+    const percentText = nextPercent.trim();
+    const amountText = nextAmount.trim();
+    if (percentText === '' && amountText === '') {
+      onEditDataChange((prev) => ({ ...prev, price_override_eur: null }));
+      return;
+    }
+
+    const percent = percentText === '' ? 0 : Number(percentText);
+    const amount = amountText === '' ? 0 : Number(amountText);
+    if (!Number.isFinite(percent) || !Number.isFinite(amount)) return;
+
+    const nextPrice = Number(baseEffectivePrice) * (1 + percent / 100) + amount;
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) return;
+
+    onEditDataChange((prev) => ({
+      ...prev,
+      price_override_eur: Math.round(nextPrice * 100) / 100,
+    }));
+  };
+  const renderPriceValue = (
+    currentValue: number | null | undefined,
+    originalValue?: number | null,
+    highlight = false,
+  ) => {
+    if (highlight && originalValue !== null && originalValue !== undefined && currentValue !== null && currentValue !== undefined) {
+      return (
+        <span className="flex flex-wrap items-center justify-end gap-2 text-right">
+          <span className={`font-medium line-through ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            {formatMoney(originalValue)}
+          </span>
+          <span className="rounded-md bg-orange-500/15 px-2 py-1 font-semibold text-orange-500">
+            {formatMoney(currentValue)}
+          </span>
+        </span>
+      );
+    }
+
+    return <span className={`font-semibold ${priceTextClass}`}>{formatMoney(currentValue)}</span>;
+  };
 
   return (
     <div>
@@ -99,79 +147,26 @@ export function TiresPricingSection({
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
               {language === 'fi' ? 'Nykyinen voimassa oleva hinta (ilman ALV):' : 'Current effective price (excl. VAT):'}
             </span>
-            <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-              {formatMoney(effectiveDraftPrice)}
-            </span>
+            {renderPriceValue(effectiveDraftPrice, baseEffectivePrice, showOverridePreview)}
           </div>
           <div className="flex justify-between items-center mt-2">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
               {language === 'fi' ? 'Lopullinen voimassa oleva hinta ALV 25.5% kanssa:' : 'Final effective price incl. VAT 25.5%:'}
             </span>
-            <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-              {formatMoney(toPriceWithVat(effectiveDraftPrice ?? null))}
-            </span>
+            {renderPriceValue(finalDraftPriceWithVat, finalBasePriceWithVat, showOverridePreview)}
           </div>
-        </div>
-
-        <div>
-          <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Hinnan ohitus (€)' : 'Price Override (€)'}
-          </label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={editData.price_override_eur ?? ''}
-            onChange={(e) =>
-              onEditDataChange((prev) => ({
-                ...prev,
-                price_override_eur: e.target.value ? parseFloat(e.target.value) : null,
-              }))
-            }
-            placeholder={language === 'fi' ? 'Jätä tyhjäksi käyttääksesi perushintaa' : 'Leave empty to use base price'}
-            className={`w-full px-3 py-2 rounded-lg border ${
-              isDark
-                ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-            }`}
-          />
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi'
-                ? 'Tyhjä arvo palauttaa alkuperäisen API-hinnan.'
-                : 'Leaving this empty restores the original API price.'}
-            </p>
-            {editData.price_override_eur !== null && editData.price_override_eur !== undefined && (
-              <button
-                type="button"
-                onClick={() => onEditDataChange((prev) => ({ ...prev, price_override_eur: null }))}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  isDark
-                    ? 'border-white/10 text-gray-200 hover:bg-white/10'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                {language === 'fi' ? 'Palauta alkuperäinen API-hinta' : 'Restore original API price'}
-              </button>
-            )}
-          </div>
-          <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
-            €{(toPriceWithVat(editData.price_override_eur ?? null) ?? 0).toFixed(2)}
-          </p>
         </div>
 
         <div className={`rounded-lg border p-4 space-y-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <h4 className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Toimittajan hintaero' : 'Supplier markup or discount'}
+                {language === 'fi' ? 'Hintaero tälle renkaalle' : 'Markup or discount by'}
               </h4>
               <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                 {language === 'fi'
-                  ? `Nykyinen toimittaja: ${getSupplierLabel(selectedTire?.supplier_code_best)}`
-                  : `Current supplier: ${getSupplierLabel(selectedTire?.supplier_code_best)}`}
+                  ? 'Koskee vain tätä rengasta. Massahinnoittelu tehdään erillisestä näkymäasetuksesta.'
+                  : 'Applies only to this tire. Bulk pricing stays in the dedicated view settings action.'}
               </p>
             </div>
             <button
@@ -179,45 +174,44 @@ export function TiresPricingSection({
               onClick={onApplySupplierMarkup}
               className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
             >
-              {language === 'fi' ? 'Lisää API-hintaan' : 'Apply to API price'}
+              {language === 'fi' ? 'Käytä' : 'Apply'}
             </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_1fr]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
               <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi' ? 'Toimittaja' : 'Supplier'}
+                {language === 'fi' ? 'Prosentti (%)' : 'Percent (%)'}
               </label>
-              <select
-                value={supplierMarkupSupplier}
-                onChange={(e) => setSupplierMarkupSupplier(e.target.value)}
+              <input
+                type="number"
+                step="0.01"
+                value={supplierMarkupPercent}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setSupplierMarkupPercent(nextValue);
+                  applyDraftPriceAdjustment(nextValue, supplierMarkupAmount);
+                }}
+                placeholder="0"
                 className={`w-full px-3 py-2 rounded-lg border ${
                   isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                 }`}
-              >
-                {supplierOptions.map((option) => (
-                  <option key={option.code} value={option.code}>
-                    {option.label}
-                  </option>
-                ))}
-                {selectedTire?.supplier_code_best &&
-                  !supplierOptions.some((option) => option.code === String(selectedTire.supplier_code_best).trim().toUpperCase()) && (
-                    <option value={String(selectedTire.supplier_code_best).trim().toUpperCase()}>
-                      {getSupplierLabel(selectedTire.supplier_code_best)}
-                    </option>
-                  )}
-              </select>
+              />
             </div>
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi' ? 'Hintaero (€)' : 'Markup or discount (€)'}
+                {language === 'fi' ? 'Summa (€)' : 'Amount (€)'}
               </label>
               <input
                 type="number"
                 step="0.01"
                 value={supplierMarkupAmount}
-                onChange={(e) => setSupplierMarkupAmount(e.target.value)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setSupplierMarkupAmount(nextValue);
+                  applyDraftPriceAdjustment(supplierMarkupPercent, nextValue);
+                }}
                 className={`w-full px-3 py-2 rounded-lg border ${
                   isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                 }`}
@@ -227,9 +221,27 @@ export function TiresPricingSection({
 
           <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {language === 'fi'
-              ? 'Tämä asettaa hinnan ohituksen muotoon API-hinta + hintaero. Negatiivinen arvo laskee hintaa.'
-              : 'This sets the price override as API price plus a markup or discount. Negative values lower the price.'}
+              ? 'Lasketaan nykyisestä API-kustannuksesta. Negatiivinen prosentti tai summa laskee hintaa.'
+              : 'Calculated from the current API cost. Negative percent or amount lowers the price.'}
           </p>
+          {hasPriceOverride && (
+            <button
+              type="button"
+              onClick={() => {
+                setSupplierMarkupAmount('');
+                setSupplierMarkupPercent('');
+                onEditDataChange((prev) => ({ ...prev, price_override_eur: null }));
+              }}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                isDark
+                  ? 'border-white/10 text-gray-200 hover:bg-white/10'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {language === 'fi' ? 'Palauta API-hinta' : 'Restore API price'}
+            </button>
+          )}
         </div>
 
         <div className="border-t pt-4 border-white/10">

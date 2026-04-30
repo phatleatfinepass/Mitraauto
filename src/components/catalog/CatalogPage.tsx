@@ -37,6 +37,7 @@ export interface CatalogProduct {
   supplier_name?: string;
   delivery_days?: string;
   pricing_rules?: ProductPricingRules | null;
+  ean?: string;
   // Tire specific
   size_text?: string;
   eu_fuel?: string;
@@ -72,6 +73,14 @@ const ITEMS_PER_PAGE = 24;
 
 function getFallbackImage(brand?: string, model?: string) {
   return buildProductImageFallback(brand, model);
+}
+
+function getCatalogProductHref(product: CatalogProduct) {
+  const identifier = product.product_type === 'tire' && product.seo_slug
+    ? product.seo_slug
+    : product.id;
+
+  return `/catalog/${product.product_type}/${identifier}`;
 }
 
 function safeParseJson(value: unknown): unknown {
@@ -515,6 +524,7 @@ function mapTireRow(row: any, fallbackSize?: string): CatalogProduct {
     best_image_url: row.best_image_url || getFallbackImage(row.brand, row.model),
     in_stock: !!row.in_stock,
     product_type: 'tire',
+    ean: row.ean ?? row.derived_ean ?? undefined,
   };
 }
 
@@ -611,6 +621,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   const loadIndex = normalizeLoadIndex((row as any).load_index) || normalizeLoadIndex(sizeParts.loadIndex);
   const speedRating = normalizeSpeedRating((row as any).speed_rating ?? (row as any).speed_index) || normalizeSpeedRating(sizeParts.speedRating);
   const seasonNormalized = String(row.season ?? '').toLowerCase();
+  const ean = String((row as any).ean ?? (row as any).derived_ean ?? '').trim() || undefined;
   const evReady = Boolean((row as any).ev_ready) || hasAnyTag(tags, ['ev', 'electric']);
   const threepmsf = Boolean((row as any).threepmsf) || hasAnyTag(tags, ['3pmsf', 'snowflake', 'alpine']);
   const winterApproved = Boolean((row as any).winter_approved)
@@ -632,6 +643,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
           loadIndex,
           speedRating,
           season: row.season,
+          ean,
           supplierCodeBest: supplierCode,
           runflat: row.runflat,
           xlReinforced: row.xl_reinforced,
@@ -660,6 +672,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     supplier_name: supplierName,
     delivery_days: deliveryDays,
     size_text: productType === 'tire' ? formatCanonicalTireSize(row.size_string, loadIndex, speedRating) : (row.size_string ?? undefined),
+    ean,
     best_price_eur: priceEur,
     best_image_url: heroImage,
     in_stock: row.in_stock ?? false,
@@ -1018,6 +1031,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                   >
                     <RimCard
                       product={product}
+                      href={getCatalogProductHref(product)}
                       index={index}
                       onClick={onProductSelect ? () => handleProductClick(product) : undefined}
                       onAddToCart={(e) => handleAddToCart(product, e)}
@@ -1214,6 +1228,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 >
                   <TireCard
                     product={product}
+                    href={getCatalogProductHref(product)}
                     index={index}
                     onClick={onProductSelect ? () => handleProductClick(product) : undefined}
                     onAddToCart={(e) => handleAddToCart(product, e)}
