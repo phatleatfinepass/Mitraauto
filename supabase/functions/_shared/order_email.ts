@@ -1,5 +1,5 @@
 import { buildManageUrl, sendManagedBookingMail, supabaseAdmin, type SupportedLanguage } from "./booking.ts";
-import { ensureOrderEReceipt, markEReceiptSent } from "./ereceipt.ts";
+import { ensureOrderInvoiceDocument } from "./invoice_document.ts";
 
 type OrderRow = {
   id: string;
@@ -287,7 +287,7 @@ function parseRimDiameter(size: string) {
 function tireWorkServiceForOrder(order: OrderRow) {
   const diameters = orderItems(order)
     .map((item: any) => parseRimDiameter(`${itemSize(item)} ${itemTitle(item)}`))
-    .filter((value): value is number => value !== null);
+    .filter((value: number | null): value is number => value !== null);
   const maxDiameter = diameters.length > 0 ? Math.max(...diameters) : null;
 
   if (maxDiameter === null) return "tire-work-up-to-17";
@@ -486,7 +486,7 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   const paid = isOrderPaid(order);
   const language = orderLanguage(order);
   const installToken = paid ? await issueInstallToken(order) : null;
-  const eReceipt = paid ? await ensureOrderEReceipt(order) : null;
+  const invoiceReceipt = paid ? await ensureOrderInvoiceDocument(order) : null;
   const installUrl = installToken
     ? `${SITE_URL}${language === "en" ? "/en" : ""}/?book_install=1&install_token=${encodeURIComponent(installToken)}`
     : "";
@@ -524,7 +524,7 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     `${language === "fi" ? "Toimitus" : "Shipping"}: ${shipping}`,
     `${language === "fi" ? "ALV" : "VAT"}: ${vat}`,
     `${language === "fi" ? "Yhteensä" : "Total"}: ${total}`,
-    paid && eReceipt ? `${receiptButtonLabel}: ${eReceipt.url}` : "",
+    paid && invoiceReceipt ? `${receiptButtonLabel}: ${invoiceReceipt.url}` : "",
     "",
     paid ? `${buttonLabel}: ${installUrl}` : `${buttonLabel}: ${retryUrl}`,
   ].filter(Boolean).join("\n");
@@ -547,7 +547,7 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     `</table>`,
     `<div style="margin-top:22px;">`,
     `<a href="${escapeHtml(paid ? installUrl : retryUrl)}" style="${paid ? "background:#ff6b00;color:#ffffff;" : "background:#111827;color:#ffffff;"}padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 8px 8px 0;">${escapeHtml(buttonLabel)}</a>`,
-    paid && eReceipt ? `<a href="${escapeHtml(eReceipt.url)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 0 8px 0;">${escapeHtml(receiptButtonLabel)}</a>` : "",
+    paid && invoiceReceipt ? `<a href="${escapeHtml(invoiceReceipt.url)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 0 8px 0;">${escapeHtml(receiptButtonLabel)}</a>` : "",
     `</div>`,
     `<p style="margin-top:20px;color:#6b7280;font-size:14px;">${escapeHtml(
       paid
@@ -595,15 +595,20 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     sent_at: sentAt,
     payload: { order_mail_type: paid ? "payment_paid" : "payment_not_confirmed" },
   });
-  if (paid && eReceipt) {
-    await markEReceiptSent(eReceipt.receipt.id, {
-      order_id: order.id,
-      order_email_message_id: result.id,
-      provider_thread_id: result.threadId,
+  if (paid && invoiceReceipt?.document?.id) {
+    await supabaseAdmin.from("invoice_events").insert({
+      document_id: invoiceReceipt.document.id,
+      event_type: "order_confirmation_linked",
+      actor: "edge_function",
+      payload: {
+        order_id: order.id,
+        order_email_message_id: result.id,
+        provider_thread_id: result.threadId,
+      },
     });
   }
 
-  return { ok: true, orderId: order.id, installUrl: paid ? installUrl : null, receiptUrl: eReceipt?.url ?? null };
+  return { ok: true, orderId: order.id, installUrl: paid ? installUrl : null, receiptUrl: invoiceReceipt?.url ?? null };
 }
 
 export async function createInstallBookingFromOrder(token: string, body: Record<string, unknown>) {

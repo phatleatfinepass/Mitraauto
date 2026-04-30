@@ -12,6 +12,8 @@ interface OrderRow {
   paytrail_status: string | null;
   paytrail_transaction_id: string | null;
   paytrail_reference: string | null;
+  email?: string | null;
+  phone?: string | null;
   customer_email: string | null;
   customer_phone: string | null;
   customer_first_name: string | null;
@@ -1327,10 +1329,8 @@ export function OrdersCMSPage() {
         vat_cents: vatCents,
         total_cents: totalCents,
         grand_total_cents: totalCents,
-        customer_first_name: createForm.firstName || null,
-        customer_last_name: createForm.lastName || null,
-        customer_email: createForm.email || null,
-        customer_phone: createForm.phone || null,
+        email: createForm.email || null,
+        phone: createForm.phone || null,
         cart_snapshot: snapshot,
       };
 
@@ -1483,12 +1483,14 @@ export function OrdersCMSPage() {
       shipping.last_name ??
       null;
     const email =
+      order.email ??
       order.customer_email ??
       customer.email ??
       billing.email ??
       shipping.email ??
       null;
     const phone =
+      order.phone ??
       order.customer_phone ??
       customer.phone ??
       billing.phone ??
@@ -1550,7 +1552,7 @@ export function OrdersCMSPage() {
       const applyCommonFilters = (query: any) => query;
 
       const fullSelect =
-        'id, created_at, status, paytrail_status, paytrail_transaction_id, paytrail_reference, customer_email, customer_phone, customer_first_name, customer_last_name, grand_total_cents, cart_snapshot';
+        'id, created_at, status, paytrail_status, paytrail_transaction_id, paytrail_reference, email, phone, grand_total_cents, cart_snapshot';
       const fallbackSelect =
         'id, created_at, status, paytrail_status, paytrail_transaction_id, paytrail_reference, grand_total_cents, cart_snapshot';
 
@@ -1569,10 +1571,8 @@ export function OrdersCMSPage() {
           fullQuery = fullQuery.or(
             [
               `id.ilike.%${trimmedSearch}%`,
-              `customer_email.ilike.%${trimmedSearch}%`,
-              `customer_phone.ilike.%${trimmedSearch}%`,
-              `customer_first_name.ilike.%${trimmedSearch}%`,
-              `customer_last_name.ilike.%${trimmedSearch}%`,
+              `email.ilike.%${trimmedSearch}%`,
+              `phone.ilike.%${trimmedSearch}%`,
               `paytrail_reference.ilike.%${trimmedSearch}%`,
               `paytrail_transaction_id.ilike.%${trimmedSearch}%`,
             ].join(',')

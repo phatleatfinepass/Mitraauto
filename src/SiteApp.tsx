@@ -93,6 +93,9 @@ const RimsCMSPage = lazy(() =>
 const OrdersCMSPage = lazy(() =>
   import('./components/cms/OrdersCMSPage').then((module) => ({ default: module.OrdersCMSPage }))
 );
+const InvoicesCMSPage = lazy(() =>
+  import('./components/cms/InvoicesCMSPage').then((module) => ({ default: module.InvoicesCMSPage }))
+);
 
 type ParsedTireSize = {
   width?: number;
@@ -103,7 +106,7 @@ type ParsedTireSize = {
   speedRating?: string;
 };
 
-type CmsTab = 'rescue' | 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'future';
+type CmsTab = 'rescue' | 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'invoices' | 'future';
 const BOOKING_STATUS_HANDOFF = 'handoff';
 
 function resolveCmsTabFromHash(hash?: string): CmsTab {
@@ -123,6 +126,10 @@ function resolveCmsTabFromHash(hash?: string): CmsTab {
 
   if (normalized === 'orders') {
     return 'orders';
+  }
+
+  if (normalized === 'invoices') {
+    return 'invoices';
   }
 
   if (normalized === 'future') {
@@ -495,7 +502,7 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'cms-invoices' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -726,6 +733,11 @@ function HomePage() {
         normalizedPath === '/cms-orders'
       ) {
         transitionNavigationState('cms-orders');
+      } else if (
+        normalizedPath === '/cms/invoices' ||
+        normalizedPath === '/cms-invoices'
+      ) {
+        transitionNavigationState('cms-invoices');
       } 
       
       // Legal routes
@@ -897,6 +909,8 @@ function HomePage() {
         currentPath === '/cms' ||
         currentPath === '/cms/orders' ||
         currentPath === '/cms-orders' ||
+        currentPath === '/cms/invoices' ||
+        currentPath === '/cms-invoices' ||
         currentPath === '/admin/schedule'
           ? currentPath
           : '/cms'
@@ -931,7 +945,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-tire-conflicts', 'cms-rims', 'cms-orders', 'cms-beta'];
+      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-tire-conflicts', 'cms-rims', 'cms-orders', 'cms-invoices', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         startTransition(() => {
           setCurrentPage('home');
@@ -1069,6 +1083,7 @@ function HomePage() {
     { id: 'catalog-tires' as const, label: 'Tire Catalog', description: 'Edit tire content' },
     { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
     { id: 'orders' as const, label: 'Orders', description: 'Track customer purchases' },
+    { id: 'invoices' as const, label: 'Invoice', description: 'Receipts and invoices' },
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
@@ -1275,6 +1290,12 @@ function HomePage() {
               <OrdersCMSPage />
             </Suspense>
           </CmsGuard>
+        ) : currentPage === 'cms-invoices' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded}>
+            <Suspense fallback={<CmsRouteFallback />}>
+              <InvoicesCMSPage />
+            </Suspense>
+          </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
           <>
@@ -1293,27 +1314,22 @@ function HomePage() {
                   </p>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+                <div className="overflow-x-auto rounded-lg border bg-card p-1 shadow-sm">
+                  <div className="grid min-w-[840px] grid-cols-7 gap-1">
                     {cmsTabs.map((tab) => {
                       const isActive = cmsTab === tab.id;
                       return (
                         <button
                           key={tab.id}
                           onClick={() => handleCmsTabChange(tab.id)}
-                          className={`flex min-w-[180px] items-start gap-2 rounded-md px-4 py-3 text-left transition-colors ${
+                          className={`flex min-h-[58px] min-w-0 items-center justify-center rounded-md px-3 py-2 text-center transition-colors ${
                             isActive
                               ? 'bg-primary text-primary-foreground shadow-sm'
                               : 'text-muted-foreground hover:bg-muted'
                           }`}
                         >
-                          <div className="flex flex-col">
-                            <span className="font-semibold">{tab.label}</span>
-                            {tab.description ? (
-                              <span className={`text-xs ${isActive ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>
-                                {tab.description}
-                              </span>
-                            ) : null}
+                          <div className="min-w-0">
+                            <span className="block truncate text-sm font-semibold">{tab.label}</span>
                           </div>
                         </button>
                       );
@@ -1341,6 +1357,10 @@ function HomePage() {
                   ) : cmsTab === 'orders' ? (
                     <Suspense fallback={<CmsRouteFallback />}>
                       <OrdersCMSPage />
+                    </Suspense>
+                  ) : cmsTab === 'invoices' ? (
+                    <Suspense fallback={<CmsRouteFallback />}>
+                      <InvoicesCMSPage />
                     </Suspense>
                   ) : (
                     <div className="space-y-2 p-8 text-muted-foreground">
