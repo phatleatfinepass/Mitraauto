@@ -55,6 +55,7 @@ export type ProductSearchRow = {
   final_is_hidden?: boolean | null;
   ean?: string | null;
   derived_ean?: string | null;
+  manufacture_year?: number | null;
   pricing_rules?: ProductPricingRules | null;
   tyre_label_section?: TyreLabelSectionData;
 };
@@ -132,6 +133,7 @@ const PRODUCT_SEARCH_BASE_SELECT = [
 const WEBSHOP_TIRE_PUBLIC_SELECT = [
   PRODUCT_SEARCH_BASE_SELECT.replace(',final_is_hidden', ''),
   'gallery',
+  'manufacture_year',
   'is_visible',
   'publish_status',
 ].join(',');

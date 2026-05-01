@@ -12,7 +12,11 @@ import type {
 export const emptyLine = (): DraftLine => ({
   id: crypto.randomUUID(),
   description: '',
+  descriptionFi: '',
+  descriptionEn: '',
   quantity: '1',
+  unitLabel: 'kpl',
+  unitLabelEn: 'pcs',
   unitGross: '0.00',
   vatRate: '25.5',
 });

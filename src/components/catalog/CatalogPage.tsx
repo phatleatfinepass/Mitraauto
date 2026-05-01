@@ -38,6 +38,7 @@ export interface CatalogProduct {
   delivery_days?: string;
   pricing_rules?: ProductPricingRules | null;
   ean?: string;
+  manufacture_year?: number;
   // Tire specific
   size_text?: string;
   eu_fuel?: string;
@@ -622,6 +623,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   const speedRating = normalizeSpeedRating((row as any).speed_rating ?? (row as any).speed_index) || normalizeSpeedRating(sizeParts.speedRating);
   const seasonNormalized = String(row.season ?? '').toLowerCase();
   const ean = String((row as any).ean ?? (row as any).derived_ean ?? '').trim() || undefined;
+  const manufactureYear = parseNumber((row as any).manufacture_year);
   const evReady = Boolean((row as any).ev_ready) || hasAnyTag(tags, ['ev', 'electric']);
   const threepmsf = Boolean((row as any).threepmsf) || hasAnyTag(tags, ['3pmsf', 'snowflake', 'alpine']);
   const winterApproved = Boolean((row as any).winter_approved)
@@ -673,6 +675,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     delivery_days: deliveryDays,
     size_text: productType === 'tire' ? formatCanonicalTireSize(row.size_string, loadIndex, speedRating) : (row.size_string ?? undefined),
     ean,
+    manufacture_year: productType === 'tire' ? manufactureYear : undefined,
     best_price_eur: priceEur,
     best_image_url: heroImage,
     in_stock: row.in_stock ?? false,

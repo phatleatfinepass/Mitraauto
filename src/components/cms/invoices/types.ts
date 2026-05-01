@@ -82,7 +82,11 @@ export type SourceRecord = {
 export type DraftLine = {
   id: string;
   description: string;
+  descriptionFi?: string;
+  descriptionEn?: string;
   quantity: string;
+  unitLabel: string;
+  unitLabelEn?: string;
   unitGross: string;
   vatRate: string;
 };

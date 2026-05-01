@@ -178,8 +178,17 @@ function receiptWorkLines(lines: string[]) {
   return chunks;
 }
 
+function unitLabelEn(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "kpl") return "pcs";
+  if (normalized === "l") return "l";
+  if (normalized === "pari") return "pair";
+  if (normalized === "sarja") return "set";
+  return normalized || "pcs";
+}
+
 function parseReceiptLines(lines: string[]) {
-  const result: Array<{ description: string; quantity: number; unit_gross_eur: number; vat_rate: number }> = [];
+  const result: Array<{ description: string; description_en?: string; quantity: number; unit_label: string; unit_label_en: string; unit_gross_eur: number; vat_rate: number }> = [];
   const candidateLines = receiptWorkLines(lines)
     .map((line) => line.trim())
     .filter((line) => !isIgnoredReceiptLine(line));
@@ -206,6 +215,7 @@ function parseReceiptLines(lines: string[]) {
 
     const quantityMatch = line.match(/(\d+,\d{2})\s*(kpl|l|pari|sarja)\b/i);
     const quantity = quantityMatch ? moneyToNumber(quantityMatch[1]) : 1;
+    const unitLabel = quantityMatch ? quantityMatch[2].toLowerCase() : "kpl";
     const lineBeforeQuantity = quantityMatch ? line.slice(0, quantityMatch.index).trim() : line.replace(/\d+,\d{2}\s*€/g, "").trim();
     const lineDescription = lineBeforeQuantity
       .replace(/\b\d{2}-\d{4,5}\b/g, "")
@@ -227,6 +237,8 @@ function parseReceiptLines(lines: string[]) {
       result.push({
         description,
         quantity: quantity > 0 ? quantity : 1,
+        unit_label: unitLabel,
+        unit_label_en: unitLabelEn(unitLabel),
         unit_gross_eur: Number((totalGross / (quantity > 0 ? quantity : 1)).toFixed(2)),
         vat_rate: 25.5,
       });
@@ -248,14 +260,15 @@ function buildWorkSummaryFi(lines: string[]) {
   return clean.slice(0, 5000);
 }
 
-async function translateFiToEn(text: string) {
+async function translateFiToEnMany(texts: string[]) {
   const key = Deno.env.get("GOOGLE_TRANSLATE_API_KEY") ?? Deno.env.get("GOOGLE_CLOUD_TRANSLATE_API_KEY");
-  if (!key || !text.trim()) return "";
+  const cleanTexts = texts.map((text) => String(text ?? "").trim());
+  if (!key || cleanTexts.every((text) => !text)) return cleanTexts.map(() => "");
   const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      q: text,
+      q: cleanTexts,
       source: "fi",
       target: "en",
       format: "text",
@@ -264,9 +277,14 @@ async function translateFiToEn(text: string) {
   const payload = await response.json();
   if (!response.ok) {
     console.error("Google Translate failed", payload);
-    return "";
+    return cleanTexts.map(() => "");
   }
-  return String(payload?.data?.translations?.[0]?.translatedText ?? "").trim();
+  const translations = Array.isArray(payload?.data?.translations) ? payload.data.translations : [];
+  return cleanTexts.map((_, index) => String(translations[index]?.translatedText ?? "").trim());
+}
+
+async function translateFiToEn(text: string) {
+  return (await translateFiToEnMany([text]))[0] ?? "";
 }
 
 async function extractPdfText(dataUrl: string) {
@@ -317,7 +335,13 @@ export async function parseTextReceipt(dataUrl: string, fileName: string) {
   const saleDateRaw = getRegexValue(normalizedText, /Myyntipäivä\s+([^\n]+)/);
   const licensePlate = cleanLicensePlate(valueAfterLabel(lines, "Rekisterinumero", stopLabels));
   const workSummaryFi = buildWorkSummaryFi(lines);
-  const workSummaryEn = await translateFiToEn(workSummaryFi);
+  const parsedLines = parseReceiptLines(lines);
+  const translations = await translateFiToEnMany([workSummaryFi, ...parsedLines.map((line) => line.description)]);
+  const workSummaryEn = translations[0] ?? "";
+  const translatedLines = parsedLines.map((line, index) => ({
+    ...line,
+    description_en: translations[index + 1] ?? "",
+  }));
   const phoneMatches = [...normalizedText.matchAll(/^Puh:\s*([^\n]+)/gm)].map((match) => match[1].trim());
 
   return {
@@ -357,7 +381,7 @@ export async function parseTextReceipt(dataUrl: string, fileName: string) {
     work_summary_fi: workSummaryFi,
     work_summary_en: workSummaryEn,
     notes: `Imported without AI from ${fileName}`,
-    lines: parseReceiptLines(lines),
+    lines: translatedLines,
   };
 }
 

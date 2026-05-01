@@ -38,6 +38,7 @@ export interface ProductSearchTire {
   final_title: string | null;
   final_price_eur: number | null;
   final_is_hidden: boolean;
+  manufacture_year?: number | null;
   price?: number | null;
   wholesale_price_ex_vat?: number | null;
   recycling_fee_ex_vat?: number | null;

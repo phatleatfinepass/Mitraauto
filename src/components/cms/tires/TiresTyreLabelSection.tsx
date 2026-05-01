@@ -669,6 +669,15 @@ export function TiresTyreLabelSection({
                 <option value="all_season">{language === 'fi' ? 'Ympärivuotinen' : 'All Season'}</option>
               </SelectInput>
             </div>
+            <div>
+              <FieldLabel isDark={isDark}>{language === 'fi' ? 'DOT-vuosi' : 'DOT year'}</FieldLabel>
+              <div className={`rounded-lg border px-3 py-2 text-sm ${
+                isDark ? 'border-white/20 bg-white/5 text-white' : 'border-gray-300 bg-gray-50 text-gray-900'
+              }`}>
+                {selectedTire.manufacture_year ?? (language === 'fi' ? 'Ei ilmoitettu' : 'Not provided')}
+              </div>
+              <RegulationNote isDark={isDark} text={language === 'fi' ? 'Normalisoitu toimittajan DOT-kentästä.' : 'Normalized from the supplier DOT field.'} />
+            </div>
             <div className="md:col-span-2">
               <FieldLabel isDark={isDark}>{language === 'fi' ? 'Koko' : 'Size'}</FieldLabel>
               <div className="grid grid-cols-5 gap-2">

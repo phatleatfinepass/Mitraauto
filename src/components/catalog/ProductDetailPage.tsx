@@ -63,6 +63,7 @@ export interface TireProduct {
   three_pmsf?: boolean;
   tyre_label_section?: TyreLabelSectionData;
   ean?: string;
+  manufacture_year?: number;
   best_price_eur?: number;
   seo_slug?: string;
   pricing_rules?: ProductPricingRules | null;
@@ -830,6 +831,7 @@ export function ProductDetailPage({
           { label: t('loadIndex'), value: product.load_index || null },
           { label: t('speedIndex'), value: product.speed_rating || null },
           { label: t('season'), value: getSeasonLabel(product.season) },
+          { label: language === 'fi' ? 'DOT-vuosi' : 'DOT year', value: product.manufacture_year ? String(product.manufacture_year) : null },
           { label: t('studded'), value: product.studded ? (language === 'fi' ? 'Kyllä' : 'Yes') : 'No' },
           { label: t('fuelEfficiency'), value: product.fuel_efficiency?.toUpperCase() || null },
           { label: t('wetGrip'), value: product.wet_grip?.toUpperCase() || null },

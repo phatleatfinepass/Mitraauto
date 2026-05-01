@@ -444,6 +444,7 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
         euNoiseDb: typeof product.eu_noise === 'number' ? product.eu_noise : undefined,
       }),
       ean: product.ean,
+      manufacture_year: product.manufacture_year,
       best_price_eur: product.best_price_eur,
       best_image_url: product.best_image_url,
       images: detailImages,

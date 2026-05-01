@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, FileText, RefreshCcw, Save, Search, Settings, Trash2, Upload } from 'lucide-react';
+import { ChevronDown, FileText, Plus, RefreshCcw, Save, Search, Settings, Trash2, Upload } from 'lucide-react';
 import { supabase } from '../../utils/supabase/client';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
@@ -41,7 +41,10 @@ import { Badge, Button, Input, Select, TextArea } from './invoices/ui';
 
 type ImportedInvoiceLine = {
   description?: string;
+  description_en?: string;
   quantity?: number;
+  unit_label?: string;
+  unit_label_en?: string;
   unit_gross_eur?: number;
   vat_rate?: number;
 };
@@ -222,6 +225,15 @@ function normalizeImportedDate(value: unknown) {
   return `${fullYear.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
+function translatedUnitLabel(value: unknown) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'kpl') return 'pcs';
+  if (normalized === 'l') return 'l';
+  if (normalized === 'pari') return 'pair';
+  if (normalized === 'sarja') return 'set';
+  return normalized || 'pcs';
+}
+
 function linesFromImportedDocument(imported: ImportedInvoiceDocument): DraftLine[] {
   const lines = Array.isArray(imported.lines) ? imported.lines : [];
   const draftLines = lines
@@ -229,7 +241,11 @@ function linesFromImportedDocument(imported: ImportedInvoiceDocument): DraftLine
     .map((line) => ({
       id: crypto.randomUUID(),
       description: String(line.description ?? '').trim(),
+      descriptionFi: String(line.description ?? '').trim(),
+      descriptionEn: String(line.description_en ?? '').trim(),
       quantity: String(Number.isFinite(line.quantity) && Number(line.quantity) > 0 ? line.quantity : 1),
+      unitLabel: String(line.unit_label ?? 'kpl').trim() || 'kpl',
+      unitLabelEn: String(line.unit_label_en ?? translatedUnitLabel(line.unit_label)).trim() || 'pcs',
       unitGross: (Number(line.unit_gross_eur ?? 0) || 0).toFixed(2),
       vatRate: String(Number.isFinite(line.vat_rate) ? line.vat_rate : 25.5),
     }));
@@ -400,7 +416,11 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
           return {
             id: crypto.randomUUID(),
             description: description || source.title,
+            descriptionFi: description || source.title,
+            descriptionEn: '',
             quantity: String(quantity),
+            unitLabel: 'kpl',
+            unitLabelEn: 'pcs',
             unitGross: (unitCents / 100).toFixed(2),
             vatRate: '25.5',
           };
@@ -449,7 +469,7 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
 
 export function InvoicesCMSPage() {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const ti = useCallback((key: string) => t(`invoiceCms.${key}`), [t]);
   const isDark = theme === 'dark';
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -626,7 +646,7 @@ export function InvoicesCMSPage() {
           .maybeSingle(),
         supabase
           .from('invoice_lines')
-          .select('line_number, title, quantity, unit_price_incl_vat_cents, vat_rate')
+          .select('line_number, title, quantity, unit_label, unit_price_incl_vat_cents, vat_rate, source_payload')
           .eq('document_id', source.document.id)
           .order('line_number', { ascending: true }),
         supabase
@@ -650,8 +670,16 @@ export function InvoicesCMSPage() {
       if (!linesResult.error && Array.isArray(linesResult.data) && linesResult.data.length > 0) {
         nextDraft.lines = linesResult.data.map((line: any) => ({
           id: crypto.randomUUID(),
-          description: String(line.title ?? ''),
+          description: String(
+            nextDraft.language === 'en' && line.source_payload?.description_en
+              ? line.source_payload.description_en
+              : (line.source_payload?.description_fi ?? line.title ?? '')
+          ),
+          descriptionFi: String(line.source_payload?.description_fi ?? line.title ?? ''),
+          descriptionEn: String(line.source_payload?.description_en ?? ''),
           quantity: String(line.quantity ?? '1'),
+          unitLabel: String(line.source_payload?.unit_label_fi ?? line.unit_label ?? 'kpl'),
+          unitLabelEn: String(line.source_payload?.unit_label_en ?? translatedUnitLabel(line.unit_label)),
           unitGross: ((Number(line.unit_price_incl_vat_cents ?? 0) || 0) / 100).toFixed(2),
           vatRate: String(line.vat_rate ?? 25.5),
         }));
@@ -691,7 +719,7 @@ export function InvoicesCMSPage() {
 
   const startManualDraft = () => {
     setSelectedKey('manual:new');
-    setDraft(initialDraft());
+    setDraft({ ...initialDraft(), language });
     setShowCustomerInvoiceDetails(false);
     setImportedReceiptData(null);
   };
@@ -821,7 +849,11 @@ export function InvoicesCMSPage() {
         } : null,
         lines: draftLines.map(({ line, calculated }) => ({
           description: line.description,
+          description_fi: line.descriptionFi || line.description,
+          description_en: line.descriptionEn || '',
           quantity: calculated.quantity,
+          unit_label: line.unitLabel || 'kpl',
+          unit_label_en: line.unitLabelEn || translatedUnitLabel(line.unitLabel),
           unit_gross_cents: calculated.unitGrossCents,
           unit_net_cents: calculated.unitNetCents,
           vat_rate: calculated.vatRate,
@@ -918,7 +950,7 @@ export function InvoicesCMSPage() {
           item_type: draft.sourceType === 'order' ? 'product' : 'service',
           title: line.description || 'Item',
           quantity: calculated.quantity,
-          unit_label: 'kpl',
+          unit_label: line.unitLabel || 'kpl',
           unit_price_excl_vat_cents: calculated.unitNetCents,
           unit_price_incl_vat_cents: calculated.unitGrossCents,
           vat_rate: calculated.vatRate,
@@ -929,6 +961,10 @@ export function InvoicesCMSPage() {
           source_payload: {
             source_type: draft.sourceType,
             source_id: draft.sourceId,
+            description_fi: line.descriptionFi || line.description,
+            description_en: line.descriptionEn || null,
+            unit_label_fi: line.unitLabel || 'kpl',
+            unit_label_en: line.unitLabelEn || translatedUnitLabel(line.unitLabel),
           },
         })));
         if (linesResult.error) throw linesResult.error;
@@ -1043,7 +1079,11 @@ export function InvoicesCMSPage() {
     const customer = imported.customer ?? {};
     const payment = imported.payment ?? {};
     const vehicle = imported.vehicle ?? {};
-    const nextLines = linesFromImportedDocument(imported);
+    const importedLanguage = imported.language === 'en' ? 'en' : 'fi';
+    const nextLines = linesFromImportedDocument(imported).map((line) => ({
+      ...line,
+      description: importedLanguage === 'en' && line.descriptionEn ? line.descriptionEn : (line.descriptionFi || line.description),
+    }));
     const importedNotes = formatImportedNotes(imported, fileName);
     setImportedReceiptData(imported);
 
@@ -1059,7 +1099,7 @@ export function InvoicesCMSPage() {
       customerAddressLine2: firstText(customer.address_line2, current.customerAddressLine2),
       customerPostalCode: firstText(customer.postal_code, current.customerPostalCode),
       customerCity: firstText(customer.city, current.customerCity),
-      language: imported.language === 'fi' || imported.language === 'en' ? imported.language : current.language,
+      language: importedLanguage,
       supplyDate: firstText(normalizeImportedDate(imported.supply_date), current.supplyDate),
       paymentProvider: normalizePaymentProvider(firstText(payment.provider, current.paymentProvider)),
       transactionId: firstText(payment.transaction_id, current.transactionId),
@@ -1173,6 +1213,12 @@ export function InvoicesCMSPage() {
   ];
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? ti('all');
   const customerInvoiceDetailsVisible = draft.documentType === 'invoice' || showCustomerInvoiceDetails;
+  const workspaceSourceLabel = selectedSource?.sourceType === 'booking'
+    ? ti('service')
+    : selectedSource?.sourceType === 'order'
+      ? ti('order')
+      : '';
+  const workspaceDocumentLabel = workspaceSourceLabel ? `${workspaceSourceLabel} ${ti(draft.documentType)}` : ti(draft.documentType);
 
   return (
     <div className={`min-h-[760px] rounded-[16px] p-4 sm:p-6 ${isDark ? 'bg-[#0B0D12]' : 'bg-[#FAFAFA]'}`}>
@@ -1194,9 +1240,39 @@ export function InvoicesCMSPage() {
           <Button isDark={isDark} size="sm" color="secondary" iconLeading={<Settings className="h-4 w-4" />} onClick={() => void openTemplateSettings()}>
             {ti('templateSettings')}
           </Button>
-          <Button size="sm" color="primary" onClick={startManualDraft}>
-            {ti('createDraft')}
-          </Button>
+          <div
+            role="radiogroup"
+            aria-label={ti('documentType')}
+            className={`grid h-9 grid-cols-2 rounded-md border p-1 ${
+              isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-white'
+            }`}
+          >
+            {(['receipt', 'invoice'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                role="radio"
+                aria-checked={draft.documentType === type}
+                onClick={() => setDraft((current) => ({ ...current, documentType: type }))}
+                className={`min-w-[82px] rounded px-3 text-sm font-medium transition-colors ${
+                  draft.documentType === type
+                    ? 'bg-[#F97316] text-white shadow-sm'
+                    : isDark ? 'text-gray-300 hover:bg-white/10' : 'text-[#475569] hover:bg-[#F5F5F7]'
+                }`}
+              >
+                {ti(type)}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={startManualDraft}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#F97316] bg-[#F97316] text-white transition-colors hover:bg-[#EA580C]"
+            aria-label={ti('createDraft')}
+            title={ti('createDraft')}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
@@ -1352,37 +1428,38 @@ export function InvoicesCMSPage() {
           onPaste={(event) => void handleDocumentWorkspacePaste(event)}
         >
           <div className="border-b border-inherit p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">{ti('documentWorkspace')}</h2>
-                <p className={`mt-1 text-sm ${mutedClass}`}>
-                  {selectedSource ? `${selectedSource.sourceType} ${ti('sourceRecord')} ${selectedSource.sourceId ?? ''}` : ti('manualDraft')}
-                </p>
-              </div>
+            <div className="grid gap-2 lg:grid-cols-[auto_1fr_auto] lg:items-center">
               <div
                 role="radiogroup"
-                aria-label={ti('documentWorkspace')}
-                className={`grid h-10 grid-cols-2 rounded-md border p-1 ${
-                  isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-[#F5F5F7]'
+                aria-label={ti('dominantLanguage')}
+                className={`grid h-7 w-fit grid-cols-2 rounded-md border p-0.5 ${
+                  isDark ? 'border-white/10 bg-transparent' : 'border-[#D2D2D7] bg-transparent'
                 }`}
               >
-                {(['receipt', 'invoice'] as const).map((type) => (
+                {(['fi', 'en'] as const).map((dominantLanguage) => (
                   <button
-                    key={type}
+                    key={dominantLanguage}
                     type="button"
                     role="radio"
-                    aria-checked={draft.documentType === type}
-                    onClick={() => setDraft((current) => ({ ...current, documentType: type }))}
-                    className={`min-w-[96px] rounded px-3 text-sm font-medium capitalize transition-colors ${
-                      draft.documentType === type
-                        ? 'bg-[#F97316] text-white shadow-sm'
-                        : isDark ? 'text-gray-300 hover:bg-white/10' : 'text-[#475569] hover:bg-white'
+                    aria-checked={draft.language === dominantLanguage}
+                    onClick={() => setDraft((current) => ({ ...current, language: dominantLanguage }))}
+                    className={`min-w-[42px] rounded px-2 text-xs font-medium transition-colors ${
+                      draft.language === dominantLanguage
+                        ? isDark ? 'bg-white/12 text-white' : 'bg-[#1D1D1F] text-white'
+                        : isDark ? 'text-gray-500 hover:text-gray-200' : 'text-[#6E6E73] hover:text-[#1D1D1F]'
                     }`}
                   >
-                    {ti(type)}
+                    {dominantLanguage.toUpperCase()}
                   </button>
                 ))}
               </div>
+              <div className="min-w-0 text-left lg:text-center">
+                <h2 className="text-lg font-semibold">{workspaceDocumentLabel}</h2>
+                {selectedSource?.sourceId ? (
+                  <p className={`mt-1 truncate font-mono text-xs ${mutedClass}`}>{selectedSource.sourceId}</p>
+                ) : null}
+              </div>
+              <div className="hidden h-7 w-[91px] lg:block" aria-hidden="true" />
             </div>
           </div>
 
@@ -1453,9 +1530,10 @@ export function InvoicesCMSPage() {
 
             <div className="space-y-2">
               {draft.lines.map((line) => (
-                <div key={line.id} className="grid gap-2 lg:grid-cols-[1fr_90px_120px_90px]">
+                <div key={line.id} className="grid gap-2 lg:grid-cols-[1fr_90px_90px_120px_90px]">
                   <Input isDark={isDark} aria-label={ti('description')} value={line.description} onChange={(value) => updateLine(line.id, { description: String(value) })} placeholder={ti('description')} size="sm" />
                   <Input isDark={isDark} aria-label={ti('quantity')} value={line.quantity} onChange={(value) => updateLine(line.id, { quantity: String(value) })} placeholder={ti('quantity')} size="sm" />
+                  <Input isDark={isDark} aria-label={ti('unitLabel')} value={line.unitLabel} onChange={(value) => updateLine(line.id, { unitLabel: String(value), unitLabelEn: translatedUnitLabel(value) })} placeholder={ti('unitLabel')} size="sm" />
                   <Input isDark={isDark} aria-label={ti('unitGross')} value={line.unitGross} onChange={(value) => updateLine(line.id, { unitGross: String(value) })} placeholder={ti('unitGross')} size="sm" />
                   <Input isDark={isDark} aria-label={ti('vatRate')} value={line.vatRate} onChange={(value) => updateLine(line.id, { vatRate: String(value) })} placeholder={ti('vatRate')} size="sm" />
                 </div>
