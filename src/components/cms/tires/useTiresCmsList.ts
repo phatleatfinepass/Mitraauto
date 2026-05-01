@@ -607,23 +607,54 @@ export function useTiresCmsList(pageSize = 25) {
           .filter((value: any): value is string => typeof value === 'string' && value.length > 0);
 
         if (variantIds.length > 0) {
-          const { data: liveCmsRows, error: liveCmsError } = await supabase
+          const [{ data: liveCmsRows, error: liveCmsError }, { data: selectedRows, error: selectedRowsError }] = await Promise.all([
+            supabase
             .from('product_cms')
             .select(
               'variant_id,title,subtitle,short_description,long_description,hero_image_url,gallery,seo_slug,seo_title,seo_description,is_hidden,spec_overrides,price_override_eur,promo_enabled,promo_price_eur,promo_start,promo_end',
             )
-            .in('variant_id', variantIds);
+              .in('variant_id', variantIds),
+            supabase
+              .from('catalog_selected_items')
+              .select('id,manufacture_year')
+              .in('id', variantIds),
+          ]);
 
           if (liveCmsError) {
             throw liveCmsError;
           }
 
+          let fallbackWebshopRows: any[] = [];
+          if (selectedRowsError) {
+            console.warn('Failed to enrich CMS tire DOT years from catalog_selected_items:', selectedRowsError);
+            const { data: webshopRows, error: webshopRowsError } = await supabase
+              .from('webshop_items')
+              .select('variant_id,manufacture_year')
+              .in('variant_id', variantIds);
+            if (webshopRowsError) {
+              console.warn('Failed to enrich CMS tire DOT years from webshop_items:', webshopRowsError);
+            } else {
+              fallbackWebshopRows = (webshopRows ?? []) as any[];
+            }
+          }
+
           const liveCmsByVariantId = new Map(
             ((liveCmsRows ?? []) as any[]).map((row) => [row.variant_id, row]),
+          );
+          const selectedByVariantId = new Map(
+            ((selectedRows ?? []) as any[]).map((row) => [row.id, row]),
+          );
+          const webshopByVariantId = new Map(
+            fallbackWebshopRows.map((row) => [row.variant_id, row]),
           );
 
           rows = (rows as any[]).map((row) => ({
             ...row,
+            manufacture_year:
+              selectedByVariantId.get(row.variant_id)?.manufacture_year
+              ?? webshopByVariantId.get(row.variant_id)?.manufacture_year
+              ?? row.manufacture_year
+              ?? null,
             cms_data: liveCmsByVariantId.has(row.variant_id)
               ? liveCmsByVariantId.get(row.variant_id)
               : row.cms_data ?? null,

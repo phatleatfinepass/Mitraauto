@@ -802,11 +802,36 @@ async function fetchTireCatalogRpc(
   if (listError) throw listError;
   if (countError) throw countError;
 
-  const items = ((rows ?? []) as ProductSearchRow[]).map((row) => ({
+  let enrichedRows = ((rows ?? []) as ProductSearchRow[]).map((row) => ({
     ...row,
     pricing_rules: null,
     final_is_hidden: false,
-  }))
+  }));
+
+  const variantIds = enrichedRows
+    .map((row) => row.variant_id)
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  if (variantIds.length > 0 && enrichedRows.some((row) => row.manufacture_year === undefined)) {
+    const { data: dotRows, error: dotRowsError } = await supabase
+      .from('webshop_items')
+      .select('variant_id,manufacture_year')
+      .in('variant_id', variantIds);
+
+    if (!dotRowsError) {
+      const dotYearByVariantId = new Map(
+        ((dotRows ?? []) as any[]).map((row) => [row.variant_id, row.manufacture_year]),
+      );
+      enrichedRows = enrichedRows.map((row) => ({
+        ...row,
+        manufacture_year: dotYearByVariantId.get(row.variant_id) ?? row.manufacture_year ?? null,
+      }));
+    } else {
+      console.warn('Failed to enrich tire DOT years:', dotRowsError);
+    }
+  }
+
+  const items = enrichedRows
     .filter((row) => includeRetreaded || !isRetreadedTire(row))
     .filter((row) => {
       if (!ean) return true;
