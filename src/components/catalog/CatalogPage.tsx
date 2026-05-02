@@ -36,6 +36,8 @@ export interface CatalogProduct {
   gallery_images?: string[];
   supplier_name?: string;
   delivery_days?: string;
+  delivery_days_min?: number;
+  delivery_days_max?: number;
   pricing_rules?: ProductPricingRules | null;
   ean?: string;
   manufacture_year?: number;
@@ -71,6 +73,62 @@ interface CatalogPageProps {
 }
 
 const ITEMS_PER_PAGE = 24;
+const CATALOG_STATE_STORAGE_KEY = 'catalog_state';
+const CATALOG_SNAPSHOT_STORAGE_KEY = 'catalog_snapshot';
+const CATALOG_SCROLL_POSITION_STORAGE_KEY = 'catalog_scroll_position';
+const CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY = 'catalog_scroll_timestamp';
+
+function clearCatalogRestoreStorage() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(CATALOG_STATE_STORAGE_KEY);
+  sessionStorage.removeItem(CATALOG_SNAPSHOT_STORAGE_KEY);
+  sessionStorage.removeItem(CATALOG_SCROLL_POSITION_STORAGE_KEY);
+  sessionStorage.removeItem(CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY);
+}
+
+function readCatalogRestore(language: 'fi' | 'en') {
+  if (typeof window === 'undefined') return null;
+
+  const savedState = sessionStorage.getItem(CATALOG_STATE_STORAGE_KEY);
+  const savedTimestamp = sessionStorage.getItem(CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY);
+  if (!savedState || !savedTimestamp) return null;
+
+  const timeDiff = Date.now() - parseInt(savedTimestamp, 10);
+  if (!Number.isFinite(timeDiff) || timeDiff >= 300000) {
+    clearCatalogRestoreStorage();
+    return null;
+  }
+
+  try {
+    const state = JSON.parse(savedState);
+    const savedSnapshot = sessionStorage.getItem(CATALOG_SNAPSHOT_STORAGE_KEY);
+    let snapshot: { products: CatalogProduct[]; totalCount: number } | null = null;
+
+    if (savedSnapshot) {
+      const parsedSnapshot = JSON.parse(savedSnapshot);
+      const canRestoreSnapshot =
+        parsedSnapshot?.mode === state.mode &&
+        parsedSnapshot?.currentPage === state.currentPage &&
+        parsedSnapshot?.language === language &&
+        Array.isArray(parsedSnapshot?.products);
+
+      if (canRestoreSnapshot) {
+        snapshot = {
+          products: parsedSnapshot.products,
+          totalCount: Number.isFinite(parsedSnapshot.totalCount)
+            ? parsedSnapshot.totalCount
+            : parsedSnapshot.products.length,
+        };
+      }
+    }
+
+    return { state, snapshot };
+  } catch (error) {
+    console.error('Failed to read catalog restore state:', error);
+    clearCatalogRestoreStorage();
+    return null;
+  }
+}
 
 function getFallbackImage(brand?: string, model?: string) {
   return buildProductImageFallback(brand, model);
@@ -362,6 +420,27 @@ function hasAnyTag(tags: string[], patterns: string[]) {
   return patterns.some((pattern) => tags.some((tag) => tag.includes(pattern)));
 }
 
+function tireTextImpliesAllSeason(...values: unknown[]) {
+  const normalized = values
+    .filter((value) => value !== null && value !== undefined)
+    .join(' ')
+    .toLowerCase();
+
+  return /(^|[^a-z0-9])(all[\s_-]*season|allseason|4[\s_-]*season|4seasons|multi[\s_-]*season|multiseason)([^a-z0-9]|$)/.test(normalized);
+}
+
+function normalizeProductSeason(row: ProductSearchRow, productType: 'tire' | 'rim'): string | undefined {
+  if (productType !== 'tire') return undefined;
+
+  if (tireTextImpliesAllSeason(row.model, row.card_title, (row as any).title, row.subtitle, row.seo_slug)) {
+    return 'all_season';
+  }
+
+  const normalized = String(row.season ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (normalized === 'allseason') return 'all_season';
+  return normalized || undefined;
+}
+
 function normalizeEuNoise(value: unknown): number | undefined {
   if (value === null || value === undefined) {
     return undefined;
@@ -549,7 +628,7 @@ function mapRimRow(row: any): CatalogProduct {
   };
 }
 
-export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim'): CatalogProduct {
+export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' | 'rim', language: 'fi' | 'en' = 'en'): CatalogProduct {
   const effectivePrice = row.final_price_eur ?? row.price;
   const priceEur = effectivePrice !== null && effectivePrice !== undefined ? effectivePrice : undefined;
   const sizeParts = parseTireSizeParts(row.size_string);
@@ -575,8 +654,10 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     undefined;
   const deliveryDays =
     deliveryMin !== undefined && deliveryMax !== undefined
-      ? (deliveryMin === deliveryMax ? `${deliveryMin} d` : `${deliveryMin}-${deliveryMax} d`)
-      : (deliveryMin !== undefined ? `${deliveryMin} d` : undefined);
+      ? (deliveryMin === deliveryMax
+          ? `${deliveryMin} ${language === 'fi' ? 'päivää' : 'Days'}`
+          : `${deliveryMin}-${deliveryMax} ${language === 'fi' ? 'päivää' : 'Days'}`)
+      : (deliveryMin !== undefined ? `${deliveryMin} ${language === 'fi' ? 'päivää' : 'Days'}` : undefined);
   const euLabel = safeParseJson((row as any).eu_label_json);
   const euFuel = normalizeEuRating(
     getFirstMeaningfulValue(
@@ -621,7 +702,8 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   );
   const loadIndex = normalizeLoadIndex((row as any).load_index) || normalizeLoadIndex(sizeParts.loadIndex);
   const speedRating = normalizeSpeedRating((row as any).speed_rating ?? (row as any).speed_index) || normalizeSpeedRating(sizeParts.speedRating);
-  const seasonNormalized = String(row.season ?? '').toLowerCase();
+  const season = normalizeProductSeason(row, productType);
+  const seasonNormalized = season ?? '';
   const ean = String((row as any).ean ?? (row as any).derived_ean ?? '').trim() || undefined;
   const manufactureYear = parseNumber((row as any).manufacture_year);
   const evReady = Boolean((row as any).ev_ready) || hasAnyTag(tags, ['ev', 'electric']);
@@ -644,7 +726,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
           diameterIn: row.diameter_in,
           loadIndex,
           speedRating,
-          season: row.season,
+          season,
           ean,
           supplierCodeBest: supplierCode,
           runflat: row.runflat,
@@ -673,6 +755,8 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     gallery_images: galleryImages,
     supplier_name: supplierName,
     delivery_days: deliveryDays,
+    delivery_days_min: deliveryMin,
+    delivery_days_max: deliveryMax,
     size_text: productType === 'tire' ? formatCanonicalTireSize(row.size_string, loadIndex, speedRating) : (row.size_string ?? undefined),
     ean,
     manufacture_year: productType === 'tire' ? manufactureYear : undefined,
@@ -683,7 +767,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     pricing_rules: row.pricing_rules ?? null,
     product_type: productType,
     // Tire-specific fields
-    season: productType === 'tire' ? row.season ?? undefined : undefined,
+    season,
     runflat: productType === 'tire' ? row.runflat ?? undefined : undefined,
     xl: productType === 'tire' ? row.xl_reinforced ?? undefined : undefined,
     studded: productType === 'tire' ? row.studded ?? undefined : undefined,
@@ -713,17 +797,20 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
   const { addToCart } = useCart();
-  const [mode, setMode] = useState<CatalogMode>('tires');
-  const [searchMode, setSearchMode] = useState<SearchMode>('manual');
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const initialRestoreRef = React.useRef(readCatalogRestore(language));
+  const [mode, setMode] = useState<CatalogMode>(initialRestoreRef.current?.state?.mode ?? 'tires');
+  const [searchMode, setSearchMode] = useState<SearchMode>(initialRestoreRef.current?.state?.searchMode ?? 'manual');
+  const [products, setProducts] = useState<CatalogProduct[]>(initialRestoreRef.current?.snapshot?.products ?? []);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const [hasSearched, setHasSearched] = useState(initialRestoreRef.current?.state?.hasSearched ?? true);
+  const [currentPage, setCurrentPage] = useState(initialRestoreRef.current?.state?.currentPage ?? 1);
+  const [totalCount, setTotalCount] = useState(initialRestoreRef.current?.snapshot?.totalCount ?? 0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [filters, setFilters] = useState<any>({ ...DEFAULT_TIRE_FILTERS });
-  const [isRestoringState, setIsRestoringState] = useState(false);
+  const [filters, setFilters] = useState<any>(initialRestoreRef.current?.state?.filters ?? { ...DEFAULT_TIRE_FILTERS });
+  const [isRestoringState, setIsRestoringState] = useState(Boolean(initialRestoreRef.current));
   const productsGridRef = React.useRef<HTMLDivElement>(null);
+  const restoreFetchStartedRef = React.useRef(Boolean(initialRestoreRef.current));
+  const skipNextCatalogFetchRef = React.useRef(false);
   
   const handleProductClick = useCallback(
     (product: CatalogProduct) => {
@@ -735,28 +822,39 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
         currentPage,
         hasSearched,
       };
-      sessionStorage.setItem('catalog_state', JSON.stringify(catalogState));
-      sessionStorage.setItem('catalog_scroll_position', window.scrollY.toString());
-      sessionStorage.setItem('catalog_scroll_timestamp', Date.now().toString());
+      const catalogSnapshot = {
+        mode,
+        currentPage,
+        language,
+        products,
+        totalCount,
+      };
+      sessionStorage.setItem(CATALOG_STATE_STORAGE_KEY, JSON.stringify(catalogState));
+      sessionStorage.setItem(CATALOG_SNAPSHOT_STORAGE_KEY, JSON.stringify(catalogSnapshot));
+      sessionStorage.setItem(CATALOG_SCROLL_POSITION_STORAGE_KEY, window.scrollY.toString());
+      sessionStorage.setItem(CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY, Date.now().toString());
       
       onProductSelect?.(product);
     },
-    [onProductSelect, mode, searchMode, filters, currentPage, hasSearched]
+    [onProductSelect, mode, searchMode, filters, currentPage, hasSearched, language, products, totalCount]
   );
 
   const handleAddToCart = useCallback(
     (product: CatalogProduct, e: React.MouseEvent) => {
       e.stopPropagation();
       // Add 4 pieces (set of 4) by default for tires/rims
-      addToCart(product, 4);
+      const stockLimit = product.in_stock && typeof product.stock_qty === 'number' && product.stock_qty > 0
+        ? Math.floor(product.stock_qty)
+        : null;
+      addToCart(product, Math.min(4, stockLimit ?? 4));
     },
     [addToCart]
   );
 
   // Restore catalog state when returning from product detail
   useEffect(() => {
-    const savedState = sessionStorage.getItem('catalog_state');
-    const savedTimestamp = sessionStorage.getItem('catalog_scroll_timestamp');
+    const savedState = sessionStorage.getItem(CATALOG_STATE_STORAGE_KEY);
+    const savedTimestamp = sessionStorage.getItem(CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY);
     
     if (savedState && savedTimestamp) {
       try {
@@ -772,15 +870,40 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           setFilters(state.filters);
           setCurrentPage(state.currentPage);
           setHasSearched(state.hasSearched);
+
+          const savedSnapshot = sessionStorage.getItem(CATALOG_SNAPSHOT_STORAGE_KEY);
+          if (savedSnapshot) {
+            try {
+              const snapshot = JSON.parse(savedSnapshot);
+              const canRestoreSnapshot =
+                snapshot?.mode === state.mode &&
+                snapshot?.currentPage === state.currentPage &&
+                snapshot?.language === language &&
+                Array.isArray(snapshot?.products);
+
+              if (canRestoreSnapshot) {
+                setProducts(snapshot.products);
+                setTotalCount(Number.isFinite(snapshot.totalCount) ? snapshot.totalCount : snapshot.products.length);
+              }
+            } catch (snapshotError) {
+              console.error('Failed to restore catalog snapshot:', snapshotError);
+              sessionStorage.removeItem(CATALOG_SNAPSHOT_STORAGE_KEY);
+            }
+          }
+
+          restoreFetchStartedRef.current = true;
+          void fetchProducts(state.currentPage, state.filters, state.mode, { silent: true });
         } else {
           // Clear old data
-          sessionStorage.removeItem('catalog_state');
-          sessionStorage.removeItem('catalog_scroll_position');
-          sessionStorage.removeItem('catalog_scroll_timestamp');
+          sessionStorage.removeItem(CATALOG_STATE_STORAGE_KEY);
+          sessionStorage.removeItem(CATALOG_SNAPSHOT_STORAGE_KEY);
+          sessionStorage.removeItem(CATALOG_SCROLL_POSITION_STORAGE_KEY);
+          sessionStorage.removeItem(CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY);
         }
       } catch (error) {
         console.error('Failed to restore catalog state:', error);
-        sessionStorage.removeItem('catalog_state');
+        sessionStorage.removeItem(CATALOG_STATE_STORAGE_KEY);
+        sessionStorage.removeItem(CATALOG_SNAPSHOT_STORAGE_KEY);
       }
     }
   }, []);
@@ -789,27 +912,32 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   useEffect(() => {
     if (!isRestoringState || loading) return;
 
-    const savedPosition = sessionStorage.getItem('catalog_scroll_position');
+    const savedPosition = sessionStorage.getItem(CATALOG_SCROLL_POSITION_STORAGE_KEY);
 
     if (products.length > 0 && savedPosition) {
       requestAnimationFrame(() => {
         window.scrollTo({
           top: parseInt(savedPosition, 10),
-          behavior: 'instant'
+          behavior: 'auto'
         });
-        sessionStorage.removeItem('catalog_scroll_position');
-        sessionStorage.removeItem('catalog_scroll_timestamp');
-        sessionStorage.removeItem('catalog_state');
+        sessionStorage.removeItem(CATALOG_SCROLL_POSITION_STORAGE_KEY);
+        sessionStorage.removeItem(CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY);
+        sessionStorage.removeItem(CATALOG_STATE_STORAGE_KEY);
+        sessionStorage.removeItem(CATALOG_SNAPSHOT_STORAGE_KEY);
+        restoreFetchStartedRef.current = false;
+        skipNextCatalogFetchRef.current = true;
         setIsRestoringState(false);
       });
       return;
     }
 
-    // Avoid getting stuck in restore mode when the saved state no longer yields products.
-    sessionStorage.removeItem('catalog_scroll_position');
-    sessionStorage.removeItem('catalog_scroll_timestamp');
-    sessionStorage.removeItem('catalog_state');
-    setIsRestoringState(false);
+    if (!restoreFetchStartedRef.current) {
+      sessionStorage.removeItem(CATALOG_SCROLL_POSITION_STORAGE_KEY);
+      sessionStorage.removeItem(CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY);
+      sessionStorage.removeItem(CATALOG_STATE_STORAGE_KEY);
+      sessionStorage.removeItem(CATALOG_SNAPSHOT_STORAGE_KEY);
+      setIsRestoringState(false);
+    }
   }, [isRestoringState, products, loading]);
 
 
@@ -822,7 +950,8 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
 
   // Trigger fetch when state is restored
   useEffect(() => {
-    if (isRestoringState && hasSearched) {
+    if (isRestoringState && hasSearched && !restoreFetchStartedRef.current) {
+      restoreFetchStartedRef.current = true;
       fetchProducts();
     }
   }, [isRestoringState, hasSearched]);
@@ -830,6 +959,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   // Normal pagination
   useEffect(() => {
     if (hasSearched && !isRestoringState) {
+      if (skipNextCatalogFetchRef.current) {
+        skipNextCatalogFetchRef.current = false;
+        return;
+      }
       fetchProducts();
     }
   }, [currentPage, mode, hasSearched, isRestoringState]);
@@ -837,10 +970,13 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const fetchProducts = async (
     page = currentPage,
     activeFilters = filters,
-    activeMode = mode
+    activeMode = mode,
+    options: { silent?: boolean } = {}
   ) => {
-    setLoading(true);
-    setErrorMessage(null);
+    if (!options.silent) {
+      setLoading(true);
+      setErrorMessage(null);
+    }
     try {
       const category: 'tire' | 'rim' = activeMode === 'tires' ? 'tire' : 'rim';
       const { items, total } = await fetchProductsSearch(category, {
@@ -848,12 +984,15 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
         offset: (page - 1) * ITEMS_PER_PAGE,
         filters: activeFilters,
       });
-      const mapped = items.map((row) => mapProductSearchRow(row, category));
+      const mapped = items.map((row) => mapProductSearchRow(row, category, language));
 
       setProducts(mapped);
       setTotalCount(total ?? mapped.length);
     } catch (e) {
       console.error('Error fetching products:', e);
+      if (options.silent) {
+        return;
+      }
       setProducts([]);
       setTotalCount(0);
       const message = e instanceof Error ? e.message : '';
@@ -868,14 +1007,17 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               : 'Failed to load products. Please try again soon.')
       );
     } finally {
-      setLoading(false);
+      if (!options.silent) {
+        setLoading(false);
+      }
     }
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
   const productGridClass = mode === 'rims'
     ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5'
-    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
+    : 'grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6';
+  const shouldAnimateProductGrid = !isRestoringState;
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
@@ -1019,25 +1161,27 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             <AnimatePresence mode="wait">
               <motion.div
                 key={`${mode}-${currentPage}`}
-                initial={{ opacity: 0, y: 20 }}
+                initial={shouldAnimateProductGrid ? { opacity: 0, y: 20 } : false}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
+                exit={shouldAnimateProductGrid ? { opacity: 0, y: -20 } : undefined}
+                transition={{ duration: shouldAnimateProductGrid ? 0.3 : 0 }}
                 className={productGridClass}
               >
                 {products.map((product, index) => (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <RimCard
+                <motion.div
+                  key={product.id}
+                  initial={shouldAnimateProductGrid ? { opacity: 0, y: 20 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: shouldAnimateProductGrid ? index * 0.05 : 0 }}
+                  className="h-full"
+                >
+                  <RimCard
                       product={product}
                       href={getCatalogProductHref(product)}
                       index={index}
                       onClick={onProductSelect ? () => handleProductClick(product) : undefined}
                       onAddToCart={(e) => handleAddToCart(product, e)}
+                      disableInitialAnimation={!shouldAnimateProductGrid}
                     />
                   </motion.div>
                 ))}
@@ -1216,18 +1360,19 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           <AnimatePresence mode="wait">
             <motion.div
               key={`${mode}-${currentPage}`}
-              initial={{ opacity: 0, y: 20 }}
+              initial={shouldAnimateProductGrid ? { opacity: 0, y: 20 } : false}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
+              exit={shouldAnimateProductGrid ? { opacity: 0, y: -20 } : undefined}
+              transition={{ duration: shouldAnimateProductGrid ? 0.3 : 0 }}
               className={productGridClass}
             >
               {products.map((product, index) => (
                 <motion.div
                   key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={shouldAnimateProductGrid ? { opacity: 0, y: 20 } : false}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  transition={{ delay: shouldAnimateProductGrid ? index * 0.05 : 0 }}
+                  className="h-full"
                 >
                   <TireCard
                     product={product}
@@ -1235,6 +1380,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                     index={index}
                     onClick={onProductSelect ? () => handleProductClick(product) : undefined}
                     onAddToCart={(e) => handleAddToCart(product, e)}
+                    disableInitialAnimation={!shouldAnimateProductGrid}
                   />
                 </motion.div>
               ))}

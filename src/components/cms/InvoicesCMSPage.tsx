@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, FileText, Plus, RefreshCcw, Save, Search, Settings, Trash2, Upload } from 'lucide-react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Ban, CheckCircle2, ChevronDown, Copy, FileText, Plus, RefreshCcw, Save, Search, Settings, Trash2, Upload } from 'lucide-react';
 import { supabase } from '../../utils/supabase/client';
+import { projectId } from '../../utils/supabase/info';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { getLocalizedServiceCategories, getServiceIdsFromStoredServiceName } from '../../utils/serviceCatalog';
@@ -30,6 +31,7 @@ import type {
   DocumentDraft,
   DraftLine,
   InvoiceSummaryRow,
+  InvoicePaymentLinkRow,
   InvoiceTemplateRow,
   OrderRow,
   SourceRecord,
@@ -93,8 +95,9 @@ function normalizePaymentProvider(value: unknown) {
   const normalized = String(value ?? '').trim().toLowerCase().replace(/\s+/g, '_');
   if (!normalized) return '';
   if (['card', 'cash', 'bank_transfer'].includes(normalized)) return normalized;
-  if (normalized.includes('cash')) return 'cash';
-  if (normalized.includes('card') || normalized.includes('visa') || normalized.includes('mastercard')) return 'card';
+  if (normalized.includes('cash') || normalized.includes('käte') || normalized.includes('kate')) return 'cash';
+  if (normalized.includes('card') || normalized.includes('kort') || normalized.includes('visa') || normalized.includes('mastercard')) return 'card';
+  if (normalized.includes('bank') || normalized.includes('tilisiir') || normalized.includes('transfer')) return 'bank_transfer';
   return 'bank_transfer';
 }
 
@@ -234,6 +237,20 @@ function translatedUnitLabel(value: unknown) {
   return normalized || 'pcs';
 }
 
+function randomHex(bytes = 32) {
+  const buffer = crypto.getRandomValues(new Uint8Array(bytes));
+  return Array.from(buffer).map((item) => item.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map((item) => item.toString(16).padStart(2, '0')).join('');
+}
+
+function invoicePaymentUrl(token: string) {
+  return `https://${projectId}.functions.supabase.co/invoice_start_payment?token=${encodeURIComponent(token)}`;
+}
+
 function linesFromImportedDocument(imported: ImportedInvoiceDocument): DraftLine[] {
   const lines = Array.isArray(imported.lines) ? imported.lines : [];
   const draftLines = lines
@@ -253,72 +270,80 @@ function linesFromImportedDocument(imported: ImportedInvoiceDocument): DraftLine
   return draftLines.length > 0 ? draftLines : [emptyLine()];
 }
 
-function InfoTile({
-  label,
-  value,
-  isDark,
-  mono,
-}: {
-  label: string;
-  value?: string | null;
-  isDark: boolean;
-  mono?: boolean;
-}) {
-  return (
-    <div className={`rounded-md border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-[#FAFAFA]'}`}>
-      <p className={`text-[11px] font-medium uppercase tracking-[0.08em] ${isDark ? 'text-gray-500' : 'text-[#6E6E73]'}`}>
-        {label}
-      </p>
-      <p className={`mt-1 min-h-[20px] break-words text-sm font-medium ${mono ? 'font-mono' : ''} ${isDark ? 'text-gray-100' : 'text-[#1D1D1F]'}`}>
-        {value?.trim() || '-'}
-      </p>
-    </div>
+function importedReceiptFromDraft(draft: DocumentDraft, imported: ImportedInvoiceDocument | null): ImportedInvoiceDocument | null {
+  const hasImportedFields = Boolean(
+    draft.receiptNumber
+    || draft.workOrderNumber
+    || draft.vehicleName
+    || draft.vehicleMileageKm
+    || draft.vehicleVin
+    || draft.vehicleEngineCode
+    || draft.vehicleFirstRegistered
+    || draft.vehicleLicensePlate
+    || draft.workSummaryFi
+    || draft.workSummaryEn
+    || imported
   );
+
+  if (!hasImportedFields) return null;
+
+  return {
+    ...(imported ?? {}),
+    document_type: draft.documentType,
+    language: draft.language,
+    receipt: {
+      ...(imported?.receipt ?? {}),
+      receipt_number: draft.receiptNumber || undefined,
+      work_order_number: draft.workOrderNumber || undefined,
+      sale_date: draft.supplyDate || imported?.receipt?.sale_date,
+    },
+    vehicle: {
+      ...(imported?.vehicle ?? {}),
+      license_plate: draft.vehicleLicensePlate || undefined,
+      vehicle: draft.vehicleName || undefined,
+      mileage_km: draft.vehicleMileageKm || undefined,
+      vin: draft.vehicleVin || undefined,
+      engine_code: draft.vehicleEngineCode || undefined,
+      first_registered: draft.vehicleFirstRegistered || undefined,
+    },
+    customer: {
+      ...(imported?.customer ?? {}),
+      name: draft.customerName || undefined,
+      email: draft.customerEmail || undefined,
+      phone: draft.customerPhone || undefined,
+      business_id: draft.customerBusinessId || undefined,
+      vat_id: draft.customerVatId || undefined,
+      address_line1: draft.customerAddressLine1 || undefined,
+      address_line2: draft.customerAddressLine2 || undefined,
+      postal_code: draft.customerPostalCode || undefined,
+      city: draft.customerCity || undefined,
+    },
+    payment: {
+      ...(imported?.payment ?? {}),
+      provider: draft.paymentProvider || undefined,
+      transaction_id: draft.transactionId || undefined,
+    },
+    supply_date: draft.supplyDate,
+    work_summary: draft.workSummaryFi || imported?.work_summary,
+    work_summary_fi: draft.workSummaryFi || undefined,
+    work_summary_en: draft.workSummaryEn || undefined,
+  };
 }
 
-function ImportedReceiptPanel({
+function DraftReceiptDetailsPanel({
   imported,
+  draft,
   isDark,
   mutedClass,
-  onChange,
+  onDraftChange,
 }: {
   imported: ImportedInvoiceDocument | null;
+  draft: DocumentDraft;
   isDark: boolean;
   mutedClass: string;
-  onChange: (next: ImportedInvoiceDocument) => void;
+  onDraftChange: (patch: Partial<DocumentDraft>) => void;
 }) {
-  if (!imported) {
-    return (
-      <div className={`rounded-lg border border-dashed p-4 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-[#D2D2D7] bg-[#FAFAFA]'}`}>
-        <p className={`text-sm ${mutedClass}`}>
-          Upload a supported receipt PDF to populate receipt, vehicle, customer, work summary, and line item data.
-        </p>
-      </div>
-    );
-  }
-
-  const receipt = imported.receipt ?? {};
-  const vehicle = imported.vehicle ?? {};
-  const customer = imported.customer ?? {};
-  const payment = imported.payment ?? {};
-  const workSummaryFi = firstText(imported.work_summary_fi, imported.work_summary);
-  const workSummaryEn = firstText(imported.work_summary_en);
-  const updateSection = (
-    section: 'receipt' | 'vehicle' | 'customer' | 'payment',
-    key: string,
-    value: string,
-  ) => {
-    onChange({
-      ...imported,
-      [section]: {
-        ...((imported as any)[section] ?? {}),
-        [key]: value,
-      },
-    });
-  };
-  const updateRoot = (key: keyof ImportedInvoiceDocument, value: string) => {
-    onChange({ ...imported, [key]: value });
-  };
+  const confidence = imported?.confidence;
 
   return (
     <div className="space-y-4">
@@ -327,24 +352,29 @@ function ImportedReceiptPanel({
           <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">Receipt</h3>
-              <span className={`rounded border px-2 py-0.5 text-xs font-medium ${isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
-                {imported.confidence ?? 'parsed'}
-              </span>
+              {confidence ? (
+                <span className={`rounded border px-2 py-0.5 text-xs font-medium ${isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                  {confidence}
+                </span>
+              ) : (
+                <span className={`text-xs ${mutedClass}`}>Upload can fill these fields</span>
+              )}
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Input isDark={isDark} label="Receipt no." value={receipt.receipt_number ?? ''} onChange={(value) => updateSection('receipt', 'receipt_number', String(value))} />
-              <Input isDark={isDark} label="Work order" value={receipt.work_order_number ?? ''} onChange={(value) => updateSection('receipt', 'work_order_number', String(value))} />
-              <Input isDark={isDark} label="Sale date" value={firstText(imported.supply_date, receipt.sale_date)} onChange={(value) => updateRoot('supply_date', String(value))} />
-              <Input isDark={isDark} label="Payment" value={payment.provider ?? ''} onChange={(value) => updateSection('payment', 'provider', String(value))} />
+              <Input isDark={isDark} label="Receipt no." value={draft.receiptNumber} onChange={(value) => onDraftChange({ receiptNumber: String(value) })} />
+              <Input isDark={isDark} label="Work order" value={draft.workOrderNumber} onChange={(value) => onDraftChange({ workOrderNumber: String(value) })} />
+              <Input isDark={isDark} label="Sale date" value={draft.supplyDate} onChange={(value) => onDraftChange({ supplyDate: String(value) })} />
+              <Input isDark={isDark} label="Payment" value={draft.paymentProvider} onChange={(value) => onDraftChange({ paymentProvider: normalizePaymentProvider(value) })} />
+              <Input isDark={isDark} label="Transaction" value={draft.transactionId} onChange={(value) => onDraftChange({ transactionId: String(value) })} className="sm:col-span-2" />
             </div>
           </div>
 
           <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
             <h3 className="mb-3 text-sm font-semibold">Customer</h3>
             <div className="grid gap-2">
-              <Input isDark={isDark} label="Name" value={customer.name ?? ''} onChange={(value) => updateSection('customer', 'name', String(value))} />
-              <Input isDark={isDark} label="Phone" value={customer.phone ?? ''} onChange={(value) => updateSection('customer', 'phone', String(value))} />
-              <Input isDark={isDark} label="Email" value={customer.email ?? ''} onChange={(value) => updateSection('customer', 'email', String(value))} />
+              <Input isDark={isDark} label="Name" value={draft.customerName} onChange={(value) => onDraftChange({ customerName: String(value) })} />
+              <Input isDark={isDark} label="Phone" value={draft.customerPhone} onChange={(value) => onDraftChange({ customerPhone: String(value) })} />
+              <Input isDark={isDark} label="Email" value={draft.customerEmail} onChange={(value) => onDraftChange({ customerEmail: String(value) })} />
             </div>
           </div>
         </div>
@@ -353,30 +383,20 @@ function ImportedReceiptPanel({
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">Vehicle</h3>
             <span className={`font-mono text-xl font-semibold leading-none ${isDark ? 'text-white' : 'text-[#111827]'}`}>
-              {vehicle.license_plate || '-'}
+              {draft.vehicleLicensePlate || '-'}
             </span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
-            <Input isDark={isDark} label="Vehicle" value={vehicle.vehicle ?? ''} onChange={(value) => updateSection('vehicle', 'vehicle', String(value))} className="sm:col-span-2" />
-            <Input isDark={isDark} label="Mileage" value={vehicle.mileage_km ?? ''} onChange={(value) => updateSection('vehicle', 'mileage_km', String(value))} />
-            <Input isDark={isDark} label="VIN" value={vehicle.vin ?? ''} onChange={(value) => updateSection('vehicle', 'vin', String(value))} />
-            <Input isDark={isDark} label="Engine" value={vehicle.engine_code ?? ''} onChange={(value) => updateSection('vehicle', 'engine_code', String(value))} />
-            <Input isDark={isDark} label="Registered" value={vehicle.first_registered ?? ''} onChange={(value) => updateSection('vehicle', 'first_registered', String(value))} />
-            <Input isDark={isDark} label="License plate" value={vehicle.license_plate ?? ''} onChange={(value) => updateSection('vehicle', 'license_plate', String(value))} />
+            <Input isDark={isDark} label="Vehicle" value={draft.vehicleName} onChange={(value) => onDraftChange({ vehicleName: String(value) })} className="sm:col-span-2" />
+            <Input isDark={isDark} label="Mileage" value={draft.vehicleMileageKm} onChange={(value) => onDraftChange({ vehicleMileageKm: String(value) })} />
+            <Input isDark={isDark} label="VIN" value={draft.vehicleVin} onChange={(value) => onDraftChange({ vehicleVin: String(value) })} />
+            <Input isDark={isDark} label="Engine" value={draft.vehicleEngineCode} onChange={(value) => onDraftChange({ vehicleEngineCode: String(value) })} />
+            <Input isDark={isDark} label="Registered" value={draft.vehicleFirstRegistered} onChange={(value) => onDraftChange({ vehicleFirstRegistered: String(value) })} />
+            <Input isDark={isDark} label="License plate" value={draft.vehicleLicensePlate} onChange={(value) => onDraftChange({ vehicleLicensePlate: String(value) })} />
           </div>
         </div>
       </div>
 
-      {(workSummaryFi || workSummaryEn) && (
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
-            <TextArea isDark={isDark} label="Work summary FI" value={workSummaryFi} onChange={(value) => updateRoot('work_summary_fi', String(value))} rows={8} textAreaClassName="min-h-[220px]" />
-          </div>
-          <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#E5E7EB] bg-white'}`}>
-            <TextArea isDark={isDark} label="Work summary EN" value={workSummaryEn} onChange={(value) => updateRoot('work_summary_en', String(value))} rows={8} textAreaClassName="min-h-[220px]" />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -394,6 +414,7 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
       customerPhone: document.customer_phone ?? source.customerPhone,
       language: document.language ?? 'fi',
       paymentProvider: normalizePaymentProvider(document.payment_provider),
+      payOnline: document.payment_provider === 'paytrail',
       transactionId: document.transaction_id ?? '',
       lines: [{
         ...emptyLine(),
@@ -467,7 +488,18 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
   return initialDraft();
 }
 
-export function InvoicesCMSPage() {
+type InvoiceCmsDocumentScope = 'all' | 'receipt' | 'invoice';
+
+type InvoicesCMSPageProps = {
+  documentScope?: InvoiceCmsDocumentScope;
+  title?: string;
+};
+
+function defaultDocumentTypeForScope(scope: InvoiceCmsDocumentScope): DocumentType {
+  return scope === 'invoice' ? 'invoice' : 'receipt';
+}
+
+export function InvoicesCMSPage({ documentScope = 'all', title }: InvoicesCMSPageProps = {}) {
   const { theme } = useTheme();
   const { t, language } = useLanguage();
   const ti = useCallback((key: string) => t(`invoiceCms.${key}`), [t]);
@@ -475,10 +507,14 @@ export function InvoicesCMSPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [invoiceDocuments, setInvoiceDocuments] = useState<InvoiceSummaryRow[]>([]);
+  const [invoicePaymentLinks, setInvoicePaymentLinks] = useState<InvoicePaymentLinkRow[]>([]);
   const [activeTab, setActiveTab] = useState<SourceTab>('all');
   const [selectedKey, setSelectedKey] = useState<string>('manual:new');
   const [searchTerm, setSearchTerm] = useState('');
-  const [draft, setDraft] = useState<DocumentDraft>(() => initialDraft());
+  const [draft, setDraft] = useState<DocumentDraft>(() => ({
+    ...initialDraft(),
+    documentType: defaultDocumentTypeForScope(documentScope),
+  }));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -493,13 +529,19 @@ export function InvoicesCMSPage() {
   const [importDragActive, setImportDragActive] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importedReceiptData, setImportedReceiptData] = useState<ImportedInvoiceDocument | null>(null);
+  const [copyingPaymentLinkId, setCopyingPaymentLinkId] = useState<string | null>(null);
+  const [markingPaidDocumentId, setMarkingPaidDocumentId] = useState<string | null>(null);
+  const [voidingDocumentId, setVoidingDocumentId] = useState<string | null>(null);
+  const [sendingReminderDocumentId, setSendingReminderDocumentId] = useState<string | null>(null);
+  const documentShellRef = useRef<HTMLElement | null>(null);
+  const [documentShellHeight, setDocumentShellHeight] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [ordersResult, bookingsResult, invoiceDocumentsResult] = await Promise.all([
+      const [ordersResult, bookingsResult, invoiceDocumentsResult, paymentLinksResult] = await Promise.all([
         supabase
           .from('orders')
           .select('id, created_at, status, paytrail_status, paytrail_transaction_id, paytrail_reference, email, phone, grand_total_cents, cart_snapshot')
@@ -515,15 +557,22 @@ export function InvoicesCMSPage() {
           .select('*')
           .order('created_at', { ascending: false })
           .limit(240),
+        supabase
+          .from('invoice_payment_links')
+          .select('id, document_id, payment_status, payment_provider, payment_link_url, payment_link_created_at, payment_link_expires_at, paytrail_transaction_id, amount_cents, paid_at, reminder_count, last_reminder_sent_at, created_at, updated_at')
+          .order('created_at', { ascending: false })
+          .limit(500),
       ]);
 
       if (ordersResult.error) throw ordersResult.error;
       if (bookingsResult.error) throw bookingsResult.error;
       if (invoiceDocumentsResult.error) throw invoiceDocumentsResult.error;
+      if (paymentLinksResult.error) throw paymentLinksResult.error;
 
       setOrders((ordersResult.data ?? []) as OrderRow[]);
       setBookings((bookingsResult.data ?? []) as BookingRow[]);
       setInvoiceDocuments((invoiceDocumentsResult.data ?? []) as InvoiceSummaryRow[]);
+      setInvoicePaymentLinks((paymentLinksResult.data ?? []) as InvoicePaymentLinkRow[]);
     } catch (err: any) {
       setError(err.message ?? ti('failedLoadInvoiceData'));
     } finally {
@@ -534,6 +583,25 @@ export function InvoicesCMSPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useLayoutEffect(() => {
+    const node = documentShellRef.current;
+    if (!node) return undefined;
+
+    const updateHeight = () => {
+      setDocumentShellHeight(Math.ceil(node.getBoundingClientRect().height));
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [draft, importedReceiptData, selectedKey, previewUrl, importMessage, documentScope]);
+
+  useEffect(() => {
+    if (documentScope === 'all') return;
+    setDraft((current) => ({ ...current, documentType: defaultDocumentTypeForScope(documentScope) }));
+  }, [documentScope]);
 
   const documentBySource = useMemo(() => {
     const map = new Map<string, InvoiceSummaryRow>();
@@ -548,6 +616,17 @@ export function InvoicesCMSPage() {
     });
     return map;
   }, [invoiceDocuments]);
+
+  const latestPaymentLinkByDocument = useMemo(() => {
+    const map = new Map<string, InvoicePaymentLinkRow>();
+    invoicePaymentLinks.forEach((link) => {
+      const current = map.get(link.document_id);
+      if (!current || (link.created_at ?? '') > (current.created_at ?? '')) {
+        map.set(link.document_id, link);
+      }
+    });
+    return map;
+  }, [invoicePaymentLinks]);
 
   const sources = useMemo<SourceRecord[]>(() => {
     const documentSources = invoiceDocuments.map((document) => ({
@@ -564,6 +643,7 @@ export function InvoicesCMSPage() {
       amountCents: document.total_cents ?? 0,
       status: document.payment_status ?? document.status,
       document,
+      paymentLink: latestPaymentLinkByDocument.get(document.id) ?? null,
       raw: document,
     }));
 
@@ -584,6 +664,7 @@ export function InvoicesCMSPage() {
       amountCents: order.grand_total_cents ?? 0,
       status: order.paytrail_status ?? order.status ?? 'order',
       document: documentBySource.get(sourceKey('order', order.id)),
+      paymentLink: documentBySource.get(sourceKey('order', order.id))?.id ? latestPaymentLinkByDocument.get(documentBySource.get(sourceKey('order', order.id))!.id) ?? null : null,
       raw: order,
     })).filter((source) => !documentedSourceKeys.has(source.key));
 
@@ -599,21 +680,25 @@ export function InvoicesCMSPage() {
       amountCents: 0,
       status: booking.status ?? 'confirmed',
       document: documentBySource.get(sourceKey('booking', booking.id)),
+      paymentLink: documentBySource.get(sourceKey('booking', booking.id))?.id ? latestPaymentLinkByDocument.get(documentBySource.get(sourceKey('booking', booking.id))!.id) ?? null : null,
       raw: booking,
     })).filter((source) => !documentedSourceKeys.has(source.key));
 
     return [...documentSources, ...orderSources, ...bookingSources].sort((a, b) => {
       return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
     });
-  }, [bookings, documentBySource, invoiceDocuments, orders]);
+  }, [bookings, documentBySource, invoiceDocuments, latestPaymentLinkByDocument, orders]);
 
   const filteredSources = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
     return sources.filter((source) => {
+      if (documentScope !== 'all' && source.document && source.document.document_type !== documentScope) return false;
       if (activeTab === 'orders' && source.sourceType !== 'order') return false;
       if (activeTab === 'bookings' && source.sourceType !== 'booking') return false;
       if (activeTab === 'drafts' && documentStatus(source) !== 'draft') return false;
       if (activeTab === 'sent' && !['sent', 'issued', 'paid'].includes(documentStatus(source) ?? '')) return false;
+      if (activeTab === 'unpaid' && !(source.document?.document_type === 'invoice' && !['paid', 'credited', 'void', 'cancelled'].includes(source.document.status))) return false;
+      if (activeTab === 'paid' && !(source.document?.document_type === 'invoice' && source.document.status === 'paid')) return false;
 
       if (!normalized) return true;
       return [
@@ -628,7 +713,27 @@ export function InvoicesCMSPage() {
     });
   }, [activeTab, searchTerm, sources]);
 
+  const invoiceTrackingSummary = useMemo(() => {
+    return sources.reduce(
+      (summary, source) => {
+        const document = source.document;
+        if (!document || document.document_type !== 'invoice') return summary;
+        const total = document.total_cents ?? source.amountCents ?? 0;
+        if (document.status === 'paid') {
+          summary.paidCount += 1;
+          summary.paidCents += total;
+        } else if (!['credited', 'void', 'cancelled'].includes(document.status)) {
+          summary.openCount += 1;
+          summary.openCents += Math.max(0, total - (document.paid_cents ?? 0));
+        }
+        return summary;
+      },
+      { openCount: 0, openCents: 0, paidCount: 0, paidCents: 0 }
+    );
+  }, [sources]);
+
   const selectedSource = sources.find((source) => source.key === selectedKey) ?? null;
+  const selectedPaymentLink = selectedSource?.document?.id ? latestPaymentLinkByDocument.get(selectedSource.document.id) ?? null : null;
   const totals = useMemo(() => calculateDraftTotals(draft.lines), [draft.lines]);
   const draftValidation = useMemo(() => validateInvoiceDraft(draft, totals), [draft, totals]);
 
@@ -661,10 +766,25 @@ export function InvoicesCMSPage() {
       ]);
 
       if (!documentResult.error && documentResult.data) {
+        const importedReceipt = (documentResult.data.payload?.imported_receipt ?? null) as ImportedInvoiceDocument | null;
+        const receipt = importedReceipt?.receipt ?? {};
+        const vehicle = importedReceipt?.vehicle ?? {};
+        const workSummaryFi = firstText(importedReceipt?.work_summary_fi, importedReceipt?.work_summary);
         nextDraft.notes = documentResult.data.internal_notes ?? nextDraft.notes;
         nextDraft.importSource = documentResult.data.payload?.import_source ?? nextDraft.importSource;
+        nextDraft.payOnline = Boolean(documentResult.data.payload?.pay_online);
         nextDraft.supplyDate = documentResult.data.supply_date ?? nextDraft.supplyDate;
-        setImportedReceiptData((documentResult.data.payload?.imported_receipt ?? null) as ImportedInvoiceDocument | null);
+        nextDraft.receiptNumber = receipt.receipt_number ?? nextDraft.receiptNumber;
+        nextDraft.workOrderNumber = receipt.work_order_number ?? nextDraft.workOrderNumber;
+        nextDraft.vehicleName = vehicle.vehicle ?? nextDraft.vehicleName;
+        nextDraft.vehicleMileageKm = vehicle.mileage_km ?? nextDraft.vehicleMileageKm;
+        nextDraft.vehicleVin = vehicle.vin ?? nextDraft.vehicleVin;
+        nextDraft.vehicleEngineCode = vehicle.engine_code ?? nextDraft.vehicleEngineCode;
+        nextDraft.vehicleFirstRegistered = vehicle.first_registered ?? nextDraft.vehicleFirstRegistered;
+        nextDraft.vehicleLicensePlate = vehicle.license_plate ?? nextDraft.vehicleLicensePlate;
+        nextDraft.workSummaryFi = workSummaryFi || nextDraft.workSummaryFi;
+        nextDraft.workSummaryEn = importedReceipt?.work_summary_en ?? nextDraft.workSummaryEn;
+        setImportedReceiptData(importedReceipt);
       }
 
       if (!linesResult.error && Array.isArray(linesResult.data) && linesResult.data.length > 0) {
@@ -719,7 +839,7 @@ export function InvoicesCMSPage() {
 
   const startManualDraft = () => {
     setSelectedKey('manual:new');
-    setDraft({ ...initialDraft(), language });
+    setDraft({ ...initialDraft(), language, documentType: defaultDocumentTypeForScope(documentScope) });
     setShowCustomerInvoiceDetails(false);
     setImportedReceiptData(null);
   };
@@ -791,7 +911,24 @@ export function InvoicesCMSPage() {
   const updateLine = (lineId: string, patch: Partial<DraftLine>) => {
     setDraft((current) => ({
       ...current,
-      lines: current.lines.map((line) => line.id === lineId ? { ...line, ...patch } : line),
+      lines: current.lines.map((line) => {
+        if (line.id !== lineId) return line;
+        const nextLine = { ...line, ...patch };
+        if ('description' in patch && !String(patch.description ?? '').trim()) {
+          nextLine.descriptionFi = '';
+          nextLine.descriptionEn = '';
+        }
+        return nextLine;
+      }),
+    }));
+  };
+
+  const removeLine = (lineId: string) => {
+    setDraft((current) => ({
+      ...current,
+      lines: current.lines.length > 1
+        ? current.lines.filter((line) => line.id !== lineId)
+        : [emptyLine()],
     }));
   };
 
@@ -838,9 +975,10 @@ export function InvoicesCMSPage() {
       );
       const payload = {
         document_type: draft.documentType,
+        pay_online: draft.documentType === 'invoice' && draft.payOnline,
         notes: draft.notes,
         import_source: draft.importSource,
-        imported_receipt: importedReceiptData,
+        imported_receipt: importedReceiptFromDraft(draft, importedReceiptData),
         validation: validateInvoiceDraft(draft, totals),
         original_source: existingFinalSource ? {
           source_type: selectedSource?.sourceType ?? draft.sourceType,
@@ -990,11 +1128,13 @@ export function InvoicesCMSPage() {
         .upsert({
           document_id: documentId,
           payment_status: 'unpaid',
-          payment_provider: draft.paymentProvider || null,
+          payment_provider: draft.documentType === 'invoice' && draft.payOnline ? 'paytrail' : draft.paymentProvider || null,
+          payment_method: draft.documentType === 'invoice' && draft.payOnline ? 'online' : null,
           transaction_id: draft.transactionId || null,
           payload: {
             source_type: draft.sourceType,
             source_id: draft.sourceId,
+            pay_online: draft.documentType === 'invoice' && draft.payOnline,
           },
         }, { onConflict: 'document_id' });
       if (paymentResult.error) throw paymentResult.error;
@@ -1048,6 +1188,219 @@ export function InvoicesCMSPage() {
     }
   };
 
+  const copyInvoicePaymentLink = async (source: SourceRecord | null = selectedSource) => {
+    const document = source?.document;
+    if (!document) {
+      setError(ti('saveBeforeAction'));
+      return;
+    }
+    if (document.document_type !== 'invoice') return;
+
+    setCopyingPaymentLinkId(document.id);
+    setError(null);
+    setImportMessage(null);
+    try {
+      const token = randomHex(32);
+      const tokenHash = await sha256Hex(token);
+      const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      const { error: tokenError } = await supabase.from('invoice_payment_access_tokens').insert({
+        document_id: document.id,
+        token_hash: tokenHash,
+        status: 'active',
+        expires_at: expiresAt,
+      });
+      if (tokenError) throw tokenError;
+
+      await navigator.clipboard.writeText(invoicePaymentUrl(token));
+      setImportMessage(ti('paymentLinkCopied'));
+    } catch (err: any) {
+      setError(`${ti('failedPaymentLink')}: ${err.message ?? String(err)}`);
+    } finally {
+      setCopyingPaymentLinkId(null);
+    }
+  };
+
+  const markInvoicePaid = async (source: SourceRecord | null = selectedSource) => {
+    const document = source?.document;
+    if (!document || document.document_type !== 'invoice' || ['paid', 'credited', 'void', 'cancelled'].includes(document.status)) return;
+    if (!window.confirm(ti('markPaidConfirm'))) return;
+
+    const paidAt = new Date().toISOString();
+    setMarkingPaidDocumentId(document.id);
+    setError(null);
+    setImportMessage(null);
+    try {
+      const { error: documentError } = await supabase
+        .from('invoice_documents')
+        .update({
+          status: 'paid',
+          paid_cents: document.total_cents ?? 0,
+          paid_at: paidAt,
+        })
+        .eq('id', document.id);
+      if (documentError) throw documentError;
+
+      const { error: paymentError } = await supabase
+        .from('invoice_payment_details')
+        .upsert({
+          document_id: document.id,
+          payment_status: 'paid',
+          payment_provider: draft.paymentProvider || document.payment_provider || 'manual',
+          payment_method: 'manual',
+          transaction_id: draft.transactionId || document.transaction_id || null,
+          paid_at: paidAt,
+          payload: {
+            marked_paid_by: 'cms',
+            marked_paid_at: paidAt,
+          },
+        }, { onConflict: 'document_id' });
+      if (paymentError) throw paymentError;
+
+      if (source?.paymentLink?.id) {
+        const { error: linkError } = await supabase
+          .from('invoice_payment_links')
+          .update({
+            payment_status: 'paid',
+            paid_at: paidAt,
+          })
+          .eq('id', source.paymentLink.id);
+        if (linkError) throw linkError;
+      }
+
+      const { error: eventError } = await supabase.from('invoice_events').insert({
+        document_id: document.id,
+        event_type: 'payment_marked_paid',
+        actor: 'cms',
+        payload: {
+          amount_cents: document.total_cents ?? 0,
+          source_type: source?.sourceType ?? null,
+          source_id: source?.sourceId ?? null,
+        },
+      });
+      if (eventError) throw eventError;
+
+      setImportMessage(ti('invoiceMarkedPaid'));
+      await loadData();
+    } catch (err: any) {
+      setError(`${ti('failedMarkPaid')}: ${err.message ?? String(err)}`);
+    } finally {
+      setMarkingPaidDocumentId(null);
+    }
+  };
+
+  const voidInvoice = async (source: SourceRecord | null = selectedSource) => {
+    const document = source?.document;
+    if (!document || document.document_type !== 'invoice' || ['paid', 'credited', 'void', 'cancelled'].includes(document.status)) return;
+    if (!window.confirm(ti('voidInvoiceConfirm'))) return;
+
+    const voidedAt = new Date().toISOString();
+    setVoidingDocumentId(document.id);
+    setError(null);
+    setImportMessage(null);
+    try {
+      const { error: documentError } = await supabase
+        .from('invoice_documents')
+        .update({ status: 'void' })
+        .eq('id', document.id);
+      if (documentError) throw documentError;
+
+      const { error: paymentError } = await supabase
+        .from('invoice_payment_details')
+        .upsert({
+          document_id: document.id,
+          payment_status: 'cancelled',
+          payment_provider: document.payment_provider || draft.paymentProvider || null,
+          payment_method: 'manual',
+          transaction_id: document.transaction_id || draft.transactionId || null,
+          payload: {
+            voided_by: 'cms',
+            voided_at: voidedAt,
+          },
+        }, { onConflict: 'document_id' });
+      if (paymentError) throw paymentError;
+
+      const [{ error: linksError }, { error: tokensError }, { error: eventError }] = await Promise.all([
+        supabase
+          .from('invoice_payment_links')
+          .update({ payment_status: 'cancelled' })
+          .eq('document_id', document.id)
+          .in('payment_status', ['created', 'pending', 'failed', 'expired']),
+        supabase
+          .from('invoice_payment_access_tokens')
+          .update({ status: 'revoked' })
+          .eq('document_id', document.id)
+          .eq('status', 'active'),
+        supabase.from('invoice_events').insert({
+          document_id: document.id,
+          event_type: 'invoice_voided',
+          actor: 'cms',
+          payload: {
+            source_type: source?.sourceType ?? null,
+            source_id: source?.sourceId ?? null,
+          },
+        }),
+      ]);
+      if (linksError) throw linksError;
+      if (tokensError) throw tokensError;
+      if (eventError) throw eventError;
+
+      setImportMessage(ti('invoiceVoided'));
+      await loadData();
+    } catch (err: any) {
+      setError(`${ti('failedVoidInvoice')}: ${err.message ?? String(err)}`);
+    } finally {
+      setVoidingDocumentId(null);
+    }
+  };
+
+  const sendInvoiceReminder = async (source: SourceRecord | null = selectedSource) => {
+    const document = source?.document;
+    if (!document || document.document_type !== 'invoice' || ['paid', 'credited', 'void', 'cancelled'].includes(document.status)) return;
+
+    const remindedAt = new Date().toISOString();
+    setSendingReminderDocumentId(document.id);
+    setError(null);
+    setImportMessage(null);
+    try {
+      const { error: invokeError } = await supabase.functions.invoke('invoice_document_issue', {
+        method: 'POST',
+        body: { documentId: document.id, action: 'send' },
+      });
+      if (invokeError) throw invokeError;
+
+      if (source?.paymentLink?.id) {
+        const { error: linkError } = await supabase
+          .from('invoice_payment_links')
+          .update({
+            reminder_count: (source.paymentLink.reminder_count ?? 0) + 1,
+            last_reminder_sent_at: remindedAt,
+          })
+          .eq('id', source.paymentLink.id);
+        if (linkError) throw linkError;
+      }
+
+      const { error: eventError } = await supabase.from('invoice_events').insert({
+        document_id: document.id,
+        event_type: 'payment_reminder_sent',
+        actor: 'cms',
+        payload: {
+          payment_link_id: source?.paymentLink?.id ?? null,
+          reminder_sent_at: remindedAt,
+          source_type: source?.sourceType ?? null,
+          source_id: source?.sourceId ?? null,
+        },
+      });
+      if (eventError) throw eventError;
+
+      setImportMessage(ti('reminderSent'));
+      await loadData();
+    } catch (err: any) {
+      setError(`${ti('failedSendReminder')}: ${err.message ?? String(err)}`);
+    } finally {
+      setSendingReminderDocumentId(null);
+    }
+  };
+
   const deleteInvoiceDocument = async (source: SourceRecord) => {
     if (!source.document || !canDeleteInvoiceSource(source)) return;
     const confirmed = window.confirm(ti('deleteDocumentConfirm'));
@@ -1064,7 +1417,7 @@ export function InvoicesCMSPage() {
 
       if (selectedKey === source.key || selectedKey === `document:${source.document.id}`) {
         setSelectedKey('manual:new');
-        setDraft(initialDraft());
+        setDraft({ ...initialDraft(), documentType: defaultDocumentTypeForScope(documentScope) });
         setShowCustomerInvoiceDetails(false);
       }
       await loadData();
@@ -1090,6 +1443,16 @@ export function InvoicesCMSPage() {
     setDraft((current) => ({
       ...current,
       documentType: imported.document_type === 'invoice' ? 'invoice' : imported.document_type === 'receipt' ? 'receipt' : current.documentType,
+      receiptNumber: firstText(imported.receipt?.receipt_number, current.receiptNumber),
+      workOrderNumber: firstText(imported.receipt?.work_order_number, current.workOrderNumber),
+      vehicleName: firstText(vehicle.vehicle, current.vehicleName),
+      vehicleMileageKm: firstText(vehicle.mileage_km, current.vehicleMileageKm),
+      vehicleVin: firstText(vehicle.vin, current.vehicleVin),
+      vehicleEngineCode: firstText(vehicle.engine_code, current.vehicleEngineCode),
+      vehicleFirstRegistered: firstText(vehicle.first_registered, current.vehicleFirstRegistered),
+      vehicleLicensePlate: firstText(vehicle.license_plate, current.vehicleLicensePlate),
+      workSummaryFi: firstText(imported.work_summary_fi, imported.work_summary, current.workSummaryFi),
+      workSummaryEn: firstText(imported.work_summary_en, current.workSummaryEn),
       customerName: firstText(customer.name, vehicle.license_plate, current.customerName),
       customerEmail: firstText(customer.email, current.customerEmail),
       customerPhone: firstText(customer.phone, current.customerPhone),
@@ -1204,6 +1567,8 @@ export function InvoicesCMSPage() {
     { id: 'bookings', label: ti('bookings') },
     { id: 'drafts', label: ti('drafts') },
     { id: 'sent', label: ti('sent') },
+    { id: 'unpaid', label: ti('unpaid') },
+    { id: 'paid', label: ti('paid') },
   ];
   const paymentProviderOptions = [
     { value: '', label: ti('selectPaymentProvider') },
@@ -1213,6 +1578,7 @@ export function InvoicesCMSPage() {
   ];
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? ti('all');
   const customerInvoiceDetailsVisible = draft.documentType === 'invoice' || showCustomerInvoiceDetails;
+  const paymentLinkStatus = selectedPaymentLink?.payment_status ?? null;
   const workspaceSourceLabel = selectedSource?.sourceType === 'booking'
     ? ti('service')
     : selectedSource?.sourceType === 'order'
@@ -1223,14 +1589,9 @@ export function InvoicesCMSPage() {
   return (
     <div className={`min-h-[760px] rounded-[16px] p-4 sm:p-6 ${isDark ? 'bg-[#0B0D12]' : 'bg-[#FAFAFA]'}`}>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[#F97316]" />
-            <h1 className="text-2xl font-semibold tracking-tight">{ti('title')}</h1>
-          </div>
-          <p className={`mt-1 text-sm ${mutedClass}`}>
-            {ti('subtitle')}
-          </p>
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-[#F97316]" />
+          <h1 className="text-2xl font-semibold tracking-tight">{title ?? ti('title')}</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -1240,30 +1601,32 @@ export function InvoicesCMSPage() {
           <Button isDark={isDark} size="sm" color="secondary" iconLeading={<Settings className="h-4 w-4" />} onClick={() => void openTemplateSettings()}>
             {ti('templateSettings')}
           </Button>
-          <div
-            role="radiogroup"
-            aria-label={ti('documentType')}
-            className={`grid h-9 grid-cols-2 rounded-md border p-1 ${
-              isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-white'
-            }`}
-          >
-            {(['receipt', 'invoice'] as const).map((type) => (
-              <button
-                key={type}
-                type="button"
-                role="radio"
-                aria-checked={draft.documentType === type}
-                onClick={() => setDraft((current) => ({ ...current, documentType: type }))}
-                className={`min-w-[82px] rounded px-3 text-sm font-medium transition-colors ${
-                  draft.documentType === type
-                    ? 'bg-[#F97316] text-white shadow-sm'
-                    : isDark ? 'text-gray-300 hover:bg-white/10' : 'text-[#475569] hover:bg-[#F5F5F7]'
-                }`}
-              >
-                {ti(type)}
-              </button>
-            ))}
-          </div>
+          {documentScope === 'all' && (
+            <div
+              role="radiogroup"
+              aria-label={ti('documentType')}
+              className={`grid h-9 grid-cols-2 rounded-md border p-1 ${
+                isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-white'
+              }`}
+            >
+              {(['receipt', 'invoice'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.documentType === type}
+                  onClick={() => setDraft((current) => ({ ...current, documentType: type }))}
+                  className={`min-w-[82px] rounded px-3 text-sm font-medium transition-colors ${
+                    draft.documentType === type
+                      ? 'bg-[#F97316] text-white shadow-sm'
+                      : isDark ? 'text-gray-300 hover:bg-white/10' : 'text-[#475569] hover:bg-[#F5F5F7]'
+                  }`}
+                >
+                  {ti(type)}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={startManualDraft}
@@ -1281,8 +1644,11 @@ export function InvoicesCMSPage() {
           {error}
         </div>
       )}
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(340px,0.72fr)_minmax(620px,1.28fr)]">
-        <section className={`flex h-[calc(100vh-220px)] min-h-[640px] flex-col overflow-hidden rounded-lg border ${panelClass}`}>
+      <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(340px,0.72fr)_minmax(620px,1.28fr)]">
+        <section
+          className={`flex min-h-[640px] flex-col overflow-hidden rounded-lg border ${panelClass}`}
+          style={documentShellHeight ? { height: documentShellHeight } : undefined}
+        >
           <div className="border-b border-inherit p-3">
             <div className="flex items-center gap-2">
               <div className="relative w-[132px] shrink-0">
@@ -1319,6 +1685,32 @@ export function InvoicesCMSPage() {
               </div>
             </div>
           </div>
+          <div className={`border-b border-inherit px-3 py-2 ${isDark ? 'bg-white/[0.02]' : 'bg-[#F8FAFC]'}`}>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('unpaid')}
+                className={`rounded-md border p-2 text-left transition-colors ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-[#E5E7EB] bg-white hover:bg-[#F5F5F7]'}`}
+              >
+                <div className={mutedClass}>{ti('openInvoices')}</div>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <span className="font-mono text-sm font-semibold">{centsToMoney(invoiceTrackingSummary.openCents)}</span>
+                  <span className={mutedClass}>{invoiceTrackingSummary.openCount} {ti('invoiceCount')}</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('paid')}
+                className={`rounded-md border p-2 text-left transition-colors ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-[#E5E7EB] bg-white hover:bg-[#F5F5F7]'}`}
+              >
+                <div className={mutedClass}>{ti('paidInvoices')}</div>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <span className="font-mono text-sm font-semibold">{centsToMoney(invoiceTrackingSummary.paidCents)}</span>
+                  <span className={mutedClass}>{invoiceTrackingSummary.paidCount} {ti('invoiceCount')}</span>
+                </div>
+              </button>
+            </div>
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {loading ? (
               <div className={`p-6 text-sm ${mutedClass}`}>{ti('loadingSources')}</div>
@@ -1332,6 +1724,11 @@ export function InvoicesCMSPage() {
                   const amount = centsToMoney(source.amountCents || source.document?.total_cents);
                   const deletable = canDeleteInvoiceSource(source);
                   const deleting = deletingDocumentId === source.document?.id;
+                  const paymentLink = source.paymentLink;
+                  const canCopyPaymentLink = source.document?.document_type === 'invoice' && !['paid', 'credited', 'void', 'cancelled'].includes(source.document.status);
+                  const canMarkPaid = source.document?.document_type === 'invoice' && !['paid', 'credited', 'void', 'cancelled'].includes(source.document.status);
+                  const canVoidInvoice = canMarkPaid;
+                  const canSendReminder = canMarkPaid && Boolean(source.customerEmail);
                   return (
                     <div
                       key={source.key}
@@ -1376,6 +1773,11 @@ export function InvoicesCMSPage() {
                               {documentStatus(source) ?? ti('needsDocument')}
                             </Badge>
                             <Badge isDark={isDark} size="sm" tone="gray">{source.status}</Badge>
+                            {source.document?.document_type === 'invoice' && (
+                              <Badge isDark={isDark} size="sm" tone={paymentLink?.payment_status === 'paid' ? 'success' : paymentLink ? 'warning' : 'gray'}>
+                                {paymentLink?.payment_status ? `${ti('paymentLink')}: ${paymentLink.payment_status}` : ti('noPaymentLink')}
+                              </Badge>
+                            )}
                           </div>
                           <div className={`shrink-0 text-right text-[11px] ${mutedClass}`}>
                             {formatDate(source.createdAt)}
@@ -1383,8 +1785,61 @@ export function InvoicesCMSPage() {
                         </div>
                       </button>
 
-                      {deletable && (
-                        <div className={`border-t px-3 py-2 ${isDark ? 'border-white/10' : 'border-[#E5E7EB]'}`}>
+                      {(deletable || canCopyPaymentLink || canMarkPaid || canVoidInvoice || canSendReminder) && (
+                        <div className={`flex flex-wrap items-center gap-2 border-t px-3 py-2 ${isDark ? 'border-white/10' : 'border-[#E5E7EB]'}`}>
+                          {canSendReminder && (
+                            <button
+                              type="button"
+                              onClick={() => void sendInvoiceReminder(source)}
+                              disabled={sendingReminderDocumentId === source.document?.id}
+                              className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                isDark ? 'text-orange-200 hover:bg-orange-500/10' : 'text-orange-700 hover:bg-orange-50'
+                              }`}
+                            >
+                              <RefreshCcw className="h-3.5 w-3.5" />
+                              {sendingReminderDocumentId === source.document?.id ? ti('sendingReminder') : ti('sendReminder')}
+                            </button>
+                          )}
+                          {canCopyPaymentLink && (
+                            <button
+                              type="button"
+                              onClick={() => void copyInvoicePaymentLink(source)}
+                              disabled={copyingPaymentLinkId === source.document?.id}
+                              className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                isDark ? 'text-blue-200 hover:bg-blue-500/10' : 'text-blue-700 hover:bg-blue-50'
+                              }`}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              {ti('copyPaymentLink')}
+                            </button>
+                          )}
+                          {canMarkPaid && (
+                            <button
+                              type="button"
+                              onClick={() => void markInvoicePaid(source)}
+                              disabled={markingPaidDocumentId === source.document?.id}
+                              className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                isDark ? 'text-emerald-200 hover:bg-emerald-500/10' : 'text-emerald-700 hover:bg-emerald-50'
+                              }`}
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {markingPaidDocumentId === source.document?.id ? ti('markingPaid') : ti('markPaid')}
+                            </button>
+                          )}
+                          {canVoidInvoice && (
+                            <button
+                              type="button"
+                              onClick={() => void voidInvoice(source)}
+                              disabled={voidingDocumentId === source.document?.id}
+                              className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                isDark ? 'text-red-300 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+                              }`}
+                            >
+                              <Ban className="h-3.5 w-3.5" />
+                              {voidingDocumentId === source.document?.id ? ti('voidingInvoice') : ti('voidInvoice')}
+                            </button>
+                          )}
+                          {deletable && (
                           <button
                             type="button"
                             onClick={() => void deleteInvoiceDocument(source)}
@@ -1396,6 +1851,7 @@ export function InvoicesCMSPage() {
                             <Trash2 className="h-3.5 w-3.5" />
                             {deleting ? ti('deleting') : ti('deleteDocument')}
                           </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1407,11 +1863,12 @@ export function InvoicesCMSPage() {
         </section>
 
         <section
+          ref={documentShellRef}
           className={`rounded-lg border transition-colors ${
             importDragActive
               ? isDark ? 'border-blue-400 bg-blue-500/10 text-white' : 'border-blue-300 bg-blue-50 text-[#1D1D1F]'
               : panelClass
-          }`}
+          } self-start`}
           onDragEnter={(event) => {
             event.preventDefault();
             setImportDragActive(true);
@@ -1458,26 +1915,39 @@ export function InvoicesCMSPage() {
                 {selectedSource?.sourceId ? (
                   <p className={`mt-1 truncate font-mono text-xs ${mutedClass}`}>{selectedSource.sourceId}</p>
                 ) : null}
+                {selectedSource?.document?.document_type === 'invoice' && (
+                  <div className="mt-2 flex flex-wrap justify-start gap-1 lg:justify-center">
+                    <Badge isDark={isDark} size="sm" tone={selectedSource.document.status === 'paid' ? 'success' : 'warning'}>
+                      {selectedSource.document.status}
+                    </Badge>
+                    <Badge isDark={isDark} size="sm" tone={paymentLinkStatus === 'paid' ? 'success' : selectedPaymentLink ? 'warning' : 'gray'}>
+                      {paymentLinkStatus ? `${ti('paymentLink')}: ${paymentLinkStatus}` : ti('noPaymentLink')}
+                    </Badge>
+                    {selectedPaymentLink?.payment_link_expires_at && (
+                      <Badge isDark={isDark} size="sm" tone="gray">
+                        {ti('expires')}: {formatDate(selectedPaymentLink.payment_link_expires_at)}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="hidden h-7 w-[91px] lg:block" aria-hidden="true" />
             </div>
           </div>
 
           <div className="border-b border-inherit p-4">
-            <ImportedReceiptPanel
+            <DraftReceiptDetailsPanel
               imported={importedReceiptData}
+              draft={draft}
               isDark={isDark}
               mutedClass={mutedClass}
-              onChange={setImportedReceiptData}
+              onDraftChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
             />
           </div>
 
           <div className="grid gap-4 p-4 lg:grid-cols-2">
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">{ti('customer')}</h3>
-              <Input isDark={isDark} label={ti('name')} value={draft.customerName} onChange={(value) => setDraft((current) => ({ ...current, customerName: String(value) }))} size="sm" />
-              <Input isDark={isDark} label={ti('email')} value={draft.customerEmail} onChange={(value) => setDraft((current) => ({ ...current, customerEmail: String(value) }))} size="sm" />
-              <Input isDark={isDark} label={ti('phone')} value={draft.customerPhone} onChange={(value) => setDraft((current) => ({ ...current, customerPhone: String(value) }))} size="sm" />
               {draft.documentType !== 'invoice' && (
                 <button
                   type="button"
@@ -1508,7 +1978,20 @@ export function InvoicesCMSPage() {
 
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">{ti('paymentAndSource')}</h3>
-              <Input isDark={isDark} label={ti('supplyDate')} type="date" value={draft.supplyDate} onChange={(value) => setDraft((current) => ({ ...current, supplyDate: String(value) }))} size="sm" />
+              {draft.documentType === 'invoice' && (
+                <label className={`flex items-start gap-3 rounded-md border px-3 py-2 text-sm ${isDark ? 'border-white/10 bg-white/5' : 'border-[#D2D2D7] bg-[#F5F5F7]'}`}>
+                  <input
+                    type="checkbox"
+                    checked={draft.payOnline}
+                    onChange={(event) => setDraft((current) => ({ ...current, payOnline: event.target.checked }))}
+                    className="mt-1 h-4 w-4 accent-[#F97316]"
+                  />
+                  <span>
+                    <span className="block font-medium">{ti('payOnline')}</span>
+                    <span className={`mt-0.5 block text-xs ${mutedClass}`}>{ti('payOnlineHint')}</span>
+                  </span>
+                </label>
+              )}
               <Select isDark={isDark} label={ti('paymentProvider')} value={draft.paymentProvider} onChange={(value) => setDraft((current) => ({ ...current, paymentProvider: String(value) }))}>
                 {paymentProviderOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -1516,7 +1999,6 @@ export function InvoicesCMSPage() {
                   </option>
                 ))}
               </Select>
-              <Input isDark={isDark} label={ti('transaction')} value={draft.transactionId} onChange={(value) => setDraft((current) => ({ ...current, transactionId: String(value) }))} size="sm" />
             </div>
           </div>
 
@@ -1530,12 +2012,34 @@ export function InvoicesCMSPage() {
 
             <div className="space-y-2">
               {draft.lines.map((line) => (
-                <div key={line.id} className="grid gap-2 lg:grid-cols-[1fr_90px_90px_120px_90px]">
-                  <Input isDark={isDark} aria-label={ti('description')} value={line.description} onChange={(value) => updateLine(line.id, { description: String(value) })} placeholder={ti('description')} size="sm" />
+                <div key={line.id} className={`grid gap-2 rounded-md border p-2 lg:grid-cols-[minmax(260px,1fr)_76px_76px_110px_76px_36px] ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-[#E5E7EB] bg-white'}`}>
+                  <TextArea
+                    isDark={isDark}
+                    aria-label={ti('description')}
+                    value={line.description}
+                    onChange={(value) => updateLine(line.id, {
+                      description: String(value),
+                      descriptionFi: draft.language === 'fi' ? String(value) : line.descriptionFi,
+                      descriptionEn: draft.language === 'en' ? String(value) : line.descriptionEn,
+                    })}
+                    placeholder={ti('description')}
+                    rows={2}
+                    textAreaClassName="min-h-[68px] resize-y"
+                  />
                   <Input isDark={isDark} aria-label={ti('quantity')} value={line.quantity} onChange={(value) => updateLine(line.id, { quantity: String(value) })} placeholder={ti('quantity')} size="sm" />
                   <Input isDark={isDark} aria-label={ti('unitLabel')} value={line.unitLabel} onChange={(value) => updateLine(line.id, { unitLabel: String(value), unitLabelEn: translatedUnitLabel(value) })} placeholder={ti('unitLabel')} size="sm" />
                   <Input isDark={isDark} aria-label={ti('unitGross')} value={line.unitGross} onChange={(value) => updateLine(line.id, { unitGross: String(value) })} placeholder={ti('unitGross')} size="sm" />
                   <Input isDark={isDark} aria-label={ti('vatRate')} value={line.vatRate} onChange={(value) => updateLine(line.id, { vatRate: String(value) })} placeholder={ti('vatRate')} size="sm" />
+                  <button
+                    type="button"
+                    onClick={() => removeLine(line.id)}
+                    className={`flex h-10 w-9 items-center justify-center rounded-md transition-colors ${
+                      isDark ? 'text-gray-400 hover:bg-white/10 hover:text-red-300' : 'text-[#6E6E73] hover:bg-red-50 hover:text-red-600'
+                    }`}
+                    aria-label={ti('remove')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -1592,6 +2096,55 @@ export function InvoicesCMSPage() {
 
               <div className="flex flex-wrap justify-end gap-2">
                 <Button isDark={isDark} size="sm" color="secondary" onClick={() => void runDocumentAction('preview')}>{ti('previewPdf')}</Button>
+                {selectedSource?.document?.document_type === 'invoice' && !['paid', 'credited', 'void', 'cancelled'].includes(selectedSource.document.status) && (
+                  <Button
+                    isDark={isDark}
+                    size="sm"
+                    color="secondary"
+                    iconLeading={<RefreshCcw className="h-4 w-4" />}
+                    onClick={() => void sendInvoiceReminder()}
+                    isLoading={sendingReminderDocumentId === selectedSource.document.id}
+                    isDisabled={!selectedSource.customerEmail}
+                  >
+                    {ti('sendReminder')}
+                  </Button>
+                )}
+                {selectedSource?.document?.document_type === 'invoice' && !['paid', 'credited', 'void', 'cancelled'].includes(selectedSource.document.status) && (
+                  <Button
+                    isDark={isDark}
+                    size="sm"
+                    color="secondary"
+                    iconLeading={<Copy className="h-4 w-4" />}
+                    onClick={() => void copyInvoicePaymentLink()}
+                    isLoading={copyingPaymentLinkId === selectedSource.document.id}
+                  >
+                    {ti('copyPaymentLink')}
+                  </Button>
+                )}
+                {selectedSource?.document?.document_type === 'invoice' && !['paid', 'credited', 'void', 'cancelled'].includes(selectedSource.document.status) && (
+                  <Button
+                    isDark={isDark}
+                    size="sm"
+                    color="secondary"
+                    iconLeading={<CheckCircle2 className="h-4 w-4" />}
+                    onClick={() => void markInvoicePaid()}
+                    isLoading={markingPaidDocumentId === selectedSource.document.id}
+                  >
+                    {ti('markPaid')}
+                  </Button>
+                )}
+                {selectedSource?.document?.document_type === 'invoice' && !['paid', 'credited', 'void', 'cancelled'].includes(selectedSource.document.status) && (
+                  <Button
+                    isDark={isDark}
+                    size="sm"
+                    color="secondary"
+                    iconLeading={<Ban className="h-4 w-4" />}
+                    onClick={() => void voidInvoice()}
+                    isLoading={voidingDocumentId === selectedSource.document.id}
+                  >
+                    {ti('voidInvoice')}
+                  </Button>
+                )}
                 <Button isDark={isDark} size="sm" color="secondary" onClick={() => void runDocumentAction('send')} isDisabled={draftValidation.errors.length > 0}>{ti('sendReceipt')}</Button>
                 <Button isDark={isDark} size="sm" color="secondary" onClick={() => void runDocumentAction('issue')} isDisabled={draftValidation.errors.length > 0}>{ti('issuePdf')}</Button>
                 <Button isDark={isDark} size="sm" color="primary" iconLeading={<Save className="h-4 w-4" />} onClick={() => void saveDraft()} isLoading={saving}>

@@ -128,6 +128,28 @@ function resolveCheckoutProductSize(product: any) {
   ).trim();
 }
 
+function resolveDeliveryDayRange(product: any) {
+  const explicitMin = Number(product?.delivery_days_min);
+  const explicitMax = Number(product?.delivery_days_max);
+  if (Number.isFinite(explicitMin) && explicitMin > 0) {
+    return {
+      min: Math.round(explicitMin),
+      max: Number.isFinite(explicitMax) && explicitMax > 0 ? Math.round(explicitMax) : Math.round(explicitMin),
+    };
+  }
+
+  const label = String(product?.delivery_days ?? '').trim();
+  const match = label.match(/(\d+)(?:\s*-\s*(\d+))?/);
+  if (!match) return { min: null, max: null };
+
+  const min = Number(match[1]);
+  const max = Number(match[2] ?? match[1]);
+  return {
+    min: Number.isFinite(min) && min > 0 ? Math.round(min) : null,
+    max: Number.isFinite(max) && max > 0 ? Math.round(max) : null,
+  };
+}
+
 interface CheckoutPageProps {
   onBack: () => void;
   onComplete: () => void;
@@ -291,6 +313,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     try {
       // Build items array in correct Paytrail format
       const paytrailItems = items.map(item => {
+        const stockLimitCandidates = [
+          item.product?.stock_quantity,
+          item.product?.stock_qty,
+          item.product?.available_quantity,
+        ];
+        const stockLimit = stockLimitCandidates
+          .map((value) => Number(value))
+          .find((value) => Number.isFinite(value) && value > 0);
+        if (stockLimit && item.quantity > stockLimit) {
+          throw new Error(
+            language === 'fi'
+              ? `${item.product.brand || ''} ${item.product.model || item.product.name || ''}: varastossa on vain ${Math.floor(stockLimit)} kpl.`
+              : `${item.product.brand || ''} ${item.product.model || item.product.name || ''}: only ${Math.floor(stockLimit)} pcs available.`
+          );
+        }
+
         const linePricing = calculateLinePricing(
           item.base_price ?? item.price ?? 0,
           item.quantity,
@@ -304,7 +342,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           'Product'
         ).trim();
         const sku = item.product.id || item.id;
-        
+        const deliveryRange = resolveDeliveryDayRange(item.product);
+
         return {
           qty: item.quantity,
           client_unit_price_cents: unitPriceWithVatCents,
@@ -316,6 +355,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           model: item.product.model || null,
           size_text: resolveCheckoutProductSize(item.product),
           product_type: item.product.product_type || item.product.type || null,
+          stock_qty: stockLimit ? Math.floor(stockLimit) : null,
+          delivery_days_min: deliveryRange.min,
+          delivery_days_max: deliveryRange.max,
           line_total_cents: unitPriceWithVatCents * item.quantity,
         };
       });
@@ -422,11 +464,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       console.error('Checkout error:', error);
       setIsProcessing(false);
       saveCheckoutDraft(formData);
-      
+
+      const message = error instanceof Error ? error.message : '';
       toast.error(
-        language === 'fi'
-          ? 'Maksun aloitus epäonnistui. Yritä uudelleen.'
-          : 'We couldn\'t start the payment. Please try again.'
+        message || (
+          language === 'fi'
+            ? 'Maksun aloitus epäonnistui. Yritä uudelleen.'
+            : 'We couldn\'t start the payment. Please try again.'
+        )
       );
     }
   };

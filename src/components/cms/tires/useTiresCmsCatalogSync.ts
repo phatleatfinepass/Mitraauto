@@ -28,6 +28,11 @@ export function useTiresCmsCatalogSync({
     setCatalogSyncProgress({ processed: 0, total: 1 });
 
     try {
+      const { error: externalStockError } = await supabase.rpc('catalog_apply_rd_external_stock_v1');
+      if (externalStockError) {
+        throw externalStockError;
+      }
+
       const { data: startData, error: startError } = await supabase.rpc('start_webshop_tire_items_sync_v1');
 
       if (startError) {

@@ -437,7 +437,7 @@ export async function renderInvoicePdf(invoice: LoadedInvoice) {
       const label = bilingual(row.fi, row.en);
       const labelText = `${label.primary} / ${label.secondary}: `;
       const labelSize = 8.1;
-      const labelWidth = Math.min(textWidth(labelText, labelSize, font), maxWidth * 0.56);
+      const labelWidth = Math.min(textWidth(labelText, labelSize, font) + 4, maxWidth * 0.6);
       drawText(labelText, x, rowY, labelSize, font, muted);
       const nextY = drawWrapped(row.value, x + labelWidth, rowY, maxWidth - labelWidth, labelSize, bold, ink, 9.6);
       rowY = nextY - 5;
@@ -641,13 +641,13 @@ export async function renderInvoicePdf(invoice: LoadedInvoice) {
     y -= rowHeight;
   }
   closeItemsTableBorder();
-  y -= 26;
+  y -= 34;
 
   // Totals and VAT breakdown.
-  ensureSpace(120);
+  ensureSpace(190);
   const summaryHeading = bilingual("Yhteenveto", "Summary");
   drawText(`${summaryHeading.primary} / ${summaryHeading.secondary}`, margin, y, 12, bold);
-  y -= 20;
+  y -= 24;
   const vatTableW = 242;
   const vatHeaderH = 34;
   page.drawRectangle({ x: margin, y: y - vatHeaderH, width: vatTableW, height: vatHeaderH, color: warm, borderColor: border, borderWidth: 0.7 });
@@ -747,6 +747,24 @@ export async function issueAccessToken(documentId: string, exportId: string | nu
 
 function downloadUrl(token: string, download = true) {
   return `${FUNCTIONS_URL}/invoice_document_download?token=${encodeURIComponent(token)}${download ? "&download=1" : ""}`;
+}
+
+async function issueInvoicePaymentToken(documentId: string) {
+  const token = randomToken(32);
+  const tokenHash = await sha256Hex(token);
+  const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabaseAdmin.from("invoice_payment_access_tokens").insert({
+    document_id: documentId,
+    token_hash: tokenHash,
+    status: "active",
+    expires_at: expiresAt,
+  });
+  if (error) throw new Error(error.message);
+  return token;
+}
+
+function invoicePaymentUrl(token: string) {
+  return `${FUNCTIONS_URL}/invoice_start_payment?token=${encodeURIComponent(token)}`;
 }
 
 export async function prepareInvoiceDocument(documentId: string, action: "preview" | "issue" | "send") {
@@ -864,6 +882,9 @@ export async function sendInvoiceDocumentEmail(documentId: string) {
   const buyer = partyByRole(invoice.parties, "buyer");
   const language = normalizeLanguage(document.language);
   if (!buyer?.email) throw new Error("Missing buyer email");
+  const payOnline = document.document_type === "invoice" && document.payload?.pay_online === true;
+  const paymentToken = payOnline ? await issueInvoicePaymentToken(documentId) : null;
+  const payUrl = paymentToken ? invoicePaymentUrl(paymentToken) : null;
 
   const subject = document.document_type === "invoice"
     ? (language === "fi" ? `Lasku: ${document.document_number}` : `Invoice: ${document.document_number}`)
@@ -875,9 +896,16 @@ export async function sendInvoiceDocumentEmail(documentId: string) {
     `${language === "fi" ? "Numero" : "Number"}: ${document.document_number}`,
     `${language === "fi" ? "Yhteensä" : "Total"}: ${money(document.total_cents)}`,
     prepared.url,
+    ...(payUrl ? [
+      "",
+      language === "fi" ? "Maksa lasku turvallisesti verkossa:" : "Pay the invoice securely online:",
+      payUrl,
+    ] : []),
     "",
     "Mitra Auto",
   ].join("\n");
+  const paymentButtonHtml = payUrl ? `
+<a href="${escapeHtml(payUrl)}" style="background:#f97316;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 8px 8px 0;">${escapeHtml(language === "fi" ? "Maksa lasku" : "Pay invoice")}</a>` : "";
   const html = `<div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6;max-width:640px;margin:0 auto;padding:24px;">
 <h1 style="font-size:22px;margin:0 0 12px;">Mitra Auto</h1>
 <p>${escapeHtml(language === "fi" ? "Kiitos asioinnista. Dokumentti on valmis." : "Thank you. Your document is ready.")}</p>
@@ -885,7 +913,8 @@ export async function sendInvoiceDocumentEmail(documentId: string) {
 <p><strong>${escapeHtml(language === "fi" ? "Numero" : "Number")}:</strong> ${escapeHtml(document.document_number)}</p>
 <p><strong>${escapeHtml(language === "fi" ? "Yhteensä" : "Total")}:</strong> ${escapeHtml(money(document.total_cents))}</p>
 </div>
-<a href="${escapeHtml(prepared.url)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;">${escapeHtml(language === "fi" ? "Lataa dokumentti" : "Download document")}</a>
+${paymentButtonHtml}
+<a href="${escapeHtml(prepared.url)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 8px 8px 0;">${escapeHtml(language === "fi" ? "Lataa dokumentti" : "Download document")}</a>
 </div>`;
 
   await sendBasicGmail({
@@ -901,7 +930,7 @@ export async function sendInvoiceDocumentEmail(documentId: string) {
     document_id: documentId,
     event_type: "sent",
     actor: "edge_function",
-    payload: { recipient_email: buyer.email, export_id: prepared.pdfExport.id },
+    payload: { recipient_email: buyer.email, export_id: prepared.pdfExport.id, pay_online: payOnline },
   });
 
   return { ok: true, url: prepared.url };

@@ -150,6 +150,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <AnimatePresence mode="popLayout">
                 {items.map((item) => {
+                  const stockLimitCandidates = [
+                    item.product?.stock_quantity,
+                    item.product?.stock_qty,
+                    item.product?.available_quantity,
+                  ];
+                  const stockLimit = stockLimitCandidates
+                    .map((value) => Number(value))
+                    .find((value) => Number.isFinite(value) && value > 0);
                   const linePricing = calculateLinePricing(
                     item.base_price ?? item.price ?? 0,
                     item.quantity,
@@ -234,8 +242,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                             </span>
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              disabled={Boolean(stockLimit && item.quantity >= stockLimit)}
                               className={`p-1 rounded transition-colors ${
-                                theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-gray-100'
+                                stockLimit && item.quantity >= stockLimit
+                                  ? 'cursor-not-allowed opacity-30'
+                                  : theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-gray-100'
                               }`}
                             >
                               <Plus className="size-3" />

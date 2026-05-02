@@ -40,9 +40,9 @@ function toInteger(value: unknown): number | null {
 
 function seasonFromGroup(raw: Record<string, unknown>): string | null {
   const group = String(raw.MainGroupName ?? "").toLowerCase();
-  if (group.includes("kes")) return "summer";
-  if (group.includes("kitka") || group.includes("talv") || group.includes("nast")) return "winter";
   if (group.includes("all season") || group.includes("ympärivuot")) return "all_season";
+  if (group.includes("kitka") || group.includes("talv") || group.includes("nast")) return "winter";
+  if (group.includes("kes")) return "summer";
   return null;
 }
 

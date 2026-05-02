@@ -87,7 +87,7 @@ export function Footer({ onNavigate }: FooterProps) {
     {
       titleKey: 'footer.services',
       links: [
-        { key: 'footer.tireChange', href: '/services', sectionId: 'tire-work' },
+        { key: 'footer.carservice', href: '/services', sectionId: 'tire-work' },
         { key: 'footer.tireHotel', href: '/tire-hotel' },
       ],
     },
@@ -111,15 +111,15 @@ export function Footer({ onNavigate }: FooterProps) {
     <footer className="border-t border-border bg-background">
       <div className="container mx-auto max-w-7xl px-6 lg:px-8">
         {/* Main Footer Content */}
-        <div className="py-16">
-          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="py-8 sm:py-16">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-8 text-left sm:grid-cols-2 lg:grid-cols-5">
             {/* Brand Column */}
-            <div className="lg:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
+            <div className="col-span-2 lg:col-span-1">
+              <div className="mb-3 flex items-center gap-2">
                 <img src={logo} alt="Mitra Auto" className="h-8 w-auto dark:brightness-0 dark:invert" />
                 <span className="text-lg font-semibold">Mitra Auto</span>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
                 {language === 'fi' 
                   ? 'Täyden palvelun korjaamo, joka tarjoaa rengas-, huolto- ja korjauspalveluita.' 
                   : 'Full-service garage with tire, maintenance and repair services.'}
@@ -129,8 +129,8 @@ export function Footer({ onNavigate }: FooterProps) {
             {/* Links Columns */}
             {footerSections.map((section, idx) => (
               <div key={idx}>
-                <h3 className="font-semibold text-sm mb-4">{t(section.titleKey)}</h3>
-                <ul className="space-y-3">
+                <h3 className="font-semibold text-sm mb-3">{t(section.titleKey)}</h3>
+                <ul className="space-y-2.5">
                   {section.links.map((link) => (
                     <li key={link.key}>
                       <a
@@ -150,9 +150,9 @@ export function Footer({ onNavigate }: FooterProps) {
 
         {/* Bottom Bar */}
         <div className="border-t border-border py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 text-left">
             {/* Copyright */}
-            <p className="text-sm text-muted-foreground">{t('footer.copyright')}</p>
+            <p className="basis-full text-sm text-muted-foreground sm:basis-auto">{t('footer.copyright')}</p>
 
             {/* Social Links */}
             <div className="flex items-center gap-4">

@@ -45,6 +45,28 @@ function resolveCartBasePrice(item: any) {
   return 0;
 }
 
+function resolveStockLimit(product: any) {
+  const candidates = [
+    product?.stock_quantity,
+    product?.stock_qty,
+    product?.available_quantity,
+    product?.quantity,
+  ];
+
+  for (const candidate of candidates) {
+    const value = Number(candidate);
+    if (Number.isFinite(value) && value > 0) return Math.floor(value);
+  }
+
+  return null;
+}
+
+function clampCartQuantity(product: any, quantity: number) {
+  const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
+  const stockLimit = resolveStockLimit(product);
+  return stockLimit ? Math.min(safeQuantity, stockLimit) : safeQuantity;
+}
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -82,6 +104,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addToCart = (product: any, quantity: number) => {
     setItems((prevItems) => {
+      const requestedQuantity = clampCartQuantity(product, quantity);
       // Check if product already exists in cart
       const existingItemIndex = prevItems.findIndex(
         (item) => item.product.id === product.id
@@ -92,9 +115,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedItems = [...prevItems];
         const existingItem = updatedItems[existingItemIndex];
         const safeBasePrice = resolveCartBasePrice({ ...existingItem, product });
+        const nextQuantity = clampCartQuantity(product, existingItem.quantity + requestedQuantity);
         updatedItems[existingItemIndex] = {
           ...existingItem,
-          quantity: existingItem.quantity + quantity,
+          quantity: nextQuantity,
           price: safeBasePrice,
           base_price: safeBasePrice,
           pricing_rules: normalizePricingRules(existingItem.pricing_rules ?? product.pricing_rules ?? null),
@@ -106,7 +130,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newItem: CartItem = {
           id: `${product.id}-${Date.now()}`,
           product,
-          quantity,
+          quantity: requestedQuantity,
           price: safeBasePrice,
           base_price: safeBasePrice,
           pricing_rules: normalizePricingRules(product.pricing_rules ?? null),
@@ -131,7 +155,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setItems((prevItems) =>
       prevItems.map((item) =>
-        item.id === itemId ? { ...item, quantity } : item
+        item.id === itemId ? { ...item, quantity: clampCartQuantity(item.product, quantity) } : item
       )
     );
   };

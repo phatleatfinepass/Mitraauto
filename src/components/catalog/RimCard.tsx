@@ -27,6 +27,7 @@ interface RimCardProps {
   index?: number;
   onClick?: () => void;
   onAddToCart?: (e: React.MouseEvent) => void;
+  disableInitialAnimation?: boolean;
 }
 
 const PREVIEW_RIM_PRODUCT: NonNullable<RimCardProps['product']> = {
@@ -45,7 +46,7 @@ const PREVIEW_RIM_PRODUCT: NonNullable<RimCardProps['product']> = {
   in_stock: true,
 };
 
-export function RimCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart }: RimCardProps) {
+export function RimCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart, disableInitialAnimation = false }: RimCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -126,8 +127,10 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
 
   return (
     <motion.div
+      initial={disableInitialAnimation ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -3 }}
-      transition={{ duration: 0.24 }}
+      transition={{ duration: disableInitialAnimation ? 0 : 0.24 }}
       className={`relative h-full ${onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2' : ''}`}
       {...interactiveProps}
     >

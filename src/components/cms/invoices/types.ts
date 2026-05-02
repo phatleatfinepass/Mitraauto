@@ -1,6 +1,6 @@
 export type SourceType = 'order' | 'booking' | 'manual';
 export type DocumentType = 'receipt' | 'invoice';
-export type SourceTab = 'all' | 'orders' | 'bookings' | 'drafts' | 'sent';
+export type SourceTab = 'all' | 'orders' | 'bookings' | 'drafts' | 'sent' | 'unpaid' | 'paid';
 
 export type OrderRow = {
   id: string;
@@ -64,6 +64,23 @@ export type InvoiceSummaryRow = {
   updated_at: string | null;
 };
 
+export type InvoicePaymentLinkRow = {
+  id: string;
+  document_id: string;
+  payment_status: 'created' | 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'refunded';
+  payment_provider: string | null;
+  payment_link_url: string | null;
+  payment_link_created_at: string | null;
+  payment_link_expires_at: string | null;
+  paytrail_transaction_id: string | null;
+  amount_cents: number | null;
+  paid_at: string | null;
+  reminder_count: number | null;
+  last_reminder_sent_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export type SourceRecord = {
   key: string;
   sourceType: SourceType;
@@ -76,6 +93,7 @@ export type SourceRecord = {
   amountCents: number;
   status: string;
   document?: InvoiceSummaryRow;
+  paymentLink?: InvoicePaymentLinkRow | null;
   raw: OrderRow | BookingRow | InvoiceSummaryRow;
 };
 
@@ -95,6 +113,16 @@ export type DocumentDraft = {
   documentType: DocumentType;
   sourceType: SourceType;
   sourceId: string | null;
+  receiptNumber: string;
+  workOrderNumber: string;
+  vehicleName: string;
+  vehicleMileageKm: string;
+  vehicleVin: string;
+  vehicleEngineCode: string;
+  vehicleFirstRegistered: string;
+  vehicleLicensePlate: string;
+  workSummaryFi: string;
+  workSummaryEn: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -107,6 +135,7 @@ export type DocumentDraft = {
   language: 'fi' | 'en';
   supplyDate: string;
   paymentProvider: string;
+  payOnline: boolean;
   transactionId: string;
   lines: DraftLine[];
   notes: string;

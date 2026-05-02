@@ -168,6 +168,24 @@ function parseFloatOrNull(value: unknown): number | null {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function normalizeSeasonValue(value: unknown): string {
+  return String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function getSeasonFilterValues(value: unknown): string[] {
+  const normalized = normalizeSeasonValue(value);
+  if (!normalized || normalized === 'all') return [];
+  if (normalized === 'all_season' || normalized === 'allseason') {
+    return ['all_season', 'all season', 'all-season', 'allseason'];
+  }
+  return [normalized];
+}
+
+function isAllSeasonFilter(value: unknown): boolean {
+  const normalized = normalizeSeasonValue(value);
+  return normalized === 'all_season' || normalized === 'allseason';
+}
+
 function isRetreadedTire(row: ProductSearchRow): boolean {
   const blob = [
     row.brand,
@@ -209,7 +227,8 @@ function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>)
   if (filters.aspectRatio && filters.aspectRatio !== 'all' && Number(filters.aspectRatio) !== aspect) return false;
   if (filters.diameter && filters.diameter !== 'all' && Number(filters.diameter) !== diameter) return false;
 
-  if (filters.season && filters.season !== 'all' && String(row.season ?? '').toLowerCase() !== String(filters.season).toLowerCase()) {
+  const seasonFilterValues = getSeasonFilterValues(filters.season);
+  if (seasonFilterValues.length > 0 && !seasonFilterValues.includes(normalizeSeasonValue(row.season))) {
     return false;
   }
 
@@ -404,7 +423,9 @@ async function fetchTireVariantIdsByFilters(
   if (aspectFilter !== null) request = request.eq('aspect_ratio', aspectFilter);
   if (diameterFilter !== null) request = request.eq('diameter_in', diameterFilter);
 
-  if (filters.season && filters.season !== 'all') request = request.eq('season', filters.season);
+  const seasonFilterValues = getSeasonFilterValues(filters.season);
+  if (seasonFilterValues.length === 1) request = request.eq('season', seasonFilterValues[0]);
+  if (seasonFilterValues.length > 1) request = request.in('season', seasonFilterValues);
   if (filters.runflat) request = request.eq('runflat', true);
   if (filters.xl) request = request.eq('xl_reinforced', true);
   if (filters.studded) request = request.eq('studded', true);
@@ -597,7 +618,9 @@ async function fetchTireProductsBySizePattern(
       .eq('final_is_hidden', false)
       .ilike('size_string', pattern);
 
-    if (filters.season && filters.season !== 'all') query = query.eq('season', filters.season);
+    const seasonFilterValues = getSeasonFilterValues(filters.season);
+    if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
+    if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
     if (filters.ean) {
       const ean = String(filters.ean).replace(/\D/g, '');
       if (ean) {
@@ -711,7 +734,7 @@ async function fetchTireCatalogRpc(
   const diameter =
     filters.diameter && filters.diameter !== 'all' ? Number(filters.diameter) : null;
   const season =
-    filters.season && filters.season !== 'all' ? String(filters.season) : null;
+    filters.season && filters.season !== 'all' ? normalizeSeasonValue(filters.season) : null;
   const search = normalizeSearchTerm(filters.search) || null;
   const ean = String(filters.ean ?? '').replace(/\D/g, '') || null;
   const sortBy =
@@ -845,6 +868,85 @@ async function fetchTireCatalogRpc(
   };
 }
 
+async function fetchAllSeasonTireProducts(
+  limit: number,
+  offset: number,
+  filters: Record<string, any>,
+): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const allSeasonSearch = [
+    'model.ilike.%allseason%',
+    'model.ilike.%all season%',
+    'model.ilike.%all-season%',
+    'model.ilike.%4season%',
+    'model.ilike.%4seasons%',
+    'model.ilike.%multiseason%',
+    'card_title.ilike.%allseason%',
+    'card_title.ilike.%all season%',
+    'card_title.ilike.%all-season%',
+    'card_title.ilike.%4season%',
+    'card_title.ilike.%4seasons%',
+    'card_title.ilike.%multiseason%',
+  ].join(',');
+
+  const buildQuery = (withCount: boolean) => {
+    let query = supabase
+      .from('webshop_items')
+      .select(WEBSHOP_TIRE_PUBLIC_SELECT, withCount ? { count: 'estimated' } : undefined)
+      .eq('product_type', 'tire')
+      .eq('is_visible', true)
+      .eq('publish_status', 'published')
+      .or(allSeasonSearch);
+
+    if (filters.search) {
+      const q = String(filters.search).trim();
+      if (q) {
+        query = query.or([
+          `brand.ilike.%${q}%`,
+          `brand_display_name.ilike.%${q}%`,
+          `model.ilike.%${q}%`,
+          `size_string.ilike.%${q}%`,
+          `card_title.ilike.%${q}%`,
+        ].join(','));
+      }
+    }
+
+    if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
+    if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
+    if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
+    if (filters.ean) {
+      const ean = String(filters.ean).replace(/\D/g, '');
+      if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
+    }
+    if (filters.runflat) query = query.eq('runflat', true);
+    if (filters.xl) query = query.eq('xl_reinforced', true);
+    if (filters.studded) query = query.eq('studded', true);
+    if (filters.inStockOnly) query = query.eq('in_stock', true);
+
+    switch (filters.sortBy) {
+      case 'price_desc':
+        query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
+        break;
+      case 'price_asc':
+        query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
+        break;
+      default:
+        query = query.order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
+        break;
+    }
+
+    return query.range(offset, offset + limit - 1);
+  };
+
+  const { data, error, count } = await buildQuery(true);
+  if (error) throw error;
+
+  const rows = ((data ?? []) as ProductSearchRow[])
+    .map((row) => ({ ...row, pricing_rules: null, final_is_hidden: false }))
+    .filter((row) => filters.includeRetreaded || !isRetreadedTire(row));
+
+  return { items: rows, total: count ?? rows.length };
+}
+
 export async function fetchProductSearchRowByIdentifier(
   productType: 'tire' | 'rim',
   identifier: string,
@@ -854,7 +956,7 @@ export async function fetchProductSearchRowByIdentifier(
 
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedIdentifier);
 
-  if (productType === 'tire') {
+  if (productType === 'tire' && !isAllSeasonFilter(filters.season)) {
     let query = supabase
       .from('webshop_items')
       .select(WEBSHOP_TIRE_PUBLIC_SELECT)
@@ -921,6 +1023,10 @@ export async function fetchProductsSearch(
   const filters = options.filters ?? {};
   const normalizedSearch = normalizeSearchTerm(filters.search);
 
+  if (productType === 'tire' && isAllSeasonFilter(filters.season)) {
+    return await fetchAllSeasonTireProducts(limit, offset, filters);
+  }
+
   if (productType === 'tire') {
     try {
       return await fetchTireCatalogRpc(limit, offset, filters);
@@ -973,7 +1079,9 @@ export async function fetchProductsSearch(
         if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
         if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
         if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
-        if (filters.season && filters.season !== 'all') query = query.eq('season', filters.season);
+        const seasonFilterValues = getSeasonFilterValues(filters.season);
+        if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
+        if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
         if (filters.ean) {
           const ean = String(filters.ean).replace(/\D/g, '');
           if (ean) {

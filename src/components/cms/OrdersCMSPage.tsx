@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../LanguageContext';
 import { supabase } from '../../utils/supabase/client';
-import { AlertCircle, Banknote, CheckCircle2, ChevronRight, CreditCard, Globe, Mail, Package, Phone, RefreshCcw, RotateCcw, Search, Send, Truck, XCircle } from 'lucide-react';
+import { AlertCircle, Banknote, CheckCircle2, ChevronRight, CreditCard, Globe, Mail, Package, Phone, ReceiptEuro, RefreshCcw, RotateCcw, Search, Send, Truck, XCircle } from 'lucide-react';
 import { calculateLinePricing, getPricingRulesFromSpecOverrides, type ProductPricingRules } from '../../utils/pricing';
+import { InvoicesCMSPage } from './InvoicesCMSPage';
 
 interface OrderRow {
   id: string;
@@ -821,6 +822,7 @@ export function OrdersCMSPage() {
   const { theme } = useTheme();
   const { language } = useLanguage();
   const isDark = theme === 'dark';
+  const [workspaceMode, setWorkspaceMode] = useState<'orders' | 'invoices'>('orders');
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1790,21 +1792,51 @@ export function OrdersCMSPage() {
     item?.id ??
     item?.product_id ??
     null;
+  const WorkspaceIcon = workspaceMode === 'orders' ? Package : ReceiptEuro;
+  const workspaceTitle = workspaceMode === 'orders'
+    ? (language === 'fi' ? 'Tilaukset' : 'Orders')
+    : (language === 'fi' ? 'Laskut' : 'Invoices');
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
       <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
         <div className="px-8 py-6">
-          <h1 className={`text-3xl mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Tilaukset CMS' : 'Orders CMS'}
-          </h1>
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi'
-              ? 'Näe asiakkaiden tilaukset, maksun tila ja ostetut tuotteet'
-              : 'Track customer orders, payment state, and purchased items'}
-          </p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-2">
+              <WorkspaceIcon className="h-5 w-5 text-[#F97316]" />
+              <h1 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {workspaceTitle}
+              </h1>
+            </div>
+            <div className={`grid h-10 w-fit grid-cols-2 rounded-md border p-1 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-100'}`}>
+              {(['orders', 'invoices'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setWorkspaceMode(mode)}
+                  className={`min-w-[104px] rounded px-3 text-sm font-medium transition-colors ${
+                    workspaceMode === mode
+                      ? 'bg-[#F97316] text-white shadow-sm'
+                      : isDark ? 'text-gray-300 hover:bg-white/10' : 'text-gray-600 hover:bg-white'
+                  }`}
+                >
+                  {mode === 'orders'
+                    ? (language === 'fi' ? 'Tilaukset' : 'Orders')
+                    : (language === 'fi' ? 'Laskut' : 'Invoices')}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
+
+      {workspaceMode === 'invoices' ? (
+        <InvoicesCMSPage
+          documentScope="invoice"
+          title={language === 'fi' ? 'Laskut' : 'Invoices'}
+        />
+      ) : (
+        <>
 
       <OrdersToolbar
         fetchOrders={fetchOrders}
@@ -1921,6 +1953,8 @@ export function OrdersCMSPage() {
           setEanLookupMessage={setEanLookupMessage}
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

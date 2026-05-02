@@ -265,13 +265,13 @@ export function TireFilters({ onFilterChange, onSearch, searchMode, filters: ext
                     <SelectContent className={`${selectBgClass} ${borderClass}`}>
                       <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
                       <SelectItem value="summer" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? '☀️ Kesä' : '☀️ Summer'}
+                        {language === 'fi' ? 'Kesä' : 'Summer'}
                       </SelectItem>
                       <SelectItem value="winter" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? '❄️ Talvi' : '❄️ Winter'}
+                        {language === 'fi' ? 'Talvi' : 'Winter'}
                       </SelectItem>
                       <SelectItem value="all_season" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? '🔄 Ympärivuotinen' : '🔄 All Season'}
+                        {language === 'fi' ? 'Ympärivuotinen' : 'All Season'}
                       </SelectItem>
                     </SelectContent>
                   </Select>

@@ -2,7 +2,7 @@ import React from 'react';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { motion } from 'motion/react';
-import { ShoppingCart, PackageX, Sun, Snowflake, CloudSun } from 'lucide-react';
+import { ShoppingCart, PackageX, Sun, Snowflake, SunSnow } from 'lucide-react';
 import svgPaths from '../../imports/svg-eon971h5o4';
 import { buildProductImageFallback } from '../../utils/productImage';
 import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
@@ -35,6 +35,7 @@ interface TireCardProps {
   index?: number;
   onClick?: () => void;
   onAddToCart?: (e: React.MouseEvent) => void;
+  disableInitialAnimation?: boolean;
 }
 
 const PREVIEW_TIRE_PRODUCT: NonNullable<TireCardProps['product']> = {
@@ -48,7 +49,7 @@ const PREVIEW_TIRE_PRODUCT: NonNullable<TireCardProps['product']> = {
   in_stock: true,
 };
 
-export function TireCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart }: TireCardProps) {
+export function TireCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart, disableInitialAnimation = false }: TireCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
   const product = productProp ?? PREVIEW_TIRE_PRODUCT;
@@ -82,7 +83,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
     } else if (seasonLower === 'winter') {
       return <Snowflake className="w-4 h-4" strokeWidth={2} />;
     } else if (seasonLower === 'all_season') {
-      return <CloudSun className="w-4 h-4" strokeWidth={2} />;
+      return <SunSnow className="w-4 h-4" strokeWidth={2} />;
     }
     return null;
   };
@@ -158,9 +159,9 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={disableInitialAnimation ? false : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: disableInitialAnimation ? 0 : 0.4 }}
       whileHover={{ y: -4 }}
       className={`group relative h-full ${
         onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#FF6B35]' : ''
@@ -171,19 +172,19 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
         <a
           href={href}
           aria-label={`${product.brand} ${product.model}`}
-          className="absolute inset-0 z-10 rounded-[24px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#FF6B35]"
+          className="absolute inset-0 z-10 rounded-[16px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#FF6B35] sm:rounded-[24px]"
           onClick={handleCardLinkClick}
         />
       )}
-      <div className={`relative rounded-[24px] size-full transition-all duration-500 ${theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-gray-50'} ${theme === 'dark' ? 'group-hover:shadow-[0_8px_32px_rgba(255,107,53,0.15)]' : 'group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'}`}>
+      <div className={`relative size-full rounded-[16px] transition-all duration-500 sm:rounded-[24px] ${theme === 'dark' ? 'bg-[#1C1C1E]' : 'bg-gray-50'} ${theme === 'dark' ? 'group-hover:shadow-[0_8px_32px_rgba(255,107,53,0.15)]' : 'group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]'}`}>
         <div className="size-full">
-          <div className="box-border content-stretch flex flex-col gap-[24px] items-start overflow-clip p-[24px] relative size-full">
+          <div className="relative box-border flex size-full flex-col items-start gap-3 overflow-clip p-3 sm:gap-[24px] sm:p-[24px]">
             
             {/* Top Section: Brand, Model, Size */}
             <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
               {/* Brand */}
               <div className="content-stretch flex items-start relative shrink-0 w-full">
-                <p className={`basis-0 font-semibold grow leading-[normal] min-h-px min-w-px not-italic relative shrink-0 text-[24px] tracking-[-0.7125px] ${
+                <p className={`basis-0 font-semibold grow leading-[normal] min-h-px min-w-px not-italic relative shrink-0 text-[17px] tracking-[-0.4px] sm:text-[24px] sm:tracking-[-0.7125px] ${
                   theme === 'dark' ? 'text-white' : 'text-[#101828]'
                 }`}>
                   {product.brand}
@@ -192,7 +193,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
 
               {/* Model */}
               <div className="content-stretch flex gap-[10px] items-center relative shrink-0 w-full">
-                <p className={`font-normal leading-[20px] not-italic relative shrink-0 text-[14px] text-nowrap tracking-[-0.1784px] whitespace-pre ${
+                <p className={`relative line-clamp-1 min-w-0 shrink font-normal text-[12px] leading-[16px] tracking-[-0.1784px] sm:text-[14px] sm:leading-[20px] ${
                   theme === 'dark' ? 'text-gray-400' : 'text-[#4a5565]'
                 }`}>
                   {product.model}
@@ -202,7 +203,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
               {/* Size and Season */}
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 {/* Size */}
-                <div className="content-stretch flex font-normal items-center leading-[20px] not-italic relative rounded-[16px] shrink-0 text-[14px] text-nowrap tracking-[-0.1504px] whitespace-pre">
+                <div className="content-stretch flex font-normal items-center leading-[18px] not-italic relative rounded-[16px] shrink-0 text-[12px] text-nowrap tracking-[-0.1504px] whitespace-pre sm:text-[14px] sm:leading-[20px]">
                   <p className={`relative shrink-0 ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>
                     {sizeText}
                   </p>
@@ -210,13 +211,13 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
 
                 {/* Season Badge */}
                 {product.season && (
-                  <div className="box-border content-stretch flex gap-[4px] items-center justify-center p-[2px] relative shrink-0 transition-all duration-300 group-hover:scale-105">
-                    <div className="relative shrink-0 size-[16px] transition-transform duration-300 group-hover:rotate-12" style={{ color: getSeasonColor(product.season) }}>
+                  <div className="box-border content-stretch flex gap-1 items-center justify-center p-[2px] relative shrink-0 transition-all duration-300 group-hover:scale-105">
+                    <div className="relative hidden shrink-0 size-[16px] transition-transform duration-300 group-hover:rotate-12 sm:block" style={{ color: getSeasonColor(product.season) }}>
                       {getSeasonIcon(product.season)}
                     </div>
                     <div className="relative shrink-0">
                       <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border content-stretch flex gap-[10px] items-center justify-center relative">
-                        <p className={`font-semibold leading-[16px] not-italic relative shrink-0 text-[12px] text-center text-nowrap uppercase whitespace-pre transition-colors duration-300`}
+                        <p className={`font-semibold leading-[14px] not-italic relative shrink-0 text-[10px] text-center text-nowrap uppercase whitespace-pre transition-colors duration-300 sm:text-[12px] sm:leading-[16px]`}
                            style={{ color: getSeasonColor(product.season) }}>
                           {getSeasonLabel(product.season)}
                         </p>
@@ -228,12 +229,12 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
             </div>
 
             {/* Image and Label Section */}
-            <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+            <div className="content-stretch flex flex-col gap-3 items-start relative shrink-0 w-full sm:gap-[16px]">
               
               {/* Tire Image */}
-              <div className="aspect-[248/157] bg-white relative rounded-[16px] shrink-0 w-full">
+              <div className="aspect-[1.2] bg-white relative rounded-[12px] shrink-0 w-full sm:aspect-[248/157] sm:rounded-[16px]">
                 <div className="aspect-[248/157] overflow-clip relative rounded-[inherit] size-full">
-                  <div className="absolute top-[16px] w-full aspect-square">
+                  <div className="absolute top-2 w-full aspect-square sm:top-[16px]">
                     <img
                       src={cardImageSrc}
                       alt={`${product.brand} ${product.model}`}
@@ -248,18 +249,18 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                 </div>
                 <div 
                   aria-hidden="true" 
-                  className={`absolute border border-solid inset-0 pointer-events-none rounded-[16px] transition-all duration-500 ${
+                  className={`absolute border border-solid inset-0 pointer-events-none rounded-[12px] transition-all duration-500 sm:rounded-[16px] ${
                     theme === 'dark' ? 'border-white/10 group-hover:border-white/20' : 'border-[rgba(229,231,235,0.5)] group-hover:border-gray-300'
                   }`} 
                 />
               </div>
 
               {/* EU Label & Price Container */}
-              <div className="content-stretch flex gap-[12px] items-center relative shrink-0 w-full">
+              <div className="content-stretch flex gap-2 items-center relative shrink-0 w-full sm:gap-[12px]">
                 
                 {/* EU Label */}
                 {hasEuLabel && (
-                  <div className="basis-0 grow min-h-px min-w-px relative rounded-[16px] shrink-0">
+                  <div className="relative hidden min-h-px min-w-px basis-0 grow shrink-0 rounded-[16px] sm:block">
                     <div 
                       aria-hidden="true" 
                       className={`absolute border border-solid inset-0 pointer-events-none rounded-[16px] transition-all duration-500 ${
@@ -423,19 +424,19 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                 )}
 
                 {/* Price Container */}
-                <div className="basis-0 grow min-h-px min-w-px relative rounded-[16px] shrink-0">
+                <div className="relative min-h-px min-w-px basis-full grow shrink-0 rounded-[12px] sm:basis-0 sm:rounded-[16px]">
                   <div 
                     aria-hidden="true" 
-                    className={`absolute border border-solid inset-0 pointer-events-none rounded-[16px] transition-all duration-500 ${
+                    className={`absolute border border-solid inset-0 pointer-events-none rounded-[12px] transition-all duration-500 sm:rounded-[16px] ${
                       theme === 'dark' ? 'border-orange-400/30 group-hover:border-orange-400/60 group-hover:shadow-[0_0_16px_rgba(255,107,53,0.2)]' : 'border-[#ffd6a7] group-hover:border-orange-400/50 group-hover:shadow-[0_0_16px_rgba(255,107,53,0.15)]'
                     }`} 
                   />
                   <div className="size-full">
-                    <div className="box-border content-stretch flex flex-col gap-[16px] items-start p-[12px] relative w-full">
+                    <div className="box-border content-stretch flex flex-col gap-2 items-start p-2 relative w-full sm:gap-[16px] sm:p-[12px]">
                       {/* Price */}
                       <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
                         {/* Euro Icon */}
-                        <div className="relative shrink-0 size-[16px]">
+                        <div className="relative shrink-0 size-3.5 sm:size-[16px]">
                           <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
                             <path 
                               d={svgPaths.p4b3b540} 
@@ -450,7 +451,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                         {/* Price Value */}
                         <div className="h-[26px] relative shrink-0">
                           <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border content-stretch flex flex-col gap-[10px] h-[26px] items-center justify-center relative">
-                            <p className={`font-medium leading-[28px] not-italic relative shrink-0 text-[18px] text-center text-nowrap tracking-[-0.4395px] whitespace-pre ${
+                            <p className={`font-medium leading-[24px] not-italic relative shrink-0 text-[16px] text-center text-nowrap tracking-[-0.4395px] whitespace-pre sm:text-[18px] sm:leading-[28px] ${
                               theme === 'dark' ? 'text-white' : 'text-[#101828]'
                             }`}>
                               {(product.best_price_eur || 0).toFixed(2)}
@@ -475,12 +476,12 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
               </div>
 
               {/* Bottom: Feature Badges & Add Button */}
-              <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full">
+              <div className="content-stretch flex flex-col gap-3 items-start relative mt-auto shrink-0 w-full sm:gap-[20px]">
                 
                 {/* Feature Badges */}
-                <div className="content-stretch flex flex-wrap items-start gap-2 relative shrink-0 w-full">
+                <div className="content-stretch flex min-h-[24px] flex-wrap items-start gap-1.5 relative shrink-0 w-full sm:min-h-[30px] sm:gap-2">
                   {featureBadges.map((badge) => (
-                    <div key={badge.key} className={`box-border content-stretch flex gap-[8px] items-center px-[8px] py-[4px] relative rounded-[8px] shrink-0 transition-all duration-300 ${
+                    <div key={badge.key} className={`box-border content-stretch flex gap-[8px] items-center px-1.5 py-1 relative rounded-[8px] shrink-0 transition-all duration-300 sm:px-[8px] sm:py-[4px] ${
                       theme === 'dark' ? 'bg-white/5 group-hover:bg-white/10' : 'bg-[rgba(250,250,250,0.2)] group-hover:bg-white/60'
                     }`}>
                       <div 
@@ -507,7 +508,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                 {/* Add Button */}
                 <button
                   disabled={!product.in_stock}
-                  className="pointer-events-auto z-20 bg-[#ff6b35] hover:bg-[#ff6b35]/90 box-border content-stretch flex gap-[14px] h-[40px] items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] shrink-0 w-full text-white transition-all duration-300 hover:shadow-[0px_6px_20px_0px_rgba(255,107,53,0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="pointer-events-auto z-20 bg-[#ff6b35] hover:bg-[#ff6b35]/90 box-border content-stretch flex gap-2 h-9 items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] shrink-0 w-full text-white transition-all duration-300 hover:shadow-[0px_6px_20px_0px_rgba(255,107,53,0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 sm:h-[40px] sm:gap-[14px]"
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -579,7 +580,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
         {/* Border */}
         <div 
           aria-hidden="true" 
-          className={`absolute border border-solid inset-0 pointer-events-none rounded-[24px] transition-all duration-500 ${
+          className={`absolute border border-solid inset-0 pointer-events-none rounded-[16px] transition-all duration-500 sm:rounded-[24px] ${
             theme === 'dark' ? 'border-white/10 group-hover:border-orange-400/30' : 'border-[rgba(229,231,235,0.8)] group-hover:border-orange-400/20'
           }`} 
         />

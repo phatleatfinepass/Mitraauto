@@ -6,7 +6,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  CloudSun,
   Droplet,
   Gauge,
   Heart,
@@ -20,6 +19,7 @@ import {
   Snowflake,
   Star,
   Sun,
+  SunSnow,
   Truck,
   Volume2,
   X,
@@ -76,6 +76,8 @@ export interface TireProduct {
   stock_quantity?: number;
   supplier_name?: string;
   delivery_days?: string;
+  delivery_days_min?: number;
+  delivery_days_max?: number;
   weight?: number;
   warranty_years?: number;
   rating?: number;
@@ -110,6 +112,8 @@ export interface RimProduct {
   stock_quantity?: number;
   supplier_name?: string;
   delivery_days?: string;
+  delivery_days_min?: number;
+  delivery_days_max?: number;
   compatible_vehicles?: string[];
   warranty_years?: number;
   rating?: number;
@@ -476,9 +480,15 @@ export function ProductDetailPage({
 }: ProductDetailPageProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const stockLimit = product.in_stock && typeof product.stock_quantity === 'number' && product.stock_quantity > 0
+    ? Math.floor(product.stock_quantity)
+    : null;
+  const maxQuantity = stockLimit ?? 20;
+  const defaultQuantity = Math.min(product.type === 'tire' ? 4 : 1, maxQuantity);
+  const clampQuantity = (value: number) => Math.min(maxQuantity, Math.max(1, Math.floor(value || 1)));
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
-  const [quantity, setQuantity] = useState(product.type === 'tire' ? 4 : 1);
+  const [quantity, setQuantity] = useState(defaultQuantity);
   const [showMobileCTA, setShowMobileCTA] = useState(false);
   const [showFloatingBack, setShowFloatingBack] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -533,10 +543,10 @@ export function ProductDetailPage({
   const hasTierDiscount = pricingForQuantity.savingsEur > 0;
 
   useEffect(() => {
-    setQuantity(product.type === 'tire' ? 4 : 1);
+    setQuantity(defaultQuantity);
     setCurrentImageIndex(0);
     setPreviewImageIndex(0);
-  }, [product.id, product.type]);
+  }, [defaultQuantity, product.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -658,7 +668,7 @@ export function ProductDetailPage({
       total: { fi: 'Yhteensä', en: 'Total' },
       inStock: { fi: 'Varastossa', en: 'In Stock' },
       outOfStock: { fi: 'Loppu varastosta', en: 'Out of Stock' },
-      delivery: { fi: 'Toimitus 1–3 arkipäivää', en: 'Delivery 1–3 business days' },
+      delivery: { fi: 'Toimitus 1–3 päivää', en: 'Delivery 1–3 Days' },
       fulfilledBy: { fi: 'Toimittaa Mitra Auto', en: 'Fulfilled by Mitra Auto' },
       quantity: { fi: 'Määrä', en: 'Quantity' },
       addToCart: { fi: 'Lisää ostoskoriin', en: 'Add to Cart' },
@@ -695,7 +705,7 @@ export function ProductDetailPage({
       customerFeedback: { fi: 'Asiakaspalaute', en: 'Customer Feedback' },
       youMayLike: { fi: 'Saatat pitää myös näistä', en: 'You may also like' },
       fastDelivery: { fi: 'Nopea toimitus', en: 'Fast Delivery' },
-      deliveryDesc: { fi: '1–3 arkipäivää kautta Suomen', en: '1–3 business days across Finland' },
+      deliveryDesc: { fi: '1–3 päivää kautta Suomen', en: '1–3 Days across Finland' },
       securePayments: { fi: 'Turvalliset maksut', en: 'Secure Payments' },
       paymentsDesc: { fi: 'Paytrail / Visa / Mastercard', en: 'Paytrail / Visa / Mastercard' },
       customerSupport: { fi: 'Asiakastuki', en: 'Customer Support' },
@@ -725,7 +735,7 @@ export function ProductDetailPage({
     const icons: Record<string, React.ReactNode> = {
       summer: <Sun className="size-4" />,
       winter: <Snowflake className="size-4" />,
-      all_season: <CloudSun className="size-4" />,
+      all_season: <SunSnow className="size-4" />,
     };
     return icons[season] || null;
   };
@@ -1150,7 +1160,7 @@ export function ProductDetailPage({
                     theme === 'dark' ? 'border border-white/10 bg-white/5' : 'border border-[#E2E8F0] bg-[#F1F5F9]'
                   }`}>
                     <button
-                      onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                      onClick={() => setQuantity((prev) => clampQuantity(prev - 1))}
                       disabled={quantity <= 1}
                       className={`rounded-full px-2 py-1 ${quantity <= 1 ? 'opacity-30' : ''}`}
                     >
@@ -1158,9 +1168,9 @@ export function ProductDetailPage({
                     </button>
                     <span className={`min-w-[2ch] text-center ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{quantity}</span>
                     <button
-                      onClick={() => setQuantity((prev) => Math.min(20, prev + 1))}
-                      disabled={quantity >= 20}
-                      className={`rounded-full px-2 py-1 ${quantity >= 20 ? 'opacity-30' : ''}`}
+                      onClick={() => setQuantity((prev) => clampQuantity(prev + 1))}
+                      disabled={quantity >= maxQuantity}
+                      className={`rounded-full px-2 py-1 ${quantity >= maxQuantity ? 'opacity-30' : ''}`}
                     >
                       +
                     </button>

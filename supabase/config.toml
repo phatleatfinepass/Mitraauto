@@ -1,0 +1,10 @@
+project_id = "rcmmbwdebnmicrweoiyz"
+
+[functions.payments_paytrail_webhook]
+verify_jwt = false
+
+[functions.invoice_document_download]
+verify_jwt = false
+
+[functions.invoice_start_payment]
+verify_jwt = false

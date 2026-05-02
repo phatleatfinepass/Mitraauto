@@ -35,6 +35,9 @@ type CheckoutItem = {
   sku?: unknown;
   name?: unknown;
   vatPercentage?: unknown;
+  stock_qty?: unknown;
+  delivery_days_min?: unknown;
+  delivery_days_max?: unknown;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -146,6 +149,8 @@ function buildOrderSnapshot(
       model: item.model ?? null,
       size_text: item.sizeText ?? null,
       product_type: item.productType ?? null,
+      delivery_days_min: item.deliveryDaysMin ?? null,
+      delivery_days_max: item.deliveryDaysMax ?? null,
     })),
   };
 }
@@ -214,8 +219,12 @@ serve(async (req) => {
     const paytrailItems = input.items.map((item: CheckoutItem, index: number) => {
       const unitPrice = asPositiveInteger(item.client_unit_price_cents);
       const units = asPositiveInteger(item.qty);
+      const stockQty = asPositiveInteger((item as any).stock_qty, 0);
       if (unitPrice <= 0 || units <= 0) {
         throw new Error(`Invalid cart item at index ${index}`);
+      }
+      if (stockQty > 0 && units > stockQty) {
+        throw new Error(`Requested quantity exceeds available stock for ${cleanString(item.name || item.sku || `item-${index + 1}`, 120)}. Available stock: ${stockQty}`);
       }
 
       return {
@@ -229,6 +238,8 @@ serve(async (req) => {
         model: cleanString((item as any).model, 160) || null,
         sizeText: cleanString((item as any).size_text, 120) || null,
         productType: cleanString((item as any).product_type, 40) || null,
+        deliveryDaysMin: asPositiveInteger((item as any).delivery_days_min, 0) || null,
+        deliveryDaysMax: asPositiveInteger((item as any).delivery_days_max, 0) || null,
       };
     });
 

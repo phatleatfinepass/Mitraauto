@@ -266,6 +266,30 @@ function primaryOrderItemTitle(order: OrderRow, language: SupportedLanguage = "e
   return `${firstTitle} + ${items.length - 1} ${language === "fi" ? "muuta" : "more"}`;
 }
 
+function maxOrderDeliveryDays(order: OrderRow) {
+  const values = orderItems(order)
+    .map((item: any) => Number(item?.delivery_days_max ?? item?.delivery_days_min ?? 0))
+    .filter((value: number) => Number.isFinite(value) && value > 0);
+  return values.length > 0 ? Math.max(...values) : 0;
+}
+
+function installBufferBusinessDays(order: OrderRow) {
+  return maxOrderDeliveryDays(order) + 2;
+}
+
+function installAvailabilityLabel(order: OrderRow, language: SupportedLanguage) {
+  const deliveryDays = maxOrderDeliveryDays(order);
+  if (deliveryDays <= 0) {
+    return language === "fi"
+      ? "Voit varata asennuksen aikaisintaan 2 arkipäivän päähän."
+      : "You can book installation from 2 business days after the order.";
+  }
+
+  return language === "fi"
+    ? `Voit varata asennuksen aikaisintaan toimitusarvion (${deliveryDays} päivää) + 2 arkipäivän päähän.`
+    : `You can book installation from the delivery estimate (${deliveryDays} Days) + 2 business days after the order.`;
+}
+
 function parseRimDiameter(size: string) {
   const normalized = String(size ?? "").replace(",", ".").toUpperCase();
   const patterns = [
@@ -457,7 +481,9 @@ export async function getOrderInstallContext(token: string) {
     orderId: order.id,
     language,
     customer,
-    recommendedDate: addBusinessDaysIso(new Date(order.created_at ?? Date.now()), 2),
+    recommendedDate: addBusinessDaysIso(new Date(order.created_at ?? Date.now()), installBufferBusinessDays(order)),
+    deliveryDaysMax: maxOrderDeliveryDays(order),
+    installBufferBusinessDays: installBufferBusinessDays(order),
     serviceId: tireWorkServiceForOrder(order),
     usedBookingId: data.used_booking_id ?? null,
   };
@@ -477,8 +503,9 @@ export async function sendOrderConfirmationEmail(orderId: string) {
 
   const existing = await supabaseAdmin
     .from("order_email_threads")
-    .select("id")
+    .select("id, status")
     .eq("order_id", order.id)
+    .in("status", ["active", "sending"])
     .limit(1)
     .maybeSingle();
   if (existing.data?.id) return { ok: true, skipped: true };
@@ -490,12 +517,13 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   const installUrl = installToken
     ? `${SITE_URL}${language === "en" ? "/en" : ""}/?book_install=1&install_token=${encodeURIComponent(installToken)}`
     : "";
-  const retryUrl = `${SITE_URL}${language === "en" ? "/en" : ""}/catalog`;
+  const retryUrl = `${SITE_URL}/catalog`;
   const total = `€${((Number(order.grand_total_cents ?? 0) || 0) / 100).toFixed(2)}`;
   const subtotal = formatMoney(order.cart_snapshot?.subtotal_cents);
   const shipping = formatMoney(order.cart_snapshot?.shipping_cents);
   const vat = formatMoney(order.cart_snapshot?.tax_cents);
   const provider = formatProvider(order.paytrail_provider);
+  const installAvailability = installAvailabilityLabel(order, language);
   const { inlineImages, cidByIndex } = await buildInlineImages(order);
   const subjectItem = primaryOrderItemTitle(order, language);
   const subject = paid
@@ -525,6 +553,7 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     `${language === "fi" ? "ALV" : "VAT"}: ${vat}`,
     `${language === "fi" ? "Yhteensä" : "Total"}: ${total}`,
     paid && invoiceReceipt ? `${receiptButtonLabel}: ${invoiceReceipt.url}` : "",
+    paid ? installAvailability : "",
     "",
     paid ? `${buttonLabel}: ${installUrl}` : `${buttonLabel}: ${retryUrl}`,
   ].filter(Boolean).join("\n");
@@ -545,6 +574,7 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     `<tr><td style="padding:4px 0 10px;color:#475569;">${escapeHtml(language === "fi" ? "ALV 25,5%" : "VAT 25.5%")}</td><td align="right" style="padding:4px 0 10px;color:#475569;font-weight:700;">${escapeHtml(vat)}</td></tr>`,
     `<tr><td style="padding:8px 0 0;font-size:20px;color:#111827;font-weight:700;">${escapeHtml(language === "fi" ? "Yhteensä" : "Total")}</td><td align="right" style="padding:8px 0 0;font-size:20px;color:#ff6b00;font-weight:700;">${escapeHtml(total)}</td></tr>`,
     `</table>`,
+    paid ? `<p style="margin:18px 0 0;color:#475569;font-size:14px;">${escapeHtml(installAvailability)}</p>` : "",
     `<div style="margin-top:22px;">`,
     `<a href="${escapeHtml(paid ? installUrl : retryUrl)}" style="${paid ? "background:#ff6b00;color:#ffffff;" : "background:#111827;color:#ffffff;"}padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 8px 8px 0;">${escapeHtml(buttonLabel)}</a>`,
     paid && invoiceReceipt ? `<a href="${escapeHtml(invoiceReceipt.url)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 0 8px 0;">${escapeHtml(receiptButtonLabel)}</a>` : "",
@@ -557,23 +587,45 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     `</div>`,
   ].join("");
 
-  const raw = buildRawMessage({ to: customer.email, subject, text, html, inlineImages });
-  const result = await gmailApi<{ id: string; threadId: string; historyId?: string; internalDate?: string }>("/messages/send", "POST", {
-    raw: toBase64Url(raw.raw),
-  });
-  const sentAt = result.internalDate ? new Date(Number(result.internalDate)).toISOString() : new Date().toISOString();
-  const { data: thread, error: threadError } = await supabaseAdmin
+  const { data: reservedThread, error: reserveError } = await supabaseAdmin
     .from("order_email_threads")
     .insert({
       order_id: order.id,
       provider: "gmail",
       mailbox_email: mailboxEmail(),
-      provider_thread_id: result.threadId,
       subject,
+      status: "sending",
+      last_synced_at: new Date().toISOString(),
+    })
+    .select("*")
+    .single<any>();
+  if (reserveError) {
+    if (String(reserveError.code ?? "") === "23505") return { ok: true, skipped: true };
+    throw new Error(reserveError.message);
+  }
+
+  const raw = buildRawMessage({ to: customer.email, subject, text, html, inlineImages });
+  let result: { id: string; threadId: string; historyId?: string; internalDate?: string };
+  try {
+    result = await gmailApi<{ id: string; threadId: string; historyId?: string; internalDate?: string }>("/messages/send", "POST", {
+      raw: toBase64Url(raw.raw),
+    });
+  } catch (error) {
+    await supabaseAdmin.from("order_email_threads").delete().eq("id", reservedThread.id);
+    throw error;
+  }
+
+  const sentAt = result.internalDate ? new Date(Number(result.internalDate)).toISOString() : new Date().toISOString();
+  const { data: thread, error: threadError } = await supabaseAdmin
+    .from("order_email_threads")
+    .update({
+      provider_thread_id: result.threadId,
+      status: "active",
       history_id: result.historyId ?? null,
       last_message_at: sentAt,
       last_synced_at: new Date().toISOString(),
     })
+    .eq("id", reservedThread.id)
     .select("*")
     .single<any>();
   if (threadError) throw new Error(threadError.message);

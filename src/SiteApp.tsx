@@ -52,6 +52,7 @@ import {
   ArrowRight,
   Award,
   Clock,
+  Zap,
   Navigation,
   Users
 } from 'lucide-react';
@@ -380,7 +381,7 @@ function generateProductImages(productId: string, baseImageUrl: string, productT
   return templates.slice(0, imageCount);
 }
 
-function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
+function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en' = 'en'): ProductDetail {
   const cmsImages =
     Array.isArray(product.gallery_images)
       ? product.gallery_images
@@ -452,9 +453,11 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
       long_description: product.long_description,
       description: product.long_description ?? product.short_description,
       in_stock: product.in_stock,
-      stock_quantity: product.in_stock ? 8 : 0,
+      stock_quantity: product.in_stock ? Math.max(0, product.stock_qty ?? 0) : 0,
       supplier_name: undefined,
-      delivery_days: product.delivery_days ?? (product.in_stock ? '1-3 business days' : undefined),
+      delivery_days: product.delivery_days ?? (product.in_stock ? (language === 'fi' ? '1-3 päivää' : '1-3 Days') : undefined),
+      delivery_days_min: product.delivery_days_min,
+      delivery_days_max: product.delivery_days_max,
       weight: undefined,
     };
   }
@@ -481,11 +484,13 @@ function mapCatalogProductToDetail(product: CatalogProduct): ProductDetail {
     short_description: product.short_description,
     long_description: product.long_description,
     description: product.long_description ?? product.short_description,
-    in_stock: product.in_stock,
-    stock_quantity: product.in_stock ? 4 : 0,
-    supplier_name: undefined,
-    delivery_days: product.delivery_days ?? (product.in_stock ? '2-5 business days' : undefined),
-    compatible_vehicles: [],
+      in_stock: product.in_stock,
+      stock_quantity: product.in_stock ? 4 : 0,
+      supplier_name: undefined,
+      delivery_days: product.delivery_days ?? (product.in_stock ? (language === 'fi' ? '2-5 päivää' : '2-5 Days') : undefined),
+      delivery_days_min: product.delivery_days_min,
+      delivery_days_max: product.delivery_days_max,
+      compatible_vehicles: [],
   };
 }
 
@@ -556,6 +561,26 @@ function HomePage() {
     const params = new URLSearchParams(window.location.search);
     const shouldOpenBooking = params.get('booking') === '1';
     const installToken = params.get('install_token');
+    const invoicePaymentStatus = params.get('invoice_payment');
+    const invoiceNumber = params.get('invoice');
+
+    if (invoicePaymentStatus) {
+      const invoiceSuffix = invoiceNumber ? ` ${invoiceNumber}` : '';
+      if (invoicePaymentStatus === 'paid') {
+        toast.success(language === 'fi' ? `Maksu vastaanotettu.${invoiceSuffix}` : `Payment received.${invoiceSuffix}`);
+      } else if (invoicePaymentStatus === 'already_paid') {
+        toast.info(language === 'fi' ? `Lasku on jo maksettu.${invoiceSuffix}` : `Invoice already paid.${invoiceSuffix}`);
+      } else if (invoicePaymentStatus === 'failed') {
+        toast.error(language === 'fi' ? `Maksu ei valmistunut.${invoiceSuffix}` : `Payment was not completed.${invoiceSuffix}`);
+      } else {
+        toast.info(language === 'fi' ? `Maksua vahvistetaan.${invoiceSuffix}` : `Payment is being confirmed.${invoiceSuffix}`);
+      }
+
+      params.delete('invoice_payment');
+      params.delete('invoice');
+      const nextSearch = params.toString();
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`);
+    }
 
     if (installToken) {
       let cancelled = false;
@@ -795,7 +820,7 @@ function HomePage() {
 
   const handleProductSelect = useCallback(
     (product: CatalogProduct) => {
-      const detail = mapCatalogProductToDetail(product);
+      const detail = mapCatalogProductToDetail(product, language);
       startTransition(() => {
         setSelectedProduct(detail);
       });
@@ -806,7 +831,7 @@ function HomePage() {
       const detailPath = `/catalog/${product.product_type}/${detailIdentifier}`;
       navigate(detailPath, { state: { selectedProduct: detail } });
     },
-    [navigate, setSelectedProduct]
+    [language, navigate, setSelectedProduct]
   );
 
   const handleInternalNavigation = useCallback(
@@ -829,8 +854,8 @@ function HomePage() {
       try {
         const row = await fetchProductSearchRowByIdentifier(parsed.productType, parsed.identifier);
         if (!active || !row) return;
-        const catalogProduct = mapProductSearchRow(row, parsed.productType);
-        const detail = mapCatalogProductToDetail(catalogProduct);
+        const catalogProduct = mapProductSearchRow(row, parsed.productType, language);
+        const detail = mapCatalogProductToDetail(catalogProduct, language);
         startTransition(() => {
           setSelectedProduct(detail);
         });
@@ -844,7 +869,7 @@ function HomePage() {
     return () => {
       active = false;
     };
-  }, [currentPage, selectedProduct]);
+  }, [currentPage, language, selectedProduct]);
 
   useEffect(() => {
     const handleNavigation = (event?: PopStateEvent) => {
@@ -995,9 +1020,10 @@ function HomePage() {
   ];
 
   const trustBadges = [
-    { icon: Shield, key: 'hero.trust.secure' },
-    { icon: Award, key: 'hero.trust.paytrail' },
-    { icon: Clock, key: 'hero.trust.fast' },
+    { icon: Award, key: 'hero.trust.expertise' },
+    { icon: Wrench, key: 'hero.trust.quality' },
+    { icon: Shield, key: 'hero.trust.reliability' },
+    { icon: Zap, key: 'hero.trust.fast' },
   ];
 
   const reviews = [
@@ -1035,13 +1061,13 @@ function HomePage() {
 
   const catalogProducts = [
     {
-      id: '64bd0d80-7e5c-cc93-32c9-aaf24c6b26f4',
-      name: 'Bridgestone Potenza S001',
-      size: '245/50 R18',
+      id: '1c5b922e-4f47-75c7-8e64-ad59e6302d1c',
+      name: 'Dynamo STREET-H MH01',
+      size: '215/65 R17 99 T',
       seasonKey: 'season.summer',
-      price: '€122.26',
+      price: '€39.91',
       imageUrl:
-        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/tires/64bd0d80-7e5c-cc93-32c9-aaf24c6b26f4/1771930113243_3mcjt.jpg',
+        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/supplier/tires/1c5b922e-4f47-75c7-8e64-ad59e6302d1c/rd-351011-38669f4755c525f2.jpg',
     },
     {
       id: 'd6ef67f9-41c5-a8ff-6623-450b18b61f44',
@@ -1053,13 +1079,13 @@ function HomePage() {
         'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/tires/d6ef67f9-41c5-a8ff-6623-450b18b61f44/1771926299971_mi10hv.jpeg',
     },
     {
-      id: '08d2e1c9-b057-9591-7eca-625e62d3822f',
-      name: 'Firestone VANHAWK MULTISEASON',
-      size: '215/75 R16',
-      seasonKey: 'season.allSeason',
-      price: '€110.00',
+      id: 'be549cfb-83d9-5712-1c68-ad63a33fd42f',
+      name: 'Nankang Econex NA-1',
+      size: '165/70 R12 77 T',
+      seasonKey: 'season.summer',
+      price: '€52.16',
       imageUrl:
-        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/tires/08d2e1c9-b057-9591-7eca-625e62d3822f/1773240319051_75n99i.jpg',
+        'https://rcmmbwdebnmicrweoiyz.supabase.co/storage/v1/object/public/product-images/supplier/tires/be549cfb-83d9-5712-1c68-ad63a33fd42f/vt-64287-d5f166b11a2586fc.jpg',
     },
     {
       id: 'ad10bc20-d995-ef6d-233c-e2cce8dc85b7',
@@ -1083,8 +1109,8 @@ function HomePage() {
     { id: 'schedule' as const, label: 'Booking Schedule', description: 'Manage appointments' },
     { id: 'catalog-tires' as const, label: 'Tire Catalog', description: 'Edit tire content' },
     { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
-    { id: 'orders' as const, label: 'Orders', description: 'Track customer purchases' },
-    { id: 'invoices' as const, label: 'Invoice', description: 'Receipts and invoices' },
+    { id: 'orders' as const, label: 'Order & Invoice', description: 'Track purchases and invoice payments' },
+    { id: 'invoices' as const, label: 'Receipt', description: 'Receipts and paid documents' },
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
@@ -1294,7 +1320,7 @@ function HomePage() {
         ) : currentPage === 'cms-invoices' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
             <Suspense fallback={<CmsRouteFallback />}>
-              <InvoicesCMSPage />
+              <InvoicesCMSPage documentScope="receipt" title="Receipt" />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
@@ -1361,7 +1387,7 @@ function HomePage() {
                     </Suspense>
                   ) : cmsTab === 'invoices' ? (
                     <Suspense fallback={<CmsRouteFallback />}>
-                      <InvoicesCMSPage />
+                      <InvoicesCMSPage documentScope="receipt" title="Receipt" />
                     </Suspense>
                   ) : (
                     <div className="space-y-2 p-8 text-muted-foreground">
@@ -1488,21 +1514,21 @@ function HomePage() {
               </p>
             </div>
             
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:gap-8 lg:grid-cols-4">
               {services.map((service, idx) => (
                 <div 
                   key={idx} 
-                  className="group text-center transition-all hover:shadow-[0_0_30px_rgba(0,113,227,0.1)] rounded-2xl p-4"
+                  className="group text-center transition-all hover:shadow-[0_0_30px_rgba(0,113,227,0.1)] rounded-2xl p-3 sm:p-4"
                 >
-                  <div className="mb-6 inline-flex rounded-2xl bg-secondary p-6 transition-all group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)]">
-                    <service.icon className="h-8 w-8 text-accent" aria-hidden="true" />
+                  <div className="mb-4 inline-flex rounded-2xl bg-secondary p-4 transition-all group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] sm:mb-6 sm:p-6">
+                    <service.icon className="h-6 w-6 text-accent sm:h-8 sm:w-8" aria-hidden="true" />
                   </div>
-                  <h3 className="mb-3 text-xl font-semibold">{t(service.titleKey)}</h3>
-                  <p className="mb-4 text-muted-foreground">{t(service.descKey)}</p>
+                  <h3 className="mb-2 text-base font-semibold leading-snug sm:mb-3 sm:text-xl">{t(service.titleKey)}</h3>
+                  <p className="mb-3 text-sm leading-relaxed text-muted-foreground sm:mb-4 sm:text-base">{t(service.descKey)}</p>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="group/btn text-accent hover:text-accent/80" 
+                    className="group/btn h-auto px-2 py-1 text-xs text-accent hover:text-accent/80 sm:px-3 sm:py-2 sm:text-sm"
                     asChild
                   >
                     <a
@@ -1521,18 +1547,18 @@ function HomePage() {
         </section>
 
         {/* Featured Products */}
-        <section className="py-24 lg:py-32 relative" aria-labelledby="catalog-heading">
+        <section className="py-16 lg:py-32 relative" aria-labelledby="catalog-heading">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mb-16 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="mb-8 flex flex-col sm:mb-16 sm:flex-row sm:items-center sm:justify-between gap-5 sm:gap-6">
               <div>
-                <h2 id="catalog-heading" className="mb-2 text-4xl font-bold tracking-tight">
+                <h2 id="catalog-heading" className="mb-2 text-3xl font-bold tracking-tight sm:text-4xl">
                   {t('catalog.title')}
                 </h2>
-                <p className="text-xl text-muted-foreground">{t('catalog.subtitle')}</p>
+                <p className="text-base text-muted-foreground sm:text-xl">{t('catalog.subtitle')}</p>
               </div>
               <Button 
                 variant="outline" 
-                className="rounded-full"
+                className="h-10 rounded-full px-4 sm:h-11"
                 asChild
               >
                 <a href="/catalog" className="inline-flex items-center gap-2">
@@ -1542,29 +1568,29 @@ function HomePage() {
               </Button>
             </div>
             
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
               {catalogProducts.map((product) => (
                 <div 
                   key={product.id} 
-                  className="group transition-all hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] rounded-2xl p-2"
+                  className="group rounded-xl p-1.5 transition-all hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] sm:rounded-2xl sm:p-2"
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-2xl bg-secondary mb-4 transition-all group-hover:shadow-[0_0_20px_rgba(231,76,60,0.15)]">
+                  <div className="relative mb-3 aspect-square overflow-hidden rounded-xl bg-secondary transition-all group-hover:shadow-[0_0_20px_rgba(231,76,60,0.15)] sm:mb-4 sm:rounded-2xl">
                     <ImageWithFallback
                       src={product.imageUrl}
                       alt={`${product.name} - ${product.size} ${t(product.seasonKey)}`}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <Badge className="absolute top-4 right-4 bg-accent border-0 rounded-full">
+                    <Badge className="absolute right-2 top-2 border-0 bg-accent px-2 py-0.5 text-[10px] sm:right-4 sm:top-4 sm:text-xs">
                       {t(product.seasonKey)}
                     </Badge>
                   </div>
-                  <h3 className="mb-1 font-semibold">{product.name}</h3>
-                  <p className="mb-3 text-sm text-muted-foreground">{product.size}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold">{product.price}</span>
+                  <h3 className="mb-1 line-clamp-2 text-sm font-semibold leading-snug sm:text-base">{product.name}</h3>
+                  <p className="mb-2 text-xs text-muted-foreground sm:mb-3 sm:text-sm">{product.size}</p>
+                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-lg font-bold sm:text-2xl">{product.price}</span>
                     <Button 
                       size="sm" 
-                      className="bg-accent hover:bg-accent/90 text-white rounded-full"
+                      className="h-8 w-full rounded-full bg-accent px-3 text-xs text-white hover:bg-accent/90 sm:w-auto sm:text-sm"
                     >
                       {t('ui.buy')}
                     </Button>
@@ -1576,31 +1602,31 @@ function HomePage() {
         </section>
 
         {/* Booking CTA */}
-        <section className="py-24 lg:py-32 relative" aria-labelledby="booking-heading">
+        <section className="py-16 lg:py-32 relative" aria-labelledby="booking-heading">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid gap-16 lg:grid-cols-2 lg:gap-20 items-center">
+            <div className="grid gap-8 lg:grid-cols-2 lg:gap-20 items-center">
               <div>
-                <h2 id="booking-heading" className="mb-6 text-4xl lg:text-5xl font-bold tracking-tight">
+                <h2 id="booking-heading" className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                   {t('booking.cta.title')}
                 </h2>
-                <p className="mb-8 text-xl text-muted-foreground">
+                <p className="mb-6 text-base text-muted-foreground sm:mb-8 sm:text-xl">
                   {t('booking.cta.subtitle')}
                 </p>
                 
-                <ul className="mb-8 space-y-4">
+                <ul className="mb-6 grid grid-cols-1 gap-2 sm:mb-8 sm:space-y-0">
                   {bookingBenefits.map((benefit, idx) => (
-                    <li key={idx} className="flex items-center gap-3 transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.1)] rounded-lg p-2">
-                      <div className="rounded-full bg-secondary p-1.5 transition-all hover:shadow-[0_0_15px_rgba(231,76,60,0.2)]">
-                        <CheckCircle2 className="h-5 w-5 text-accent" aria-hidden="true" />
+                    <li key={idx} className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.1)] sm:bg-transparent sm:p-2">
+                      <div className="rounded-full bg-background p-1.5 transition-all hover:shadow-[0_0_15px_rgba(231,76,60,0.2)] sm:bg-secondary">
+                        <CheckCircle2 className="h-4 w-4 text-accent sm:h-5 sm:w-5" aria-hidden="true" />
                       </div>
-                      <span className="text-lg">{t(benefit.key)}</span>
+                      <span className="text-sm font-medium sm:text-lg">{t(benefit.key)}</span>
                     </li>
                   ))}
                 </ul>
                 
                 <Button 
                   size="lg" 
-                  className="bg-accent hover:bg-accent/90 text-white h-12 px-8 rounded-full"
+                  className="h-11 w-full rounded-full bg-accent px-6 text-white hover:bg-accent/90 sm:h-12 sm:w-auto sm:px-8"
                   asChild
                 >
                   <span className="inline-flex items-center gap-2" onClick={() => setBookingModalOpen(true)}>
@@ -1611,7 +1637,7 @@ function HomePage() {
               </div>
               
               <div className="relative">
-                <div className="aspect-[4/3] overflow-hidden rounded-3xl">
+                <div className="aspect-[16/10] overflow-hidden rounded-2xl sm:aspect-[4/3] sm:rounded-3xl">
                   <ImageWithFallback
                     src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWNoYW5pYyUyMHdvcmtpbmclMjBvbiUyMGNhcnxlbnwxfHx8fDE3NjA5MzE5NDd8MA&ixlib=rb-4.1.0&q=80&w=1080"
                     alt="Professional mechanic working on vehicle service"
@@ -1624,11 +1650,11 @@ function HomePage() {
         </section>
 
         {/* Tire Hotel */}
-        <section className="py-24 lg:py-32 relative" aria-labelledby="tire-hotel-heading">
+        <section className="py-16 lg:py-32 relative" aria-labelledby="tire-hotel-heading">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid gap-16 lg:grid-cols-2 lg:gap-20 items-center">
+            <div className="grid gap-8 lg:grid-cols-2 lg:gap-20 items-center">
               <div className="relative order-2 lg:order-1">
-                <div className="aspect-[4/3] overflow-hidden rounded-3xl">
+                <div className="aspect-[16/10] overflow-hidden rounded-2xl sm:aspect-[4/3] sm:rounded-3xl">
                   <ImageWithFallback
                     src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0aXJlJTIwc3RvcmFnZSUyMHdhcmVob3VzZXxlbnwxfHx8fDE3NjA5MzE5NjV8MA&ixlib=rb-4.1.0&q=80&w=1080"
                     alt="Professional tire storage warehouse"
@@ -1638,20 +1664,20 @@ function HomePage() {
               </div>
               
               <div className="order-1 lg:order-2">
-                <h2 id="tire-hotel-heading" className="mb-6 text-4xl font-bold tracking-tight">
+                <h2 id="tire-hotel-heading" className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
                   {t('tireHotel.title')}
                 </h2>
-                <p className="mb-8 text-xl text-muted-foreground">
+                <p className="mb-6 text-base text-muted-foreground sm:mb-8 sm:text-xl">
                   {t('tireHotel.subtitle')}
                 </p>
                 
-                <ul className="mb-8 space-y-4">
+                <ul className="mb-6 grid grid-cols-1 gap-2 sm:mb-8 sm:space-y-0">
                   {tireHotelBenefits.map((benefit, idx) => (
-                    <li key={idx} className="flex items-start gap-3 transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.1)] rounded-lg p-2">
-                      <div className="mt-1 rounded-full bg-secondary p-1.5 transition-all hover:shadow-[0_0_15px_rgba(231,76,60,0.2)]">
+                    <li key={idx} className="flex items-start gap-3 rounded-lg bg-secondary/50 p-3 transition-all hover:shadow-[0_0_20px_rgba(0,113,227,0.1)] sm:bg-transparent sm:p-2">
+                      <div className="mt-0.5 rounded-full bg-background p-1.5 transition-all hover:shadow-[0_0_15px_rgba(231,76,60,0.2)] sm:mt-1 sm:bg-secondary">
                         <CheckCircle2 className="h-4 w-4 text-accent" aria-hidden="true" />
                       </div>
-                      <span>{t(benefit.key)}</span>
+                      <span className="text-sm font-medium leading-relaxed sm:text-base">{t(benefit.key)}</span>
                     </li>
                   ))}
                 </ul>
@@ -1659,7 +1685,7 @@ function HomePage() {
                 <Button 
                   size="lg" 
                   variant="outline"
-                  className="rounded-full"
+                  className="h-11 w-full rounded-full sm:w-auto"
                   asChild
                 >
                   <a href="/tire-hotel" className="inline-flex items-center gap-2">
@@ -1673,39 +1699,39 @@ function HomePage() {
         </section>
 
         {/* Customer Reviews */}
-        <section className="py-24 lg:py-32 relative" aria-labelledby="reviews-heading">
+        <section className="py-16 lg:py-32 relative" aria-labelledby="reviews-heading">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mb-16 text-center max-w-3xl mx-auto">
-              <h2 id="reviews-heading" className="mb-4 text-4xl font-bold tracking-tight">
+            <div className="mb-8 text-center max-w-3xl mx-auto sm:mb-16">
+              <h2 id="reviews-heading" className="mb-3 text-3xl font-bold tracking-tight sm:mb-4 sm:text-4xl">
                 {t('reviews.title')}
               </h2>
-              <p className="text-xl text-muted-foreground">
+              <p className="text-base text-muted-foreground sm:text-xl">
                 {t('common.reviewsSubtitle')}
               </p>
             </div>
             
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 mb-12">
+            <div className="mb-8 grid gap-4 sm:mb-12 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
               {reviews.map((review, idx) => (
                 <div 
                   key={idx} 
-                  className="rounded-2xl bg-secondary p-8 transition-all hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] hover:bg-secondary/80"
+                  className={`${idx === 2 ? 'hidden lg:block' : ''} rounded-xl bg-secondary p-5 transition-all hover:bg-secondary/80 hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] sm:rounded-2xl sm:p-8`}
                 >
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 transition-all hover:shadow-[0_0_20px_rgba(231,76,60,0.3)] hover:bg-accent/15">
-                      <span className="font-semibold text-accent">
+                  <div className="mb-3 flex items-center gap-3 sm:mb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 transition-all hover:bg-accent/15 hover:shadow-[0_0_20px_rgba(231,76,60,0.3)] sm:h-12 sm:w-12">
+                      <span className="text-sm font-semibold text-accent sm:text-base">
                         {review.name.split(' ').map(n => n[0]).join('')}
                       </span>
                     </div>
                     <div>
-                      <div className="font-semibold">{review.name}</div>
+                      <div className="text-sm font-semibold sm:text-base">{review.name}</div>
                       <div className="flex gap-0.5" role="img" aria-label={`${review.rating} ${t('common.stars')}`}>
                         {[...Array(review.rating)].map((_, i) => (
-                          <Star key={i} className="h-4 w-4 fill-accent text-accent" />
+                          <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent sm:h-4 sm:w-4" />
                         ))}
                       </div>
                     </div>
                   </div>
-                  <p className="text-muted-foreground">"{review.text[language]}"</p>
+                  <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:line-clamp-none sm:text-base">"{review.text[language]}"</p>
                 </div>
               ))}
             </div>
@@ -1713,18 +1739,18 @@ function HomePage() {
             {/* Overall Rating */}
             <div className="text-center">
               <div className="mx-auto w-full sm:w-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+                <div className="grid grid-cols-2 gap-4 sm:gap-8">
                   {/* Rating Card */}
-                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent/5 via-secondary to-secondary p-8 transition-all hover:shadow-[0_0_30px_rgba(231,76,60,0.15)] hover:scale-[1.02]">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-transform group-hover:scale-150" />
+                  <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-accent/5 via-secondary to-secondary p-5 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(231,76,60,0.15)] sm:rounded-2xl sm:p-8">
+                    <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-accent/10 blur-3xl transition-transform group-hover:scale-150 sm:h-32 sm:w-32" />
                     <div className="relative z-10 text-center">
-                      <div className="flex items-baseline justify-center gap-2 mb-3">
-                        <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">4.9</span>
-                        <span className="text-2xl text-muted-foreground">/5</span>
+                      <div className="mb-2 flex items-baseline justify-center gap-1 sm:mb-3 sm:gap-2">
+                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">4.9</span>
+                        <span className="text-lg text-muted-foreground sm:text-2xl">/5</span>
                       </div>
-                      <div className="flex gap-1 mb-2 justify-center" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
+                      <div className="mb-2 flex justify-center gap-0.5 sm:gap-1" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-5 w-5 fill-accent text-accent drop-shadow-sm" />
+                          <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent drop-shadow-sm sm:h-5 sm:w-5" />
                         ))}
                       </div>
                       <p className="text-sm text-muted-foreground">
@@ -1734,15 +1760,15 @@ function HomePage() {
                   </div>
 
                   {/* Happy Customers Card */}
-                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-secondary to-secondary p-8 transition-all hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] hover:scale-[1.02]">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 transition-transform group-hover:scale-150" />
+                  <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 via-secondary to-secondary p-5 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] sm:rounded-2xl sm:p-8">
+                    <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary/10 blur-3xl transition-transform group-hover:scale-150 sm:h-32 sm:w-32" />
                     <div className="relative z-10 text-center">
-                      <div className="flex items-baseline justify-center gap-1 mb-3">
-                        <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">500</span>
-                        <span className="text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">+</span>
+                      <div className="mb-2 flex items-baseline justify-center gap-1 sm:mb-3">
+                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">500</span>
+                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">+</span>
                       </div>
-                      <div className="flex gap-1 mb-2 justify-center" role="img" aria-label="500+ happy customers">
-                        <Users className="h-5 w-5 fill-[#FF6B35] text-[#FF6B35] drop-shadow-sm" />
+                      <div className="mb-2 flex justify-center gap-1" role="img" aria-label="500+ happy customers">
+                        <Users className="h-4 w-4 fill-[#FF6B35] text-[#FF6B35] drop-shadow-sm sm:h-5 sm:w-5" />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {t('common.happyCustomers')}
@@ -1756,57 +1782,57 @@ function HomePage() {
         </section>
 
         {/* Trust Signals Section */}
-        <section className="py-16 lg:py-20 relative bg-secondary/30" aria-label="Why choose Mitra Auto">
+        <section className="py-12 lg:py-20 relative bg-secondary/30" aria-label="Why choose Mitra Auto">
           <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 gap-5 sm:gap-8 lg:grid-cols-4">
               {/* Expert Service */}
               <div className="flex flex-col items-center text-center group">
-                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
-                  <Award className="size-6 text-accent" aria-hidden="true" />
+                <div className="mb-3 rounded-full bg-background p-3 transition-all group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] sm:mb-4 sm:p-4">
+                  <Award className="size-5 text-accent sm:size-6" aria-hidden="true" />
                 </div>
-                <h3 className="text-base mb-2">
+                <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">
                   {t('trustSignals.expertService')}
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   {t('trustSignals.expertServiceDesc')}
                 </p>
               </div>
 
               {/* Quality Products */}
               <div className="flex flex-col items-center text-center group">
-                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
-                  <Shield className="size-6 text-accent" aria-hidden="true" />
+                <div className="mb-3 rounded-full bg-background p-3 transition-all group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] sm:mb-4 sm:p-4">
+                  <Shield className="size-5 text-accent sm:size-6" aria-hidden="true" />
                 </div>
-                <h3 className="text-base mb-2">
+                <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">
                   {t('trustSignals.qualityProducts')}
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   {t('trustSignals.qualityProductsDesc')}
                 </p>
               </div>
 
               {/* Fast Service */}
               <div className="flex flex-col items-center text-center group">
-                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
-                  <Clock className="size-6 text-accent" aria-hidden="true" />
+                <div className="mb-3 rounded-full bg-background p-3 transition-all group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] sm:mb-4 sm:p-4">
+                  <Clock className="size-5 text-accent sm:size-6" aria-hidden="true" />
                 </div>
-                <h3 className="text-base mb-2">
+                <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">
                   {t('trustSignals.fastService')}
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   {t('trustSignals.fastServiceDesc')}
                 </p>
               </div>
 
               {/* Customer First */}
               <div className="flex flex-col items-center text-center group">
-                <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
-                  <Users className="size-6 text-accent" aria-hidden="true" />
+                <div className="mb-3 rounded-full bg-background p-3 transition-all group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] sm:mb-4 sm:p-4">
+                  <Users className="size-5 text-accent sm:size-6" aria-hidden="true" />
                 </div>
-                <h3 className="text-base mb-2">
+                <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">
                   {t('trustSignals.customerFirst')}
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   {t('trustSignals.customerFirstDesc')}
                 </p>
               </div>

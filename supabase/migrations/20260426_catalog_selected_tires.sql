@@ -280,9 +280,10 @@ begin
         r.size_text
       ) as size_string,
       case
+        when lower(concat_ws(' ', r.model, r.raw_payload->>'ArticleText', r.size_text)) ~ '(^|[^a-z0-9])(all[[:space:]_-]*season|allseason|4[[:space:]_-]*season|4seasons|multi[[:space:]_-]*season|multiseason)([^a-z0-9]|$)' then 'all_season'
+        when lower(coalesce(r.season, r.raw_payload->>'MainGroupName', '')) like '%all%' then 'all_season'
         when lower(coalesce(r.season, r.raw_payload->>'MainGroupName', '')) like '%talvi%' then 'winter'
         when lower(coalesce(r.season, r.raw_payload->>'MainGroupName', '')) like '%kesä%' then 'summer'
-        when lower(coalesce(r.season, r.raw_payload->>'MainGroupName', '')) like '%all%' then 'all_season'
         else nullif(btrim(r.season), '')
       end as season,
       r.width_mm,
@@ -442,8 +443,9 @@ begin
         v.size_text
       ) as size_string,
       case
-        when lower(coalesce(v.season, '')) in ('summer', 'winter', 'all_season') then lower(v.season)
+        when lower(concat_ws(' ', v.model, v.size_text)) ~ '(^|[^a-z0-9])(all[[:space:]_-]*season|allseason|4[[:space:]_-]*season|4seasons|multi[[:space:]_-]*season|multiseason)([^a-z0-9]|$)' then 'all_season'
         when lower(coalesce(v.season, '')) in ('all season', 'all-season', 'allseason') then 'all_season'
+        when lower(coalesce(v.season, '')) in ('summer', 'winter', 'all_season') then lower(v.season)
         else nullif(btrim(v.season), '')
       end as season,
       v.width_mm,

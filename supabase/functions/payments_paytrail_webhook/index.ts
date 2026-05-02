@@ -59,10 +59,11 @@ async function verifyQuerySignature(params: URLSearchParams) {
   return expected.toLowerCase() === signature.toLowerCase();
 }
 
-function parseOrderId(reference: string | null, stamp: string | null) {
+function parsePaymentTarget(reference: string | null, stamp: string | null) {
   const ref = reference?.trim() ?? "";
-  if (ref.startsWith("ORDER-")) return ref.slice("ORDER-".length);
-  return stamp?.trim() || null;
+  if (ref.startsWith("ORDER-")) return { type: "order", id: ref.slice("ORDER-".length), stamp: stamp?.trim() || null };
+  if (ref.startsWith("INVOICE-")) return { type: "invoice", id: ref.slice("INVOICE-".length), stamp: stamp?.trim() || null };
+  return { type: "order", id: stamp?.trim() || null, stamp: stamp?.trim() || null };
 }
 
 async function readCallbackParams(req: Request, url: URL) {
@@ -163,6 +164,101 @@ async function updateOrder(orderId: string | null, params: Record<string, string
   return patch;
 }
 
+async function updateInvoice(documentId: string | null, paymentLinkId: string | null, params: Record<string, string>, signatureValid: boolean) {
+  if (!documentId) return null;
+
+  const incomingStatus = normalizeStatus(params["checkout-status"] ?? null);
+  const paymentStatus = incomingStatus === "ok" ? "paid" : incomingStatus === "failed" ? "failed" : "pending";
+  const paidAt = paymentStatus === "paid" ? new Date().toISOString() : null;
+  const amountCents = params["checkout-amount"] ? Number(params["checkout-amount"]) : null;
+  const transactionId = params["checkout-transaction-id"] ?? null;
+  const reference = params["checkout-reference"] ?? null;
+  const provider = params["checkout-provider"] ?? null;
+
+  const { data: document, error: docError } = await supabase
+    .from("invoice_documents")
+    .select("id, total_cents, paid_cents, status")
+    .eq("id", documentId)
+    .maybeSingle<any>();
+  if (docError) throw docError;
+  if (!document) return null;
+
+  const paidCents = paymentStatus === "paid"
+    ? Math.max(Number(document.paid_cents ?? 0), Number.isFinite(amountCents) && amountCents ? amountCents : Number(document.total_cents ?? 0))
+    : Number(document.paid_cents ?? 0);
+
+  const documentPatch: Record<string, unknown> = paymentStatus === "paid"
+    ? { status: "paid", paid_cents: paidCents, paid_at: paidAt }
+    : paymentStatus === "failed"
+      ? { status: document.status === "draft" ? "draft" : document.status }
+      : { status: document.status === "draft" ? "issued" : document.status };
+
+  const { error: updateDocError } = await supabase
+    .from("invoice_documents")
+    .update(documentPatch)
+    .eq("id", documentId);
+  if (updateDocError) throw updateDocError;
+
+  const paymentDetailPatch = {
+    document_id: documentId,
+    payment_status: paymentStatus,
+    payment_provider: "paytrail",
+    payment_method: "online",
+    transaction_id: transactionId,
+    reference_number: reference,
+    paid_at: paidAt,
+    payload: {
+      paytrail: {
+        signature_valid: signatureValid,
+        status: incomingStatus,
+        transaction_id: transactionId,
+        provider,
+        amount_cents: amountCents,
+        updated_at: new Date().toISOString(),
+      },
+    },
+  };
+  const { error: paymentError } = await supabase
+    .from("invoice_payment_details")
+    .upsert(paymentDetailPatch, { onConflict: "document_id" });
+  if (paymentError) throw paymentError;
+
+  const linkPatch = {
+    payment_status: paymentStatus,
+    paytrail_transaction_id: transactionId,
+    paytrail_reference: reference,
+    paytrail_stamp: params["checkout-stamp"] ?? paymentLinkId,
+    paytrail_provider: provider,
+    paid_at: paidAt,
+    payload: {
+      callback: params,
+      signature_valid: signatureValid,
+    },
+  };
+  const linkQuery = supabase.from("invoice_payment_links").update(linkPatch);
+  const { error: linkError } = paymentLinkId
+    ? await linkQuery.eq("id", paymentLinkId)
+    : await linkQuery.eq("document_id", documentId).eq("paytrail_transaction_id", transactionId ?? "");
+  if (linkError) throw linkError;
+
+  const { error: eventError } = await supabase.from("invoice_events").insert({
+    document_id: documentId,
+    event_type: paymentStatus === "paid" ? "payment_paid" : paymentStatus === "failed" ? "payment_failed" : `payment_${incomingStatus}`,
+    actor: "paytrail",
+    payload: {
+      payment_link_id: paymentLinkId,
+      transaction_id: transactionId,
+      status: incomingStatus,
+      provider,
+      amount_cents: amountCents,
+      signature_valid: signatureValid,
+    },
+  });
+  if (eventError) throw eventError;
+
+  return { documentPatch, paymentDetailPatch, linkPatch };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "GET" && req.method !== "POST") {
@@ -175,7 +271,9 @@ serve(async (req) => {
     const params = Object.fromEntries(callbackParams.entries());
     const signatureValid = await verifyQuerySignature(callbackParams);
     const status = normalizeStatus(params["checkout-status"] ?? null);
-    const orderId = parseOrderId(params["checkout-reference"] ?? null, params["checkout-stamp"] ?? null);
+    const target = parsePaymentTarget(params["checkout-reference"] ?? null, params["checkout-stamp"] ?? null);
+    const orderId = target.type === "order" ? target.id : null;
+    const invoiceId = target.type === "invoice" ? target.id : null;
 
     if (!signatureValid) {
       await supabase.from("payment_events").insert({
@@ -192,18 +290,22 @@ serve(async (req) => {
       return jsonResponse({ error: "invalid_signature" }, 401);
     }
 
-    const update = await updateOrder(orderId, params, signatureValid);
+    const update = target.type === "invoice"
+      ? await updateInvoice(invoiceId, target.stamp, params, signatureValid)
+      : await updateOrder(orderId, params, signatureValid);
 
-    await supabase.from("payment_events").insert({
-      order_id: orderId,
-      source: "paytrail",
-      event_type: status === "ok" ? "payment_ok" : status === "failed" ? "payment_failed" : `payment_${status}`,
-      ext_transaction_id: params["checkout-transaction-id"] ?? null,
-      ext_stamp: params["checkout-stamp"] ?? null,
-      ext_status: status,
-      payload: params,
-      signature_valid: true,
-    });
+    if (target.type === "order") {
+      await supabase.from("payment_events").insert({
+        order_id: orderId,
+        source: "paytrail",
+        event_type: status === "ok" ? "payment_ok" : status === "failed" ? "payment_failed" : `payment_${status}`,
+        ext_transaction_id: params["checkout-transaction-id"] ?? null,
+        ext_stamp: params["checkout-stamp"] ?? null,
+        ext_status: status,
+        payload: params,
+        signature_valid: true,
+      });
+    }
 
     if (orderId && (status === "ok" || status === "failed")) {
       try {
@@ -216,6 +318,7 @@ serve(async (req) => {
     return jsonResponse({
       ok: true,
       order_id: orderId,
+      invoice_id: invoiceId,
       status,
       updated: Boolean(update),
     });
