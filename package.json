@@ -66,6 +66,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "fitment:generate": "python3 scripts/generate_etrto_runtime.py",
+    "fitment:check": "deno check supabase/functions/fitment_recommendations/index.ts && deno check supabase/functions/etrto_recommend_tyres/index.ts && deno check supabase/functions/rim_fitment_profile/index.ts"
   }
 }

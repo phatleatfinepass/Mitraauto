@@ -1,0 +1,3 @@
+import type { RuntimeTyreSize } from './types.ts';
+
+export const TYRES: RuntimeTyreSize[] = [{"sizeKey":"295_25_R28","widthMm":295,"aspectRatio":25,"construction":"R","rimDiameterIn":28,"reinforcedLoadIndex":103,"measuringRimWidthIn":10.5,"designOverallDiameterMm":859,"reinforcedLoadCapacityKg":875,"series":25,"sourcePage":"P.42","approvedRimWidthsIn":[10.0,10.5,11.0]},{"sizeKey":"325_35_R28","widthMm":325,"aspectRatio":35,"construction":"R","rimDiameterIn":28,"reinforcedLoadIndex":120,"measuringRimWidthIn":11.5,"designOverallDiameterMm":939,"reinforcedLoadCapacityKg":1400,"series":35,"sourcePage":"P.39","approvedRimWidthsIn":[11.0,11.5,12.0,12.5,13.0]}];

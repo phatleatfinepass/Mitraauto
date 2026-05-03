@@ -12,7 +12,8 @@ import { Button } from '../ui/button';
 import { LicensePlateDisplay } from './LicensePlateDisplay';
 import type { VehicleTyreLookupResult } from '../../utils/vehicleFitmentLookup';
 import { lookupVehicleTyreFitment } from '../../utils/vehicleFitmentLookup';
-import { buildTyreFitmentRecommendation, type TyreFitmentRecommendation } from '../../utils/etrtoFitment';
+import type { TyreFitmentRecommendation } from '../../utils/etrtoFitment';
+import { requestFitmentRecommendations } from '../../utils/fitmentRecommendations';
 import { supabase } from '../../utils/supabase/client';
 
 interface TireFiltersProps {
@@ -115,10 +116,11 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
     setVehicleLookupLoading(true);
     try {
       const vehicle = await lookupVehicleTyreFitment(licensePlate);
-      const recommendation = buildTyreFitmentRecommendation(vehicle.factoryTyreSize, {
+      const fitment = await requestFitmentRecommendations(vehicle.factoryTyreSize, {
         maxWeightKg: vehicle.maxWeightKg,
         maxSpeedKmh: vehicle.maxSpeedKmh,
       });
+      const recommendation = fitment.tyre;
 
       if (!recommendation) {
         throw new Error(language === 'fi'
