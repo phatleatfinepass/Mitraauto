@@ -9,12 +9,12 @@ import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { RimCatalogLayout } from './RimCatalogLayout';
 import { Button } from '../ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
 import { buildProductImageFallback } from '../../utils/productImage';
 import type { ProductPricingRules } from '../../utils/pricing';
 import { buildTyreLabelSectionData, type TyreLabelSectionData } from '../../utils/tyreLabel';
-import type { TyreFitmentRecommendation } from '../../utils/etrtoFitment';
+import type { TyreFitmentCandidate, TyreFitmentRecommendation } from '../../utils/etrtoFitment';
 import type { VehicleTyreLookupResult } from '../../utils/vehicleFitmentLookup';
 
 type CatalogMode = 'tires' | 'rims';
@@ -142,6 +142,15 @@ function getCatalogProductHref(product: CatalogProduct) {
     : product.id;
 
   return `/catalog/${product.product_type}/${identifier}`;
+}
+
+function buildFiltersFromFitmentCandidate(currentFilters: any, candidate: TyreFitmentCandidate) {
+  return {
+    ...currentFilters,
+    width: String(candidate.widthMm),
+    aspectRatio: String(candidate.aspectRatio),
+    diameter: String(candidate.rimDiameterIn),
+  };
 }
 
 function safeParseJson(value: unknown): unknown {
@@ -801,7 +810,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const { addToCart } = useCart();
   const initialRestoreRef = React.useRef(readCatalogRestore(language));
   const [mode, setMode] = useState<CatalogMode>(initialRestoreRef.current?.state?.mode ?? 'tires');
-  const [searchMode, setSearchMode] = useState<SearchMode>(initialRestoreRef.current?.state?.searchMode ?? 'manual');
+  const [searchMode, setSearchMode] = useState<SearchMode>(initialRestoreRef.current?.state?.searchMode ?? 'license');
   const [products, setProducts] = useState<CatalogProduct[]>(initialRestoreRef.current?.snapshot?.products ?? []);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(initialRestoreRef.current?.state?.hasSearched ?? true);
@@ -812,6 +821,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const [vehicleFitment, setVehicleFitment] = useState<{
     vehicle: VehicleTyreLookupResult;
     recommendation: TyreFitmentRecommendation;
+    selectedSizeKey: string;
   } | null>(null);
   const [isRestoringState, setIsRestoringState] = useState(Boolean(initialRestoreRef.current));
   const productsGridRef = React.useRef<HTMLDivElement>(null);
@@ -1033,18 +1043,24 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
     vehicle: VehicleTyreLookupResult,
     recommendation: TyreFitmentRecommendation,
   ) => {
-    const factoryFilters = {
-      ...filters,
-      width: String(recommendation.factory.widthMm),
-      aspectRatio: String(recommendation.factory.aspectRatio),
-      diameter: String(recommendation.factory.rimDiameterIn),
-    };
+    const factoryFilters = buildFiltersFromFitmentCandidate(filters, recommendation.factory);
 
-    setVehicleFitment({ vehicle, recommendation });
+    setVehicleFitment({ vehicle, recommendation, selectedSizeKey: recommendation.factory.sizeKey });
     setFilters(factoryFilters);
     setHasSearched(true);
     setCurrentPage(1);
     void fetchProducts(1, factoryFilters, 'tires');
+  };
+
+  const handleFitmentSizeSelect = (candidate: TyreFitmentCandidate) => {
+    const nextFilters = buildFiltersFromFitmentCandidate(filters, candidate);
+    setVehicleFitment((current) => current
+      ? { ...current, selectedSizeKey: candidate.sizeKey }
+      : current);
+    setFilters(nextFilters);
+    setHasSearched(true);
+    setCurrentPage(1);
+    void fetchProducts(1, nextFilters, 'tires');
   };
 
   const scrollToProducts = () => {
@@ -1102,7 +1118,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 />
               )}
               <span className="relative z-10">
-                {language === 'fi' ? '🛞 Renkaat' : '🛞 Tires'}
+                {language === 'fi' ? 'Renkaat' : 'Tires'}
               </span>
             </button>
 
@@ -1134,7 +1150,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 />
               )}
               <span className="relative z-10">
-                {language === 'fi' ? '⚙️ Vanteet' : '⚙️ Rims'}
+                {language === 'fi' ? 'Vanteet' : 'Rims'}
               </span>
             </button>
           </div>
@@ -1292,42 +1308,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Search Mode Tabs */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <button
-            onClick={() => setSearchMode('license')}
-            className={`
-              px-6 py-2.5 rounded-lg transition-all duration-200 text-sm
-              ${searchMode === 'license'
-                ? 'bg-[#FF6B35] text-white shadow-[0_0_20px_rgba(255,107,53,0.3)]'
-                : theme === 'dark'
-                  ? 'bg-white/5 text-[#B0B8C4] hover:bg-white/10 border border-white/10'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
-              }
-            `}
-          >
-            {language === 'fi' ? '🚗 Rekisteritunnus' : '🚗 License Plate'}
-          </button>
-          <button
-            onClick={() => setSearchMode('manual')}
-            className={`
-              px-6 py-2.5 rounded-lg transition-all duration-200 text-sm
-              ${searchMode === 'manual'
-                ? 'bg-[#FF6B35] text-white shadow-[0_0_20px_rgba(255,107,53,0.3)]'
-                : theme === 'dark'
-                  ? 'bg-white/5 text-[#B0B8C4] hover:bg-white/10 border border-white/10'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
-              }
-            `}
-          >
-            {language === 'fi' ? '⚙️ Manuaalinen haku' : '⚙️ Manual Search'}
-          </button>
-        </div>
-
         {/* Filters */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${mode}-${searchMode}`}
+            key={mode}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1338,6 +1322,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               onFilterChange={handleFilterChange} 
               onSearch={handleSearch}
               onVehicleRecommendation={handleVehicleRecommendation}
+              onSearchModeChange={setSearchMode}
               searchMode={searchMode}
             />
           </motion.div>
@@ -1349,9 +1334,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
                   {vehicleFitment.vehicle.plate} · {vehicleFitment.vehicle.description}
+                  {vehicleFitment.vehicle.year ? ` · ${vehicleFitment.vehicle.year}` : ''}
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold">
-                  {language === 'fi' ? 'Tehdaskoko' : 'Factory size'}: {vehicleFitment.recommendation.factory.label}
+                  {language === 'fi' ? 'Tehdaskoot' : 'Factory sizes'}: {(vehicleFitment.vehicle.factoryTyreSizes?.length ? vehicleFitment.vehicle.factoryTyreSizes : [vehicleFitment.recommendation.factory.label]).join(', ')}
                 </h2>
                 <p className={`mt-2 max-w-3xl text-sm ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
                   {language === 'fi'
@@ -1367,30 +1353,58 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               </div>
             </div>
 
-            {vehicleFitment.recommendation.alternatives.length > 0 ? (
-              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {vehicleFitment.recommendation.alternatives.slice(0, 6).map((candidate) => (
-                  <div key={candidate.sizeKey} className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-gray-50'}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold">{candidate.label}</div>
-                        <div className={`mt-1 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                          {language === 'fi' ? 'Halkaisijaero' : 'Diameter difference'}: {candidate.diameterDifferencePercent > 0 ? '+' : ''}{candidate.diameterDifferencePercent.toFixed(1)}%
-                        </div>
-                      </div>
-                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${candidate.confidence === 'recommended' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'}`}>
-                        {candidate.confidence === 'recommended'
-                          ? (language === 'fi' ? 'Suositus' : 'Recommended')
-                          : (language === 'fi' ? 'Mahdollinen' : 'Possible')}
-                      </span>
-                    </div>
-                    <div className={`mt-3 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                      LI {candidate.loadIndex ?? '-'}{candidate.loadVersion === 'highLoad' ? ' HL' : candidate.loadVersion === 'reinforced' ? ' XL' : ''} · {candidate.loadCapacityKg ?? '-'} kg · {candidate.approvedRimWidths.map((width) => `${width}J`).join(', ')}
-                    </div>
-                  </div>
-                ))}
+            <div className="mt-5">
+              <div className={`mb-3 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {language === 'fi' ? 'Valitse koko ja näytä varastotuotteet' : 'Select a size to show matching products'}
               </div>
-            ) : null}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {[vehicleFitment.recommendation.factory, ...vehicleFitment.recommendation.alternatives.slice(0, 8)].map((candidate) => {
+                  const selected = vehicleFitment.selectedSizeKey === candidate.sizeKey;
+                  const isFactory = candidate.confidence === 'factory';
+                  return (
+                    <button
+                      key={`${candidate.sizeKey}-${isFactory ? 'factory' : 'alternative'}`}
+                      type="button"
+                      onClick={() => handleFitmentSizeSelect(candidate)}
+                      className={`rounded-xl border p-4 text-left transition ${
+                        selected
+                          ? 'border-[#FF6B35] bg-[#FF6B35]/10 shadow-[0_0_0_1px_rgba(255,107,53,0.35)]'
+                          : theme === 'dark'
+                            ? 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/5'
+                            : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-semibold">{candidate.label}</div>
+                          <div className={`mt-1 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                            {isFactory
+                              ? (language === 'fi' ? 'Auton tehdaskoko' : 'Vehicle factory size')
+                              : `${language === 'fi' ? 'Halkaisijaero' : 'Diameter difference'}: ${candidate.diameterDifferencePercent > 0 ? '+' : ''}${candidate.diameterDifferencePercent.toFixed(1)}%`}
+                          </div>
+                        </div>
+                        <span className={`rounded-md px-2 py-1 text-xs font-medium ${
+                          isFactory
+                            ? 'bg-[#FF6B35]/15 text-[#FF6B35]'
+                            : candidate.confidence === 'recommended'
+                              ? 'bg-emerald-500/15 text-emerald-500'
+                              : 'bg-amber-500/15 text-amber-500'
+                        }`}>
+                          {isFactory
+                            ? (language === 'fi' ? 'Tehdas' : 'Factory')
+                            : candidate.confidence === 'recommended'
+                              ? (language === 'fi' ? 'Suositus' : 'Recommended')
+                              : (language === 'fi' ? 'Mahdollinen' : 'Possible')}
+                        </span>
+                      </div>
+                      <div className={`mt-3 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                        LI {candidate.loadIndex ?? '-'}{candidate.loadVersion === 'highLoad' ? ' HL' : candidate.loadVersion === 'reinforced' ? ' XL' : ''} · {candidate.loadCapacityKg ?? '-'} kg · {candidate.approvedRimWidths.map((width) => `${width}J`).join(', ')}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -1406,8 +1420,8 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
         {/* Empty State - Before Search */}
         {!hasSearched && (
           <div className="text-center py-20">
-            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-[#FF6B35]/10 flex items-center justify-center">
-              <span className="text-5xl">🔍</span>
+            <div className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-lg border ${theme === 'dark' ? 'border-white/10 bg-white/5 text-[#B0B8C4]' : 'border-gray-200 bg-white text-gray-500'}`}>
+              <Search className="h-5 w-5" />
             </div>
             <h3 className={`text-2xl mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {language === 'fi' ? 'Aloita haku' : 'Start Your Search'}

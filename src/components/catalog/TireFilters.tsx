@@ -7,7 +7,7 @@ import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Filter, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { LicensePlateDisplay } from './LicensePlateDisplay';
 import type { VehicleTyreLookupResult } from '../../utils/vehicleFitmentLookup';
@@ -20,6 +20,7 @@ interface TireFiltersProps {
   onFilterChange: (filters: any) => void;
   onSearch: () => void;
   onVehicleRecommendation?: (vehicle: VehicleTyreLookupResult, recommendation: TyreFitmentRecommendation) => void;
+  onSearchModeChange?: (mode: 'license' | 'manual') => void;
   searchMode: 'license' | 'vehicle' | 'manual';
   filters?: {
     width: string;
@@ -35,6 +36,34 @@ interface TireFiltersProps {
     ean: string;
     sortBy: string;
     search: string;
+  };
+}
+
+function mergeTyreFitmentRecommendations(recommendations: TyreFitmentRecommendation[]): TyreFitmentRecommendation {
+  const [primary, ...rest] = recommendations;
+  const alternatives = new Map<string, TyreFitmentRecommendation['alternatives'][number]>();
+  const addCandidate = (candidate: TyreFitmentRecommendation['alternatives'][number]) => {
+    if (candidate.sizeKey === primary.factory.sizeKey) return;
+    if (!alternatives.has(candidate.sizeKey)) {
+      alternatives.set(candidate.sizeKey, candidate);
+    }
+  };
+
+  for (const recommendation of rest) {
+    addCandidate({ ...recommendation.factory, confidence: 'factory' });
+  }
+
+  for (const recommendation of recommendations) {
+    for (const candidate of recommendation.alternatives) {
+      addCandidate(candidate);
+    }
+  }
+
+  return {
+    factory: primary.factory,
+    alternatives: Array.from(alternatives.values()).slice(0, 24),
+    auditedSeriesOnly: recommendations.every((recommendation) => recommendation.auditedSeriesOnly),
+    warnings: Array.from(new Set(recommendations.flatMap((recommendation) => recommendation.warnings))),
   };
 }
 
@@ -54,7 +83,7 @@ export const DEFAULT_TIRE_FILTERS = {
   search: '',
 };
 
-export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation, searchMode, filters: externalFilters }: TireFiltersProps) {
+export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation, onSearchModeChange, searchMode: _searchMode, filters: externalFilters }: TireFiltersProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
   const [licensePlate, setLicensePlate] = useState('');
@@ -64,15 +93,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   const [brandSearchTerm, setBrandSearchTerm] = useState('');
   const [vehicleLookupLoading, setVehicleLookupLoading] = useState(false);
   const [vehicleLookupError, setVehicleLookupError] = useState<string | null>(null);
-
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // Auto-search when license plate is complete or on Enter.
-  useEffect(() => {
-    if (searchMode === 'license' && licensePlate.length === 7) {
-      void handleVehicleLookup();
-    }
-  }, [licensePlate, searchMode]);
+  const [localSearchMode, setLocalSearchMode] = useState<'license' | 'manual'>('license');
 
   useEffect(() => {
     if (!externalFilters) return;
@@ -104,10 +125,18 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
     };
   }, []);
 
+  const hasPlateInput = licensePlate.replace(/[^A-Z0-9]/gi, '').length >= 6;
   const handleLicensePlateKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && licensePlate.length >= 6) {
+    if (e.key === 'Enter' && hasPlateInput) {
       void handleVehicleLookup();
     }
+  };
+
+  const activeSearchMode = localSearchMode;
+  const switchSearchMode = (mode: 'license' | 'manual') => {
+    setVehicleLookupError(null);
+    setLocalSearchMode(mode);
+    onSearchModeChange?.(mode);
   };
 
   const handleVehicleLookup = async () => {
@@ -116,11 +145,26 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
     setVehicleLookupLoading(true);
     try {
       const vehicle = await lookupVehicleTyreFitment(licensePlate);
-      const fitment = await requestFitmentRecommendations(vehicle.factoryTyreSize, {
-        maxWeightKg: vehicle.maxWeightKg,
-        maxSpeedKmh: vehicle.maxSpeedKmh,
-      });
-      const recommendation = fitment.tyre;
+      const factoryTyreSizes = vehicle.factoryTyreSizes?.length
+        ? vehicle.factoryTyreSizes
+        : [vehicle.factoryTyreSize];
+      const recommendationResults = await Promise.all(
+        factoryTyreSizes.map((factoryTyreSize) =>
+          requestFitmentRecommendations(factoryTyreSize, {
+            maxWeightKg: vehicle.maxWeightKg,
+            maxSpeedKmh: vehicle.maxSpeedKmh,
+          }).catch((error) => {
+            console.warn('Fitment recommendation failed for size:', factoryTyreSize, error);
+            return null;
+          })
+        )
+      );
+      const recommendations = recommendationResults
+        .map((fitment) => fitment?.tyre ?? null)
+        .filter((recommendation): recommendation is TyreFitmentRecommendation => Boolean(recommendation));
+      const recommendation = recommendations.length > 0
+        ? mergeTyreFitmentRecommendations(recommendations)
+        : null;
 
       if (!recommendation) {
         throw new Error(language === 'fi'
@@ -180,312 +224,341 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   const filteredBrandOptions = brandOptions.filter((brand) =>
     brand.toLowerCase().includes(brandSearchTerm.trim().toLowerCase())
   );
+  const advancedFiltersPanel = (
+    <div className={`w-full max-w-[568px] space-y-4 rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-[#f9fafb]'}`}>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div>
+          <Label className={`${textClass} mb-2 block text-sm`}>
+            {language === 'fi' ? 'Kausi' : 'Season'}
+          </Label>
+          <Select value={filters.season} onValueChange={(value) => updateFilter('season', value)}>
+            <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+              <SelectValue placeholder="—" />
+            </SelectTrigger>
+            <SelectContent className={`${selectBgClass} ${borderClass}`}>
+              <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+              <SelectItem value="summer" className={`${textClass} hover:bg-white/10`}>
+                {language === 'fi' ? 'Kesä' : 'Summer'}
+              </SelectItem>
+              <SelectItem value="winter" className={`${textClass} hover:bg-white/10`}>
+                {language === 'fi' ? 'Talvi' : 'Winter'}
+              </SelectItem>
+              <SelectItem value="all_season" className={`${textClass} hover:bg-white/10`}>
+                {language === 'fi' ? 'Ympärivuotinen' : 'All Season'}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className={`${textClass} mb-2 block text-sm`}>
+            {language === 'fi' ? 'Järjestä' : 'Sort By'}
+          </Label>
+          <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
+            <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={`${selectBgClass} ${borderClass}`}>
+              <SelectItem value="price_asc" className={`${textClass} hover:bg-white/10`}>
+                {language === 'fi' ? 'Hinta ↑' : 'Price ↑'}
+              </SelectItem>
+              <SelectItem value="price_desc" className={`${textClass} hover:bg-white/10`}>
+                {language === 'fi' ? 'Hinta ↓' : 'Price ↓'}
+              </SelectItem>
+              <SelectItem value="wet_grip" className={`${textClass} hover:bg-white/10`}>
+                {language === 'fi' ? 'Märkäpito' : 'Wet Grip'}
+              </SelectItem>
+              <SelectItem value="noise" className={`${textClass} hover:bg-white/10`}>
+                {language === 'fi' ? 'Melu' : 'Noise'}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className={`${textClass} mb-2 block text-sm`}>
+            EAN
+          </Label>
+          <Input
+            inputMode="numeric"
+            value={filters.ean}
+            onChange={(event) => updateFilter('ean', event.target.value)}
+            placeholder="6419440..."
+            className={`${inputBgClass} ${borderClass} ${textClass}`}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={filters.runflat}
+            onCheckedChange={(checked) => updateFilter('runflat', checked)}
+            className="data-[state=checked]:bg-[#FF6B35]"
+          />
+          <Label className={`${textClass} text-sm`}>RunFlat</Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={filters.xl}
+            onCheckedChange={(checked) => updateFilter('xl', checked)}
+            className="data-[state=checked]:bg-[#FF6B35]"
+          />
+          <Label className={`${textClass} text-sm`}>XL</Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={filters.studded}
+            onCheckedChange={(checked) => updateFilter('studded', checked)}
+            className="data-[state=checked]:bg-[#FF6B35]"
+          />
+          <Label className={`${textClass} text-sm`}>
+            {language === 'fi' ? 'Nastat' : 'Studded'}
+          </Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={filters.inStockOnly}
+            onCheckedChange={(checked) => updateFilter('inStockOnly', checked)}
+            className="data-[state=checked]:bg-[#FF6B35]"
+          />
+          <Label className={`${textClass} text-sm`}>
+            {language === 'fi' ? 'Varastossa' : 'In Stock'}
+          </Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={filters.includeRetreaded}
+            onCheckedChange={(checked) => updateFilter('includeRetreaded', checked)}
+            className="data-[state=checked]:bg-[#FF6B35]"
+          />
+          <Label className={`${textClass} text-sm`}>
+            {language === 'fi' ? 'Pinnoitetut' : 'Retreaded'}
+          </Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={false}
+            onCheckedChange={() => undefined}
+            className="data-[state=checked]:bg-[#FF6B35]"
+          />
+          <Label className={`${textClass} text-sm`}>
+            {language === 'fi' ? 'Sähköauto' : 'Electric Car'}
+          </Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={false}
+            onCheckedChange={() => undefined}
+            className="data-[state=checked]:bg-[#FF6B35]"
+          />
+          <Label className={`${textClass} text-sm`}>
+            {language === 'fi' ? 'Äänenvaimennus' : 'Sound absorber'}
+          </Label>
+        </div>
+      </div>
+
+      <div>
+        <Label className={`${textClass} mb-2 block text-sm`}>
+          {language === 'fi' ? 'Suodata merkeittäin' : 'Filter by brand'}
+        </Label>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setBrandDialogOpen(true)}
+          className={`w-full justify-between ${theme === 'dark' ? 'border-white/10 bg-[#0f1319] text-white hover:bg-white/10' : 'border-gray-200 bg-white text-gray-900 hover:bg-gray-50'}`}
+        >
+          <span className="truncate">
+            {selectedBrands.length === 0
+              ? (language === 'fi' ? 'Valitse merkit' : 'Choose brands')
+              : selectedBrands.length === 1
+                ? selectedBrands[0]
+                : language === 'fi'
+                  ? `${selectedBrands.length} merkkiä valittu`
+                  : `${selectedBrands.length} brands selected`}
+          </span>
+          <span className={`${secondaryTextClass} text-xs`}>
+            {language === 'fi' ? 'Avaa' : 'Open'}
+          </span>
+        </Button>
+        {selectedBrands.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {selectedBrands.slice(0, 4).map((brand) => (
+              <span
+                key={brand}
+                className={`rounded-md px-2 py-1 text-xs ${theme === 'dark' ? 'bg-[#FF6B35]/15 text-[#FFD2C2]' : 'bg-[#FF6B35]/10 text-[#B9481E]'}`}
+              >
+                {brand}
+              </span>
+            ))}
+            {selectedBrands.length > 4 && (
+              <span className={`rounded-md px-2 py-1 text-xs ${theme === 'dark' ? 'bg-white/10 text-white/80' : 'bg-gray-100 text-gray-700'}`}>
+                +{selectedBrands.length - 4}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={clearFilters}
+        className={`mx-auto flex ${secondaryTextClass} hover:${textClass} hover:bg-white/10`}
+      >
+        {language === 'fi' ? 'Tyhjennä suodattimet' : 'Clear All Filters'}
+      </Button>
+    </div>
+  );
 
   return (
-    <div className={`glassmorphic-panel rounded-2xl p-6 border backdrop-blur-xl ${borderClass} ${bgClass}`}>
-      {/* License Plate Search */}
-      {searchMode === 'license' && (
-        <div className="space-y-4" onKeyDown={handleLicensePlateKeyDown}>
-          <div>
-            <Label className={`${textClass} mb-4 block text-center text-lg`}>
-              {language === 'fi' ? 'Syötä rekisteritunnus' : 'Enter License Plate'}
-            </Label>
-            <LicensePlateDisplay
-              value={licensePlate}
-              onChange={setLicensePlate}
-              placeholder="ABC-123"
-            />
-          </div>
-          {vehicleLookupError ? (
-            <p className="text-center text-sm text-red-500">{vehicleLookupError}</p>
-          ) : null}
-          <Button
-            type="button"
-            onClick={handleVehicleLookup}
-            disabled={vehicleLookupLoading || licensePlate.replace(/[^A-Z0-9]/gi, '').length < 6}
-            className="w-full bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {vehicleLookupLoading
-              ? (language === 'fi' ? 'Haetaan ajoneuvoa...' : 'Looking up vehicle...')
-              : (language === 'fi' ? 'Hae suositukset' : 'Find recommendations')}
-          </Button>
-        </div>
-      )}
-
-      {/* Manual Entry */}
-      {searchMode === 'manual' && (
-        <>
-          {/* Simple Main Filters - Width, Aspect, Diameter */}
-          <div>
-            <Label className={`${textClass} text-sm mb-3 block`}>
-              {language === 'fi' ? '⚙️ Rengaskoko' : '⚙️ Tire Size'}
-            </Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              {/* Width */}
-              <div>
-                <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Leveys' : 'Width'}
-                </Label>
-                <Select value={filters.width} onValueChange={(value) => updateFilter('width', value)}>
-                  <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
-                    {widthOptions.map(w => (
-                      <SelectItem key={w} value={w} className={`${textClass} hover:bg-white/10`}>
-                        {w}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+    <div className={`rounded-2xl border p-6 ${borderClass} ${bgClass}`}>
+      <div className="flex flex-col items-center gap-8">
+        {activeSearchMode === 'license' ? (
+          <div className="flex w-full flex-col items-center gap-8" onKeyDown={handleLicensePlateKeyDown}>
+            <div className="grid w-full grid-cols-1 items-center justify-center gap-8 xl:grid-cols-[1fr_568px]">
+              <div className="flex min-h-[255px] items-center justify-center">
+                <div className="w-full">
+                  <LicensePlateDisplay
+                    value={licensePlate}
+                    onChange={setLicensePlate}
+                    placeholder="ABC-123"
+                    showHelper={false}
+                  />
+                  {vehicleLookupError ? (
+                    <p className="mt-3 text-center text-sm text-red-500">{vehicleLookupError}</p>
+                  ) : null}
+                </div>
               </div>
-
-              {/* Aspect Ratio */}
-              <div>
-                <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Korkeus' : 'Aspect'}
-                </Label>
-                <Select value={filters.aspectRatio} onValueChange={(value) => updateFilter('aspectRatio', value)}>
-                  <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
-                    {aspectOptions.map(a => (
-                      <SelectItem key={a} value={a} className={`${textClass} hover:bg-white/10`}>
-                        {a}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Diameter */}
-              <div>
-                <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Halkaisija' : 'Diameter'}
-                </Label>
-                <Select value={filters.diameter} onValueChange={(value) => updateFilter('diameter', value)}>
-                  <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
-                    {diameterOptions.map(d => (
-                      <SelectItem key={d} value={d} className={`${textClass} hover:bg-white/10`}>
-                        {d}"
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex justify-center xl:justify-end">
+                {advancedFiltersPanel}
               </div>
             </div>
-          </div>
-
-          {/* Search Button */}
-          <Button
-            onClick={onSearch}
-            className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white shadow-[0_0_20px_rgba(255,107,53,0.3)] mb-4"
-          >
-            {language === 'fi' ? '🔍 Hae' : '🔍 Search'}
-          </Button>
-
-          {/* Advanced Filters Toggle */}
-          <div className="flex items-center gap-2 mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-[#FF6B35] hover:text-[#FF6B35]/80 hover:bg-[#FF6B35]/10"
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              {language === 'fi' ? 'Lisäsuodattimet' : 'Advanced Filters'}
-            </Button>
-          </div>
-
-          {showAdvanced && (
-            <div className={`space-y-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
-              {/* Season, Sort & EAN Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    {language === 'fi' ? 'Kausi' : 'Season'}
-                  </Label>
-                  <Select value={filters.season} onValueChange={(value) => updateFilter('season', value)}>
-                    <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                      <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
-                      <SelectItem value="summer" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Kesä' : 'Summer'}
-                      </SelectItem>
-                      <SelectItem value="winter" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Talvi' : 'Winter'}
-                      </SelectItem>
-                      <SelectItem value="all_season" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Ympärivuotinen' : 'All Season'}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    {language === 'fi' ? 'Järjestä' : 'Sort By'}
-                  </Label>
-                  <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
-                    <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                      <SelectItem value="price_asc" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Hinta ↑' : 'Price ↑'}
-                      </SelectItem>
-                      <SelectItem value="price_desc" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Hinta ↓' : 'Price ↓'}
-                      </SelectItem>
-                      <SelectItem value="wet_grip" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Märkäpito' : 'Wet Grip'}
-                      </SelectItem>
-                      <SelectItem value="noise" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Melu' : 'Noise'}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    EAN
-                  </Label>
-                  <Input
-                    inputMode="numeric"
-                    value={filters.ean}
-                    onChange={(event) => updateFilter('ean', event.target.value)}
-                    placeholder="6419440..."
-                    className={`${inputBgClass} ${borderClass} ${textClass}`}
-                  />
-                </div>
-              </div>
-
-              {/* Feature Toggles */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {/* RunFlat */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={filters.runflat}
-                    onCheckedChange={(checked) => updateFilter('runflat', checked)}
-                    className="data-[state=checked]:bg-[#FF6B35]"
-                  />
-                  <Label className={`${textClass} text-sm`}>RunFlat</Label>
-                </div>
-
-                {/* XL */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={filters.xl}
-                    onCheckedChange={(checked) => updateFilter('xl', checked)}
-                    className="data-[state=checked]:bg-[#FF6B35]"
-                  />
-                  <Label className={`${textClass} text-sm`}>XL</Label>
-                </div>
-
-                {/* Studded */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={filters.studded}
-                    onCheckedChange={(checked) => updateFilter('studded', checked)}
-                    className="data-[state=checked]:bg-[#FF6B35]"
-                  />
-                  <Label className={`${textClass} text-sm`}>
-                    {language === 'fi' ? 'Nastat' : 'Studded'}
-                  </Label>
-                </div>
-
-                {/* In Stock */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={filters.inStockOnly}
-                    onCheckedChange={(checked) => updateFilter('inStockOnly', checked)}
-                    className="data-[state=checked]:bg-[#FF6B35]"
-                  />
-                  <Label className={`${textClass} text-sm`}>
-                    {language === 'fi' ? 'Varastossa' : 'In Stock'}
-                  </Label>
-                </div>
-
-                {/* Retreaded */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={filters.includeRetreaded}
-                    onCheckedChange={(checked) => updateFilter('includeRetreaded', checked)}
-                    className="data-[state=checked]:bg-[#FF6B35]"
-                  />
-                  <Label className={`${textClass} text-sm`}>
-                    {language === 'fi' ? 'Pinnoitetut' : 'Retreaded'}
-                  </Label>
-                </div>
-              </div>
-
-              {/* Brand Checklist */}
-              <div>
-                <Label className={`${textClass} mb-2 block text-sm`}>
-                  {language === 'fi' ? 'Suodata merkeittäin' : 'Filter by brand'}
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setBrandDialogOpen(true)}
-                  className={`w-full justify-between ${theme === 'dark' ? 'border-white/10 bg-[#0f1319] text-white hover:bg-white/10' : 'border-gray-200 bg-white text-gray-900 hover:bg-gray-50'}`}
-                >
-                  <span className="truncate">
-                    {selectedBrands.length === 0
-                      ? (language === 'fi' ? 'Valitse merkit' : 'Choose brands')
-                      : selectedBrands.length === 1
-                        ? selectedBrands[0]
-                        : language === 'fi'
-                          ? `${selectedBrands.length} merkkiä valittu`
-                          : `${selectedBrands.length} brands selected`}
-                  </span>
-                  <span className={`${secondaryTextClass} text-xs`}>
-                    {language === 'fi' ? 'Avaa' : 'Open'}
-                  </span>
-                </Button>
-                {selectedBrands.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {selectedBrands.slice(0, 4).map((brand) => (
-                      <span
-                        key={brand}
-                        className={`rounded-full px-2.5 py-1 text-xs ${theme === 'dark' ? 'bg-[#FF6B35]/15 text-[#FFD2C2]' : 'bg-[#FF6B35]/10 text-[#B9481E]'}`}
-                      >
-                        {brand}
-                      </span>
-                    ))}
-                    {selectedBrands.length > 4 && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs ${theme === 'dark' ? 'bg-white/10 text-white/80' : 'bg-gray-100 text-gray-700'}`}>
-                        +{selectedBrands.length - 4}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Clear Filters */}
+            <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-8">
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className={`${secondaryTextClass} hover:${textClass} hover:bg-white/10`}
+                type="button"
+                variant="outline"
+                onClick={() => switchSearchMode('manual')}
+                className={`h-[42px] w-[168px] rounded-lg px-10 text-sm font-semibold ${
+                  theme === 'dark'
+                    ? 'border-white/10 bg-white/5 text-[#B0B8C4] hover:bg-white/10 hover:text-white'
+                    : 'border-[#d1d5dc] bg-[#f3f4f6] text-[#4a5565] hover:bg-gray-100'
+                }`}
               >
-                {language === 'fi' ? 'Tyhjennä suodattimet' : 'Clear All Filters'}
+                {language === 'fi' ? 'Manuaali' : 'Manual'}
+              </Button>
+              <Button
+                onClick={handleVehicleLookup}
+                disabled={vehicleLookupLoading || !hasPlateInput}
+                className="h-[42px] min-w-[174px] rounded-lg bg-[#FF6B35] px-16 text-sm font-semibold text-white shadow-[0_0_10px_rgba(255,107,53,0.24)] hover:bg-[#E85F2F] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {vehicleLookupLoading
+                  ? (language === 'fi' ? 'Haetaan...' : 'Searching...')
+                  : (language === 'fi' ? 'Hae' : 'Search')}
               </Button>
             </div>
-          )}
-        </>
-      )}
+          </div>
+        ) : (
+          <>
+            <div className="grid w-full grid-cols-1 items-start justify-center gap-8 xl:grid-cols-[1fr_568px]">
+              <div className="flex w-full justify-center xl:justify-start">
+                <div className="flex w-full max-w-[568px] flex-col gap-6">
+                  <Label className={`${textClass} block text-lg font-semibold`}>
+                    {language === 'fi' ? 'Syötä rengaskoko' : 'Enter Tire Size'}
+                  </Label>
+                  <div className="flex flex-col gap-6">
+                    <div>
+                      <Label className={`${textClass} mb-2 block px-2 text-xs`}>
+                        {language === 'fi' ? 'Leveys' : 'Width'}
+                      </Label>
+                      <Select value={filters.width} onValueChange={(value) => updateFilter('width', value)}>
+                        <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent className={`${selectBgClass} ${borderClass}`}>
+                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                          {widthOptions.map(w => (
+                            <SelectItem key={w} value={w} className={`${textClass} hover:bg-white/10`}>
+                              {w}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
+                    <div>
+                      <Label className={`${textClass} mb-2 block px-2 text-xs`}>
+                        {language === 'fi' ? 'Korkeus' : 'Aspect'}
+                      </Label>
+                      <Select value={filters.aspectRatio} onValueChange={(value) => updateFilter('aspectRatio', value)}>
+                        <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent className={`${selectBgClass} ${borderClass}`}>
+                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                          {aspectOptions.map(a => (
+                            <SelectItem key={a} value={a} className={`${textClass} hover:bg-white/10`}>
+                              {a}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className={`${textClass} mb-2 block px-2 text-xs`}>
+                        {language === 'fi' ? 'Halkaisija' : 'Diameter'}
+                      </Label>
+                      <Select value={filters.diameter} onValueChange={(value) => updateFilter('diameter', value)}>
+                        <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent className={`${selectBgClass} ${borderClass}`}>
+                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                          {diameterOptions.map(d => (
+                            <SelectItem key={d} value={d} className={`${textClass} hover:bg-white/10`}>
+                              {d}"
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-center xl:justify-end">
+                {advancedFiltersPanel}
+              </div>
+            </div>
+            <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-8">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => switchSearchMode('license')}
+                className={`h-[42px] w-[168px] rounded-lg px-10 text-sm font-semibold ${
+                  theme === 'dark'
+                    ? 'border-white/10 bg-white/5 text-[#B0B8C4] hover:bg-white/10 hover:text-white'
+                    : 'border-[#d1d5dc] bg-[#f3f4f6] text-[#4a5565] hover:bg-gray-100'
+                }`}
+              >
+                {language === 'fi' ? 'Rekisteritunnus' : 'License Plate'}
+              </Button>
+              <Button
+                onClick={onSearch}
+                className="h-[42px] min-w-[174px] rounded-lg bg-[#FF6B35] px-16 text-sm font-semibold text-white shadow-[0_0_10px_rgba(255,107,53,0.24)] hover:bg-[#E85F2F]"
+              >
+                {language === 'fi' ? 'Hae' : 'Search'}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
       <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
         <DialogContent className={`${theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : 'border-gray-200 bg-white text-gray-900'} max-w-[calc(100vw-2rem)] sm:max-w-xl`}>
           <DialogHeader>

@@ -9,9 +9,10 @@ interface LicensePlateDisplayProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  showHelper?: boolean;
 }
 
-export function LicensePlateDisplay({ value, onChange, placeholder = 'ABC-123' }: LicensePlateDisplayProps) {
+export function LicensePlateDisplay({ value, onChange, placeholder = 'ABC-123', showHelper = true }: LicensePlateDisplayProps) {
   const { theme } = useTheme();
   const { language } = useLanguage();
   
@@ -19,10 +20,13 @@ export function LicensePlateDisplay({ value, onChange, placeholder = 'ABC-123' }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value.toUpperCase();
-    // Format: XXX-XXX (3 letters/numbers, dash, 3 numbers)
-    let formatted = input.replace(/[^A-Z0-9]/g, '');
-    if (formatted.length > 3) {
-      formatted = formatted.slice(0, 3) + '-' + formatted.slice(3, 6);
+    const compact = input.replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    const userTypedDashAfterPrefix = /[A-Z0-9]{3}-$/.test(input);
+    let formatted = compact;
+    if (compact.length > 3) {
+      formatted = `${compact.slice(0, 3)}-${compact.slice(3, 6)}`;
+    } else if (compact.length === 3 && userTypedDashAfterPrefix) {
+      formatted = `${compact}-`;
     }
     onChange(formatted);
   };
@@ -92,13 +96,14 @@ export function LicensePlateDisplay({ value, onChange, placeholder = 'ABC-123' }
         </div>
       </div>
 
-      {/* Helper text */}
-      <p className={`text-center ${secondaryTextClass} text-sm mt-3`}>
-        {language === 'fi' 
-          ? 'Kirjoita rekisteritunnus muodossa ABC-123'
-          : 'Enter the plate in ABC-123 format'
-        }
-      </p>
+      {showHelper ? (
+        <p className={`text-center ${secondaryTextClass} text-sm mt-3`}>
+          {language === 'fi' 
+            ? 'Kirjoita rekisteritunnus muodossa ABC-123'
+            : 'Enter the plate in ABC-123 format'
+          }
+        </p>
+      ) : null}
     </div>
   );
 }
