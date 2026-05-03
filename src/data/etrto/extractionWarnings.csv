@@ -1,0 +1,2 @@
+scope,severity,message
+HL,source_discrepancy,"ETRTO rendered rim table P.48 prints HL 295/25 R25, while tyre table P.46 lists HL 295/25 R22. Catalog maps approved rim contours to HL_295_25_R22 for lookup consistency and records this warning."

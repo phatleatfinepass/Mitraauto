@@ -10,11 +10,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Filter, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { LicensePlateDisplay } from './LicensePlateDisplay';
+import type { VehicleTyreLookupResult } from '../../utils/vehicleFitmentLookup';
+import { lookupVehicleTyreFitment } from '../../utils/vehicleFitmentLookup';
+import { buildTyreFitmentRecommendation, type TyreFitmentRecommendation } from '../../utils/etrtoFitment';
 import { supabase } from '../../utils/supabase/client';
 
 interface TireFiltersProps {
   onFilterChange: (filters: any) => void;
   onSearch: () => void;
+  onVehicleRecommendation?: (vehicle: VehicleTyreLookupResult, recommendation: TyreFitmentRecommendation) => void;
   searchMode: 'license' | 'vehicle' | 'manual';
   filters?: {
     width: string;
@@ -49,7 +53,7 @@ export const DEFAULT_TIRE_FILTERS = {
   search: '',
 };
 
-export function TireFilters({ onFilterChange, onSearch, searchMode, filters: externalFilters }: TireFiltersProps) {
+export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation, searchMode, filters: externalFilters }: TireFiltersProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
   const [licensePlate, setLicensePlate] = useState('');
@@ -57,13 +61,15 @@ export function TireFilters({ onFilterChange, onSearch, searchMode, filters: ext
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
   const [brandSearchTerm, setBrandSearchTerm] = useState('');
+  const [vehicleLookupLoading, setVehicleLookupLoading] = useState(false);
+  const [vehicleLookupError, setVehicleLookupError] = useState<string | null>(null);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Auto-search when license plate is complete (6 characters) or on Enter
+  // Auto-search when license plate is complete or on Enter.
   useEffect(() => {
     if (searchMode === 'license' && licensePlate.length === 7) {
-      onSearch();
+      void handleVehicleLookup();
     }
   }, [licensePlate, searchMode]);
 
@@ -99,7 +105,40 @@ export function TireFilters({ onFilterChange, onSearch, searchMode, filters: ext
 
   const handleLicensePlateKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && licensePlate.length >= 6) {
-      onSearch();
+      void handleVehicleLookup();
+    }
+  };
+
+  const handleVehicleLookup = async () => {
+    if (vehicleLookupLoading) return;
+    setVehicleLookupError(null);
+    setVehicleLookupLoading(true);
+    try {
+      const vehicle = await lookupVehicleTyreFitment(licensePlate);
+      const recommendation = buildTyreFitmentRecommendation(vehicle.factoryTyreSize, {
+        maxWeightKg: vehicle.maxWeightKg,
+        maxSpeedKmh: vehicle.maxSpeedKmh,
+      });
+
+      if (!recommendation) {
+        throw new Error(language === 'fi'
+          ? 'Tehdaskokoa ei löytynyt ETRTO-aineistosta.'
+          : 'The factory size was not found in the ETRTO dataset.');
+      }
+
+      const factoryFilters = {
+        ...filters,
+        width: String(recommendation.factory.widthMm),
+        aspectRatio: String(recommendation.factory.aspectRatio),
+        diameter: String(recommendation.factory.rimDiameterIn),
+      };
+      setFilters(factoryFilters);
+      onFilterChange(factoryFilters);
+      onVehicleRecommendation?.(vehicle, recommendation);
+    } catch (error) {
+      setVehicleLookupError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setVehicleLookupLoading(false);
     }
   };
 
@@ -155,6 +194,19 @@ export function TireFilters({ onFilterChange, onSearch, searchMode, filters: ext
               placeholder="ABC-123"
             />
           </div>
+          {vehicleLookupError ? (
+            <p className="text-center text-sm text-red-500">{vehicleLookupError}</p>
+          ) : null}
+          <Button
+            type="button"
+            onClick={handleVehicleLookup}
+            disabled={vehicleLookupLoading || licensePlate.replace(/[^A-Z0-9]/gi, '').length < 6}
+            className="w-full bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {vehicleLookupLoading
+              ? (language === 'fi' ? 'Haetaan ajoneuvoa...' : 'Looking up vehicle...')
+              : (language === 'fi' ? 'Hae suositukset' : 'Find recommendations')}
+          </Button>
         </div>
       )}
 

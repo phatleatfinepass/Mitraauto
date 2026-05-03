@@ -1,0 +1,16 @@
+series,tyre_table_page,rim_table_page,rows_extracted,rim_rows_extracted,audited_by_visual_review,coverage,notes
+20,P.43,P.43,1,3,true,full_series,Manually audited from authenticated Webdoxx ETRTO 2025 text layer and rendered page P.43. The 20-series table contains one tyre row and all approved rim mappings are present.
+25,P.42,P.42,36,92,true,full_series,Manually audited from authenticated Webdoxx ETRTO 2025 text layer and rendered page P.42. All 25-series tyre rows have approved rim mappings.
+30,P.40-P.41,P.41,75,211,true,full_series,Manually audited from authenticated Webdoxx ETRTO 2025 text layer and rendered pages P.40/P.41. All 30-series tyre rows have approved rim mappings.
+35,P.38-P.39,P.39,79,343,true,full_series,Manually audited from authenticated Webdoxx ETRTO 2025 text layer and rendered pages P.38/P.39. All 35-series tyre rows have approved rim mappings.
+40,P.36,P.37,81,330,true,full_series,Manually audited from rendered ETRTO pages P.36/P.37 with authenticated Webdoxx preview available. All 40-series tyre rows have approved rim mappings.
+45,P.34,P.35,75,295,true,full_series,Manually audited from rendered ETRTO pages P.34/P.35. All 45-series tyre rows have approved rim mappings.
+50,P.32,P.33,70,321,true,full_series,Manually audited from rendered ETRTO pages P.32/P.33. All 50-series tyre rows have approved rim mappings.
+55,P.30,P.31,59,267,true,full_series,Manually audited from rendered ETRTO pages P.30/P.31. All 55-series tyre rows have approved rim mappings.
+60,P.28,P.29,72,337,true,full_series,Manually audited from rendered ETRTO pages P.28/P.29. All 60-series tyre rows have approved rim mappings.
+65,P.26,P.27,50,233,true,full_series,"All 65-series tyre rows have approved rim mappings; 195/65 R15 verified as LI 91/95, measuring rim 6.0J, OD 635/645 max, rims 5.5J/6J/6.5J/7J."
+70,P.24,P.25,51,246,true,full_series,Manually audited from rendered ETRTO pages P.24/P.25. All 70-series tyre rows have approved rim mappings.
+75,P.22,P.23,24,105,true,full_series,Parsed and audited from authenticated Webdoxx text layer for ETRTO pages P.22/P.23. All tyre rows have approved rim mappings.
+80,P.22,P.23,24,113,true,full_series,Parsed and audited from authenticated Webdoxx text layer for ETRTO pages P.22/P.23. All tyre rows have approved rim mappings.
+HL,P.44-P.46,P.47-P.48,133,201,true,full_series,HL high-load-capacity rows parsed from authenticated Webdoxx text layer and visually checked on rendered pages. Source rim table prints HL 295/25 R25 while tyre table has HL 295/25 R22; lookup maps that rim row to R22 with this audit note.
+Temporary spare,P.49-P.50,P.51,89,283,true,full_temporary_spare,Temporary use spare T-type radial and diagonal rows parsed from authenticated Webdoxx ETRTO 2025 text layer. Stored in separate temporarySpare* data files so normal fitment recommendations are not polluted.

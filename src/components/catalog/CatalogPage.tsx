@@ -14,6 +14,8 @@ import { fetchProductsSearch, type ProductSearchRow } from '../../utils/products
 import { buildProductImageFallback } from '../../utils/productImage';
 import type { ProductPricingRules } from '../../utils/pricing';
 import { buildTyreLabelSectionData, type TyreLabelSectionData } from '../../utils/tyreLabel';
+import type { TyreFitmentRecommendation } from '../../utils/etrtoFitment';
+import type { VehicleTyreLookupResult } from '../../utils/vehicleFitmentLookup';
 
 type CatalogMode = 'tires' | 'rims';
 type SearchMode = 'license' | 'vehicle' | 'manual';
@@ -807,6 +809,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const [totalCount, setTotalCount] = useState(initialRestoreRef.current?.snapshot?.totalCount ?? 0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<any>(initialRestoreRef.current?.state?.filters ?? { ...DEFAULT_TIRE_FILTERS });
+  const [vehicleFitment, setVehicleFitment] = useState<{
+    vehicle: VehicleTyreLookupResult;
+    recommendation: TyreFitmentRecommendation;
+  } | null>(null);
   const [isRestoringState, setIsRestoringState] = useState(Boolean(initialRestoreRef.current));
   const productsGridRef = React.useRef<HTMLDivElement>(null);
   const restoreFetchStartedRef = React.useRef(Boolean(initialRestoreRef.current));
@@ -1021,6 +1027,24 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
+  };
+
+  const handleVehicleRecommendation = (
+    vehicle: VehicleTyreLookupResult,
+    recommendation: TyreFitmentRecommendation,
+  ) => {
+    const factoryFilters = {
+      ...filters,
+      width: String(recommendation.factory.widthMm),
+      aspectRatio: String(recommendation.factory.aspectRatio),
+      diameter: String(recommendation.factory.rimDiameterIn),
+    };
+
+    setVehicleFitment({ vehicle, recommendation });
+    setFilters(factoryFilters);
+    setHasSearched(true);
+    setCurrentPage(1);
+    void fetchProducts(1, factoryFilters, 'tires');
   };
 
   const scrollToProducts = () => {
@@ -1313,10 +1337,62 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               filters={filters}
               onFilterChange={handleFilterChange} 
               onSearch={handleSearch}
+              onVehicleRecommendation={handleVehicleRecommendation}
               searchMode={searchMode}
             />
           </motion.div>
         </AnimatePresence>
+
+        {vehicleFitment ? (
+          <div className={`mb-8 rounded-2xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-white/5 text-white' : 'border-gray-200 bg-white text-gray-900'}`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                  {vehicleFitment.vehicle.plate} · {vehicleFitment.vehicle.description}
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold">
+                  {language === 'fi' ? 'Tehdaskoko' : 'Factory size'}: {vehicleFitment.recommendation.factory.label}
+                </h2>
+                <p className={`mt-2 max-w-3xl text-sm ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                  {language === 'fi'
+                    ? 'Vaihtoehdot on laskettu tehdaskoon ja ETRTO-standardin perusteella. Lopullinen sopivuus riippuu vanteesta, ET-luvusta, keskireiästä ja ajoneuvon välyksistä.'
+                    : 'Alternatives are calculated from the factory size and ETRTO standards. Final fitment depends on wheel width, offset, center bore, and vehicle clearance.'}
+                </p>
+              </div>
+              <div className={`rounded-xl border px-4 py-3 text-sm ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-gray-50'}`}>
+                <div className="font-medium">{language === 'fi' ? 'ETRTO vanneleveydet' : 'ETRTO rim widths'}</div>
+                <div className="mt-1 font-mono">
+                  {vehicleFitment.recommendation.factory.approvedRimWidths.map((width) => `${width}J`).join(', ') || '-'}
+                </div>
+              </div>
+            </div>
+
+            {vehicleFitment.recommendation.alternatives.length > 0 ? (
+              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {vehicleFitment.recommendation.alternatives.slice(0, 6).map((candidate) => (
+                  <div key={candidate.sizeKey} className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-gray-50'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold">{candidate.label}</div>
+                        <div className={`mt-1 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                          {language === 'fi' ? 'Halkaisijaero' : 'Diameter difference'}: {candidate.diameterDifferencePercent > 0 ? '+' : ''}{candidate.diameterDifferencePercent.toFixed(1)}%
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${candidate.confidence === 'recommended' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'}`}>
+                        {candidate.confidence === 'recommended'
+                          ? (language === 'fi' ? 'Suositus' : 'Recommended')
+                          : (language === 'fi' ? 'Mahdollinen' : 'Possible')}
+                      </span>
+                    </div>
+                    <div className={`mt-3 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
+                      LI {candidate.loadIndex ?? '-'}{candidate.loadVersion === 'highLoad' ? ' HL' : candidate.loadVersion === 'reinforced' ? ' XL' : ''} · {candidate.loadCapacityKg ?? '-'} kg · {candidate.approvedRimWidths.map((width) => `${width}J`).join(', ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {hasSearched && <div ref={productsGridRef} className="mb-0 h-0" aria-hidden="true" />}
 

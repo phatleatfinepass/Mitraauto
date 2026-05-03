@@ -95,8 +95,8 @@ export function LicensePlateDisplay({ value, onChange, placeholder = 'ABC-123' }
       {/* Helper text */}
       <p className={`text-center ${secondaryTextClass} text-sm mt-3`}>
         {language === 'fi' 
-          ? 'Toiminto tulee saataville pian'
-          : 'Function will be available soon'
+          ? 'Kirjoita rekisteritunnus muodossa ABC-123'
+          : 'Enter the plate in ABC-123 format'
         }
       </p>
     </div>
