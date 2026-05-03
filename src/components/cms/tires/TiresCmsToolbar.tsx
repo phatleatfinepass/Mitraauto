@@ -16,6 +16,7 @@ const METADATA_OPTIONS = [
   { key: 'size', fi: 'Size', en: 'Size' },
   { key: 'season', fi: 'Season', en: 'Season' },
   { key: 'ev_ready', fi: 'EV', en: 'EV' },
+  { key: 'sound_absorber', fi: 'Sound absorber', en: 'Sound absorber' },
   { key: 'runflat', fi: 'RunFlat', en: 'RunFlat' },
   { key: 'xl', fi: 'XL', en: 'XL' },
   { key: 'studded', fi: 'Studded', en: 'Studded' },

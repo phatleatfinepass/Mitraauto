@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 interface VehicleTyreLookupResult {
   plate: string;
+  country?: string;
   vin?: string;
   description: string;
   make?: string;
@@ -35,6 +36,8 @@ type ProviderCallContext = {
   requestId: string;
   plateHash: string | null;
   plateHint: string;
+  country: string;
+  state: string;
   vin?: string | null;
 };
 
@@ -96,12 +99,14 @@ Deno.serve(async (req) => {
   try {
     const requestId = crypto.randomUUID();
     const body = await req.json().catch(() => ({}));
-    const plate = normalizeFinnishPlate(String(body?.plate ?? ""));
-    if (!plate || plate.replace(/[^A-Z0-9]/g, "").length < 6) {
+    const country = normalizeCountryCode(body?.country);
+    const state = body?.state ? normalizeCountryCode(body.state) : country;
+    const plate = normalizePlate(String(body?.plate ?? ""), country);
+    if (!isValidPlate(plate, country)) {
       return jsonResponse({ error: "A valid license plate is required." }, 400);
     }
 
-    const fixture = DEVELOPMENT_FIXTURES[plate];
+    const fixture = country === "FI" ? DEVELOPMENT_FIXTURES[plate] : null;
     const apiKey = Deno.env.get("CARSXE_API_KEY")?.trim();
     if (!apiKey || apiKey === "TODO" || apiKey === "TODO_SET_CARSXE_API_KEY") {
       if (fixture) {
@@ -113,11 +118,13 @@ Deno.serve(async (req) => {
       }, 503);
     }
 
-    const cacheKey = await buildPlateCacheKey(plate);
+    const cacheKey = await buildPlateCacheKey(plate, country);
     const providerContext: ProviderCallContext = {
       requestId,
       plateHash: cacheKey,
       plateHint: buildPlateHint(plate),
+      country,
+      state,
       vin: null,
     };
     const cachedVehicle = cacheKey
@@ -138,7 +145,7 @@ Deno.serve(async (req) => {
 
     const vehicle = await lookupCarsXeVehicle(plate, apiKey, providerContext);
     if (cacheKey) {
-      await writeCachedVehicle(cacheKey, plate, vehicle);
+      await writeCachedVehicle(cacheKey, plate, country, vehicle);
     }
     return jsonResponse({
       vehicle,
@@ -236,6 +243,7 @@ async function lookupCarsXeVehicle(
   );
   return {
     plate,
+    country: context.country,
     vin,
     description: firstString(
       plateResponse.description,
@@ -311,6 +319,7 @@ async function readCachedVehicle(cacheKey: string, plate: string) {
 async function writeCachedVehicle(
   cacheKey: string,
   plate: string,
+  country: string,
   vehicle: VehicleTyreLookupResult,
 ) {
   const now = new Date();
@@ -327,7 +336,7 @@ async function writeCachedVehicle(
       vin: vehicle.vin ?? null,
       vehicle: sanitizedVehicle,
       provider: vehicle.source,
-      country: "FI",
+      country,
       source_version: "vehicle_lookup:v2",
       lookup_count: 1,
       last_seen_at: now.toISOString(),
@@ -354,14 +363,8 @@ async function callCarsXePlateLookup(
   const url = new URL(endpoint);
   url.searchParams.set("key", apiKey);
   url.searchParams.set("plate", plate);
-  url.searchParams.set(
-    "state",
-    Deno.env.get("CARSXE_PLATE_STATE")?.trim() || "FI",
-  );
-  url.searchParams.set(
-    "country",
-    Deno.env.get("CARSXE_PLATE_COUNTRY")?.trim() || "FI",
-  );
+  url.searchParams.set("state", context.state);
+  url.searchParams.set("country", context.country);
 
   return fetchCarsXeJson(url, apiKey, "plate_decoder", context);
 }
@@ -498,10 +501,30 @@ function carsXeHeaders(apiKey: string) {
   };
 }
 
+function normalizeCountryCode(value: unknown) {
+  const normalized = String(value ?? "FI").trim().toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
+  return normalized || "FI";
+}
+
+function normalizePlate(value: string, country: string) {
+  if (country === "FI") {
+    return normalizeFinnishPlate(value);
+  }
+  return value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12);
+}
+
 function normalizeFinnishPlate(value: string) {
   const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
   if (compact.length <= 3) return compact;
   return `${compact.slice(0, 3)}-${compact.slice(3)}`;
+}
+
+function isValidPlate(plate: string, country: string) {
+  const compact = plate.replace(/[^A-Z0-9]/g, "");
+  if (country === "FI") {
+    return compact.length >= 6;
+  }
+  return compact.length >= 2;
 }
 
 function normalizeFactoryTyreSize(value: string) {
@@ -542,7 +565,7 @@ function formatTyreSizeMatch(match: RegExpMatchArray) {
   }`;
 }
 
-async function buildPlateCacheKey(plate: string) {
+async function buildPlateCacheKey(plate: string, country: string) {
   const pepper = Deno.env.get("VEHICLE_LOOKUP_CACHE_PEPPER")?.trim();
   if (!pepper) {
     console.warn(
@@ -561,7 +584,7 @@ async function buildPlateCacheKey(plate: string) {
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
-    new TextEncoder().encode(`FI:${plate}`),
+    new TextEncoder().encode(`${country}:${plate}`),
   );
   return Array.from(new Uint8Array(signature)).map((byte) =>
     byte.toString(16).padStart(2, "0")

@@ -60,6 +60,7 @@ export interface TireProduct {
   noise_level?: number;
   noise_class?: string;
   ev_ready?: boolean;
+  sound_absorber?: boolean;
   three_pmsf?: boolean;
   tyre_label_section?: TyreLabelSectionData;
   ean?: string;
@@ -326,6 +327,7 @@ function TyreLabelIdentitySection({
     product.runflat ? 'RunFlat' : null,
     data.badges.extra_load ? 'XL' : null,
     product.ev_ready ? 'EV' : null,
+    product.sound_absorber ? (language === 'fi' ? 'Äänenvaimennus' : 'Sound absorber') : null,
     product.studded ? (language === 'fi' ? 'Nastat' : 'Studded') : null,
     data.badges.winter_approved ? 'M+S' : null,
   ].filter(Boolean) as string[];
@@ -783,6 +785,7 @@ export function ProductDetailPage({
     product.type === 'tire'
       ? [
           product.ev_ready ? 'EV Ready' : null,
+          product.sound_absorber ? (language === 'fi' ? 'Äänenvaimennus' : 'Sound absorber') : null,
           product.runflat ? 'RunFlat' : null,
           product.extra_load ? 'XL' : null,
           product.studded ? (language === 'fi' ? 'Nastat' : 'Studded') : null,

@@ -55,6 +55,7 @@ export interface CatalogProduct {
   load_index?: string;
   speed_rating?: string;
   ev_ready?: boolean;
+  sound_absorber?: boolean;
   threepmsf?: boolean;
   winter_approved?: boolean;
   ice_approved?: boolean;
@@ -718,6 +719,8 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   const ean = String((row as any).ean ?? (row as any).derived_ean ?? '').trim() || undefined;
   const manufactureYear = parseNumber((row as any).manufacture_year);
   const evReady = Boolean((row as any).ev_ready) || hasAnyTag(tags, ['ev', 'electric']);
+  const soundAbsorber = Boolean((row as any).sound_absorber)
+    || hasAnyTag(tags, ['sound', 'absorber', 'silent', 'acoustic', 'foam']);
   const threepmsf = Boolean((row as any).threepmsf) || hasAnyTag(tags, ['3pmsf', 'snowflake', 'alpine']);
   const winterApproved = Boolean((row as any).winter_approved)
     || seasonNormalized === 'winter'
@@ -743,6 +746,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
           runflat: row.runflat,
           xlReinforced: row.xl_reinforced,
           evReady,
+          soundAbsorber,
           studded: row.studded,
           threepmsf,
           winterApproved,
@@ -788,6 +792,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     load_index: productType === 'tire' ? loadIndex : undefined,
     speed_rating: productType === 'tire' ? speedRating : undefined,
     ev_ready: productType === 'tire' ? evReady : undefined,
+    sound_absorber: productType === 'tire' ? soundAbsorber : undefined,
     threepmsf: productType === 'tire' ? threepmsf : undefined,
     winter_approved: productType === 'tire' ? winterApproved : undefined,
     ice_approved: productType === 'tire' ? iceApproved : undefined,

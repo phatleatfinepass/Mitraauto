@@ -35,6 +35,7 @@ export interface TyreEuLabelData {
 export interface TyreBadgeData {
   runflat: boolean | null;
   ev_ready: boolean | null;
+  sound_absorber: boolean | null;
   studded: boolean | null;
   extra_load: boolean | null;
   threepmsf: boolean | null;
@@ -95,6 +96,7 @@ export interface BuildTyreLabelSectionInput {
   runflat?: boolean | null;
   xlReinforced?: boolean | null;
   evReady?: boolean | null;
+  soundAbsorber?: boolean | null;
   studded?: boolean | null;
   threepmsf?: boolean | null;
   winterApproved?: boolean | null;
@@ -317,6 +319,7 @@ export function buildTyreLabelSectionData(input: BuildTyreLabelSectionInput): Ty
     badges: {
       runflat: normalizeBoolean(input.runflat) ?? existingBadges.runflat ?? null,
       ev_ready: normalizeBoolean(input.evReady) ?? existingBadges.ev_ready ?? null,
+      sound_absorber: normalizeBoolean(input.soundAbsorber) ?? existingBadges.sound_absorber ?? null,
       studded: normalizeBoolean(input.studded) ?? existingBadges.studded ?? null,
       extra_load: normalizeBoolean(input.xlReinforced) ?? existingBadges.extra_load ?? null,
       threepmsf: normalizeBoolean(input.threepmsf) ?? existingBadges.threepmsf ?? null,

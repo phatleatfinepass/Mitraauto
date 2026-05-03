@@ -18,6 +18,7 @@ interface TireCardProps {
     xl?: boolean;
     studded?: boolean;
     ev_ready?: boolean;
+    sound_absorber?: boolean;
     threepmsf?: boolean;
     winter_approved?: boolean;
     ice_approved?: boolean;
@@ -119,6 +120,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
 
   const featureBadges = [
     { key: 'ev', show: Boolean(product.ev_ready), label: 'EV' },
+    { key: 'sound', show: Boolean(product.sound_absorber), label: language === 'fi' ? 'Hiljainen' : 'Silent' },
     { key: 'runflat', show: Boolean(product.runflat), label: 'RunFlat' },
     { key: 'xl', show: Boolean(product.xl), label: 'XL' },
     { key: 'studded', show: Boolean(product.studded), label: language === 'fi' ? 'Nastat' : 'Studded' },

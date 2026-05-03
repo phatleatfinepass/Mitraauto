@@ -7,14 +7,15 @@ import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Search } from 'lucide-react';
+import { Filter, Search } from 'lucide-react';
 import { Button } from '../ui/button';
-import { LicensePlateDisplay } from './LicensePlateDisplay';
+import { LicensePlateDisplay, type PlateCountryCode } from './LicensePlateDisplay';
 import type { VehicleTyreLookupResult } from '../../utils/vehicleFitmentLookup';
 import { lookupVehicleTyreFitment } from '../../utils/vehicleFitmentLookup';
 import type { TyreFitmentRecommendation } from '../../utils/etrtoFitment';
 import { requestFitmentRecommendations } from '../../utils/fitmentRecommendations';
 import { supabase } from '../../utils/supabase/client';
+import { COUNTRY_FLAG_DATA_URIS } from './countryFlagData';
 
 interface TireFiltersProps {
   onFilterChange: (filters: any) => void;
@@ -33,11 +34,48 @@ interface TireFiltersProps {
     studded: boolean;
     inStockOnly: boolean;
     includeRetreaded: boolean;
+    electricCar: boolean;
+    soundAbsorber: boolean;
     ean: string;
     sortBy: string;
     search: string;
   };
 }
+
+type PlateCountryOption = {
+  code: PlateCountryCode;
+  name: string;
+  flagSrc: string;
+};
+
+const PLATE_COUNTRY_OPTIONS: PlateCountryOption[] = [
+  { code: 'AT', name: 'Austria', flagSrc: COUNTRY_FLAG_DATA_URIS.AT },
+  { code: 'BE', name: 'Belgium', flagSrc: COUNTRY_FLAG_DATA_URIS.BE },
+  { code: 'BG', name: 'Bulgaria', flagSrc: COUNTRY_FLAG_DATA_URIS.BG },
+  { code: 'HR', name: 'Croatia', flagSrc: COUNTRY_FLAG_DATA_URIS.HR },
+  { code: 'CZ', name: 'Czechia', flagSrc: COUNTRY_FLAG_DATA_URIS.CZ },
+  { code: 'DK', name: 'Denmark', flagSrc: COUNTRY_FLAG_DATA_URIS.DK },
+  { code: 'EE', name: 'Estonia', flagSrc: COUNTRY_FLAG_DATA_URIS.EE },
+  { code: 'FI', name: 'Finland', flagSrc: COUNTRY_FLAG_DATA_URIS.FI },
+  { code: 'FR', name: 'France', flagSrc: COUNTRY_FLAG_DATA_URIS.FR },
+  { code: 'DE', name: 'Germany', flagSrc: COUNTRY_FLAG_DATA_URIS.DE },
+  { code: 'GR', name: 'Greece', flagSrc: COUNTRY_FLAG_DATA_URIS.GR },
+  { code: 'HU', name: 'Hungary', flagSrc: COUNTRY_FLAG_DATA_URIS.HU },
+  { code: 'IE', name: 'Ireland', flagSrc: COUNTRY_FLAG_DATA_URIS.IE },
+  { code: 'IT', name: 'Italy', flagSrc: COUNTRY_FLAG_DATA_URIS.IT },
+  { code: 'LV', name: 'Latvia', flagSrc: COUNTRY_FLAG_DATA_URIS.LV },
+  { code: 'LT', name: 'Lithuania', flagSrc: COUNTRY_FLAG_DATA_URIS.LT },
+  { code: 'LU', name: 'Luxembourg', flagSrc: COUNTRY_FLAG_DATA_URIS.LU },
+  { code: 'NL', name: 'Netherlands', flagSrc: COUNTRY_FLAG_DATA_URIS.NL },
+  { code: 'NO', name: 'Norway', flagSrc: COUNTRY_FLAG_DATA_URIS.NO },
+  { code: 'PT', name: 'Portugal', flagSrc: COUNTRY_FLAG_DATA_URIS.PT },
+  { code: 'SK', name: 'Slovakia', flagSrc: COUNTRY_FLAG_DATA_URIS.SK },
+  { code: 'SI', name: 'Slovenia', flagSrc: COUNTRY_FLAG_DATA_URIS.SI },
+  { code: 'ES', name: 'Spain', flagSrc: COUNTRY_FLAG_DATA_URIS.ES },
+  { code: 'PL', name: 'Poland', flagSrc: COUNTRY_FLAG_DATA_URIS.PL },
+  { code: 'RO', name: 'Romania', flagSrc: COUNTRY_FLAG_DATA_URIS.RO },
+  { code: 'SE', name: 'Sweden', flagSrc: COUNTRY_FLAG_DATA_URIS.SE },
+];
 
 function mergeTyreFitmentRecommendations(recommendations: TyreFitmentRecommendation[]): TyreFitmentRecommendation {
   const [primary, ...rest] = recommendations;
@@ -78,6 +116,8 @@ export const DEFAULT_TIRE_FILTERS = {
   studded: false,
   inStockOnly: false,
   includeRetreaded: false,
+  electricCar: false,
+  soundAbsorber: false,
   ean: '',
   sortBy: 'price_asc',
   search: '',
@@ -87,6 +127,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   const { language } = useLanguage();
   const { theme } = useTheme();
   const [licensePlate, setLicensePlate] = useState('');
+  const [plateCountry, setPlateCountry] = useState<PlateCountryCode>('FI');
   const [filters, setFilters] = useState(DEFAULT_TIRE_FILTERS);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
@@ -94,6 +135,8 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   const [vehicleLookupLoading, setVehicleLookupLoading] = useState(false);
   const [vehicleLookupError, setVehicleLookupError] = useState<string | null>(null);
   const [localSearchMode, setLocalSearchMode] = useState<'license' | 'manual'>('license');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showCountryChooser, setShowCountryChooser] = useState(false);
 
   useEffect(() => {
     if (!externalFilters) return;
@@ -135,6 +178,8 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   const activeSearchMode = localSearchMode;
   const switchSearchMode = (mode: 'license' | 'manual') => {
     setVehicleLookupError(null);
+    setShowAdvancedFilters(mode === 'manual' ? true : false);
+    setShowCountryChooser(false);
     setLocalSearchMode(mode);
     onSearchModeChange?.(mode);
   };
@@ -144,7 +189,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
     setVehicleLookupError(null);
     setVehicleLookupLoading(true);
     try {
-      const vehicle = await lookupVehicleTyreFitment(licensePlate);
+      const vehicle = await lookupVehicleTyreFitment(licensePlate, plateCountry);
       const factoryTyreSizes = vehicle.factoryTyreSizes?.length
         ? vehicle.factoryTyreSizes
         : [vehicle.factoryTyreSize];
@@ -223,6 +268,53 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   const selectedBrands = Array.isArray(filters.brand) ? filters.brand : [];
   const filteredBrandOptions = brandOptions.filter((brand) =>
     brand.toLowerCase().includes(brandSearchTerm.trim().toLowerCase())
+  );
+  const countryChooserPanel = (
+    <div className={`flex w-full flex-col items-center gap-8 rounded-2xl border p-6 ${
+      theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-[#e5e7eb] bg-white/5'
+    }`}>
+      <div className="grid w-full max-w-full grid-cols-1 justify-center gap-x-11 gap-y-[22px] sm:grid-cols-2 lg:w-auto lg:grid-cols-[repeat(5,max-content)]">
+        {PLATE_COUNTRY_OPTIONS.map((country) => {
+          return (
+            <button
+              key={country.code}
+              type="button"
+              onClick={() => {
+                setPlateCountry(country.code);
+                setShowCountryChooser(false);
+              }}
+              className={`flex h-8 items-center gap-4 rounded-lg text-left transition hover:opacity-75 ${
+                theme === 'dark' ? 'text-white' : 'text-[#101828]'
+              }`}
+            >
+              <span className="size-8 shrink-0 overflow-hidden rounded-full">
+                <img
+                  src={country.flagSrc}
+                  alt=""
+                  className="size-full object-cover"
+                  loading="lazy"
+                />
+              </span>
+              <span className="whitespace-nowrap text-xl font-semibold leading-7 tracking-[-0.44px]">
+                {country.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setShowCountryChooser(false)}
+        className={`h-[42px] rounded-lg px-10 text-sm font-semibold ${
+          theme === 'dark'
+            ? 'border-white/10 bg-white/5 text-[#B0B8C4] hover:bg-white/10 hover:text-white'
+            : 'border-[#d1d5dc] bg-[#f3f4f6] text-[#4a5565] hover:bg-gray-100'
+        }`}
+      >
+        {language === 'fi' ? 'Takaisin' : 'Back'}
+      </Button>
+    </div>
   );
   const advancedFiltersPanel = (
     <div className={`w-full max-w-[568px] space-y-4 rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-[#f9fafb]'}`}>
@@ -343,8 +435,8 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
         <div className="flex items-center space-x-2">
           <Switch
-            checked={false}
-            onCheckedChange={() => undefined}
+            checked={filters.electricCar}
+            onCheckedChange={(checked) => updateFilter('electricCar', checked)}
             className="data-[state=checked]:bg-[#FF6B35]"
           />
           <Label className={`${textClass} text-sm`}>
@@ -354,8 +446,8 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
         <div className="flex items-center space-x-2">
           <Switch
-            checked={false}
-            onCheckedChange={() => undefined}
+            checked={filters.soundAbsorber}
+            onCheckedChange={(checked) => updateFilter('soundAbsorber', checked)}
             className="data-[state=checked]:bg-[#FF6B35]"
           />
           <Label className={`${textClass} text-sm`}>
@@ -421,37 +513,67 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
     <div className={`rounded-2xl border p-6 ${borderClass} ${bgClass}`}>
       <div className="flex flex-col items-center gap-8">
         {activeSearchMode === 'license' ? (
+          showCountryChooser ? (
+            countryChooserPanel
+          ) : (
           <div className="flex w-full flex-col items-center gap-8" onKeyDown={handleLicensePlateKeyDown}>
-            <div className="grid w-full grid-cols-1 items-center justify-center gap-8 xl:grid-cols-[1fr_568px]">
-              <div className="flex min-h-[255px] items-center justify-center">
+            <div className={showAdvancedFilters
+              ? "grid w-full grid-cols-1 items-start justify-center gap-8 xl:grid-cols-[1fr_568px]"
+              : "flex w-full flex-col items-center justify-center gap-6 py-[37px]"
+            }>
+              <div className={showAdvancedFilters
+                ? "flex min-h-[255px] items-center justify-center py-[37px]"
+                : "flex w-full flex-col items-center justify-center gap-6"
+              }>
                 <div className="w-full">
+                  <Label className={`${textClass} mb-6 flex h-[30px] items-center justify-center text-xl font-semibold`}>
+                    {language === 'fi' ? 'Syötä rekisteritunnus' : 'Enter License Plate'}
+                  </Label>
                   <LicensePlateDisplay
                     value={licensePlate}
                     onChange={setLicensePlate}
+                    country={plateCountry}
+                    onCountryChange={setPlateCountry}
+                    onCountryClick={() => setShowCountryChooser(true)}
                     placeholder="ABC-123"
                     showHelper={false}
                   />
                   {vehicleLookupError ? (
                     <p className="mt-3 text-center text-sm text-red-500">{vehicleLookupError}</p>
                   ) : null}
+                  {!showAdvancedFilters ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setShowAdvancedFilters(true)}
+                      className="mx-auto mt-6 flex h-8 items-center gap-3 rounded-[10px] px-3 text-sm font-semibold text-[#FF6B35] hover:bg-[#FF6B35]/10 hover:text-[#FF6B35]"
+                    >
+                      <Filter className="size-4" />
+                      {language === 'fi' ? 'Lisäsuodattimet' : 'Advanced Filters'}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
-              <div className="flex justify-center xl:justify-end">
-                {advancedFiltersPanel}
-              </div>
+              {showAdvancedFilters ? (
+                <div className="flex justify-center xl:justify-end">
+                  {advancedFiltersPanel}
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-8">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => switchSearchMode('manual')}
+                onClick={() => showAdvancedFilters ? setShowAdvancedFilters(false) : switchSearchMode('manual')}
                 className={`h-[42px] w-[168px] rounded-lg px-10 text-sm font-semibold ${
                   theme === 'dark'
                     ? 'border-white/10 bg-white/5 text-[#B0B8C4] hover:bg-white/10 hover:text-white'
                     : 'border-[#d1d5dc] bg-[#f3f4f6] text-[#4a5565] hover:bg-gray-100'
                 }`}
               >
-                {language === 'fi' ? 'Manuaali' : 'Manual'}
+                {showAdvancedFilters
+                  ? (language === 'fi' ? 'Rekisteritunnus' : 'License Plate')
+                  : (language === 'fi' ? 'Manuaalinen haku' : 'Manual Input')}
               </Button>
               <Button
                 onClick={handleVehicleLookup}
@@ -464,21 +586,22 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
               </Button>
             </div>
           </div>
+          )
         ) : (
           <>
             <div className="grid w-full grid-cols-1 items-start justify-center gap-8 xl:grid-cols-[1fr_568px]">
               <div className="flex w-full justify-center xl:justify-start">
-                <div className="flex w-full max-w-[568px] flex-col gap-6">
-                  <Label className={`${textClass} block text-lg font-semibold`}>
+                <div className="flex w-full max-w-[568px] flex-col gap-4 self-stretch">
+                  <Label className={`${textClass} flex items-center justify-center text-xl font-semibold`}>
                     {language === 'fi' ? 'Syötä rengaskoko' : 'Enter Tire Size'}
                   </Label>
-                  <div className="flex flex-col gap-6">
+                  <div className="flex w-full flex-col gap-4">
                     <div>
-                      <Label className={`${textClass} mb-2 block px-2 text-xs`}>
+                      <Label className={`${textClass} mb-2 block text-xs font-semibold`}>
                         {language === 'fi' ? 'Leveys' : 'Width'}
                       </Label>
                       <Select value={filters.width} onValueChange={(value) => updateFilter('width', value)}>
-                        <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                        <SelectTrigger className={`h-9 ${inputBgClass} ${borderClass} ${textClass}`}>
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent className={`${selectBgClass} ${borderClass}`}>
@@ -493,11 +616,11 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                     </div>
 
                     <div>
-                      <Label className={`${textClass} mb-2 block px-2 text-xs`}>
+                      <Label className={`${textClass} mb-2 block text-xs font-semibold`}>
                         {language === 'fi' ? 'Korkeus' : 'Aspect'}
                       </Label>
                       <Select value={filters.aspectRatio} onValueChange={(value) => updateFilter('aspectRatio', value)}>
-                        <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                        <SelectTrigger className={`h-9 ${inputBgClass} ${borderClass} ${textClass}`}>
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent className={`${selectBgClass} ${borderClass}`}>
@@ -512,11 +635,11 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                     </div>
 
                     <div>
-                      <Label className={`${textClass} mb-2 block px-2 text-xs`}>
+                      <Label className={`${textClass} mb-2 block text-xs font-semibold`}>
                         {language === 'fi' ? 'Halkaisija' : 'Diameter'}
                       </Label>
                       <Select value={filters.diameter} onValueChange={(value) => updateFilter('diameter', value)}>
-                        <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                        <SelectTrigger className={`h-9 ${inputBgClass} ${borderClass} ${textClass}`}>
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent className={`${selectBgClass} ${borderClass}`}>

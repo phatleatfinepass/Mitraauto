@@ -18,6 +18,7 @@ export interface ProductSearchTire {
   speed_rating?: string | null;
   speed_index?: string | null;
   ev_ready?: boolean | null;
+  sound_absorber?: boolean | null;
   threepmsf?: boolean | null;
   winter_approved?: boolean | null;
   ice_approved?: boolean | null;
@@ -93,6 +94,7 @@ export interface ProductCMS {
     };
     features?: {
       ev_ready?: boolean;
+      sound_absorber?: boolean;
       runflat?: boolean;
       xl?: boolean;
       studded?: boolean;

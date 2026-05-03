@@ -23,6 +23,7 @@ type MissingMetadataField =
   | 'size'
   | 'season'
   | 'ev_ready'
+  | 'sound_absorber'
   | 'runflat'
   | 'xl'
   | 'studded'

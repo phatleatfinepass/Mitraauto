@@ -2,6 +2,7 @@ import { getSupabaseClient } from './supabase/client';
 
 export interface VehicleTyreLookupResult {
   plate: string;
+  country?: string;
   vin?: string;
   description: string;
   make?: string;
@@ -36,13 +37,25 @@ export function normalizeFinnishPlate(value: string) {
   return `${compact.slice(0, 3)}-${compact.slice(3)}`;
 }
 
-export async function lookupVehicleTyreFitment(plateInput: string): Promise<VehicleTyreLookupResult> {
-  const plate = normalizeFinnishPlate(plateInput);
+export function normalizePlate(value: string, country = 'FI') {
+  if (country === 'FI') {
+    return normalizeFinnishPlate(value);
+  }
+  return value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 12);
+}
+
+export async function lookupVehicleTyreFitment(plateInput: string, country = 'FI'): Promise<VehicleTyreLookupResult> {
+  const normalizedCountry = country.toUpperCase();
+  const plate = normalizePlate(plateInput, normalizedCountry);
 
   const { data, error } = await getSupabaseClient().functions.invoke<VehicleLookupFunctionResponse>(
     'vehicle_lookup',
     {
-      body: { plate },
+      body: {
+        plate,
+        country: normalizedCountry,
+        state: normalizedCountry,
+      },
     },
   );
 

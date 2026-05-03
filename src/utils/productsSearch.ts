@@ -18,6 +18,7 @@ export type ProductSearchRow = {
   speed_rating?: string | null;
   speed_index?: string | null;
   ev_ready?: boolean | null;
+  sound_absorber?: boolean | null;
   threepmsf?: boolean | null;
   winter_approved?: boolean | null;
   ice_approved?: boolean | null;
@@ -132,6 +133,7 @@ const PRODUCT_SEARCH_BASE_SELECT = [
 
 const WEBSHOP_TIRE_PUBLIC_SELECT = [
   PRODUCT_SEARCH_BASE_SELECT.replace(',final_is_hidden', ''),
+  'sound_absorber',
   'gallery',
   'manufacture_year',
   'is_visible',
@@ -203,6 +205,50 @@ function isRetreadedTire(row: ProductSearchRow): boolean {
   return blob.includes('pinnoitettu') || blob.includes('pinoitettu');
 }
 
+function isSoundAbsorberTire(row: ProductSearchRow): boolean {
+  if (row.sound_absorber) return true;
+  const blob = [
+    row.brand,
+    row.brand_display_name,
+    row.model,
+    row.size_string,
+    row.card_title,
+    row.subtitle,
+    row.short_description,
+    row.long_description,
+    row.seo_slug,
+    Array.isArray(row.tags) ? row.tags.join(' ') : '',
+    row.eu_label_json ? JSON.stringify(row.eu_label_json) : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return /sound|absorber|acoustic|silent|foam|contisilent|pncs|silentdrive|sponge|noise[ -]?reduc|b[ -]?silent|k[ -]?silent/.test(blob);
+}
+
+function isElectricCarTire(row: ProductSearchRow): boolean {
+  if (row.ev_ready) return true;
+  const blob = [
+    row.brand,
+    row.brand_display_name,
+    row.model,
+    row.size_string,
+    row.card_title,
+    row.subtitle,
+    row.short_description,
+    row.long_description,
+    row.seo_slug,
+    Array.isArray(row.tags) ? row.tags.join(' ') : '',
+    row.eu_label_json ? JSON.stringify(row.eu_label_json) : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return /(^|[^a-z0-9])(ev|e[.]v[.])([^a-z0-9]|$)|electric|elect/.test(blob);
+}
+
 function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>): boolean {
   const eanFilter = String(filters.ean ?? '').replace(/\D/g, '');
   if (eanFilter) {
@@ -235,6 +281,8 @@ function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>)
   if (filters.runflat && !row.runflat) return false;
   if (filters.xl && !row.xl_reinforced) return false;
   if (filters.studded && !row.studded) return false;
+  if (filters.electricCar && !isElectricCarTire(row)) return false;
+  if (filters.soundAbsorber && !isSoundAbsorberTire(row)) return false;
   if (filters.inStockOnly && !row.in_stock) return false;
   if (!filters.includeRetreaded && isRetreadedTire(row)) return false;
 
@@ -630,6 +678,8 @@ async function fetchTireProductsBySizePattern(
     if (filters.runflat) query = query.eq('runflat', true);
     if (filters.xl) query = query.eq('xl_reinforced', true);
     if (filters.studded) query = query.eq('studded', true);
+    if (filters.electricCar) query = query.eq('ev_ready', true);
+    if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
     if (filters.inStockOnly) query = query.eq('in_stock', true);
 
     if (orderMode === 'safe') {
@@ -754,6 +804,8 @@ async function fetchTireCatalogRpc(
     p_studded: Boolean(filters.studded),
     p_in_stock: Boolean(filters.inStockOnly),
     p_include_retreaded: includeRetreaded,
+    p_ev_ready: Boolean(filters.electricCar),
+    p_sound_absorber: Boolean(filters.soundAbsorber),
     p_sort_by: sortBy,
     p_limit: limit,
     p_offset: offset,
@@ -772,6 +824,8 @@ async function fetchTireCatalogRpc(
     p_studded: Boolean(filters.studded),
     p_in_stock: Boolean(filters.inStockOnly),
     p_include_retreaded: includeRetreaded,
+    p_ev_ready: Boolean(filters.electricCar),
+    p_sound_absorber: Boolean(filters.soundAbsorber),
   };
 
   let [{ data: rows, error: listError }, { data: countValue, error: countError }] = await Promise.all([
@@ -785,8 +839,11 @@ async function fetchTireCatalogRpc(
   const shouldRetryWithoutEanParam =
     (listError || countError) &&
     String(listError?.message ?? countError?.message ?? '').toLowerCase().includes('p_ean');
+  const shouldRetryWithoutEvSoundParams =
+    (listError || countError) &&
+    /p_ev_ready|p_sound_absorber/.test(String(listError?.message ?? countError?.message ?? '').toLowerCase());
 
-  if (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam) {
+  if (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam || shouldRetryWithoutEvSoundParams) {
     const [{ data: retryRows, error: retryListError }, { data: retryCountValue, error: retryCountError }] = await Promise.all([
       supabase.rpc('catalog_list_tires_v1', {
       p_search: search,
@@ -920,6 +977,8 @@ async function fetchAllSeasonTireProducts(
     if (filters.runflat) query = query.eq('runflat', true);
     if (filters.xl) query = query.eq('xl_reinforced', true);
     if (filters.studded) query = query.eq('studded', true);
+    if (filters.electricCar) query = query.eq('ev_ready', true);
+    if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
     if (filters.inStockOnly) query = query.eq('in_stock', true);
 
     switch (filters.sortBy) {
@@ -942,7 +1001,7 @@ async function fetchAllSeasonTireProducts(
 
   const rows = ((data ?? []) as ProductSearchRow[])
     .map((row) => ({ ...row, pricing_rules: null, final_is_hidden: false }))
-    .filter((row) => filters.includeRetreaded || !isRetreadedTire(row));
+    .filter((row) => matchesTireFilters(row, filters));
 
   return { items: rows, total: count ?? rows.length };
 }
@@ -1091,6 +1150,8 @@ export async function fetchProductsSearch(
         if (filters.runflat) query = query.eq('runflat', true);
         if (filters.xl) query = query.eq('xl_reinforced', true);
         if (filters.studded) query = query.eq('studded', true);
+        if (filters.electricCar) query = query.eq('ev_ready', true);
+        if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
         if (filters.inStockOnly) query = query.eq('in_stock', true);
 
         if (useSafeOrder) {

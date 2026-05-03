@@ -1,5 +1,6 @@
 type TireBadgeKey =
   | 'ev_ready'
+  | 'sound_absorber'
   | 'runflat'
   | 'xl'
   | 'studded'
@@ -17,6 +18,7 @@ interface TiresBadgesSectionProps {
 
 const TIRE_BADGES: Array<{ key: TireBadgeKey; labelFi: string; labelEn: string }> = [
   { key: 'ev_ready', labelFi: 'EV', labelEn: 'EV' },
+  { key: 'sound_absorber', labelFi: 'Äänenvaimennus', labelEn: 'Sound absorber' },
   { key: 'runflat', labelFi: 'RunFlat', labelEn: 'RunFlat' },
   { key: 'xl', labelFi: 'XL', labelEn: 'XL' },
   { key: 'studded', labelFi: 'Nastat', labelEn: 'Studded' },

@@ -370,12 +370,14 @@ export function useTiresCmsEditor({
   const getFeatureOverrides = () => editData.spec_overrides?.features || null;
 
   const getBaseFeatureValue = (
-    field: 'ev_ready' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved'
+    field: 'ev_ready' | 'sound_absorber' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved'
   ) => {
     if (!selectedTire) return false;
     switch (field) {
       case 'ev_ready':
         return Boolean((selectedTire as any).ev_ready);
+      case 'sound_absorber':
+        return Boolean((selectedTire as any).sound_absorber);
       case 'runflat':
         return Boolean(selectedTire.runflat);
       case 'xl':
@@ -394,7 +396,7 @@ export function useTiresCmsEditor({
   };
 
   const getEffectiveFeatureValue = (
-    field: 'ev_ready' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved'
+    field: 'ev_ready' | 'sound_absorber' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved'
   ) => {
     const overrides = getFeatureOverrides();
     if (overrides && Object.prototype.hasOwnProperty.call(overrides, field)) {
@@ -404,7 +406,7 @@ export function useTiresCmsEditor({
   };
 
   const setFeatureField = (
-    field: 'ev_ready' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved',
+    field: 'ev_ready' | 'sound_absorber' | 'runflat' | 'xl' | 'studded' | 'threepmsf' | 'winter_approved' | 'ice_approved',
     value: boolean
   ) => {
     setEditData((prev) => {

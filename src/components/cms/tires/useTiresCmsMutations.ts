@@ -127,6 +127,11 @@ function resolveEffectiveFeatures(specOverrides: any, tire: TireRow) {
       : hasOwn(features, 'ev_ready')
         ? Boolean(features.ev_ready)
         : Boolean(tire.ev_ready),
+    sound_absorber: hasOwn(badges, 'sound_absorber')
+      ? Boolean(badges.sound_absorber)
+      : hasOwn(features, 'sound_absorber')
+        ? Boolean(features.sound_absorber)
+        : Boolean((tire as any).sound_absorber),
     runflat: hasOwn(badges, 'runflat')
       ? Boolean(badges.runflat)
       : hasOwn(features, 'runflat')
@@ -379,6 +384,7 @@ export function useTiresCmsMutations({
         runflat: effectiveFeatures.runflat,
         xlReinforced: effectiveFeatures.xl,
         evReady: effectiveFeatures.ev_ready,
+        soundAbsorber: effectiveFeatures.sound_absorber,
         studded: effectiveFeatures.studded,
         threepmsf: effectiveFeatures.threepmsf,
         winterApproved: effectiveFeatures.winter_approved,

@@ -3,6 +3,7 @@ export interface TyreExtraLabels {
   runflat?: boolean;
   studded?: boolean;
   ev_ready?: boolean;
+  sound_absorber?: boolean;
 
   eu_fuel_class?: string;       // "A"–"E"
   eu_wet_class?: string;        // "A"–"E"
