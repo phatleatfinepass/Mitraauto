@@ -4,7 +4,27 @@
 @import './styles/globals.css';
 
 @layer base {
-  html, body, #root { min-height: 100vh; height: 100%; margin: 0; }
+  html, body, #root {
+    min-height: 100%;
+    margin: 0;
+    background: #0b0f16;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background: #0b0f16;
+    z-index: 9999;
+    pointer-events: none;
+  }
 }
 
 @layer utilities {

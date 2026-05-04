@@ -3,9 +3,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#11141A" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0f16" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Mitra Auto" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -13,9 +14,19 @@
     <link rel="apple-touch-icon" sizes="600x600" href="/icons/apple-touch-icon.png" />
     <title>Mitra Auto Website Outline</title>
     <style>
-      html, body { height: 100%; margin: 0; }
-      body { background: #f5f2eb; color: #11141a; }
-      #root { height: 100%; }
+      html, body, #root { min-height: 100%; margin: 0; background: #0b0f16; }
+      body { min-height: 100dvh; color: #11141a; }
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-top, 0px);
+        background: #0b0f16;
+        z-index: 9999;
+        pointer-events: none;
+      }
       #app-boot {
         position: fixed;
         inset: 0;

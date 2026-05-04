@@ -16460,3 +16460,398 @@
 [81235020ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
 [81239161ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
 [81245161ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81249696ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81249911ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81254171ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81257790ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81263018ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81268387ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81271663ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81275640ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81279712ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81280673ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81284170ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81289739ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81292902ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81298358ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81300669ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81305751ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81309077ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81309707ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81311505ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81314548ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81317049ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81319803ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81325342ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81328231ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81333755ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81339585ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81339699ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81341698ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81346453ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81349264ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81353877ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81359222ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81363071ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81367170ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81369709ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81372805ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81377628ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81380931ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81384603ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81386739ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81389548ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81395209ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81399709ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81400422ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81402576ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81405928ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81411428ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81412430ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81413433ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81414436ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81415439ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81416441ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81417450ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81418462ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81419469ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81420498ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81421578ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81422662ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81423895ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81425295ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81427370ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81429710ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81429879ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81434262ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81436761ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81441609ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81447317ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81449830ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81454252ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81459429ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81459713ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81462175ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81464317ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81469647ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81472055ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81474597ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81477663ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81482888ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81486056ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81489554ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81489710ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81494768ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81496801ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81501921ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81506221ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81509756ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81512754ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81516146ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81519700ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81521648ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81527146ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81531788ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81535897ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81541125ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81546157ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81549697ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81549857ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81552776ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81557208ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81560575ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81564392ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81566591ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81572355ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81576054ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81578100ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81579702ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81583080ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81587340ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81589929ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81591991ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81594896ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81597514ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81600072ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81603875ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81607057ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81609708ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81611082ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81614488ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81618863ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81621782ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81625716ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81631075ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81634320ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81637511ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81639702ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81640342ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81642855ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81647308ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81649323ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81653664ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81659173ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81663778ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81666412ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81669700ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81670794ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81676066ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81678184ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81681779ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81685741ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81690991ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81694832ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81698389ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81699697ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81701707ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81703713ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81707614ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81713271ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81718640ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81722674ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81725762ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81729692ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81730663ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81733553ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81737291ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81740225ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81745304ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81748033ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81753479ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81757117ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81759696ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81762750ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81767725ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81773281ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81777275ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81782937ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81786008ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81788716ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81789691ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81794154ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81799828ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81802967ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81805950ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81808082ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81812705ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81816138ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81819522ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81819691ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81824489ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81828509ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81831492ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81835638ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81838026ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81840063ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81845021ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81848967ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81849702ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81853874ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81858835ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81863675ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81866559ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81870851ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81873954ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81878479ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81879695ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81881483ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81884690ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81888064ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81893034ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81898885ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81904190ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81908993ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81909702ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81913223ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81915747ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81919335ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81923284ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81926958ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81932529ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81935434ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81939700ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[81940627ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81944519ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81946797ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81952470ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81957261ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81962344ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81967730ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81969688ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[81972744ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81976051ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81979943ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81984355ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81986385ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81991690ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81994876ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[81999700ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[81999708ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82001779ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82005725ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82008181ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82013950ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82018972ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82024450ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82029068ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82029689ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[82035067ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82038579ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82041445ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82043591ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82046781ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82050724ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82054267ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82058913ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82059688ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[82062908ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82066375ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82071026ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82075906ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82081372ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82086854ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82089691ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[82092515ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82095537ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82098153ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82101962ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82105362ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82109283ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82113441ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82116151ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82119144ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82119687ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[82121399ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82124798ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82130707ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82135019ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82141003ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82145732ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82147993ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82149689ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[82153010ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82156223ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82159889ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82164299ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82167452ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82172702ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82174969ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82178059ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82179690ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[82181122ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82185790ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82191227ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82194747ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82198473ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82201843ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82207286ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82209693ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[82210735ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82216710ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82222177ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82227830ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82231085ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82236551ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82239688ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[82240055ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82244143ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82249168ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82252771ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82255518ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82258462ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82264334ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82267576ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82269690ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[82272426ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82275235ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82277326ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82281209ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82283713ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82287413ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82292788ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82296996ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82299692ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[82302815ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82306594ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82310854ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82314629ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82318895ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82321600ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82324895ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82329689ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[82330375ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82335091ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82339171ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82341398ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82347254ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82350790ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82356756ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82359691ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[82362015ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82364854ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82369454ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82372927ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82378634ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82380912ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82383784ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82386180ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82389693ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[82389715ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82391996ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82397522ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82401802ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82406890ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82412301ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82415067ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82418736ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82419690ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[82422926ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82427878ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82433720ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82436867ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82439855ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82443551ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82446852ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82449683ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[82452303ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82456959ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82462278ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82466677ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82471997ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82477646ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82479690ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[82482262ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82488114ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82492611ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82498318ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82502028ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82507627ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82509683ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[82511204ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82516578ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82520731ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82526472ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82530219ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82532767ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82538745ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82539682ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7e74af861ad46b8cd1808354fba42e25bb94d0bc.png:0
+[82543831ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82547377ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82550534ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82554046ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82559519ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82565356ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82568345ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82569691ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png:0
+[82572063ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82574812ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82577610ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82580388ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82585969ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82588198ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82591147ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82595552ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82599596ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82599689ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/src/assets/7f3da97624c68ef159f5a1406820901e8a63dd7e.png:0
+[82601719ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034
+[82606516ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/@vite/client:1034

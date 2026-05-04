@@ -23,6 +23,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const CMS_PUSH_ROLES = new Set(['super_admin', 'admin', 'supervisor', 'staff']);
+
 function getEnv(name: string) {
   const value = Deno.env.get(name);
   if (!value) {
@@ -50,12 +52,19 @@ async function ensureAuthorized(request: Request) {
 
   let isAdmin = user.email === 'admin@mitra-auto.fi';
   if (!isAdmin) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, account_status')
       .eq('id', user.id)
       .maybeSingle();
-    isAdmin = profile?.role === 'admin';
+
+    if (profileError) {
+      throw new Error(profileError.message);
+    }
+
+    const role = String(profile?.role ?? '');
+    const accountStatus = String(profile?.account_status ?? 'active');
+    isAdmin = accountStatus === 'active' && CMS_PUSH_ROLES.has(role);
   }
 
   if (!isAdmin) {

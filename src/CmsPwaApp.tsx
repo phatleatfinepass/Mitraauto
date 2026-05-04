@@ -778,7 +778,7 @@ export function CmsPwaScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E1117] text-white">
+    <div className="app-shell min-h-[100dvh] bg-[#0b0f16] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-28 pt-5">
         <CmsPwaHeader
           headerMinimized={headerMinimized}
