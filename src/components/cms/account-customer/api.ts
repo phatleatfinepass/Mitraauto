@@ -1,15 +1,27 @@
 import { supabase } from '../../../utils/supabase/client';
-import { normalizeCustomerRow, normalizeStaffRow } from './safe';
-import type { StaffDraft } from './types';
+import { normalizeAccountEventRow, normalizeCustomerDetail, normalizeCustomerRow, normalizeStaffRow, tagsFromText } from './safe';
+import type { CustomerDraft, CustomerNoteVisibility, CustomerOverviewFilters, CustomerVehicleDraft, StaffDraft, StaffRole } from './types';
 
-export async function listCustomerOverview(search: string) {
-  const { data, error } = await supabase.rpc('cms_list_customer_overview', {
-    p_search: search.trim() || null,
+export async function listCustomerOverview(filters: CustomerOverviewFilters) {
+  const { data, error } = await supabase.rpc('cms_list_customer_overview_v2', {
+    p_search: filters.search.trim() || null,
     p_limit: 120,
+    p_status: filters.status === 'all' ? null : filters.status,
+    p_tag: filters.tag.trim() || null,
+    p_include_hidden: filters.includeHidden,
   });
 
   if (error) throw error;
   return (Array.isArray(data) ? data : []).map(normalizeCustomerRow);
+}
+
+export async function mergeCustomers(primaryCustomerId: string, duplicateCustomerId: string) {
+  const { error } = await supabase.rpc('cms_merge_customers', {
+    p_primary_customer_id: primaryCustomerId,
+    p_duplicate_customer_id: duplicateCustomerId,
+  });
+
+  if (error) throw error;
 }
 
 export async function listStaffAccounts() {
@@ -26,6 +38,112 @@ export async function updateStaffAccount(profileId: string, draft: StaffDraft) {
     p_account_hidden: draft.hidden,
     p_display_name: draft.displayName.trim() || null,
     p_cms_permissions: draft.permissions,
+  });
+
+  if (error) throw error;
+}
+
+export async function addStaffAccountByEmail(email: string, role: StaffRole, displayName: string, permissions: StaffDraft['permissions']) {
+  const { data, error } = await supabase.rpc('cms_add_staff_account_by_email', {
+    p_email: email,
+    p_role: role,
+    p_display_name: displayName.trim() || null,
+    p_cms_permissions: permissions,
+  });
+
+  if (error) throw error;
+  return String(data ?? '');
+}
+
+export async function inviteStaffAccount(email: string, role: StaffRole, displayName: string, permissions: StaffDraft['permissions']) {
+  const { data, error } = await supabase.functions.invoke('cms_account_invite', {
+    method: 'POST',
+    body: {
+      email,
+      role,
+      displayName,
+      permissions,
+    },
+  });
+
+  if (error) throw error;
+  return String((data as any)?.userId ?? '');
+}
+
+export async function listAccountEvents(targetProfileId?: string | null) {
+  const { data, error } = await supabase.rpc('cms_list_account_events', {
+    p_target_profile_id: targetProfileId ?? null,
+    p_limit: 80,
+  });
+
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map(normalizeAccountEventRow).filter((row) => row !== null);
+}
+
+export async function getCustomerDetail(customerId: string) {
+  const { data, error } = await supabase.rpc('cms_get_customer_detail', {
+    p_customer_id: customerId,
+  });
+
+  if (error) throw error;
+  return normalizeCustomerDetail(data);
+}
+
+export async function saveCustomer(draft: CustomerDraft) {
+  const { data, error } = await supabase.rpc('cms_upsert_customer', {
+    p_customer_id: draft.id,
+    p_full_name: draft.fullName,
+    p_primary_email: draft.primaryEmail,
+    p_primary_phone: draft.primaryPhone,
+    p_language: draft.language,
+    p_business_id: draft.businessId,
+    p_vat_id: draft.vatId,
+    p_address_line1: draft.addressLine1,
+    p_address_line2: draft.addressLine2,
+    p_postal_code: draft.postalCode,
+    p_city: draft.city,
+    p_country_code: draft.countryCode,
+    p_status: draft.status,
+    p_tags: tagsFromText(draft.tagsText),
+    p_marketing_consent: draft.marketingConsent,
+    p_contact_consent: draft.contactConsent,
+    p_hidden: draft.hidden,
+  });
+
+  if (error) throw error;
+  return String(data ?? '');
+}
+
+export async function setCustomerStatus(customerId: string, status: CustomerDraft['status'], hidden?: boolean) {
+  const { error } = await supabase.rpc('cms_set_customer_status', {
+    p_customer_id: customerId,
+    p_status: status,
+    p_hidden: hidden ?? null,
+  });
+
+  if (error) throw error;
+}
+
+export async function saveCustomerVehicle(draft: CustomerVehicleDraft) {
+  const { data, error } = await supabase.rpc('cms_upsert_customer_vehicle', {
+    p_customer_id: draft.customerId,
+    p_vehicle_id: draft.id,
+    p_license_plate: draft.licensePlate,
+    p_vehicle_name: draft.vehicleName,
+    p_vin: draft.vin,
+    p_notes: draft.notes,
+    p_hidden: draft.hidden,
+  });
+
+  if (error) throw error;
+  return String(data ?? '');
+}
+
+export async function addCustomerNote(customerId: string, body: string, visibility: CustomerNoteVisibility) {
+  const { error } = await supabase.rpc('cms_add_customer_note', {
+    p_customer_id: customerId,
+    p_body: body,
+    p_visibility: visibility,
   });
 
   if (error) throw error;

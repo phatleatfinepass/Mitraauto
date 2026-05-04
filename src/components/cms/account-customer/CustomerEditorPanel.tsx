@@ -1,0 +1,441 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, EyeOff, FileText, Plus, Save, ShieldAlert } from 'lucide-react';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
+import { Label } from '../../ui/label';
+import { CUSTOMER_STATUSES } from './constants';
+import { addCustomerNote, getCustomerDetail, saveCustomer, saveCustomerVehicle, setCustomerStatus } from './api';
+import { buildCustomerDraft, buildCustomerDraftFromOverview, buildVehicleDraft, formatDate } from './safe';
+import type {
+  CustomerDetail,
+  CustomerDraft,
+  CustomerNoteVisibility,
+  CustomerOverviewRow,
+  CustomerStatus,
+  CustomerVehicleDraft,
+  CustomerVehicleRow,
+} from './types';
+
+type CustomerEditorPanelProps = {
+  overviewRow: CustomerOverviewRow | null;
+  onSaved: () => void;
+};
+
+function consentValue(value: boolean | null) {
+  if (value === true) return 'yes';
+  if (value === false) return 'no';
+  return 'unknown';
+}
+
+function parseConsentValue(value: string) {
+  if (value === 'yes') return true;
+  if (value === 'no') return false;
+  return null;
+}
+
+export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPanelProps) {
+  const [detail, setDetail] = useState<CustomerDetail | null>(null);
+  const [draft, setDraft] = useState<CustomerDraft>(() => buildCustomerDraftFromOverview(null));
+  const [vehicleDraft, setVehicleDraft] = useState<CustomerVehicleDraft | null>(null);
+  const [noteBody, setNoteBody] = useState('');
+  const [noteVisibility, setNoteVisibility] = useState<CustomerNoteVisibility>('internal');
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedCustomerId = overviewRow?.customerId ?? null;
+  const hasSavedCustomer = Boolean(draft.id);
+
+  useEffect(() => {
+    let active = true;
+    setError(null);
+    setDetail(null);
+    setVehicleDraft(null);
+
+    if (!overviewRow) {
+      setDraft(buildCustomerDraftFromOverview(null));
+      return () => {
+        active = false;
+      };
+    }
+
+    setDraft(buildCustomerDraftFromOverview(overviewRow));
+
+    if (!overviewRow.customerId) {
+      return () => {
+        active = false;
+      };
+    }
+
+    setLoadingDetail(true);
+    getCustomerDetail(overviewRow.customerId)
+      .then((nextDetail) => {
+        if (!active) return;
+        setDetail(nextDetail);
+        if (nextDetail) setDraft(buildCustomerDraft(nextDetail));
+      })
+      .catch((err: any) => {
+        if (!active) return;
+        setError(err.message ?? 'Failed to load customer detail.');
+      })
+      .finally(() => {
+        if (active) setLoadingDetail(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [overviewRow]);
+
+  const activeVehicles = useMemo(
+    () => detail?.vehicles.filter((vehicle) => !vehicle.hidden) ?? [],
+    [detail],
+  );
+
+  const saveDraft = async () => {
+    if (saving) return;
+    if (!draft.fullName.trim() && !draft.primaryEmail.trim() && !draft.primaryPhone.trim()) {
+      setError('Add at least a name, email, or phone before saving.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const customerId = await saveCustomer(draft);
+      const nextDetail = await getCustomerDetail(customerId);
+      setDetail(nextDetail);
+      if (nextDetail) setDraft(buildCustomerDraft(nextDetail));
+      onSaved();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to save customer.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveVehicleDraft = async () => {
+    if (!vehicleDraft || saving) return;
+    if (!vehicleDraft.licensePlate.trim()) {
+      setError('License plate is required.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await saveCustomerVehicle(vehicleDraft);
+      const nextDetail = await getCustomerDetail(vehicleDraft.customerId);
+      setDetail(nextDetail);
+      setVehicleDraft(null);
+      onSaved();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to save vehicle.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addNote = async () => {
+    if (!draft.id || saving) return;
+    if (!noteBody.trim()) {
+      setError('Note body is required.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await addCustomerNote(draft.id, noteBody, noteVisibility);
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      setNoteBody('');
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to add note.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const quickStatus = async (status: CustomerStatus, hidden?: boolean) => {
+    if (!draft.id || saving) return;
+    setSaving(true);
+    setError(null);
+
+    try {
+      await setCustomerStatus(draft.id, status, hidden);
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      if (nextDetail) setDraft(buildCustomerDraft(nextDetail));
+      onSaved();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to update customer status.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startVehicleEdit = (vehicle?: CustomerVehicleRow) => {
+    if (!draft.id) {
+      setError('Save the customer before adding vehicles.');
+      return;
+    }
+    setVehicleDraft(buildVehicleDraft(draft.id, vehicle ?? null));
+  };
+
+  return (
+    <aside className="space-y-5 rounded-lg border bg-background p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold text-foreground">
+            {overviewRow ? 'Customer detail' : 'New customer'}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {loadingDetail ? 'Loading saved customer data...' : hasSavedCustomer ? 'Saved customer profile.' : 'Create a saved customer profile.'}
+          </p>
+        </div>
+        {draft.status ? <Badge variant={draft.status === 'blocked' || draft.status === 'deleted' ? 'destructive' : 'secondary'}>{draft.status}</Badge> : null}
+      </div>
+
+      {error ? (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      ) : null}
+
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-foreground">Contact</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Full name</Label>
+              <Input value={draft.fullName} onChange={(event) => setDraft((current) => ({ ...current, fullName: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={draft.primaryEmail} onChange={(event) => setDraft((current) => ({ ...current, primaryEmail: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input value={draft.primaryPhone} onChange={(event) => setDraft((current) => ({ ...current, primaryPhone: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Language</Label>
+              <Input value={draft.language} onChange={(event) => setDraft((current) => ({ ...current, language: event.target.value }))} placeholder="fi / en" />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 border-t pt-5">
+          <h4 className="text-sm font-semibold text-foreground">Business</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Business ID</Label>
+              <Input value={draft.businessId} onChange={(event) => setDraft((current) => ({ ...current, businessId: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>VAT ID</Label>
+              <Input value={draft.vatId} onChange={(event) => setDraft((current) => ({ ...current, vatId: event.target.value }))} />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 border-t pt-5">
+          <h4 className="text-sm font-semibold text-foreground">Address</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Address</Label>
+              <Input value={draft.addressLine1} onChange={(event) => setDraft((current) => ({ ...current, addressLine1: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Postal code</Label>
+              <Input value={draft.postalCode} onChange={(event) => setDraft((current) => ({ ...current, postalCode: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>City</Label>
+              <Input value={draft.city} onChange={(event) => setDraft((current) => ({ ...current, city: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Country</Label>
+              <Input value={draft.countryCode} onChange={(event) => setDraft((current) => ({ ...current, countryCode: event.target.value.toUpperCase() }))} />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 border-t pt-5">
+          <h4 className="text-sm font-semibold text-foreground">Status & tags</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <select
+                value={draft.status}
+                onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as CustomerStatus }))}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                {CUSTOMER_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <Input value={draft.tagsText} onChange={(event) => setDraft((current) => ({ ...current, tagsText: event.target.value }))} placeholder="fleet, vip, b2b" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={draft.hidden}
+            onChange={(event) => setDraft((current) => ({ ...current, hidden: event.target.checked }))}
+          />
+          Hide customer
+        </label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <select
+            value={consentValue(draft.marketingConsent)}
+            onChange={(event) => setDraft((current) => ({ ...current, marketingConsent: parseConsentValue(event.target.value) }))}
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="unknown">Marketing unknown</option>
+            <option value="yes">Marketing yes</option>
+            <option value="no">Marketing no</option>
+          </select>
+          <select
+            value={consentValue(draft.contactConsent)}
+            onChange={(event) => setDraft((current) => ({ ...current, contactConsent: parseConsentValue(event.target.value) }))}
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="unknown">Contact unknown</option>
+            <option value="yes">Contact yes</option>
+            <option value="no">Contact no</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={saveDraft} disabled={saving}>
+          <Save className="mr-2 h-4 w-4" />
+          {saving ? 'Saving...' : 'Save customer'}
+        </Button>
+        {draft.id ? (
+          <>
+            <Button variant="outline" onClick={() => quickStatus('hidden', true)} disabled={saving}>
+              <EyeOff className="mr-2 h-4 w-4" />
+              Hide
+            </Button>
+            <Button variant="outline" onClick={() => quickStatus('blocked', draft.hidden)} disabled={saving}>
+              <ShieldAlert className="mr-2 h-4 w-4" />
+              Block
+            </Button>
+            <Button variant="destructive" onClick={() => quickStatus('deleted', true)} disabled={saving}>
+              Delete
+            </Button>
+          </>
+        ) : null}
+      </div>
+
+      {draft.id ? (
+        <>
+          <div className="space-y-3 border-t pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="font-semibold text-foreground">Vehicles</h4>
+              <Button variant="outline" size="sm" onClick={() => startVehicleEdit()}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add vehicle
+              </Button>
+            </div>
+
+            {activeVehicles.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active vehicles saved.</p>
+            ) : activeVehicles.map((vehicle) => (
+              <button
+                key={vehicle.id}
+                type="button"
+                onClick={() => startVehicleEdit(vehicle)}
+                className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left hover:bg-muted/60"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{vehicle.licensePlate}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{vehicle.vehicleName || vehicle.vin || 'Vehicle'}</span>
+                </span>
+                <Badge variant="outline">Edit</Badge>
+              </button>
+            ))}
+
+            {vehicleDraft ? (
+              <div className="grid gap-3 rounded-md border p-3 md:grid-cols-2">
+                <Input value={vehicleDraft.licensePlate} onChange={(event) => setVehicleDraft((current) => current ? { ...current, licensePlate: event.target.value.toUpperCase() } : current)} placeholder="License plate" />
+                <Input value={vehicleDraft.vehicleName} onChange={(event) => setVehicleDraft((current) => current ? { ...current, vehicleName: event.target.value } : current)} placeholder="Vehicle name" />
+                <Input value={vehicleDraft.vin} onChange={(event) => setVehicleDraft((current) => current ? { ...current, vin: event.target.value } : current)} placeholder="VIN" />
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={vehicleDraft.hidden} onChange={(event) => setVehicleDraft((current) => current ? { ...current, hidden: event.target.checked } : current)} />
+                  Hide vehicle
+                </label>
+                <Input value={vehicleDraft.notes} onChange={(event) => setVehicleDraft((current) => current ? { ...current, notes: event.target.value } : current)} placeholder="Vehicle notes" className="md:col-span-2" />
+                <div className="flex gap-2 md:col-span-2">
+                  <Button size="sm" onClick={saveVehicleDraft} disabled={saving}>Save vehicle</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setVehicleDraft(null)}>Cancel</Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-3 border-t pt-5">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <h4 className="font-semibold text-foreground">Notes</h4>
+            </div>
+
+            <div className="grid gap-3">
+              <textarea
+                value={noteBody}
+                onChange={(event) => setNoteBody(event.target.value)}
+                rows={3}
+                className="min-h-[84px] rounded-md border bg-background px-3 py-2 text-sm"
+                placeholder="Add internal note"
+              />
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={noteVisibility}
+                  onChange={(event) => setNoteVisibility(event.target.value as CustomerNoteVisibility)}
+                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                >
+                  <option value="internal">Internal</option>
+                  <option value="super_admin">Super admin</option>
+                </select>
+                <Button size="sm" onClick={addNote} disabled={saving}>Add note</Button>
+              </div>
+            </div>
+
+            {detail?.notes.length ? detail.notes.map((note) => (
+              <div key={note.id} className="rounded-md border px-3 py-2 text-sm">
+                <div className="mb-1 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>{note.visibility}</span>
+                  <span>{formatDate(note.createdAt)}</span>
+                </div>
+                <p className="whitespace-pre-wrap leading-6">{note.body}</p>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground">No notes saved.</p>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="border-t pt-5 text-sm text-muted-foreground">
+          Save the customer before adding vehicles or notes.
+        </p>
+      )}
+
+      {selectedCustomerId && detail?.updatedAt ? (
+        <p className="text-xs text-muted-foreground">Updated {formatDate(detail.updatedAt)}</p>
+      ) : null}
+    </aside>
+  );
+}

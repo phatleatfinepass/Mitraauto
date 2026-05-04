@@ -34,7 +34,6 @@ export function AccountCustomerCMSPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS</p>
           <h2 className="mt-1 text-2xl font-semibold text-foreground">
             {canManageAccounts ? 'Account & Customer' : 'Customer'}
           </h2>

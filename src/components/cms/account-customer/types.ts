@@ -3,6 +3,8 @@ export type AccountCustomerView = 'customers' | 'staff';
 export type CmsPermissionValue = 'none' | 'read' | 'read_write';
 export type StaffRole = 'super_admin' | 'admin' | 'supervisor' | 'staff' | 'customer' | 'user' | 'disabled';
 export type AccountStatus = 'active' | 'hidden' | 'suspended' | 'deleted';
+export type CustomerStatus = 'active' | 'hidden' | 'blocked' | 'merged' | 'deleted';
+export type CustomerNoteVisibility = 'internal' | 'super_admin';
 
 export interface CustomerOverviewRow {
   key: string;
@@ -17,6 +19,8 @@ export interface CustomerOverviewRow {
   lastActivityAt: string | null;
   status: string;
   source: string;
+  hidden: boolean;
+  tags: string[];
 }
 
 export interface StaffAccountRow {
@@ -37,4 +41,98 @@ export interface StaffDraft {
   accountStatus: AccountStatus;
   hidden: boolean;
   permissions: Record<string, CmsPermissionValue>;
+}
+
+export type StaffPresetId = 'super_admin' | 'admin' | 'supervisor' | 'staff_limited' | 'disabled';
+
+export interface AccountEventRow {
+  id: string;
+  targetProfileId: string | null;
+  targetEmail: string;
+  actorId: string | null;
+  actorEmail: string;
+  eventType: string;
+  details: Record<string, unknown>;
+  createdAt: string | null;
+}
+
+export interface CustomerVehicleRow {
+  id: string;
+  licensePlate: string;
+  vehicleName: string;
+  vin: string;
+  notes: string;
+  hidden: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface CustomerNoteRow {
+  id: string;
+  body: string;
+  visibility: CustomerNoteVisibility;
+  createdBy: string | null;
+  createdAt: string | null;
+}
+
+export interface CustomerDetail {
+  id: string;
+  primaryEmail: string;
+  primaryPhone: string;
+  fullName: string;
+  language: string;
+  businessId: string;
+  vatId: string;
+  addressLine1: string;
+  addressLine2: string;
+  postalCode: string;
+  city: string;
+  countryCode: string;
+  status: CustomerStatus;
+  tags: string[];
+  marketingConsent: boolean | null;
+  contactConsent: boolean | null;
+  hidden: boolean;
+  source: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  vehicles: CustomerVehicleRow[];
+  notes: CustomerNoteRow[];
+}
+
+export interface CustomerDraft {
+  id: string | null;
+  fullName: string;
+  primaryEmail: string;
+  primaryPhone: string;
+  language: string;
+  businessId: string;
+  vatId: string;
+  addressLine1: string;
+  addressLine2: string;
+  postalCode: string;
+  city: string;
+  countryCode: string;
+  status: CustomerStatus;
+  tagsText: string;
+  marketingConsent: boolean | null;
+  contactConsent: boolean | null;
+  hidden: boolean;
+}
+
+export interface CustomerVehicleDraft {
+  id: string | null;
+  customerId: string;
+  licensePlate: string;
+  vehicleName: string;
+  vin: string;
+  notes: string;
+  hidden: boolean;
+}
+
+export interface CustomerOverviewFilters {
+  search: string;
+  status: 'all' | CustomerStatus;
+  tag: string;
+  includeHidden: boolean;
 }
