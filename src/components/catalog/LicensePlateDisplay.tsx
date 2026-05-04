@@ -143,6 +143,14 @@ const formatSweden = (input: string) => {
   return `${formatPattern(raw.slice(0, 3), 'AAA')} ${raw.slice(3, 6)}`;
 };
 
+const formatFinland = (input: string) => {
+  const formatted = formatPattern(input, 'AAA-999');
+  const raw = cleanPlateInput(input).slice(0, 6);
+  const typedTrailingSeparator = /^[A-Z]{3}[-\s]$/i.test(input.trim());
+  if (typedTrailingSeparator && raw.length === 3) return `${formatted}-`;
+  return formatted;
+};
+
 const formatHungary = (input: string) => {
   const raw = cleanPlateInput(input).slice(0, 7);
   if (/^[A-Z]{4}/.test(raw)) return formatPattern(raw, 'AA AA-999');
@@ -169,7 +177,7 @@ const formatSlovenia = (input: string) => {
 };
 
 const PLATE_FORMATS: Record<PlateCountryCode, PlateFormatConfig> = {
-  FI: { placeholder: 'ABC-123', maxLength: 7, format: (input) => formatPattern(input, 'AAA-999') },
+  FI: { placeholder: 'ABC-123', maxLength: 7, format: formatFinland },
   SE: { placeholder: 'ABC 123', maxLength: 7, format: formatSweden },
   EE: { placeholder: '123 ABC', maxLength: 7, format: (input) => formatPattern(input, '999 AAA') },
   NO: { placeholder: 'AB 12345', maxLength: 8, widthLevel: 'wide', format: (input) => formatPattern(input, 'AA 99999') },
@@ -312,7 +320,8 @@ export function LicensePlateDisplay({
     const basePlateWidth = PLATE_WIDTHS[size].base;
     const stripWidthPercent = (stripWidth / basePlateWidth) * 100;
     const numberWidthPercent = 100 - stripWidthPercent;
-    const fontSize = isLongPlateFormat ? longFontPx : fontPx;
+    const formatLength = effectivePlaceholder.replace(/\s+/g, '').length;
+    const fontSize = isLongPlateFormat || formatLength >= 7 ? longFontPx : fontPx;
     const minFontSize = Math.round(fontSize * 0.72);
     const paddingPx = size === 'desktop' ? 16 : size === 'tablet' ? 13 : 11;
     const minPaddingPx = Math.round(paddingPx * 0.7);
@@ -345,7 +354,7 @@ export function LicensePlateDisplay({
             onChange={handleChange}
             placeholder={effectivePlaceholder}
             maxLength={plateFormat.maxLength}
-            className="h-full w-full bg-transparent text-center font-bold leading-none outline-none placeholder:text-[#6B7280]"
+            className="h-full min-w-0 w-full overflow-hidden bg-transparent text-center font-bold leading-none outline-none placeholder:text-[#6B7280]"
             style={{
               fontFamily: 'Inter, sans-serif',
               color: '#000000',

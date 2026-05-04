@@ -235,6 +235,9 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
   const updateFilter = (key: string, value: any) => {
     const newFilters = { ...filters, [key]: value };
+    if (key === 'width' || key === 'aspectRatio' || key === 'diameter') {
+      delete (newFilters as any).fitmentSizes;
+    }
     setFilters(newFilters);
     onFilterChange(newFilters);
   };

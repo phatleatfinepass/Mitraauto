@@ -150,6 +150,13 @@ type TireVariantLookupRow = {
   id: string;
 };
 
+type FitmentSizeFilter = {
+  sizeKey?: string;
+  widthMm: number;
+  aspectRatio: number;
+  rimDiameterIn: number;
+};
+
 function parseTireSize(sizeString: string | null): { width?: number; aspect?: number; diameter?: number } {
   if (!sizeString) return {};
   const normalized = sizeString.toUpperCase().replace(/\s+/g, '');
@@ -168,6 +175,36 @@ function parseFloatOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   const numeric = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function getFitmentSizeFilters(filters: Record<string, any>): FitmentSizeFilter[] {
+  if (!Array.isArray(filters.fitmentSizes)) return [];
+
+  const byKey = new Map<string, FitmentSizeFilter>();
+  filters.fitmentSizes.forEach((rawSize: any) => {
+    const widthMm = Number(rawSize?.widthMm ?? rawSize?.width ?? rawSize?.width_mm);
+    const aspectRatio = Number(rawSize?.aspectRatio ?? rawSize?.aspect ?? rawSize?.aspect_ratio);
+    const rimDiameterIn = Number(rawSize?.rimDiameterIn ?? rawSize?.diameter ?? rawSize?.diameter_in);
+    if (!Number.isFinite(widthMm) || !Number.isFinite(aspectRatio) || !Number.isFinite(rimDiameterIn)) return;
+
+    const sizeKey = String(rawSize?.sizeKey ?? `${widthMm}/${aspectRatio}R${rimDiameterIn}`);
+    if (!byKey.has(sizeKey)) {
+      byKey.set(sizeKey, { sizeKey, widthMm, aspectRatio, rimDiameterIn });
+    }
+  });
+
+  return Array.from(byKey.values());
+}
+
+function rowMatchesFitmentSize(row: ProductSearchRow, fitmentSize: FitmentSizeFilter): boolean {
+  const parsedSize = parseTireSize(row.size_string);
+  const width = parseFloatOrNull((row as any).width_mm) ?? parsedSize.width ?? null;
+  const aspect = parseFloatOrNull((row as any).aspect_ratio) ?? parsedSize.aspect ?? null;
+  const diameter = parseFloatOrNull((row as any).diameter_in) ?? parsedSize.diameter ?? null;
+
+  return width === fitmentSize.widthMm &&
+    aspect === fitmentSize.aspectRatio &&
+    diameter === fitmentSize.rimDiameterIn;
 }
 
 function normalizeSeasonValue(value: unknown): string {
@@ -269,9 +306,20 @@ function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>)
   const aspect = parseFloatOrNull((row as any).aspect_ratio) ?? parsedSize.aspect ?? null;
   const diameter = parseFloatOrNull((row as any).diameter_in) ?? parsedSize.diameter ?? null;
 
-  if (filters.width && filters.width !== 'all' && Number(filters.width) !== width) return false;
-  if (filters.aspectRatio && filters.aspectRatio !== 'all' && Number(filters.aspectRatio) !== aspect) return false;
-  if (filters.diameter && filters.diameter !== 'all' && Number(filters.diameter) !== diameter) return false;
+  const fitmentSizes = getFitmentSizeFilters(filters);
+  if (fitmentSizes.length > 0) {
+    if (!fitmentSizes.some((fitmentSize) => (
+      width === fitmentSize.widthMm &&
+      aspect === fitmentSize.aspectRatio &&
+      diameter === fitmentSize.rimDiameterIn
+    ))) {
+      return false;
+    }
+  } else {
+    if (filters.width && filters.width !== 'all' && Number(filters.width) !== width) return false;
+    if (filters.aspectRatio && filters.aspectRatio !== 'all' && Number(filters.aspectRatio) !== aspect) return false;
+    if (filters.diameter && filters.diameter !== 'all' && Number(filters.diameter) !== diameter) return false;
+  }
 
   const seasonFilterValues = getSeasonFilterValues(filters.season);
   if (seasonFilterValues.length > 0 && !seasonFilterValues.includes(normalizeSeasonValue(row.season))) {
@@ -766,11 +814,96 @@ function isStatementTimeoutError(error: unknown) {
   return code === '57014' || message.includes('statement timeout');
 }
 
+async function fetchTireCatalogRpcByFitmentSizes(
+  limit: number,
+  offset: number,
+  filters: Record<string, any>,
+  fitmentSizes: FitmentSizeFilter[],
+): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const sizeOrFilter = fitmentSizes
+    .map((fitmentSize) => `and(width_mm.eq.${fitmentSize.widthMm},aspect_ratio.eq.${fitmentSize.aspectRatio},diameter_in.eq.${fitmentSize.rimDiameterIn})`)
+    .join(',');
+
+  const buildQuery = (withCount: boolean) => {
+    let query = supabase
+      .from('webshop_items')
+      .select(WEBSHOP_TIRE_PUBLIC_SELECT, withCount ? { count: 'estimated' } : undefined)
+      .eq('product_type', 'tire')
+      .eq('is_visible', true)
+      .eq('publish_status', 'published')
+      .or(sizeOrFilter);
+
+    const normalizedSearch = normalizeSearchTerm(filters.search);
+    if (normalizedSearch) {
+      query = query.or([
+        `brand.ilike.%${normalizedSearch}%`,
+        `brand_display_name.ilike.%${normalizedSearch}%`,
+        `model.ilike.%${normalizedSearch}%`,
+        `size_string.ilike.%${normalizedSearch}%`,
+        `card_title.ilike.%${normalizedSearch}%`,
+      ].join(','));
+    }
+
+    const brands = Array.isArray(filters.brand)
+      ? filters.brand.map((brand: unknown) => String(brand ?? '').trim()).filter(Boolean)
+      : [];
+    if (brands.length > 0) query = query.in('brand', brands);
+
+    const seasonFilterValues = getSeasonFilterValues(filters.season);
+    if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
+    if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
+    if (filters.ean) {
+      const ean = String(filters.ean).replace(/\D/g, '');
+      if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
+    }
+    if (filters.runflat) query = query.eq('runflat', true);
+    if (filters.xl) query = query.eq('xl_reinforced', true);
+    if (filters.studded) query = query.eq('studded', true);
+    if (filters.electricCar) query = query.eq('ev_ready', true);
+    if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
+    if (filters.inStockOnly) query = query.eq('in_stock', true);
+
+    switch (filters.sortBy) {
+      case 'price_desc':
+        query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
+        break;
+      case 'price_asc':
+        query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
+        break;
+      case 'wet_grip':
+        query = query.order('eu_wet', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+        break;
+      case 'noise':
+        query = query.order('eu_noise', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+        break;
+      default:
+        query = query.order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
+        break;
+    }
+
+    return query.range(offset, offset + limit - 1);
+  };
+
+  const { data, error, count } = await buildQuery(true);
+  if (error) throw error;
+
+  const rows = ((data ?? []) as ProductSearchRow[])
+    .map((row) => ({ ...row, pricing_rules: null, final_is_hidden: false }))
+    .filter((row) => matchesTireFilters(row, filters));
+
+  return { items: rows, total: count ?? rows.length };
+}
+
 async function fetchTireCatalogRpc(
   limit: number,
   offset: number,
   filters: Record<string, any>,
 ): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const fitmentSizes = getFitmentSizeFilters(filters);
+  if (fitmentSizes.length > 0) {
+    return fetchTireCatalogRpcByFitmentSizes(limit, offset, filters, fitmentSizes);
+  }
+
   const width =
     filters.width && filters.width !== 'all' ? Number(filters.width) : null;
   const brands =
@@ -1082,7 +1215,7 @@ export async function fetchProductsSearch(
   const filters = options.filters ?? {};
   const normalizedSearch = normalizeSearchTerm(filters.search);
 
-  if (productType === 'tire' && isAllSeasonFilter(filters.season)) {
+  if (productType === 'tire' && isAllSeasonFilter(filters.season) && getFitmentSizeFilters(filters).length === 0) {
     return await fetchAllSeasonTireProducts(limit, offset, filters);
   }
 

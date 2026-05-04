@@ -15,6 +15,7 @@ export interface VehicleTyreLookupResult {
   weightEmptyKg?: number | null;
   maxSpeedKmh?: number | null;
   powerKw?: number | null;
+  engineSizeCc?: number | null;
   source: 'carsxe' | 'development-fallback';
   specifications?: Record<string, unknown>;
   lookups?: {
@@ -60,7 +61,8 @@ export async function lookupVehicleTyreFitment(plateInput: string, country = 'FI
   );
 
   if (error) {
-    throw new Error(error.message);
+    const functionError = await readVehicleLookupFunctionError(error);
+    throw new Error(functionError || error.message);
   }
 
   if (data?.error) {
@@ -72,4 +74,17 @@ export async function lookupVehicleTyreFitment(plateInput: string, country = 'FI
   }
 
   return data.vehicle;
+}
+
+async function readVehicleLookupFunctionError(error: unknown): Promise<string | null> {
+  const context = (error as { context?: unknown })?.context;
+  if (!context || typeof (context as Response).clone !== 'function') return null;
+
+  try {
+    const payload = await (context as Response).clone().json();
+    const message = String(payload?.error ?? payload?.message ?? '').trim();
+    return message || null;
+  } catch {
+    return null;
+  }
 }

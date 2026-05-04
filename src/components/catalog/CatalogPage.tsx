@@ -9,7 +9,7 @@ import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { RimCatalogLayout } from './RimCatalogLayout';
 import { Button } from '../ui/button';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
 import { buildProductImageFallback } from '../../utils/productImage';
 import type { ProductPricingRules } from '../../utils/pricing';
@@ -145,13 +145,57 @@ function getCatalogProductHref(product: CatalogProduct) {
   return `/catalog/${product.product_type}/${identifier}`;
 }
 
-function buildFiltersFromFitmentCandidate(currentFilters: any, candidate: TyreFitmentCandidate) {
+function getUniqueFitmentCandidates(recommendation: TyreFitmentRecommendation) {
+  const bySizeKey = new Map<string, TyreFitmentCandidate>();
+  [recommendation.factory, ...recommendation.alternatives].forEach((candidate) => {
+    if (!candidate?.sizeKey || bySizeKey.has(candidate.sizeKey)) return;
+    bySizeKey.set(candidate.sizeKey, candidate);
+  });
+  return Array.from(bySizeKey.values());
+}
+
+function buildFiltersFromFitmentCandidates(currentFilters: any, candidates: TyreFitmentCandidate[]) {
   return {
     ...currentFilters,
-    width: String(candidate.widthMm),
-    aspectRatio: String(candidate.aspectRatio),
-    diameter: String(candidate.rimDiameterIn),
+    width: 'all',
+    aspectRatio: 'all',
+    diameter: 'all',
+    fitmentSizes: candidates.map((candidate) => ({
+      sizeKey: candidate.sizeKey,
+      widthMm: candidate.widthMm,
+      aspectRatio: candidate.aspectRatio,
+      rimDiameterIn: candidate.rimDiameterIn,
+    })),
   };
+}
+
+function getFitmentRimWidthSummary(candidates: TyreFitmentCandidate[]) {
+  const widths = Array.from(new Set(candidates.flatMap((candidate) => candidate.approvedRimWidths)))
+    .filter((width) => Number.isFinite(width))
+    .sort((a, b) => a - b);
+
+  return widths.length > 0 ? widths.map((width) => `${width}J`).join(', ') : '-';
+}
+
+function getVehicleEngineSummary(vehicle: VehicleTyreLookupResult) {
+  const engineSize = getFirstMeaningfulValue(
+    vehicle.engineSizeCc,
+    vehicle.specifications?.EngineSize,
+    vehicle.specifications?.engine_size,
+    vehicle.specifications?.engine_size_cc,
+    vehicle.lookups?.plateDecoder?.EngineSize,
+    vehicle.lookups?.plateDecoder?.engine_size,
+    vehicle.lookups?.internationalVinDecoder?.attributes?.engine_size,
+    vehicle.lookups?.internationalVinDecoder?.attributes?.engine_size_cc,
+  );
+  const engineText = String(engineSize ?? '').trim();
+  if (engineText) {
+    return /^\d+$/.test(engineText) ? `${engineText} cc` : engineText;
+  }
+
+  return typeof vehicle.powerKw === 'number' && Number.isFinite(vehicle.powerKw)
+    ? `${vehicle.powerKw} kW`
+    : '-';
 }
 
 function safeParseJson(value: unknown): unknown {
@@ -826,7 +870,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const [vehicleFitment, setVehicleFitment] = useState<{
     vehicle: VehicleTyreLookupResult;
     recommendation: TyreFitmentRecommendation;
-    selectedSizeKey: string;
+    candidates: TyreFitmentCandidate[];
   } | null>(null);
   const [isRestoringState, setIsRestoringState] = useState(Boolean(initialRestoreRef.current));
   const productsGridRef = React.useRef<HTMLDivElement>(null);
@@ -1042,30 +1086,23 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
+    if (!Array.isArray(newFilters.fitmentSizes) || newFilters.fitmentSizes.length === 0) {
+      setVehicleFitment(null);
+    }
   };
 
   const handleVehicleRecommendation = (
     vehicle: VehicleTyreLookupResult,
     recommendation: TyreFitmentRecommendation,
   ) => {
-    const factoryFilters = buildFiltersFromFitmentCandidate(filters, recommendation.factory);
+    const candidates = getUniqueFitmentCandidates(recommendation);
+    const fitmentFilters = buildFiltersFromFitmentCandidates(filters, candidates);
 
-    setVehicleFitment({ vehicle, recommendation, selectedSizeKey: recommendation.factory.sizeKey });
-    setFilters(factoryFilters);
+    setVehicleFitment({ vehicle, recommendation, candidates });
+    setFilters(fitmentFilters);
     setHasSearched(true);
     setCurrentPage(1);
-    void fetchProducts(1, factoryFilters, 'tires');
-  };
-
-  const handleFitmentSizeSelect = (candidate: TyreFitmentCandidate) => {
-    const nextFilters = buildFiltersFromFitmentCandidate(filters, candidate);
-    setVehicleFitment((current) => current
-      ? { ...current, selectedSizeKey: candidate.sizeKey }
-      : current);
-    setFilters(nextFilters);
-    setHasSearched(true);
-    setCurrentPage(1);
-    void fetchProducts(1, nextFilters, 'tires');
+    void fetchProducts(1, fitmentFilters, 'tires');
   };
 
   const scrollToProducts = () => {
@@ -1322,9 +1359,9 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             exit={{ opacity: 0 }}
             className="mb-8"
           >
-            <TireFilters 
+            <TireFilters
               filters={filters}
-              onFilterChange={handleFilterChange} 
+              onFilterChange={handleFilterChange}
               onSearch={handleSearch}
               onVehicleRecommendation={handleVehicleRecommendation}
               onSearchModeChange={setSearchMode}
@@ -1333,109 +1370,84 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           </motion.div>
         </AnimatePresence>
 
-        {vehicleFitment ? (
-          <div className={`mb-8 rounded-2xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-white/5 text-white' : 'border-gray-200 bg-white text-gray-900'}`}>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                  {vehicleFitment.vehicle.plate} · {vehicleFitment.vehicle.description}
-                  {vehicleFitment.vehicle.year ? ` · ${vehicleFitment.vehicle.year}` : ''}
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold">
-                  {language === 'fi' ? 'Tehdaskoot' : 'Factory sizes'}: {(vehicleFitment.vehicle.factoryTyreSizes?.length ? vehicleFitment.vehicle.factoryTyreSizes : [vehicleFitment.recommendation.factory.label]).join(', ')}
-                </h2>
-                <p className={`mt-2 max-w-3xl text-sm ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                  {language === 'fi'
-                    ? 'Vaihtoehdot on laskettu tehdaskoon ja ETRTO-standardin perusteella. Lopullinen sopivuus riippuu vanteesta, ET-luvusta, keskireiästä ja ajoneuvon välyksistä.'
-                    : 'Alternatives are calculated from the factory size and ETRTO standards. Final fitment depends on wheel width, offset, center bore, and vehicle clearance.'}
-                </p>
+        {vehicleFitment ? (() => {
+          const { vehicle, recommendation, candidates } = vehicleFitment;
+          const factorySizes = vehicle.factoryTyreSizes?.length ? vehicle.factoryTyreSizes : [recommendation.factory.label];
+          const rimWidthSummary = getFitmentRimWidthSummary(candidates);
+          const otherSizeCount = candidates.filter((candidate) => candidate.confidence !== 'factory').length;
+          const weightSummary = typeof vehicle.maxWeightKg === 'number' && Number.isFinite(vehicle.maxWeightKg)
+            ? `${vehicle.maxWeightKg} kg`
+            : typeof vehicle.weightEmptyKg === 'number' && Number.isFinite(vehicle.weightEmptyKg)
+              ? `${vehicle.weightEmptyKg} kg`
+              : '-';
+          const speedIndexSummary = recommendation.factory.speedRating
+            ? `${recommendation.factory.speedRating}${vehicle.maxSpeedKmh ? ` · ${vehicle.maxSpeedKmh} km/h` : ''}`
+            : vehicle.maxSpeedKmh ? `${vehicle.maxSpeedKmh} km/h` : '-';
+
+          return (
+          <div className={`mb-5 rounded-xl border p-3 sm:p-4 ${theme === 'dark' ? 'border-white/10 bg-white/[0.03] text-white' : 'border-gray-200 bg-white text-gray-900'}`}>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.36fr)] lg:items-stretch">
+              <div className="min-w-0 space-y-2.5">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+                  {[
+                    { label: language === 'fi' ? 'Rekisteri' : 'Plate', value: vehicle.plate, mono: true },
+                    { label: language === 'fi' ? 'Merkki' : 'Make', value: vehicle.make || '-' },
+                    { label: language === 'fi' ? 'Malli' : 'Model', value: vehicle.model || vehicle.description || '-' },
+                    { label: language === 'fi' ? 'Vuosi' : 'Year', value: vehicle.year || '-', mono: true },
+                  ].map((item) => (
+                    <div key={item.label} className="min-w-0">
+                      <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                        {item.label}
+                      </div>
+                      <div className={`mt-0.5 truncate text-sm font-semibold ${item.mono ? 'font-mono' : ''}`} title={String(item.value)}>
+                        {item.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={`grid grid-cols-2 gap-x-3 gap-y-2 border-t pt-2.5 sm:grid-cols-4 ${theme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}>
+                  {[
+                    { label: language === 'fi' ? 'Moottori' : 'Engine', value: getVehicleEngineSummary(vehicle) },
+                    { label: language === 'fi' ? 'Paino' : 'Weight', value: weightSummary },
+                    { label: language === 'fi' ? 'Nopeusindeksi' : 'Speed index', value: speedIndexSummary },
+                    { label: language === 'fi' ? 'Vanne' : 'Rim', value: rimWidthSummary },
+                  ].map((item) => (
+                    <div key={item.label} className="min-w-0">
+                      <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                        {item.label}
+                      </div>
+                      <div className="mt-0.5 truncate font-mono text-sm font-semibold" title={item.value}>
+                        {item.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className={`rounded-xl border px-4 py-3 text-sm ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-gray-50'}`}>
-                <div className="font-medium">{language === 'fi' ? 'ETRTO vanneleveydet' : 'ETRTO rim widths'}</div>
-                <div className="mt-1 font-mono">
-                  {vehicleFitment.recommendation.factory.approvedRimWidths.map((width) => `${width}J`).join(', ') || '-'}
+
+              <div className={`flex min-w-0 flex-col justify-center rounded-lg border px-3 py-2.5 ${theme === 'dark' ? 'border-[#FF6B35]/25 bg-[#FF6B35]/10' : 'border-[#FF6B35]/25 bg-orange-50'}`}>
+                <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-orange-200/80' : 'text-[#C2410C]/80'}`}>
+                  {language === 'fi' ? 'Tehdaskoko' : 'Factory size'}
+                </div>
+                <div className={`mt-1 break-words font-mono text-lg font-semibold leading-tight ${theme === 'dark' ? 'text-orange-100' : 'text-[#9A3412]'}`}>
+                  {factorySizes.join(', ')}
+                </div>
+                <div className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-orange-200/75' : 'text-[#C2410C]/75'}`}>
+                  {otherSizeCount > 0
+                    ? (language === 'fi' ? `+ ${otherSizeCount} muuta kokoa sopii` : `+ ${otherSizeCount} other sizes fit`)
+                    : (language === 'fi' ? 'Vain tehdaskoko' : 'Factory size only')}
                 </div>
               </div>
             </div>
-
-            <div className="mt-5">
-              <div className={`mb-3 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Valitse koko ja näytä varastotuotteet' : 'Select a size to show matching products'}
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {[vehicleFitment.recommendation.factory, ...vehicleFitment.recommendation.alternatives.slice(0, 8)].map((candidate) => {
-                  const selected = vehicleFitment.selectedSizeKey === candidate.sizeKey;
-                  const isFactory = candidate.confidence === 'factory';
-                  return (
-                    <button
-                      key={`${candidate.sizeKey}-${isFactory ? 'factory' : 'alternative'}`}
-                      type="button"
-                      onClick={() => handleFitmentSizeSelect(candidate)}
-                      className={`rounded-xl border p-4 text-left transition ${
-                        selected
-                          ? 'border-[#FF6B35] bg-[#FF6B35]/10 shadow-[0_0_0_1px_rgba(255,107,53,0.35)]'
-                          : theme === 'dark'
-                            ? 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/5'
-                            : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-semibold">{candidate.label}</div>
-                          <div className={`mt-1 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                            {isFactory
-                              ? (language === 'fi' ? 'Auton tehdaskoko' : 'Vehicle factory size')
-                              : `${language === 'fi' ? 'Halkaisijaero' : 'Diameter difference'}: ${candidate.diameterDifferencePercent > 0 ? '+' : ''}${candidate.diameterDifferencePercent.toFixed(1)}%`}
-                          </div>
-                        </div>
-                        <span className={`rounded-md px-2 py-1 text-xs font-medium ${
-                          isFactory
-                            ? 'bg-[#FF6B35]/15 text-[#FF6B35]'
-                            : candidate.confidence === 'recommended'
-                              ? 'bg-emerald-500/15 text-emerald-500'
-                              : 'bg-amber-500/15 text-amber-500'
-                        }`}>
-                          {isFactory
-                            ? (language === 'fi' ? 'Tehdas' : 'Factory')
-                            : candidate.confidence === 'recommended'
-                              ? (language === 'fi' ? 'Suositus' : 'Recommended')
-                              : (language === 'fi' ? 'Mahdollinen' : 'Possible')}
-                        </span>
-                      </div>
-                      <div className={`mt-3 text-xs ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                        LI {candidate.loadIndex ?? '-'}{candidate.loadVersion === 'highLoad' ? ' HL' : candidate.loadVersion === 'reinforced' ? ' XL' : ''} · {candidate.loadCapacityKg ?? '-'} kg · {candidate.approvedRimWidths.map((width) => `${width}J`).join(', ')}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
-        ) : null}
+          );
+        })() : null}
 
         {hasSearched && <div ref={productsGridRef} className="mb-0 h-0" aria-hidden="true" />}
 
         {errorMessage && (
           <div className={`mb-4 text-sm ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
             {errorMessage}
-          </div>
-        )}
-
-
-        {/* Empty State - Before Search */}
-        {!hasSearched && (
-          <div className="text-center py-20">
-            <div className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-lg border ${theme === 'dark' ? 'border-white/10 bg-white/5 text-[#B0B8C4]' : 'border-gray-200 bg-white text-gray-500'}`}>
-              <Search className="h-5 w-5" />
-            </div>
-            <h3 className={`text-2xl mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'Aloita haku' : 'Start Your Search'}
-            </h3>
-              <p className={`max-w-md mx-auto ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? 'Valitse hakutapa yllä ja täytä tiedot löytääksesi sopivat renkaat.'
-                  : 'Select a search method above and fill in the details to find matching tires.'}
-              </p>
           </div>
         )}
 

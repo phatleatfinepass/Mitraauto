@@ -15,6 +15,7 @@ interface VehicleTyreLookupResult {
   weightEmptyKg?: number | null;
   maxSpeedKmh?: number | null;
   powerKw?: number | null;
+  engineSizeCc?: number | null;
   source: "carsxe" | "development-fallback";
   specifications?: Record<string, unknown>;
   lookups?: {
@@ -159,7 +160,7 @@ Deno.serve(async (req) => {
     console.error("Vehicle lookup failed:", error);
     return jsonResponse({
       error: error instanceof Error ? error.message : "Vehicle lookup failed",
-    }, 500);
+    });
   }
 });
 
@@ -271,6 +272,12 @@ async function lookupCarsXeVehicle(
     weightEmptyKg: numberOrNull(attributes.weight_empty_kg),
     maxSpeedKmh: numberOrNull(attributes.max_speed_kmh),
     powerKw: numberOrNull(plateResponse.power ?? plateResponse.Power),
+    engineSizeCc: numberOrNull(
+      plateResponse.engine_size ??
+        plateResponse.EngineSize ??
+        attributes.engine_size ??
+        attributes.engine_size_cc,
+    ),
     source: "carsxe",
     specifications: attributes,
     lookups: {
