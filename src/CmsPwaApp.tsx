@@ -26,6 +26,14 @@ import {
 import { LanguageProvider, useLanguage } from './components/LanguageContext';
 import type { AuthState, BookingRow, LiveSectionsState, LoginState, OrderRow } from './components/cms-pwa/types';
 
+type CmsPwaAccessRow = {
+  user_id?: string | null;
+  email?: string | null;
+  role?: string | null;
+  account_status?: string | null;
+  is_super_admin?: boolean | null;
+};
+
 async function resolveAdminSession() {
   const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
     return await Promise.race([
@@ -42,31 +50,49 @@ async function resolveAdminSession() {
     return { state: 'unauthenticated' as const, email: '' };
   }
 
-  let isAdmin = session.user.email === 'admin@mitra-auto.fi';
+  try {
+    const { data: accessRows, error: accessError } = await withTimeout(
+      supabase.rpc('cms_get_current_access'),
+    );
 
-  if (!isAdmin) {
-    try {
-      const { data: profile } = await withTimeout(
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single(),
-      );
-
-      isAdmin = profile?.role === 'admin';
-    } catch {
-      return {
-        state: 'unauthenticated' as const,
-        email: '',
-      };
+    if (accessError) {
+      throw accessError;
     }
-  }
 
-  return {
-    state: isAdmin ? ('authenticated' as const) : ('not-admin' as const),
-    email: session.user.email ?? '',
-  };
+    const access = (Array.isArray(accessRows) ? accessRows[0] : accessRows) as CmsPwaAccessRow | undefined;
+    const accountStatus = String(access?.account_status ?? 'active');
+    const role = String(access?.role ?? 'user');
+    const isSuperAdmin = Boolean(access?.is_super_admin);
+    const email = access?.email ?? session.user.email ?? '';
+
+    if (accountStatus !== 'active') {
+      return { state: 'not-admin' as const, email };
+    }
+
+    if (isSuperAdmin || role === 'admin') {
+      return { state: 'authenticated' as const, email };
+    }
+
+    const permissionChecks = await withTimeout(
+      Promise.all([
+        supabase.rpc('cms_has_permission', { p_module: 'rescue', p_action: 'read' }),
+        supabase.rpc('cms_has_permission', { p_module: 'schedule', p_action: 'read' }),
+        supabase.rpc('cms_has_permission', { p_module: 'orders', p_action: 'read' }),
+      ]),
+    );
+
+    const hasPwaAccess = permissionChecks.some(({ data, error }) => !error && data === true);
+
+    return {
+      state: hasPwaAccess ? ('authenticated' as const) : ('not-admin' as const),
+      email,
+    };
+  } catch {
+    return {
+      state: 'unauthenticated' as const,
+      email: '',
+    };
+  }
 }
 
 export function CmsPwaScreen() {

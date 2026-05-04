@@ -9,7 +9,7 @@ import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { RimCatalogLayout } from './RimCatalogLayout';
 import { Button } from '../ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react';
 import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
 import { buildProductImageFallback } from '../../utils/productImage';
 import type { ProductPricingRules } from '../../utils/pricing';
@@ -154,7 +154,14 @@ function getUniqueFitmentCandidates(recommendation: TyreFitmentRecommendation) {
   return Array.from(bySizeKey.values());
 }
 
-function buildFiltersFromFitmentCandidates(currentFilters: any, candidates: TyreFitmentCandidate[]) {
+function getSafeProductFitmentCandidates(recommendation: TyreFitmentRecommendation) {
+  return getUniqueFitmentCandidates({
+    ...recommendation,
+    alternatives: recommendation.alternatives.filter((candidate) => candidate.confidence === 'recommended'),
+  });
+}
+
+function buildFiltersFromSafeFitmentCandidates(currentFilters: any, candidates: TyreFitmentCandidate[]) {
   return {
     ...currentFilters,
     width: 'all',
@@ -169,8 +176,8 @@ function buildFiltersFromFitmentCandidates(currentFilters: any, candidates: Tyre
   };
 }
 
-function getFitmentRimWidthSummary(candidates: TyreFitmentCandidate[]) {
-  const widths = Array.from(new Set(candidates.flatMap((candidate) => candidate.approvedRimWidths)))
+function getRimWidthSummary(candidate: TyreFitmentCandidate) {
+  const widths = Array.from(new Set(candidate.approvedRimWidths))
     .filter((width) => Number.isFinite(width))
     .sort((a, b) => a - b);
 
@@ -872,6 +879,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
     recommendation: TyreFitmentRecommendation;
     candidates: TyreFitmentCandidate[];
   } | null>(null);
+  const [fitmentDetailsOpen, setFitmentDetailsOpen] = useState(false);
   const [isRestoringState, setIsRestoringState] = useState(Boolean(initialRestoreRef.current));
   const productsGridRef = React.useRef<HTMLDivElement>(null);
   const restoreFetchStartedRef = React.useRef(Boolean(initialRestoreRef.current));
@@ -1096,9 +1104,11 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
     recommendation: TyreFitmentRecommendation,
   ) => {
     const candidates = getUniqueFitmentCandidates(recommendation);
-    const fitmentFilters = buildFiltersFromFitmentCandidates(filters, candidates);
+    const safeProductCandidates = getSafeProductFitmentCandidates(recommendation);
+    const fitmentFilters = buildFiltersFromSafeFitmentCandidates(filters, safeProductCandidates);
 
     setVehicleFitment({ vehicle, recommendation, candidates });
+    setFitmentDetailsOpen(false);
     setFilters(fitmentFilters);
     setHasSearched(true);
     setCurrentPage(1);
@@ -1372,9 +1382,11 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
 
         {vehicleFitment ? (() => {
           const { vehicle, recommendation, candidates } = vehicleFitment;
+          const safeProductCandidates = getSafeProductFitmentCandidates(recommendation);
           const factorySizes = vehicle.factoryTyreSizes?.length ? vehicle.factoryTyreSizes : [recommendation.factory.label];
-          const rimWidthSummary = getFitmentRimWidthSummary(candidates);
-          const otherSizeCount = candidates.filter((candidate) => candidate.confidence !== 'factory').length;
+          const rimWidthSummary = getRimWidthSummary(recommendation.factory);
+          const otherSizeCount = safeProductCandidates.filter((candidate) => candidate.confidence !== 'factory').length;
+          const referenceOnlyCount = candidates.filter((candidate) => candidate.confidence === 'possible').length;
           const weightSummary = typeof vehicle.maxWeightKg === 'number' && Number.isFinite(vehicle.maxWeightKg)
             ? `${vehicle.maxWeightKg} kg`
             : typeof vehicle.weightEmptyKg === 'number' && Number.isFinite(vehicle.weightEmptyKg)
@@ -1425,20 +1437,110 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 </div>
               </div>
 
-              <div className={`flex min-w-0 flex-col justify-center rounded-lg border px-3 py-2.5 ${theme === 'dark' ? 'border-[#FF6B35]/25 bg-[#FF6B35]/10' : 'border-[#FF6B35]/25 bg-orange-50'}`}>
-                <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-orange-200/80' : 'text-[#C2410C]/80'}`}>
-                  {language === 'fi' ? 'Tehdaskoko' : 'Factory size'}
+              <button
+                type="button"
+                onClick={() => setFitmentDetailsOpen((current) => !current)}
+                aria-expanded={fitmentDetailsOpen}
+                className={`group flex min-w-0 flex-col justify-center rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                  theme === 'dark'
+                    ? 'border-[#FF6B35]/25 bg-[#FF6B35]/10 hover:border-[#FF6B35]/40 hover:bg-[#FF6B35]/15'
+                    : 'border-[#FF6B35]/25 bg-orange-50 hover:border-[#FF6B35]/45 hover:bg-orange-100/60'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-orange-200/80' : 'text-[#C2410C]/80'}`}>
+                      {language === 'fi' ? 'Tehdaskoko' : 'Factory size'}
+                    </div>
+                    <div className={`mt-1 break-words font-mono text-lg font-semibold leading-tight ${theme === 'dark' ? 'text-orange-100' : 'text-[#9A3412]'}`}>
+                      {factorySizes.join(', ')}
+                    </div>
+                    <div className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-orange-200/75' : 'text-[#C2410C]/75'}`}>
+                      {otherSizeCount > 0
+                        ? (language === 'fi' ? `Turvallinen haku · ${otherSizeCount} vaihtoehtoa` : `Safe search · ${otherSizeCount} alternatives`)
+                        : (language === 'fi' ? 'Vain tehdaskoko' : 'Factory size only')}
+                    </div>
+                  </div>
+                  <span className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold transition-colors ${
+                    theme === 'dark' ? 'bg-black/20 text-orange-100 group-hover:bg-black/30' : 'bg-white/70 text-[#C2410C] group-hover:bg-white'
+                  }`}>
+                    {fitmentDetailsOpen
+                      ? (language === 'fi' ? 'Sulje' : 'Close')
+                      : (language === 'fi' ? 'Avaa' : 'Open')}
+                    {fitmentDetailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </span>
                 </div>
-                <div className={`mt-1 break-words font-mono text-lg font-semibold leading-tight ${theme === 'dark' ? 'text-orange-100' : 'text-[#9A3412]'}`}>
-                  {factorySizes.join(', ')}
+              </button>
+            </div>
+
+            {fitmentDetailsOpen && (
+              <div className={`mt-4 border-t pt-4 ${theme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}>
+                <div className="mb-3 text-sm font-semibold">
+                  {language === 'fi' ? 'Tehdaskoko ja ETRTO-vaihtoehdot' : 'Factory size and ETRTO alternatives'}
                 </div>
-                <div className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-orange-200/75' : 'text-[#C2410C]/75'}`}>
-                  {otherSizeCount > 0
-                    ? (language === 'fi' ? `+ ${otherSizeCount} muuta kokoa sopii` : `+ ${otherSizeCount} other sizes fit`)
-                    : (language === 'fi' ? 'Vain tehdaskoko' : 'Factory size only')}
+                {referenceOnlyCount > 0 && (
+                  <p className={`mb-3 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                    {language === 'fi'
+                      ? `${referenceOnlyCount} mahdollista kokoa näytetään vain tarkistusta varten. Tuotekortit käyttävät vain tehdaskokoa ja suositeltuja vaihtoehtoja.`
+                      : `${referenceOnlyCount} possible sizes are shown for checking only. Product cards use only factory and recommended sizes.`}
+                  </p>
+                )}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {candidates.map((candidate) => {
+                    const isFactory = candidate.confidence === 'factory';
+                    const badgeText = isFactory
+                      ? (language === 'fi' ? 'Tehdas' : 'Factory')
+                      : candidate.confidence === 'recommended'
+                        ? (language === 'fi' ? 'Suositus' : 'Recommended')
+                        : (language === 'fi' ? 'Mahdollinen' : 'Possible');
+                    const subtitle = isFactory
+                      ? (language === 'fi' ? 'Auton tehdaskoko' : 'Vehicle factory size')
+                      : `${language === 'fi' ? 'Halkaisijaero' : 'Diameter difference'}: ${candidate.diameterDifferencePercent > 0 ? '+' : ''}${candidate.diameterDifferencePercent.toFixed(1)}%`;
+                    const loadVersion = candidate.loadVersion === 'highLoad'
+                      ? ' HL'
+                      : candidate.loadVersion === 'reinforced'
+                        ? ' XL'
+                        : '';
+
+                    return (
+                      <div
+                        key={`${candidate.sizeKey}-${candidate.confidence}`}
+                        className={`rounded-xl border px-4 py-3 ${
+                          isFactory
+                            ? theme === 'dark'
+                              ? 'border-[#FF6B35]/55 bg-[#FF6B35]/10'
+                              : 'border-[#FF6B35] bg-[#FF6B35]/10'
+                            : theme === 'dark'
+                              ? 'border-white/10 bg-black/20'
+                              : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className={`truncate font-mono text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#101828]'}`}>
+                              {candidate.label}
+                            </div>
+                            <div className={`mt-1 text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-[#4A5565]'}`}>
+                              {subtitle}
+                            </div>
+                          </div>
+                          <span className={`shrink-0 rounded-[10px] px-2 py-1 text-xs font-semibold ${
+                            isFactory
+                              ? theme === 'dark' ? 'bg-[#FF6B35]/20 text-orange-200' : 'bg-[#FF6B35]/15 text-[#FF6B35]'
+                              : theme === 'dark' ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-100 text-emerald-600'
+                          }`}>
+                            {badgeText}
+                          </span>
+                        </div>
+                        <div className={`mt-3 truncate text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-[#4A5565]'}`}>
+                          LI {candidate.loadIndex ?? '-'}{loadVersion} · {candidate.loadCapacityKg ?? '-'} kg · {candidate.approvedRimWidths.map((width) => `${width}J`).join(', ') || '-'}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
+            )}
           </div>
           );
         })() : null}

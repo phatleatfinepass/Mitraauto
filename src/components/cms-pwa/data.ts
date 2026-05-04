@@ -2,7 +2,7 @@ import type { BriefingItem } from './CmsPwaBriefingCard';
 import type { CmsPwaTab } from './CmsPwaTabBar';
 import type { BookingRow, CmsPwaRoute, OrderRow, TabSection } from './types';
 import { detectStoredServiceLanguage, localizeStoredServiceName } from '../../utils/serviceCatalog';
-import { isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
+import { isInstalledPwaDisplay, isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 
 export const REFRESH_INTERVAL_MS = 30_000;
 export const BOOKING_STATUS_HANDOFF = 'handoff';
@@ -180,7 +180,7 @@ export const rescueSections: TabSection[] = [
 export function resolveCmsPwaRoute(pathname: string): CmsPwaRoute {
   const normalized = pathname.replace(/\/+$/, '') || '/';
 
-  if (isStandalonePwaDeploy) {
+  if (isStandalonePwaDeploy || isInstalledPwaDisplay()) {
     if (normalized === '/cms' || normalized === '/cms/rescue') {
       return { kind: 'cms', tab: 'rescue' };
     }
@@ -193,7 +193,6 @@ export function resolveCmsPwaRoute(pathname: string): CmsPwaRoute {
     if (normalized === '/cms/tools') {
       return { kind: 'cms', tab: 'tools' };
     }
-    return { kind: 'not-found' };
   }
 
   if (normalized === '/pwa/cms' || normalized === '/pwa/cms/rescue') {

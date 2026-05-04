@@ -2,9 +2,18 @@ import { createRoot } from "react-dom/client";
 import SiteApp from "./SiteApp.tsx";
 import { mountCmsPwaApp } from "./CmsPwaApp.tsx";
 import "./index.css";
-import { isStandalonePwaDeploy } from "./config/runtime";
+import { isInstalledPwaDisplay, isStandalonePwaDeploy } from "./config/runtime";
 
 const root = document.getElementById("root");
+
+function isCmsPwaRuntimePath(path: string) {
+  return (
+    isStandalonePwaDeploy ||
+    path === '/pwa' ||
+    path.startsWith('/pwa/') ||
+    (isInstalledPwaDisplay() && (path === '/cms' || path.startsWith('/cms/')))
+  );
+}
 
 function bootstrap() {
   if (!root) {
@@ -13,7 +22,7 @@ function bootstrap() {
 
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
 
-  if (isStandalonePwaDeploy || path === '/pwa' || path.startsWith('/pwa/')) {
+  if (isCmsPwaRuntimePath(path)) {
     mountCmsPwaApp(root);
   } else {
     createRoot(root).render(<SiteApp />);
@@ -33,7 +42,7 @@ function bootstrap() {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    const shouldUseServiceWorker = isStandalonePwaDeploy || path === '/pwa' || path.startsWith('/pwa/');
+    const shouldUseServiceWorker = isCmsPwaRuntimePath(path);
 
     if (shouldUseServiceWorker) {
       navigator.serviceWorker.register('/sw.js').catch((error) => {

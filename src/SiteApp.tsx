@@ -20,6 +20,8 @@ import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import { mapProductSearchRow, type CatalogProduct } from './components/catalog/CatalogPage';
 import { CmsGuard } from './components/cms/CmsGuard';
+import { useCmsAccess } from './components/cms/CmsAccessContext';
+import { CmsTabErrorBoundary } from './components/cms/CmsTabErrorBoundary';
 // NEW PAGES
 import { ContactPage } from './components/ContactPage';
 import { FAQPage } from './components/FAQPage';
@@ -97,6 +99,9 @@ const OrdersCMSPage = lazy(() =>
 const InvoicesCMSPage = lazy(() =>
   import('./components/cms/InvoicesCMSPage').then((module) => ({ default: module.InvoicesCMSPage }))
 );
+const AccountCustomerCMSPage = lazy(() =>
+  import('./components/cms/AccountCustomerCMSPage').then((module) => ({ default: module.AccountCustomerCMSPage }))
+);
 
 type ParsedTireSize = {
   width?: number;
@@ -107,7 +112,7 @@ type ParsedTireSize = {
   speedRating?: string;
 };
 
-type CmsTab = 'rescue' | 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'invoices' | 'future';
+type CmsTab = 'rescue' | 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'invoices' | 'account-customer' | 'future';
 const BOOKING_STATUS_HANDOFF = 'handoff';
 
 function resolveCmsTabFromHash(hash?: string): CmsTab {
@@ -131,6 +136,10 @@ function resolveCmsTabFromHash(hash?: string): CmsTab {
 
   if (normalized === 'invoices') {
     return 'invoices';
+  }
+
+  if (normalized === 'account-customer' || normalized === 'customers' || normalized === 'accounts') {
+    return 'account-customer';
   }
 
   if (normalized === 'future') {
@@ -168,6 +177,143 @@ function CmsRouteFallback() {
       <div className="flex flex-col items-center gap-4">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF6B35]" />
         <p className="text-sm text-muted-foreground">Loading CMS…</p>
+      </div>
+    </div>
+  );
+}
+
+function CmsTabContent({ tab }: { tab: CmsTab }) {
+  if (tab === 'rescue') {
+    return (
+      <Suspense fallback={<CmsRouteFallback />}>
+        <RescueCMSPage />
+      </Suspense>
+    );
+  }
+
+  if (tab === 'schedule') {
+    return (
+      <Suspense fallback={<CmsRouteFallback />}>
+        <AdminSchedulePage />
+      </Suspense>
+    );
+  }
+
+  if (tab === 'catalog-tires') {
+    return (
+      <Suspense fallback={<CmsRouteFallback />}>
+        <TiresCMSPage />
+      </Suspense>
+    );
+  }
+
+  if (tab === 'catalog-rims') {
+    return (
+      <Suspense fallback={<CmsRouteFallback />}>
+        <RimsCMSPage />
+      </Suspense>
+    );
+  }
+
+  if (tab === 'orders') {
+    return (
+      <Suspense fallback={<CmsRouteFallback />}>
+        <OrdersCMSPage />
+      </Suspense>
+    );
+  }
+
+  if (tab === 'invoices') {
+    return (
+      <Suspense fallback={<CmsRouteFallback />}>
+        <InvoicesCMSPage documentScope="receipt" title="Receipt" />
+      </Suspense>
+    );
+  }
+
+  if (tab === 'account-customer') {
+    return (
+      <Suspense fallback={<CmsRouteFallback />}>
+        <AccountCustomerCMSPage />
+      </Suspense>
+    );
+  }
+
+  return (
+    <div className="space-y-2 p-8 text-muted-foreground">
+      <h2 className="text-xl font-semibold text-foreground">Coming soon</h2>
+      <p>Reserved for upcoming CMS modules.</p>
+    </div>
+  );
+}
+
+function CmsControlCenter({
+  cmsTab,
+  cmsTabs,
+  onTabChange,
+}: {
+  cmsTab: CmsTab;
+  cmsTabs: Array<{ id: CmsTab; label: string; description: string }>;
+  onTabChange: (tab: CmsTab) => void;
+}) {
+  const access = useCmsAccess();
+  const visibleTabs = access?.canManageAccounts
+    ? cmsTabs
+    : access?.role === 'admin'
+      ? cmsTabs.filter((tab) => tab.id !== 'account-customer')
+      : cmsTabs.filter((tab) => tab.id === 'account-customer');
+  const activeTab = visibleTabs.some((tab) => tab.id === cmsTab)
+    ? cmsTab
+    : visibleTabs[0]?.id ?? 'account-customer';
+
+  return (
+    <div className="bg-background">
+      <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS Beta</p>
+              <h1 className="text-3xl font-semibold text-foreground">Control Center</h1>
+            </div>
+            {access?.canManageAccounts ? <CmsBetaHandoffControl /> : null}
+          </div>
+          <p className="text-muted-foreground max-w-3xl">
+            {access?.canManageAccounts
+              ? 'Navigate between operations, catalog, account, and customer tools.'
+              : 'Customer workspace for supervisors.'}
+          </p>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border bg-card p-1 shadow-sm">
+          <div className={`grid gap-1 ${visibleTabs.length === 1 ? 'grid-cols-1' : 'min-w-[960px] grid-cols-8'}`}>
+            {visibleTabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`flex min-h-[58px] min-w-0 items-center justify-center rounded-md px-3 py-2 text-center transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">
+                      {access?.canManageAccounts ? tab.label : 'Customer'}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card shadow-sm">
+          <CmsTabErrorBoundary resetKey={activeTab}>
+            <CmsTabContent tab={activeTab} />
+          </CmsTabErrorBoundary>
+        </div>
       </div>
     </div>
   );
@@ -764,6 +910,12 @@ function HomePage() {
         normalizedPath === '/cms-invoices'
       ) {
         transitionNavigationState('cms-invoices');
+      } else if (
+        normalizedPath === '/cms/account-customer' ||
+        normalizedPath === '/cms/customers' ||
+        normalizedPath === '/cms/accounts'
+      ) {
+        transitionNavigationState('cms-beta', null, 'account-customer');
       } 
       
       // Legal routes
@@ -1111,6 +1263,7 @@ function HomePage() {
     { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
     { id: 'orders' as const, label: 'Order & Invoice', description: 'Track purchases and invoice payments' },
     { id: 'invoices' as const, label: 'Receipt', description: 'Receipts and paid documents' },
+    { id: 'account-customer' as const, label: 'Account & Customer', description: 'Manage CMS access and customer records' },
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
@@ -1282,123 +1435,54 @@ function HomePage() {
             onNavigateToCheckout={() => navigate('/checkout')}
           />
         ) : currentPage === 'admin-schedule' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="schedule">
             <Suspense fallback={<CmsRouteFallback />}>
               <AdminSchedulePage />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-rescue' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="rescue">
             <Suspense fallback={<CmsRouteFallback />}>
               <RescueCMSPage />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-tires' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
             <Suspense fallback={<CmsRouteFallback />}>
               <TiresCMSPage />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-tire-conflicts' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
             <Suspense fallback={<CmsRouteFallback />}>
               <TiresConflictResolvePage />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-rims' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_rims">
             <Suspense fallback={<CmsRouteFallback />}>
               <RimsCMSPage />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-orders' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="orders">
             <Suspense fallback={<CmsRouteFallback />}>
               <OrdersCMSPage />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-invoices' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded}>
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="invoices">
             <Suspense fallback={<CmsRouteFallback />}>
               <InvoicesCMSPage documentScope="receipt" title="Receipt" />
             </Suspense>
           </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
-          <>
-            <div className="bg-background">
-              <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS Beta</p>
-                      <h1 className="text-3xl font-semibold text-foreground">Control Center</h1>
-                    </div>
-                    <CmsBetaHandoffControl />
-                  </div>
-                  <p className="text-muted-foreground max-w-3xl">
-                    Navigate between booking schedule management and product catalog overrides. Additional CMS tools will be added here in future updates.
-                  </p>
-                </div>
-
-                <div className="overflow-x-auto rounded-lg border bg-card p-1 shadow-sm">
-                  <div className="grid min-w-[840px] grid-cols-7 gap-1">
-                    {cmsTabs.map((tab) => {
-                      const isActive = cmsTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          onClick={() => handleCmsTabChange(tab.id)}
-                          className={`flex min-h-[58px] min-w-0 items-center justify-center rounded-md px-3 py-2 text-center transition-colors ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground shadow-sm'
-                              : 'text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <span className="block truncate text-sm font-semibold">{tab.label}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border bg-card shadow-sm">
-                  {cmsTab === 'rescue' ? (
-                    <Suspense fallback={<CmsRouteFallback />}>
-                      <RescueCMSPage />
-                    </Suspense>
-                  ) : cmsTab === 'schedule' ? (
-                    <Suspense fallback={<CmsRouteFallback />}>
-                      <AdminSchedulePage />
-                    </Suspense>
-                  ) : cmsTab === 'catalog-tires' ? (
-                    <Suspense fallback={<CmsRouteFallback />}>
-                      <TiresCMSPage />
-                    </Suspense>
-                  ) : cmsTab === 'catalog-rims' ? (
-                    <Suspense fallback={<CmsRouteFallback />}>
-                      <RimsCMSPage />
-                    </Suspense>
-                  ) : cmsTab === 'orders' ? (
-                    <Suspense fallback={<CmsRouteFallback />}>
-                      <OrdersCMSPage />
-                    </Suspense>
-                  ) : cmsTab === 'invoices' ? (
-                    <Suspense fallback={<CmsRouteFallback />}>
-                      <InvoicesCMSPage documentScope="receipt" title="Receipt" />
-                    </Suspense>
-                  ) : (
-                    <div className="space-y-2 p-8 text-muted-foreground">
-                      <h2 className="text-xl font-semibold text-foreground">Coming soon</h2>
-                      <p>Reserved for upcoming CMS modules.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
+            <CmsControlCenter
+              cmsTab={cmsTab}
+              cmsTabs={cmsTabs}
+              onTabChange={handleCmsTabChange}
+            />
           </CmsGuard>
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabaseConfigError, supabase } from '../../utils/supabase/client';
 import { useLanguage } from '../LanguageContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Shield, AlertCircle } from 'lucide-react';
+import { CmsAccessProvider, type CmsAccess, type CmsRole } from './CmsAccessContext';
 
 const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v3';
 const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v3';
@@ -18,11 +19,38 @@ function clearCmsSessionCaches() {
 interface CmsGuardProps {
   children: React.ReactNode;
   onNeedLogin: () => void;
+  requiredModule?: 'rescue' | 'schedule' | 'catalog_tires' | 'catalog_rims' | 'orders' | 'invoices' | 'customers' | 'accounts';
 }
 
 type AuthState = 'loading' | 'verifying' | 'authenticated' | 'unauthenticated' | 'not-admin';
 
-export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
+function normalizeCmsAccessRow(accessRows: unknown, fallbackUser: { id: string; email?: string | null }): CmsAccess | null {
+  const row = Array.isArray(accessRows) ? accessRows[0] : accessRows && typeof accessRows === 'object' ? accessRows as any : null;
+  if (!row) return null;
+
+  return {
+    userId: String(row.user_id ?? fallbackUser.id),
+    email: String(row.email ?? fallbackUser.email ?? ''),
+    role: (row.role ?? 'user') as CmsRole,
+    accountStatus: String(row.account_status ?? 'active'),
+    isSuperAdmin: Boolean(row.is_super_admin),
+    canManageAccounts: Boolean(row.can_manage_accounts),
+    canManageCustomers: Boolean(row.can_manage_customers),
+  };
+}
+
+function canOpenRequiredModule(access: CmsAccess | null, requiredModule: CmsGuardProps['requiredModule']) {
+  if (!access || access.accountStatus !== 'active') return false;
+  if (access.isSuperAdmin) return true;
+  if (!requiredModule) {
+    return access.canManageAccounts || access.canManageCustomers || access.role === 'admin';
+  }
+  if (requiredModule === 'accounts') return access.canManageAccounts;
+  if (requiredModule === 'customers') return access.canManageCustomers;
+  return access.role === 'admin';
+}
+
+export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProps) {
   const { language } = useLanguage();
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [userEmail, setUserEmail] = useState<string>('');
@@ -30,8 +58,10 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
+  const [access, setAccess] = useState<CmsAccess | null>(null);
+  const verificationIdRef = useRef(0);
 
-  const beginVerification = () => {
+  const beginVerification = useCallback(() => {
     setAuthState((current) => {
       if (current === 'authenticated') {
         return current;
@@ -39,93 +69,113 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
 
       return current === 'unauthenticated' ? 'verifying' : 'loading';
     });
-  };
+  }, []);
 
-  useEffect(() => {
-    let isMounted = true;
+  const withTimeout = useCallback(async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
+    let timeoutId: number | undefined;
 
-    const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
+    try {
       return await Promise.race([
         promise,
         new Promise<T>((_, reject) => {
-          window.setTimeout(() => reject(new Error('CMS auth check timed out.')), timeoutMs);
+          timeoutId = window.setTimeout(() => reject(new Error('CMS auth check timed out.')), timeoutMs);
         }),
       ]);
-    };
+    } finally {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    }
+  }, []);
 
-    const checkAuth = async () => {
-      try {
-        const configError = getSupabaseConfigError();
-        if (configError) {
-          console.error('Supabase config error:', configError);
-          if (isMounted) setAuthState('unauthenticated');
-          return;
+  const verifyAccess = useCallback(async (mode: 'initial' | 'auth-change' | 'inline-login' = 'initial') => {
+    const verificationId = verificationIdRef.current + 1;
+    verificationIdRef.current = verificationId;
+    const isCurrent = () => verificationIdRef.current === verificationId;
+
+    if (mode !== 'initial') beginVerification();
+
+    try {
+      const configError = getSupabaseConfigError();
+      if (configError) {
+        console.error('Supabase config error:', configError);
+        if (isCurrent()) {
+          setAccess(null);
+          setAuthState('unauthenticated');
         }
-
-        const { data: { session }, error: sessionError } = await withTimeout(supabase.auth.getSession());
-
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          if (isMounted) setAuthState('unauthenticated');
-          return;
-        }
-
-        if (!session?.user) {
-          if (isMounted) setAuthState('unauthenticated');
-          return;
-        }
-
-        // Store user email for display
-        if (isMounted) {
-          setUserEmail(session.user.email || '');
-        }
-
-        const { data: profile, error: profileError } = await withTimeout(
-          supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .maybeSingle(),
-        );
-
-        if (profileError) {
-          console.error('Profile fetch error:', profileError);
-          // Profile might not exist yet, treat as not-admin
-          if (isMounted) setAuthState('not-admin');
-          return;
-        }
-
-        if (profile?.role === 'admin') {
-          if (isMounted) setAuthState('authenticated');
-        } else {
-          if (isMounted) setAuthState('not-admin');
-        }
-
-      } catch (error) {
-        console.error('Auth check error:', error);
-        if (isMounted) setAuthState('unauthenticated');
+        return;
       }
-    };
 
-    checkAuth();
+      const { data: { session }, error: sessionError } = await withTimeout(supabase.auth.getSession());
+
+      if (!isCurrent()) return;
+
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        setAccess(null);
+        setAuthState('unauthenticated');
+        return;
+      }
+
+      if (!session?.user) {
+        setAccess(null);
+        setUserEmail('');
+        setAuthState('unauthenticated');
+        return;
+      }
+
+      setUserEmail(session.user.email || '');
+
+      const { data: accessRows, error: accessError } = await withTimeout(
+        supabase.rpc('cms_get_current_access'),
+      );
+
+      if (!isCurrent()) return;
+
+      if (accessError) {
+        console.error('CMS access fetch error:', accessError);
+        setAccess(null);
+        setAuthState('not-admin');
+        return;
+      }
+
+      const nextAccess = normalizeCmsAccessRow(accessRows, session.user);
+      if (canOpenRequiredModule(nextAccess, requiredModule)) {
+        setAccess(nextAccess);
+        setAuthState('authenticated');
+      } else {
+        setAccess(null);
+        setAuthState('not-admin');
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      if (isCurrent()) {
+        setAccess(null);
+        setAuthState('unauthenticated');
+      }
+    }
+  }, [beginVerification, requiredModule, withTimeout]);
+
+  useEffect(() => {
+    void verifyAccess('initial');
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         clearCmsSessionCaches();
-        if (isMounted) beginVerification();
-        checkAuth();
+        if (event !== 'INITIAL_SESSION') void verifyAccess('auth-change');
       } else {
+        verificationIdRef.current += 1;
         clearCmsSessionCaches();
-        if (isMounted) setAuthState('unauthenticated');
+        setAccess(null);
+        setUserEmail('');
+        setAuthState('unauthenticated');
       }
     });
 
     return () => {
-      isMounted = false;
+      verificationIdRef.current += 1;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [verifyAccess]);
 
   const handleInlineLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -157,7 +207,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
         } catch {
           // Non-blocking.
         }
-        beginVerification();
+        void verifyAccess('inline-login');
       }
     } catch (error) {
       console.error('CMS inline login error:', error);
@@ -176,6 +226,7 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
       clearCmsSessionCaches();
       setAuthState('unauthenticated');
       setUserEmail('');
+      setAccess(null);
     }
   };
 
@@ -325,5 +376,9 @@ export function CmsGuard({ children, onNeedLogin }: CmsGuardProps) {
   }
 
   // Authenticated as admin - show content
-  return <>{children}</>;
+  if (!access) {
+    return null;
+  }
+
+  return <CmsAccessProvider access={access}>{children}</CmsAccessProvider>;
 }
