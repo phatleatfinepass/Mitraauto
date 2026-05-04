@@ -1,4 +1,4 @@
-import type { AccountStatus, CmsPermissionValue, CustomerStatus, StaffPresetId, StaffRole } from './types';
+import type { AccountStatus, CmsPermissionValue, CustomerStatus, CustomerType, StaffPresetId, StaffRole } from './types';
 
 export const STAFF_ROLES: StaffRole[] = [
   'super_admin',
@@ -12,6 +12,7 @@ export const STAFF_ROLES: StaffRole[] = [
 
 export const ACCOUNT_STATUSES: AccountStatus[] = ['active', 'hidden', 'suspended', 'deleted'];
 export const CUSTOMER_STATUSES: CustomerStatus[] = ['active', 'hidden', 'blocked', 'merged', 'deleted'];
+export const CUSTOMER_TYPES: CustomerType[] = ['personal', 'business', 'fleet'];
 export const PERMISSION_VALUES: CmsPermissionValue[] = ['none', 'read', 'read_write'];
 
 export const CMS_MODULES = [

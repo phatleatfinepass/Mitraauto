@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, Filter, GitMerge, Plus, RefreshCcw, Search } from 'lucide-react';
+import { AlertCircle, Filter, GitMerge, Plus, RefreshCcw, Search, TriangleAlert } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { useCmsAccess } from '../CmsAccessContext';
 import { CUSTOMER_STATUSES } from './constants';
-import { listCustomerOverview, mergeCustomers } from './api';
+import { listCustomerOverview, listLicensePlateConflicts, mergeCustomers } from './api';
 import { CustomerEditorPanel } from './CustomerEditorPanel';
 import { formatDate } from './safe';
-import type { CustomerOverviewFilters, CustomerOverviewRow, CustomerStatus } from './types';
+import type { CustomerOverviewFilters, CustomerOverviewRow, CustomerStatus, LicensePlateConflict } from './types';
 
 export function CustomerPanel() {
   const access = useCmsAccess();
@@ -25,6 +25,7 @@ export function CustomerPanel() {
   const [error, setError] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [plateConflicts, setPlateConflicts] = useState<LicensePlateConflict[]>([]);
 
   const selectedRow = creating
     ? null
@@ -55,7 +56,7 @@ export function CustomerPanel() {
     });
   }, [rows, selectedRow]);
 
-  const loadRows = async () => {
+  const loadRows = async (preferredCustomerId?: string | null) => {
     if (loading) return;
     setLoading(true);
     setError(null);
@@ -63,10 +64,20 @@ export function CustomerPanel() {
     try {
       const nextRows = await listCustomerOverview(filters);
       setRows(nextRows);
-      setSelectedKey((current) => current && nextRows.some((row) => row.key === current) ? current : nextRows[0]?.key ?? null);
+      if (access?.isSuperAdmin) {
+        setPlateConflicts(await listLicensePlateConflicts());
+      }
+      setSelectedKey((current) => {
+        if (preferredCustomerId) {
+          const preferred = nextRows.find((row) => row.customerId === preferredCustomerId);
+          if (preferred) return preferred.key;
+        }
+        return current && nextRows.some((row) => row.key === current) ? current : nextRows[0]?.key ?? null;
+      });
       setLoaded(true);
     } catch (err: any) {
       setRows([]);
+      setPlateConflicts([]);
       setSelectedKey(null);
       setLoaded(true);
       setError(err.message ?? 'Failed to load customer records.');
@@ -75,8 +86,8 @@ export function CustomerPanel() {
     }
   };
 
-  const refreshAfterSave = async () => {
-    await loadRows();
+  const refreshAfterSave = async (customerId?: string | null) => {
+    await loadRows(customerId);
     setCreating(false);
   };
 
@@ -174,6 +185,25 @@ export function CustomerPanel() {
 
       <div className="grid gap-6 2xl:grid-cols-[minmax(620px,1fr)_minmax(460px,640px)]">
         <div className="space-y-4">
+        {access?.isSuperAdmin && plateConflicts.length ? (
+          <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-4 text-amber-950">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <TriangleAlert className="h-4 w-4" />
+              License plate conflicts
+            </div>
+            <div className="grid gap-2">
+              {plateConflicts.slice(0, 6).map((conflict) => (
+                <div key={conflict.licensePlate} className="rounded-md border border-amber-200 bg-white/70 px-3 py-2 text-sm">
+                  <div className="font-medium">{conflict.licensePlate} is linked to {conflict.customerCount} active customers</div>
+                  <div className="mt-1 text-xs">
+                    {conflict.customers.map((customer) => customer.fullName || customer.email || customer.phone || customer.customerId).join(' / ')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="overflow-hidden rounded-lg border">
           <div className="grid min-w-[860px] grid-cols-[minmax(180px,1.4fr)_minmax(180px,1fr)_minmax(140px,.8fr)_minmax(170px,.9fr)_120px] border-b bg-muted/40 px-4 py-3 text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
             <span>Customer</span>

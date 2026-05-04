@@ -1,14 +1,42 @@
 import { supabase } from '../../../utils/supabase/client';
-import { normalizeAccountEventRow, normalizeCustomerDetail, normalizeCustomerRow, normalizeStaffRow, tagsFromText } from './safe';
+import {
+  normalizeAccountEventRow,
+  normalizeCustomerDetail,
+  normalizeCustomerHistory,
+  normalizeCustomerRow,
+  normalizeLicensePlateConflict,
+  normalizeLicensePlateImportResult,
+  normalizeStaffRow,
+  tagsFromText,
+} from './safe';
 import type { CustomerDraft, CustomerNoteVisibility, CustomerOverviewFilters, CustomerVehicleDraft, StaffDraft, StaffRole } from './types';
 
-export async function listCustomerOverview(filters: CustomerOverviewFilters) {
+function normalizeCustomerOverviewFilters(filters: CustomerOverviewFilters | string | unknown): CustomerOverviewFilters {
+  if (typeof filters === 'string') {
+    return { search: filters, status: 'all', tag: '', includeHidden: false };
+  }
+
+  if (!filters || typeof filters !== 'object') {
+    return { search: '', status: 'all', tag: '', includeHidden: false };
+  }
+
+  const source = filters as Partial<CustomerOverviewFilters>;
+  return {
+    search: typeof source.search === 'string' ? source.search : '',
+    status: source.status ?? 'all',
+    tag: typeof source.tag === 'string' ? source.tag : '',
+    includeHidden: Boolean(source.includeHidden),
+  };
+}
+
+export async function listCustomerOverview(filters: CustomerOverviewFilters | string | unknown) {
+  const safeFilters = normalizeCustomerOverviewFilters(filters);
   const { data, error } = await supabase.rpc('cms_list_customer_overview_v2', {
-    p_search: filters.search.trim() || null,
+    p_search: safeFilters.search.trim() || null,
     p_limit: 120,
-    p_status: filters.status === 'all' ? null : filters.status,
-    p_tag: filters.tag.trim() || null,
-    p_include_hidden: filters.includeHidden,
+    p_status: safeFilters.status === 'all' ? null : safeFilters.status,
+    p_tag: safeFilters.tag.trim() || null,
+    p_include_hidden: safeFilters.includeHidden,
   });
 
   if (error) throw error;
@@ -89,6 +117,16 @@ export async function getCustomerDetail(customerId: string) {
   return normalizeCustomerDetail(data);
 }
 
+export async function getCustomerHistory(customerId: string) {
+  const { data, error } = await supabase.rpc('cms_get_customer_history', {
+    p_customer_id: customerId,
+    p_limit: 30,
+  });
+
+  if (error) throw error;
+  return normalizeCustomerHistory(data);
+}
+
 export async function saveCustomer(draft: CustomerDraft) {
   const { data, error } = await supabase.rpc('cms_upsert_customer', {
     p_customer_id: draft.id,
@@ -108,10 +146,34 @@ export async function saveCustomer(draft: CustomerDraft) {
     p_marketing_consent: draft.marketingConsent,
     p_contact_consent: draft.contactConsent,
     p_hidden: draft.hidden,
+    p_customer_type: draft.customerType,
   });
 
   if (error) throw error;
   return String(data ?? '');
+}
+
+export async function bulkImportCustomerPlates(customerId: string, rawPlates: string, defaultVehicleName = '') {
+  const plates = rawPlates
+    .split(/[\n,;]+/)
+    .map((plate) => plate.trim().toUpperCase())
+    .filter(Boolean)
+    .slice(0, 500);
+
+  const { data, error } = await supabase.rpc('cms_bulk_import_customer_plates', {
+    p_customer_id: customerId,
+    p_license_plates: plates,
+    p_default_vehicle_name: defaultVehicleName.trim() || null,
+  });
+
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map(normalizeLicensePlateImportResult).filter((row) => row !== null);
+}
+
+export async function listLicensePlateConflicts() {
+  const { data, error } = await supabase.rpc('cms_list_license_plate_conflicts');
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map(normalizeLicensePlateConflict).filter((row) => row !== null);
 }
 
 export async function setCustomerStatus(customerId: string, status: CustomerDraft['status'], hidden?: boolean) {

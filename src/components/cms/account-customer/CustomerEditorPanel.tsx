@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, EyeOff, FileText, Plus, Save, ShieldAlert } from 'lucide-react';
+import { AlertCircle, EyeOff, FileText, ListPlus, Plus, Save, ShieldAlert } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
-import { CUSTOMER_STATUSES } from './constants';
-import { addCustomerNote, getCustomerDetail, saveCustomer, saveCustomerVehicle, setCustomerStatus } from './api';
+import { CUSTOMER_STATUSES, CUSTOMER_TYPES } from './constants';
+import { addCustomerNote, bulkImportCustomerPlates, getCustomerDetail, saveCustomer, saveCustomerVehicle, setCustomerStatus } from './api';
+import { CustomerHistoryPanel } from './CustomerHistoryPanel';
 import { buildCustomerDraft, buildCustomerDraftFromOverview, buildVehicleDraft, formatDate } from './safe';
 import type {
   CustomerDetail,
@@ -19,7 +20,7 @@ import type {
 
 type CustomerEditorPanelProps = {
   overviewRow: CustomerOverviewRow | null;
-  onSaved: () => void;
+  onSaved: (customerId?: string | null) => void;
 };
 
 function consentValue(value: boolean | null) {
@@ -38,8 +39,16 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [draft, setDraft] = useState<CustomerDraft>(() => buildCustomerDraftFromOverview(null));
   const [vehicleDraft, setVehicleDraft] = useState<CustomerVehicleDraft | null>(null);
+  const [initialVehicleDraft, setInitialVehicleDraft] = useState({
+    licensePlate: '',
+    vehicleName: '',
+    vin: '',
+  });
   const [noteBody, setNoteBody] = useState('');
   const [noteVisibility, setNoteVisibility] = useState<CustomerNoteVisibility>('internal');
+  const [bulkPlates, setBulkPlates] = useState('');
+  const [bulkVehicleName, setBulkVehicleName] = useState('');
+  const [bulkResult, setBulkResult] = useState('');
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +61,11 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     setError(null);
     setDetail(null);
     setVehicleDraft(null);
+    setBulkResult('');
 
     if (!overviewRow) {
       setDraft(buildCustomerDraftFromOverview(null));
+      setInitialVehicleDraft({ licensePlate: '', vehicleName: '', vin: '' });
       return () => {
         active = false;
       };
@@ -105,10 +116,22 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
 
     try {
       const customerId = await saveCustomer(draft);
+      if (!draft.id && initialVehicleDraft.licensePlate.trim()) {
+        await saveCustomerVehicle({
+          id: null,
+          customerId,
+          licensePlate: initialVehicleDraft.licensePlate,
+          vehicleName: initialVehicleDraft.vehicleName,
+          vin: initialVehicleDraft.vin,
+          notes: '',
+          hidden: false,
+        });
+      }
       const nextDetail = await getCustomerDetail(customerId);
       setDetail(nextDetail);
       if (nextDetail) setDraft(buildCustomerDraft(nextDetail));
-      onSaved();
+      setInitialVehicleDraft({ licensePlate: '', vehicleName: '', vin: '' });
+      onSaved(customerId);
     } catch (err: any) {
       setError(err.message ?? 'Failed to save customer.');
     } finally {
@@ -187,15 +210,42 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     setVehicleDraft(buildVehicleDraft(draft.id, vehicle ?? null));
   };
 
+  const importBulkPlates = async () => {
+    if (!draft.id || saving) return;
+    if (!bulkPlates.trim()) {
+      setError('Add at least one license plate to import.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setBulkResult('');
+
+    try {
+      const results = await bulkImportCustomerPlates(draft.id, bulkPlates, bulkVehicleName);
+      const conflictCount = results.filter((row) => row.conflictCustomerCount > 0).length;
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      setBulkPlates('');
+      setBulkVehicleName('');
+      setBulkResult(`${results.length} plates imported${conflictCount ? `, ${conflictCount} with conflicts` : ''}.`);
+      onSaved(draft.id);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to import license plates.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <aside className="space-y-5 rounded-lg border bg-background p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold text-foreground">
-            {overviewRow ? 'Customer detail' : 'New customer'}
+            {overviewRow ? 'Customer detail' : `New ${draft.customerType} customer`}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {loadingDetail ? 'Loading saved customer data...' : hasSavedCustomer ? 'Saved customer profile.' : 'Create a saved customer profile.'}
+            {loadingDetail ? 'Loading saved customer data...' : hasSavedCustomer ? 'Saved customer profile.' : 'Create a customer profile. Business fields are optional.'}
           </p>
         </div>
         {draft.status ? <Badge variant={draft.status === 'blocked' || draft.status === 'deleted' ? 'destructive' : 'secondary'}>{draft.status}</Badge> : null}
@@ -228,11 +278,21 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
               <Label>Language</Label>
               <Input value={draft.language} onChange={(event) => setDraft((current) => ({ ...current, language: event.target.value }))} placeholder="fi / en" />
             </div>
+            <div className="space-y-2">
+              <Label>Customer type</Label>
+              <select
+                value={draft.customerType}
+                onChange={(event) => setDraft((current) => ({ ...current, customerType: event.target.value as CustomerDraft['customerType'] }))}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                {CUSTOMER_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
         <div className="space-y-3 border-t pt-5">
-          <h4 className="text-sm font-semibold text-foreground">Business</h4>
+          <h4 className="text-sm font-semibold text-foreground">Business details optional</h4>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Business ID</Label>
@@ -319,6 +379,37 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
         </div>
       </div>
 
+      {!draft.id ? (
+        <div className="space-y-3 border-t pt-5">
+          <h4 className="text-sm font-semibold text-foreground">First vehicle optional</h4>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>License plate</Label>
+              <Input
+                value={initialVehicleDraft.licensePlate}
+                onChange={(event) => setInitialVehicleDraft((current) => ({ ...current, licensePlate: event.target.value.toUpperCase() }))}
+                placeholder="ABC-123"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Vehicle</Label>
+              <Input
+                value={initialVehicleDraft.vehicleName}
+                onChange={(event) => setInitialVehicleDraft((current) => ({ ...current, vehicleName: event.target.value }))}
+                placeholder="Toyota Corolla"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>VIN</Label>
+              <Input
+                value={initialVehicleDraft.vin}
+                onChange={(event) => setInitialVehicleDraft((current) => ({ ...current, vin: event.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         <Button onClick={saveDraft} disabled={saving}>
           <Save className="mr-2 h-4 w-4" />
@@ -385,6 +476,33 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
                 </div>
               </div>
             ) : null}
+
+            {draft.customerType !== 'personal' ? (
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="flex items-center gap-2">
+                  <ListPlus className="h-4 w-4 text-primary" />
+                  <h5 className="text-sm font-semibold text-foreground">Bulk license plate import</h5>
+                </div>
+                <textarea
+                  value={bulkPlates}
+                  onChange={(event) => setBulkPlates(event.target.value.toUpperCase())}
+                  rows={5}
+                  className="min-h-[112px] w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="ABC-123&#10;XYZ-789&#10;FLEET-01"
+                />
+                <Input
+                  value={bulkVehicleName}
+                  onChange={(event) => setBulkVehicleName(event.target.value)}
+                  placeholder="Optional default vehicle label"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" onClick={importBulkPlates} disabled={saving}>
+                    Import plates
+                  </Button>
+                  {bulkResult ? <span className="text-xs text-muted-foreground">{bulkResult}</span> : null}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-3 border-t pt-5">
@@ -426,6 +544,8 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
               <p className="text-sm text-muted-foreground">No notes saved.</p>
             )}
           </div>
+
+          <CustomerHistoryPanel customerId={draft.id} />
         </>
       ) : (
         <p className="border-t pt-5 text-sm text-muted-foreground">

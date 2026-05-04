@@ -56,14 +56,61 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 
 ## Phase 4: Customer History
 
-- [ ] Show related bookings
-- [ ] Show related orders
-- [ ] Show related invoices/receipts
-- [ ] Add customer event timeline
-- [ ] Link from customer to booking/order/invoice pages
-- [ ] Add last-activity detail view
+- [x] Show related bookings
+- [x] Show related orders
+- [x] Show related invoices/receipts
+- [x] Add customer event timeline
+- [x] Link from customer to booking/order/invoice pages
+- [x] Add last-activity detail view
 
-## Phase 5: Security & Audit
+## Phase 5: License Plate Mapping & Fleet Grouping
+
+- [x] Store customer vehicles/license plates under customer profiles
+- [x] Allow license plate search in customer overview
+- [x] Show related activity by saved customer license plates
+- [x] Add `customer_type`: `personal`, `business`, `fleet`
+- [x] Add bulk license plate import for business/fleet customers
+- [ ] Add nullable `customer_id` and `customer_vehicle_id` links to bookings/schedule/orders/invoices/rescue records where missing
+- [ ] Add automatic activity resolver by priority: `customer_id`, email, phone, license plate
+- [ ] Store activity match source: `manual`, `email`, `phone`, `license_plate`, `auto_license_plate`
+- [ ] Add suggested-link queue before fully automatic mapping
+- [ ] Auto-link only high-confidence license plate matches
+- [x] Detect duplicate active license plate ownership across customers
+- [x] Block auto-link when plate appears under multiple active customers
+- [x] Add conflict review UI for duplicate plate ownership
+- [ ] Add unlink/correct mapping action for staff/super admin
+- [ ] Add audit events for auto-link, manual-link, unlink, and conflict resolution
+- [ ] Add GDPR export coverage for license plate and vehicle-link data
+- [ ] Add GDPR anonymize/delete handling for vehicle and plate mappings
+
+## Phase 6: Customer Account & Benefits Portal
+
+- [ ] Add optional `account_id` / auth user link to customer profiles
+- [ ] Support customer-owned account login for customer benefit page
+- [ ] Show next appointment day
+- [ ] Show booked service appointments
+- [ ] Show scheduled pickup appointments
+- [ ] Show next possible service date/check-in availability
+- [ ] Show digital service book
+- [ ] Track maintenance work history: fixes, parts changed, inspections, estimates
+- [ ] Track service work history: cleaning, tire changes, seasonal services, routine checks
+- [ ] Link service book entries to customer vehicles/license plates
+- [ ] Link service book entries to CMS jobs, bookings, invoices, and staff notes
+- [ ] Add customer benefit points
+- [ ] Add discount tiers based on point thresholds
+- [ ] Show customer benefit status in CMS Account & Customer
+- [ ] Show customer benefit status in customer portal
+- [ ] Add staff controls to adjust points with audit logging
+- [ ] Add scheduled maintenance reminder rules per vehicle
+- [ ] Track mileage/km targets for future maintenance reminders
+- [ ] Track date-based maintenance reminders
+- [ ] Schedule email notifications for upcoming maintenance work
+- [ ] Schedule email notifications for appointment reminders
+- [ ] Add notification history per customer
+- [ ] Add unsubscribe/consent handling for marketing vs service-critical messages
+- [ ] Let CMS staff see and manage all customer portal data
+
+## Phase 7: Security & Audit
 
 - [x] Avoid browser-side service-role/admin-auth operations
 - [x] Add account event logging in SQL
@@ -75,7 +122,7 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 - [ ] Confirm RLS coverage for all customer/account tables
 - [ ] Test role boundaries with real accounts
 
-## Phase 6: PWA / Role Integration
+## Phase 8: PWA / Role Integration
 
 - [x] Fix PWA login for new role model
 - [x] Allow super admin into PWA
@@ -83,7 +130,7 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 - [ ] Confirm disabled/deleted accounts cannot access PWA
 - [ ] Confirm customer-only account sees only Customer tab
 
-## Phase 7: QA
+## Phase 9: QA
 
 - [ ] Test as `phat.le@finepass.fi`
 - [ ] Test as supervisor
@@ -107,15 +154,45 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 - [x] `cms_add_customer_note`
 - [x] `cms_list_customer_overview_v2`
 - [x] `cms_merge_customers`
+- [x] `cms_get_customer_history`
+- [x] `cms_bulk_import_customer_plates`
+- [x] `cms_list_license_plate_conflicts`
 - [x] `cms_add_staff_account_by_email`
 - [x] `cms_list_account_events`
 - [x] Edge Function: `cms_account_invite`
 
+## License Plate Mapping Rules
+
+- License plate is treated as customer personal data under GDPR when linked to a person, business contact, or customer account.
+- License plate can map activity into a customer account, but it should be treated as a matching signal, not the only identity.
+- Matching priority:
+  1. Existing `customer_id`
+  2. Email
+  3. Phone
+  4. License plate
+- Fleet/business model:
+  - One customer profile can own many vehicles/license plates.
+  - Adding a list of plates to a fleet customer should group matching activity under that customer.
+  - If a plate exists under more than one active customer, automatic mapping must stop and create a review conflict.
+- Every automatic or manual mapping change must be auditable.
+- Staff must be able to unlink or correct wrong mappings.
+
+## Customer Account / Benefit Portal Rules
+
+- A customer profile can later be linked to an auth account.
+- Customer account access must be separated from CMS staff access.
+- Customer portal data should be read-only by default, except customer-controlled profile preferences.
+- Service-critical emails, appointment reminders, and marketing/benefit emails must respect different consent rules.
+- Digital service book entries must be tied to a vehicle where possible.
+- Maintenance reminders should support both date-based and mileage/km-based triggers.
+- Point and discount changes must be auditable.
+- CMS Account & Customer must remain the staff control center for all customer portal data.
+
 ## Recommended Next Step
 
-Continue with **Phase 4: Customer History**, starting with:
+Continue with **Phase 5: License Plate Mapping & Fleet Grouping**, starting with:
 
-- [ ] Show related bookings
-- [ ] Show related orders
-- [ ] Show related invoices/receipts
-- [ ] Add customer event timeline
+- [ ] Add suggested-link queue for license plate matches
+- [ ] Add nullable `customer_id` and `customer_vehicle_id` links to bookings/schedule/orders/invoices/rescue records where missing
+- [ ] Add automatic activity resolver by priority: `customer_id`, email, phone, license plate
+- [ ] Add unlink/correct mapping action for staff/super admin

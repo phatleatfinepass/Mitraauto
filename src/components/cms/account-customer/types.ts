@@ -4,6 +4,7 @@ export type CmsPermissionValue = 'none' | 'read' | 'read_write';
 export type StaffRole = 'super_admin' | 'admin' | 'supervisor' | 'staff' | 'customer' | 'user' | 'disabled';
 export type AccountStatus = 'active' | 'hidden' | 'suspended' | 'deleted';
 export type CustomerStatus = 'active' | 'hidden' | 'blocked' | 'merged' | 'deleted';
+export type CustomerType = 'personal' | 'business' | 'fleet';
 export type CustomerNoteVisibility = 'internal' | 'super_admin';
 
 export interface CustomerOverviewRow {
@@ -77,6 +78,7 @@ export interface CustomerNoteRow {
 
 export interface CustomerDetail {
   id: string;
+  customerType: CustomerType;
   primaryEmail: string;
   primaryPhone: string;
   fullName: string;
@@ -102,6 +104,7 @@ export interface CustomerDetail {
 
 export interface CustomerDraft {
   id: string | null;
+  customerType: CustomerType;
   fullName: string;
   primaryEmail: string;
   primaryPhone: string;
@@ -135,4 +138,91 @@ export interface CustomerOverviewFilters {
   status: 'all' | CustomerStatus;
   tag: string;
   includeHidden: boolean;
+}
+
+export interface LicensePlateImportResult {
+  licensePlate: string;
+  vehicleId: string;
+  action: string;
+  conflictCustomerCount: number;
+}
+
+export interface LicensePlateConflictOwner {
+  customerId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  customerType: CustomerType;
+}
+
+export interface LicensePlateConflict {
+  licensePlate: string;
+  customerCount: number;
+  customers: LicensePlateConflictOwner[];
+}
+
+export interface CustomerHistoryBooking {
+  id: string;
+  createdAt: string | null;
+  status: string;
+  bookingDate: string | null;
+  bookingTime: string | null;
+  bookingLanguage: string;
+  licensePlate: string;
+  serviceName: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  notes: string;
+}
+
+export interface CustomerHistoryOrder {
+  id: string;
+  createdAt: string | null;
+  status: string;
+  paytrailStatus: string;
+  paytrailTransactionId: string;
+  paytrailReference: string;
+  email: string;
+  phone: string;
+  totalCents: number | null;
+  itemLabel: string;
+}
+
+export interface CustomerHistoryInvoice {
+  id: string;
+  documentNumber: string;
+  documentType: string;
+  sourceType: string;
+  orderId: string | null;
+  bookingId: string | null;
+  status: string;
+  issueDate: string | null;
+  dueDate: string | null;
+  sentAt: string | null;
+  paidAt: string | null;
+  totalCents: number | null;
+  balanceCents: number | null;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  paymentStatus: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface CustomerHistoryEvent {
+  id: string;
+  actorId: string | null;
+  actorEmail: string;
+  eventType: string;
+  details: Record<string, unknown>;
+  createdAt: string | null;
+}
+
+export interface CustomerHistory {
+  bookings: CustomerHistoryBooking[];
+  orders: CustomerHistoryOrder[];
+  invoices: CustomerHistoryInvoice[];
+  events: CustomerHistoryEvent[];
 }
