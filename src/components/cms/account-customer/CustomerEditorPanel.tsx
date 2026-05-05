@@ -7,6 +7,7 @@ import { Label } from '../../ui/label';
 import { CUSTOMER_STATUSES, CUSTOMER_TYPES } from './constants';
 import { addCustomerNote, bulkImportCustomerPlates, getCustomerDetail, saveCustomer, saveCustomerVehicle, setCustomerStatus } from './api';
 import { CustomerHistoryPanel } from './CustomerHistoryPanel';
+import { CustomerLinkSuggestionsPanel } from './CustomerLinkSuggestionsPanel';
 import { buildCustomerDraft, buildCustomerDraftFromOverview, buildVehicleDraft, formatDate } from './safe';
 import type {
   CustomerDetail,
@@ -49,6 +50,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   const [bulkPlates, setBulkPlates] = useState('');
   const [bulkVehicleName, setBulkVehicleName] = useState('');
   const [bulkResult, setBulkResult] = useState('');
+  const [mappingRefreshKey, setMappingRefreshKey] = useState(0);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +64,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     setDetail(null);
     setVehicleDraft(null);
     setBulkResult('');
+    setMappingRefreshKey(0);
 
     if (!overviewRow) {
       setDraft(buildCustomerDraftFromOverview(null));
@@ -235,6 +238,11 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleActivityLinked = () => {
+    setMappingRefreshKey((current) => current + 1);
+    onSaved(draft.id);
   };
 
   return (
@@ -545,7 +553,9 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
             )}
           </div>
 
-          <CustomerHistoryPanel customerId={draft.id} />
+          <CustomerLinkSuggestionsPanel customerId={draft.id} onLinked={handleActivityLinked} />
+
+          <CustomerHistoryPanel key={`${draft.id}-${mappingRefreshKey}`} customerId={draft.id} />
         </>
       ) : (
         <p className="border-t pt-5 text-sm text-muted-foreground">

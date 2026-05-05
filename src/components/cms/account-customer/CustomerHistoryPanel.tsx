@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CalendarClock, FileText, History, Package, ReceiptText, RefreshCcw } from 'lucide-react';
+import { AlertCircle, CalendarClock, FileText, History, Package, ReceiptText, RefreshCcw, Unlink } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
-import { getCustomerHistory } from './api';
+import { getCustomerHistory, unlinkCustomerActivity } from './api';
 import { formatDate, formatMoney } from './safe';
-import type { CustomerHistory } from './types';
+import type { CustomerActivityType, CustomerHistory } from './types';
 
-type HistoryTab = 'bookings' | 'orders' | 'invoices' | 'timeline';
+type HistoryTab = 'bookings' | 'orders' | 'invoices' | 'rescue' | 'timeline';
 
 type CustomerHistoryPanelProps = {
   customerId: string;
@@ -16,6 +16,7 @@ const emptyHistory: CustomerHistory = {
   bookings: [],
   orders: [],
   invoices: [],
+  rescue: [],
   events: [],
 };
 
@@ -29,11 +30,13 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unlinkingKey, setUnlinkingKey] = useState<string | null>(null);
 
   const counts = useMemo(() => ({
     bookings: history.bookings.length,
     orders: history.orders.length,
     invoices: history.invoices.length,
+    rescue: history.rescue.length,
     timeline: history.events.length,
   }), [history]);
 
@@ -69,6 +72,37 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
     </p>
   );
 
+  const unlinkActivity = async (activityType: CustomerActivityType, activityId: string) => {
+    const key = `${activityType}-${activityId}`;
+    if (unlinkingKey) return;
+    setUnlinkingKey(key);
+    setError(null);
+
+    try {
+      await unlinkCustomerActivity(activityType, activityId);
+      await loadHistory();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to unlink activity.');
+    } finally {
+      setUnlinkingKey(null);
+    }
+  };
+
+  const renderLinkBadges = (activityType: CustomerActivityType, activityId: string, customerId: string | null, matchSource: string, linkedAt: string | null) => {
+    if (!customerId) return null;
+    const key = `${activityType}-${activityId}`;
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">{matchSource || 'linked'}</Badge>
+        {linkedAt ? <span className="text-xs text-muted-foreground">Linked {formatDate(linkedAt)}</span> : null}
+        <Button size="sm" variant="ghost" onClick={() => unlinkActivity(activityType, activityId)} disabled={Boolean(unlinkingKey)}>
+          <Unlink className="mr-2 h-4 w-4" />
+          {unlinkingKey === key ? 'Unlinking...' : 'Unlink'}
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3 border-t pt-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -94,6 +128,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
           { id: 'bookings' as const, label: 'Bookings', icon: CalendarClock },
           { id: 'orders' as const, label: 'Orders', icon: Package },
           { id: 'invoices' as const, label: 'Receipts', icon: ReceiptText },
+          { id: 'rescue' as const, label: 'Rescue', icon: AlertCircle },
           { id: 'timeline' as const, label: 'Timeline', icon: FileText },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -130,6 +165,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
                   Open schedule
                 </a>
               </div>
+              {renderLinkBadges('booking', booking.id, booking.customerId, booking.customerMatchSource, booking.customerLinkedAt)}
             </div>
           ))
         ) : null}
@@ -149,6 +185,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
                   Open orders
                 </a>
               </div>
+              {renderLinkBadges('order', order.id, order.customerId, order.customerMatchSource, order.customerLinkedAt)}
             </div>
           ))
         ) : null}
@@ -168,6 +205,27 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
                   Open receipts
                 </a>
               </div>
+              {renderLinkBadges('invoice', invoice.id, invoice.customerId, invoice.customerMatchSource, invoice.customerLinkedAt)}
+            </div>
+          ))
+        ) : null}
+
+        {activeTab === 'rescue' ? (
+          history.rescue.length === 0 ? renderEmpty('rescue requests') : history.rescue.map((request) => (
+            <div key={request.id} className="border-b px-3 py-3 text-sm last:border-b-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">{request.customerName || `Rescue ${request.id}`}</span>
+                <Badge variant="outline">{request.status || 'unknown'}</Badge>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {formatDate(request.createdAt)} · {request.licensePlate || 'No plate'} · {request.city || request.phone || '-'}
+              </div>
+              <div className="mt-2">
+                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms/rescue')}>
+                  Open rescue
+                </a>
+              </div>
+              {renderLinkBadges('rescue', request.id, request.customerId, request.customerMatchSource, request.customerLinkedAt)}
             </div>
           ))
         ) : null}

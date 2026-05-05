@@ -70,18 +70,20 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 - [x] Show related activity by saved customer license plates
 - [x] Add `customer_type`: `personal`, `business`, `fleet`
 - [x] Add bulk license plate import for business/fleet customers
-- [ ] Add nullable `customer_id` and `customer_vehicle_id` links to bookings/schedule/orders/invoices/rescue records where missing
-- [ ] Add automatic activity resolver by priority: `customer_id`, email, phone, license plate
-- [ ] Store activity match source: `manual`, `email`, `phone`, `license_plate`, `auto_license_plate`
-- [ ] Add suggested-link queue before fully automatic mapping
-- [ ] Auto-link only high-confidence license plate matches
+- [x] Add nullable `customer_id` and `customer_vehicle_id` links to bookings/schedule/orders/invoices/rescue records where missing
+- [x] Add automatic activity resolver by priority: `customer_id`, email, phone, license plate
+- [x] Store activity match source: `manual`, `email`, `phone`, `license_plate`, `auto_license_plate`
+- [x] Add suggested-link queue before fully automatic mapping
+- [x] Auto-link only high-confidence license plate matches
 - [x] Detect duplicate active license plate ownership across customers
 - [x] Block auto-link when plate appears under multiple active customers
 - [x] Add conflict review UI for duplicate plate ownership
-- [ ] Add unlink/correct mapping action for staff/super admin
-- [ ] Add audit events for auto-link, manual-link, unlink, and conflict resolution
-- [ ] Add GDPR export coverage for license plate and vehicle-link data
-- [ ] Add GDPR anonymize/delete handling for vehicle and plate mappings
+- [x] Add unlink/correct mapping action for staff/super admin UI
+- [x] Add audit events for manual-link and unlink
+- [x] Add audit events for auto-link
+- [x] Add audit events for conflict resolution
+- [x] Add GDPR export coverage for license plate and vehicle-link data
+- [x] Add GDPR anonymize/delete handling for vehicle and plate mappings
 
 ## Phase 6: Customer Account & Benefits Portal
 
@@ -157,6 +159,13 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 - [x] `cms_get_customer_history`
 - [x] `cms_bulk_import_customer_plates`
 - [x] `cms_list_license_plate_conflicts`
+- [x] `cms_list_customer_link_suggestions`
+- [x] `cms_link_customer_activity`
+- [x] `cms_unlink_customer_activity`
+- [x] History link metadata for booking/order/invoice/rescue rows
+- [x] `cms_auto_link_customer_activities`
+- [x] `cms_export_customer_data`
+- [x] `cms_anonymize_customer`
 - [x] `cms_add_staff_account_by_email`
 - [x] `cms_list_account_events`
 - [x] Edge Function: `cms_account_invite`
@@ -192,7 +201,7 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 
 Continue with **Phase 5: License Plate Mapping & Fleet Grouping**, starting with:
 
-- [ ] Add suggested-link queue for license plate matches
-- [ ] Add nullable `customer_id` and `customer_vehicle_id` links to bookings/schedule/orders/invoices/rescue records where missing
-- [ ] Add automatic activity resolver by priority: `customer_id`, email, phone, license plate
-- [ ] Add unlink/correct mapping action for staff/super admin
+- [x] Add suggested-link queue for license plate matches
+- [x] Add nullable `customer_id` and `customer_vehicle_id` links to bookings/schedule/orders/invoices/rescue records where missing
+- [x] Add automatic activity resolver by priority: `customer_id`, email, phone, license plate
+- [x] Add unlink/correct mapping action for staff/super admin UI

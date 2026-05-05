@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, Filter, GitMerge, Plus, RefreshCcw, Search, TriangleAlert } from 'lucide-react';
+import { AlertCircle, Filter, GitMerge, Link2, Plus, RefreshCcw, Search, TriangleAlert } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { useCmsAccess } from '../CmsAccessContext';
 import { CUSTOMER_STATUSES } from './constants';
-import { listCustomerOverview, listLicensePlateConflicts, mergeCustomers } from './api';
+import { autoLinkCustomerActivities, listCustomerOverview, listLicensePlateConflicts, mergeCustomers } from './api';
 import { CustomerEditorPanel } from './CustomerEditorPanel';
 import { formatDate } from './safe';
 import type { CustomerOverviewFilters, CustomerOverviewRow, CustomerStatus, LicensePlateConflict } from './types';
@@ -21,6 +21,8 @@ export function CustomerPanel() {
   });
   const [loading, setLoading] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [autoLinking, setAutoLinking] = useState(false);
+  const [autoLinkResult, setAutoLinkResult] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -106,6 +108,24 @@ export function CustomerPanel() {
     }
   };
 
+  const runAutoLink = async () => {
+    if (autoLinking) return;
+    setAutoLinking(true);
+    setAutoLinkResult('');
+    setError(null);
+
+    try {
+      const result = await autoLinkCustomerActivities();
+      const total = result.reduce((sum, row) => sum + row.linkedCount, 0);
+      setAutoLinkResult(total ? result.map((row) => `${row.linkedCount} ${row.activityType}`).join(', ') : 'No high-confidence matches linked.');
+      await loadRows();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to auto-link customer activity.');
+    } finally {
+      setAutoLinking(false);
+    }
+  };
+
   return (
     <section className="space-y-4">
       <div>
@@ -142,7 +162,19 @@ export function CustomerPanel() {
           <Plus className="mr-2 h-4 w-4" />
           New customer
         </Button>
+        {access?.isSuperAdmin ? (
+          <Button variant="outline" onClick={runAutoLink} disabled={autoLinking || loading}>
+            <Link2 className="mr-2 h-4 w-4" />
+            {autoLinking ? 'Linking...' : 'Auto-link'}
+          </Button>
+        ) : null}
       </div>
+
+      {autoLinkResult ? (
+        <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          {autoLinkResult}
+        </div>
+      ) : null}
 
       <div className="rounded-lg border bg-background p-4">
         <div className="grid gap-3 lg:grid-cols-[160px_minmax(180px,1fr)_auto] lg:items-center">

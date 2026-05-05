@@ -4,8 +4,8 @@ import { useTheme } from './ThemeContext';
 import { Card } from './ui/card';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5 } from './legal/PrivacyPolicyVersions';
-import { TermsV1, TermsV2, TermsV3, TermsV4, TermsV5, TermsV6 } from './legal/TermsVersions';
+import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5, PrivacyPolicyV51 } from './legal/PrivacyPolicyVersions';
+import { TermsV1, TermsV2, TermsV3, TermsV4, TermsV5, TermsV6, TermsV61 } from './legal/TermsVersions';
 
 interface LegalPageProps {
   initialSection?: 'privacy' | 'terms';
@@ -49,22 +49,48 @@ const privacyVersions: LegalVersion[] = [
     dateKey: 'legal.timeline.v5.date',
     descriptionKey: 'legal.timeline.v5.description'
   },
+  {
+    version: 'v5.1',
+    date: '2026-05-01',
+    dateKey: 'legal.timeline.v7.date',
+    descriptionKey: 'legal.timeline.v7.privacyDescription'
+  },
 ];
 
 const termsVersions: LegalVersion[] = [
-  ...privacyVersions,
+  ...privacyVersions.slice(0, 5),
+  {
+    version: 'v5.1',
+    date: '2025-11-27',
+    dateKey: 'legal.timeline.v5Paytrail.date',
+    descriptionKey: 'legal.timeline.v5Paytrail.description'
+  },
   {
     version: 'v6.0',
     date: '2026-04-15',
     dateKey: 'legal.timeline.v6.date',
     descriptionKey: 'legal.timeline.v6.description'
   },
+  {
+    version: 'v6.1',
+    date: '2026-05-01',
+    dateKey: 'legal.timeline.v7.date',
+    descriptionKey: 'legal.timeline.v7.termsDescription'
+  },
 ];
+
+const getPrivacyVersionIndexForDate = (date: string) => privacyVersions.reduce((matchedIndex, version, index) => (
+  version.date <= date ? index : matchedIndex
+), 0);
 
 export function LegalPage({ initialSection }: LegalPageProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
+  const visibleTimelineCount = 4;
   const [selectedTermsVersion, setSelectedTermsVersion] = useState<number>(termsVersions.length - 1);
+  const [timelineStartIndex, setTimelineStartIndex] = useState<number>(
+    Math.max(0, termsVersions.length - visibleTimelineCount)
+  );
 
   useEffect(() => {
     if (initialSection) {
@@ -78,14 +104,41 @@ export function LegalPage({ initialSection }: LegalPageProps) {
   }, [initialSection]);
 
   const handleTermsVersionSelect = (index: number) => {
+    if (index === selectedTermsVersion) {
+      return;
+    }
+
+    const currentPrivacyVersionIndex = getPrivacyVersionIndexForDate(termsVersions[selectedTermsVersion].date);
+    const nextPrivacyVersionIndex = getPrivacyVersionIndexForDate(termsVersions[index].date);
+    const privacyChanged = currentPrivacyVersionIndex !== nextPrivacyVersionIndex;
+    const termsChanged = selectedTermsVersion !== index;
+    const scrollTargetId = privacyChanged && termsChanged
+      ? 'privacy'
+      : privacyChanged
+        ? 'privacy'
+        : 'terms';
+
     setSelectedTermsVersion(index);
-    // Smooth scroll to terms section on version change
-    setTimeout(() => {
-      const element = document.getElementById('terms');
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimelineStartIndex((currentStart) => {
+      if (index < currentStart) {
+        return index;
       }
-    }, 100);
+
+      if (index >= currentStart + visibleTimelineCount) {
+        return Math.min(index - visibleTimelineCount + 1, Math.max(0, termsVersions.length - visibleTimelineCount));
+      }
+
+      return currentStart;
+    });
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(scrollTargetId)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    });
   };
 
   const handlePreviousTermsVersion = () => {
@@ -100,9 +153,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
     }
   };
 
+  const selectedTimelineDate = termsVersions[selectedTermsVersion].date;
+  const selectedPrivacyVersionIndex = getPrivacyVersionIndexForDate(selectedTimelineDate);
+
   // Render the appropriate Privacy Policy version
   const renderPrivacyVersion = () => {
-    switch (privacyVersions.length - 1) {
+    switch (selectedPrivacyVersionIndex) {
       case 0:
         return <PrivacyPolicyV1 t={t} />;
       case 1:
@@ -112,8 +168,10 @@ export function LegalPage({ initialSection }: LegalPageProps) {
       case 3:
         return <PrivacyPolicyV4 t={t} />;
       case 4:
-      default:
         return <PrivacyPolicyV5 t={t} />;
+      case 5:
+      default:
+        return <PrivacyPolicyV51 t={t} />;
     }
   };
 
@@ -131,10 +189,84 @@ export function LegalPage({ initialSection }: LegalPageProps) {
       case 4:
         return <TermsV5 t={t} />;
       case 5:
-      default:
+        return <TermsV5 t={t} />;
+      case 6:
         return <TermsV6 t={t} />;
+      case 7:
+      default:
+        return <TermsV61 t={t} />;
     }
   };
+
+  const shouldShowPaytrailSection = new Date(termsVersions[selectedTermsVersion].date) >= new Date('2025-11-27');
+  const isSelectedTermsArchived = selectedTermsVersion < termsVersions.length - 1;
+  const isSelectedPrivacyArchived = selectedPrivacyVersionIndex < privacyVersions.length - 1;
+  const visibleTimelineVersions = termsVersions.slice(timelineStartIndex, timelineStartIndex + visibleTimelineCount);
+  const selectedVisibleIndex = selectedTermsVersion - timelineStartIndex;
+  const timelineProgress = selectedVisibleIndex >= 0 && visibleTimelineVersions.length > 1
+    ? (selectedVisibleIndex / (visibleTimelineVersions.length - 1)) * 100
+    : 0;
+  const archivedDocumentClassName = 'border-amber-500/60 bg-amber-50/70 dark:bg-amber-950/25 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.25)]';
+  const renderArchivedDocumentFrame = (document: React.ReactNode) => (
+    <div className="relative overflow-hidden rounded-2xl">
+      <svg
+        className="pointer-events-none absolute inset-0 z-20 h-full w-full text-amber-900/10 dark:text-amber-200/10"
+        aria-hidden="true"
+      >
+        <defs>
+          <pattern
+            id="archived-watermark-pattern"
+            width="280"
+            height="120"
+            patternUnits="userSpaceOnUse"
+          >
+            <text
+              x="35"
+              y="42"
+              transform="rotate(-18 35 42)"
+              fill="currentColor"
+              fontSize="14"
+              fontWeight="800"
+              letterSpacing="2.2"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              {t('legal.archiveWatermark.title')}
+            </text>
+            <text
+              x="175"
+              y="102"
+              transform="rotate(-18 175 102)"
+              fill="currentColor"
+              fontSize="14"
+              fontWeight="800"
+              letterSpacing="2.2"
+              fontFamily="Arial, Helvetica, sans-serif"
+            >
+              {t('legal.archiveWatermark.title')}
+            </text>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#archived-watermark-pattern)" />
+      </svg>
+      <div className="relative z-10">
+        {document}
+      </div>
+    </div>
+  );
+  const termsDocument = renderTermsVersion();
+  const decoratedTermsDocument = isSelectedTermsArchived && React.isValidElement(termsDocument)
+    ? React.cloneElement(termsDocument as React.ReactElement<{ className?: string; style?: React.CSSProperties }>, {
+        className: `${termsDocument.props.className ?? ''} ${archivedDocumentClassName}`,
+      })
+    : termsDocument;
+  const privacyDocument = renderPrivacyVersion();
+  const decoratedPrivacyDocument = isSelectedPrivacyArchived && React.isValidElement(privacyDocument)
+    ? React.cloneElement(privacyDocument as React.ReactElement<{ className?: string; style?: React.CSSProperties }>, {
+        className: `${privacyDocument.props.className ?? ''} ${archivedDocumentClassName}`,
+      })
+    : privacyDocument;
+  const framedPrivacyDocument = isSelectedPrivacyArchived ? renderArchivedDocumentFrame(decoratedPrivacyDocument) : decoratedPrivacyDocument;
+  const framedTermsDocument = isSelectedTermsArchived ? renderArchivedDocumentFrame(decoratedTermsDocument) : decoratedTermsDocument;
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,25 +304,28 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                 <div 
                   className="absolute top-0 left-0 h-full bg-[#FF6B35]/30 transition-all duration-700 ease-in-out"
                   style={{ 
-                    width: `${(selectedTermsVersion / (termsVersions.length - 1)) * 100}%` 
+                    width: `${Math.max(0, Math.min(100, timelineProgress))}%` 
                   }}
                 />
                 
                 {/* Timeline Markers */}
                 <div className="absolute inset-0 flex justify-between items-start">
-                  {termsVersions.map((version, index) => (
+                  {visibleTimelineVersions.map((version, visibleIndex) => {
+                    const versionIndex = timelineStartIndex + visibleIndex;
+
+                    return (
                     <button
                       key={version.date}
-                      onClick={() => handleTermsVersionSelect(index)}
+                      onClick={() => handleTermsVersionSelect(versionIndex)}
                       className="group relative flex flex-col items-center min-w-0 flex-1"
                     >
                       {/* Vertical Marker */}
                       <div 
                         className={`
                           w-px transition-all duration-300
-                          ${selectedTermsVersion === index 
+                          ${selectedTermsVersion === versionIndex 
                             ? 'h-4 bg-[#FF6B35]' 
-                            : selectedTermsVersion > index
+                            : selectedTermsVersion > versionIndex
                               ? 'h-2.5 bg-[#FF6B35]/40 group-hover:h-4 group-hover:bg-[#FF6B35]/60'
                               : 'h-2.5 bg-border/60 group-hover:h-4 group-hover:bg-[#FF6B35]/30'
                           }
@@ -201,7 +336,7 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                       <span 
                         className={`
                           mt-2 text-[10px] sm:text-xs transition-all duration-300 text-center px-1
-                          ${selectedTermsVersion === index 
+                          ${selectedTermsVersion === versionIndex 
                             ? 'text-[#FF6B35]' 
                             : 'text-muted-foreground/70 group-hover:text-muted-foreground'
                           }
@@ -214,7 +349,8 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                         {t(version.dateKey)}
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -255,12 +391,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                   {t('legal.privacy.title')}
                 </h1>
                 <motion.span
-                  key="privacy-v5"
+                  key={selectedPrivacyVersionIndex}
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
                 >
-                  {privacyVersions[privacyVersions.length - 1].version}
+                  {privacyVersions[selectedPrivacyVersionIndex].version}
                 </motion.span>
               </div>
               <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
@@ -268,27 +404,22 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                 {t('legal.privacy.subtitle')}
               </p>
               <motion.div
-                key="privacy-v5-meta"
+                key={selectedPrivacyVersionIndex}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-sm text-muted-foreground space-y-1"
               >
-                <p><strong>{t('legal.privacy.effective')}:</strong> {t(privacyVersions[privacyVersions.length - 1].dateKey)}</p>
-                <p><strong>{t('legal.privacy.lastUpdated')}:</strong> {t(privacyVersions[privacyVersions.length - 1].dateKey)}</p>
+                <p><strong>{t('legal.privacy.effective')}:</strong> {t(privacyVersions[selectedPrivacyVersionIndex].dateKey)}</p>
+                <p><strong>{t('legal.privacy.lastUpdated')}:</strong> {t(privacyVersions[selectedPrivacyVersionIndex].dateKey)}</p>
                 <p className="mt-3 text-xs italic text-[#FF6B35]">
-                  {t(privacyVersions[privacyVersions.length - 1].descriptionKey)}
+                  {t(privacyVersions[selectedPrivacyVersionIndex].descriptionKey)}
                 </p>
               </motion.div>
             </div>
 
-            <motion.div
-              key="privacy-v5-content"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              {renderPrivacyVersion()}
-            </motion.div>
+            <div>
+              {framedPrivacyDocument}
+            </div>
           </motion.div>
         </div>
       </section>
@@ -334,72 +465,68 @@ export function LegalPage({ initialSection }: LegalPageProps) {
               </motion.div>
             </div>
 
-            <motion.div
-              key={selectedTermsVersion}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              {renderTermsVersion()}
-            </motion.div>
+            <div>
+              {framedTermsDocument}
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Paytrail Payment Service Provider Section */}
-      <section id="paytrail" className="py-24 lg:py-32 scroll-mt-16 bg-muted/30">
-        <div className="container mx-auto max-w-4xl px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="mb-12">
-              <h1 className="text-4xl lg:text-5xl tracking-tight mb-4">
-                {t('legal.paytrail.title')}
-              </h1>
-              <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
-              <p className="text-lg text-muted-foreground mb-4">
-                {t('legal.paytrail.subtitle')}
-              </p>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p><strong>{t('legal.paytrail.effective')}:</strong> {t('legal.paytrail.effectiveDate')}</p>
-                <p><strong>{t('legal.paytrail.lastUpdated')}:</strong> {t('legal.paytrail.effectiveDate')}</p>
-              </div>
-            </div>
-
-            <Card className="border rounded-2xl p-8 lg:p-12">
-              <div className="space-y-6 text-muted-foreground">
-                <p className="text-base leading-relaxed">
-                  {t('legal.paytrail.intro')}
+      {shouldShowPaytrailSection && (
+        <section id="paytrail" className="py-24 lg:py-32 scroll-mt-16 bg-muted/30">
+          <div className="container mx-auto max-w-4xl px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="mb-12">
+                <h1 className="text-4xl lg:text-5xl tracking-tight mb-4">
+                  {t('legal.paytrail.title')}
+                </h1>
+                <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
+                <p className="text-lg text-muted-foreground mb-4">
+                  {t('legal.paytrail.subtitle')}
                 </p>
-                
-                <div className="mt-6 pt-6 border-t border-border space-y-2">
-                  <p className="font-medium text-foreground text-lg">{t('legal.paytrail.company')}</p>
-                  <p><strong>{t('legal.paytrail.businessId')}:</strong> {t('legal.paytrail.businessIdValue')}</p>
-                  <p>{t('legal.paytrail.address1')}</p>
-                  <p>{t('legal.paytrail.address2')}</p>
-                  <p>{t('legal.paytrail.address3')}</p>
-                  <p className="mt-4">
-                    <a 
-                      href={t('legal.paytrail.website')}
-                      className="text-[#FF6B35] hover:underline inline-flex items-center gap-1"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {t('legal.paytrail.website')}
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                  </p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p><strong>{t('legal.paytrail.effective')}:</strong> {t('legal.paytrail.effectiveDate')}</p>
+                  <p><strong>{t('legal.paytrail.lastUpdated')}:</strong> {t('legal.paytrail.effectiveDate')}</p>
                 </div>
               </div>
-            </Card>
-          </motion.div>
-        </div>
-      </section>
+
+              <Card className="border rounded-2xl p-8 lg:p-12">
+                <div className="space-y-6 text-muted-foreground">
+                  <p className="text-base leading-relaxed">
+                    {t('legal.paytrail.intro')}
+                  </p>
+
+                  <div className="mt-6 pt-6 border-t border-border space-y-2">
+                    <p className="font-medium text-foreground text-lg">{t('legal.paytrail.company')}</p>
+                    <p><strong>{t('legal.paytrail.businessId')}:</strong> {t('legal.paytrail.businessIdValue')}</p>
+                    <p>{t('legal.paytrail.address1')}</p>
+                    <p>{t('legal.paytrail.address2')}</p>
+                    <p>{t('legal.paytrail.address3')}</p>
+                    <p className="mt-4">
+                      <a 
+                        href={t('legal.paytrail.website')}
+                        className="text-[#FF6B35] hover:underline inline-flex items-center gap-1"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {t('legal.paytrail.website')}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

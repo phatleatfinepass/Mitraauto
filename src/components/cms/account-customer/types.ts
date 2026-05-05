@@ -174,6 +174,10 @@ export interface CustomerHistoryBooking {
   customerEmail: string;
   customerPhone: string;
   notes: string;
+  customerId: string | null;
+  customerVehicleId: string | null;
+  customerMatchSource: string;
+  customerLinkedAt: string | null;
 }
 
 export interface CustomerHistoryOrder {
@@ -187,6 +191,10 @@ export interface CustomerHistoryOrder {
   phone: string;
   totalCents: number | null;
   itemLabel: string;
+  customerId: string | null;
+  customerVehicleId: string | null;
+  customerMatchSource: string;
+  customerLinkedAt: string | null;
 }
 
 export interface CustomerHistoryInvoice {
@@ -209,6 +217,24 @@ export interface CustomerHistoryInvoice {
   paymentStatus: string;
   createdAt: string | null;
   updatedAt: string | null;
+  customerId: string | null;
+  customerVehicleId: string | null;
+  customerMatchSource: string;
+  customerLinkedAt: string | null;
+}
+
+export interface CustomerHistoryRescue {
+  id: string;
+  createdAt: string | null;
+  status: string;
+  customerName: string;
+  phone: string;
+  licensePlate: string;
+  city: string;
+  customerId: string | null;
+  customerVehicleId: string | null;
+  customerMatchSource: string;
+  customerLinkedAt: string | null;
 }
 
 export interface CustomerHistoryEvent {
@@ -224,5 +250,25 @@ export interface CustomerHistory {
   bookings: CustomerHistoryBooking[];
   orders: CustomerHistoryOrder[];
   invoices: CustomerHistoryInvoice[];
+  rescue: CustomerHistoryRescue[];
   events: CustomerHistoryEvent[];
+}
+
+export type CustomerActivityType = 'booking' | 'order' | 'invoice' | 'rescue';
+
+export interface CustomerLinkSuggestion {
+  activityType: CustomerActivityType;
+  activityId: string;
+  title: string;
+  subtitle: string;
+  matchSource: string;
+  confidence: number;
+  occurredAt: string | null;
+  customerId: string;
+  customerVehicleId: string | null;
+}
+
+export interface CustomerAutoLinkResult {
+  activityType: string;
+  linkedCount: number;
 }

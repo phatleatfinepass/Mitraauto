@@ -1,15 +1,17 @@
 import { supabase } from '../../../utils/supabase/client';
 import {
   normalizeAccountEventRow,
+  normalizeCustomerAutoLinkResult,
   normalizeCustomerDetail,
   normalizeCustomerHistory,
+  normalizeCustomerLinkSuggestion,
   normalizeCustomerRow,
   normalizeLicensePlateConflict,
   normalizeLicensePlateImportResult,
   normalizeStaffRow,
   tagsFromText,
 } from './safe';
-import type { CustomerDraft, CustomerNoteVisibility, CustomerOverviewFilters, CustomerVehicleDraft, StaffDraft, StaffRole } from './types';
+import type { CustomerDraft, CustomerLinkSuggestion, CustomerNoteVisibility, CustomerOverviewFilters, CustomerVehicleDraft, StaffDraft, StaffRole } from './types';
 
 function normalizeCustomerOverviewFilters(filters: CustomerOverviewFilters | string | unknown): CustomerOverviewFilters {
   if (typeof filters === 'string') {
@@ -125,6 +127,65 @@ export async function getCustomerHistory(customerId: string) {
 
   if (error) throw error;
   return normalizeCustomerHistory(data);
+}
+
+export async function listCustomerLinkSuggestions(customerId: string) {
+  const { data, error } = await supabase.rpc('cms_list_customer_link_suggestions', {
+    p_customer_id: customerId,
+    p_limit: 80,
+  });
+
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map(normalizeCustomerLinkSuggestion).filter((row) => row !== null);
+}
+
+export async function linkCustomerActivity(suggestion: CustomerLinkSuggestion) {
+  const { error } = await supabase.rpc('cms_link_customer_activity', {
+    p_activity_type: suggestion.activityType,
+    p_activity_id: suggestion.activityId,
+    p_customer_id: suggestion.customerId,
+    p_customer_vehicle_id: suggestion.customerVehicleId,
+    p_match_source: suggestion.matchSource || 'manual',
+  });
+
+  if (error) throw error;
+}
+
+export async function unlinkCustomerActivity(activityType: CustomerLinkSuggestion['activityType'], activityId: string) {
+  const { error } = await supabase.rpc('cms_unlink_customer_activity', {
+    p_activity_type: activityType,
+    p_activity_id: activityId,
+  });
+
+  if (error) throw error;
+}
+
+export async function autoLinkCustomerActivities() {
+  const { data, error } = await supabase.rpc('cms_auto_link_customer_activities', {
+    p_limit: 500,
+    p_min_confidence: 85,
+  });
+
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map(normalizeCustomerAutoLinkResult).filter((row) => row !== null);
+}
+
+export async function exportCustomerData(customerId: string) {
+  const { data, error } = await supabase.rpc('cms_export_customer_data', {
+    p_customer_id: customerId,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function anonymizeCustomer(customerId: string, reason = '') {
+  const { error } = await supabase.rpc('cms_anonymize_customer', {
+    p_customer_id: customerId,
+    p_reason: reason.trim() || null,
+  });
+
+  if (error) throw error;
 }
 
 export async function saveCustomer(draft: CustomerDraft) {

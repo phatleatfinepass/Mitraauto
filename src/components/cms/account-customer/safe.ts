@@ -2,8 +2,17 @@ import { ACCOUNT_STATUSES, CMS_MODULES, CUSTOMER_STATUSES, CUSTOMER_TYPES, PERMI
 import type {
   AccountStatus,
   CmsPermissionValue,
+  AccountEventRow,
   CustomerDetail,
+  CustomerAutoLinkResult,
   CustomerDraft,
+  CustomerHistory,
+  CustomerHistoryBooking,
+  CustomerHistoryEvent,
+  CustomerHistoryInvoice,
+  CustomerHistoryOrder,
+  CustomerHistoryRescue,
+  CustomerLinkSuggestion,
   CustomerNoteRow,
   CustomerNoteVisibility,
   CustomerOverviewRow,
@@ -11,19 +20,13 @@ import type {
   CustomerType,
   CustomerVehicleDraft,
   CustomerVehicleRow,
-  AccountEventRow,
-  CustomerHistory,
-  CustomerHistoryBooking,
-  CustomerHistoryEvent,
-  CustomerHistoryInvoice,
-  CustomerHistoryOrder,
+  LicensePlateConflict,
+  LicensePlateConflictOwner,
+  LicensePlateImportResult,
   StaffAccountRow,
   StaffDraft,
   StaffPresetId,
   StaffRole,
-  LicensePlateConflict,
-  LicensePlateConflictOwner,
-  LicensePlateImportResult,
 } from './types';
 
 function text(value: unknown, fallback = '') {
@@ -75,6 +78,22 @@ function normalizeCustomerStatus(value: unknown): CustomerStatus {
 function normalizeCustomerType(value: unknown): CustomerType {
   const candidate = text(value) as CustomerType;
   return CUSTOMER_TYPES.includes(candidate) ? candidate : 'personal';
+}
+
+function normalizeActivityType(value: unknown): CustomerLinkSuggestion['activityType'] {
+  const candidate = text(value) as CustomerLinkSuggestion['activityType'];
+  return candidate === 'order' || candidate === 'invoice' || candidate === 'rescue' ? candidate : 'booking';
+}
+
+export function normalizeCustomerAutoLinkResult(row: unknown): CustomerAutoLinkResult | null {
+  const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+  const activityType = text(source.activity_type);
+  if (!activityType) return null;
+
+  return {
+    activityType,
+    linkedCount: finiteCount(source.linked_count),
+  };
 }
 
 function normalizeNoteVisibility(value: unknown): CustomerNoteVisibility {
@@ -321,6 +340,10 @@ function normalizeHistoryBooking(row: unknown): CustomerHistoryBooking | null {
     customerEmail: text(source.customer_email),
     customerPhone: text(source.customer_phone),
     notes: text(source.notes),
+    customerId: nullableText(source.customer_id),
+    customerVehicleId: nullableText(source.customer_vehicle_id),
+    customerMatchSource: text(source.customer_match_source),
+    customerLinkedAt: nullableText(source.customer_linked_at),
   };
 }
 
@@ -350,6 +373,10 @@ function normalizeHistoryOrder(row: unknown): CustomerHistoryOrder | null {
     phone: text(source.phone),
     totalCents: nullableNumber(source.grand_total_cents),
     itemLabel: summarizeOrderItem(source.cart_snapshot),
+    customerId: nullableText(source.customer_id),
+    customerVehicleId: nullableText(source.customer_vehicle_id),
+    customerMatchSource: text(source.customer_match_source),
+    customerLinkedAt: nullableText(source.customer_linked_at),
   };
 }
 
@@ -378,6 +405,30 @@ function normalizeHistoryInvoice(row: unknown): CustomerHistoryInvoice | null {
     paymentStatus: text(source.payment_status),
     createdAt: nullableText(source.created_at),
     updatedAt: nullableText(source.updated_at),
+    customerId: nullableText(source.customer_id),
+    customerVehicleId: nullableText(source.customer_vehicle_id),
+    customerMatchSource: text(source.customer_match_source),
+    customerLinkedAt: nullableText(source.customer_linked_at),
+  };
+}
+
+function normalizeHistoryRescue(row: unknown): CustomerHistoryRescue | null {
+  const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+  const id = text(source.id);
+  if (!id) return null;
+
+  return {
+    id,
+    createdAt: nullableText(source.created_at),
+    status: text(source.status),
+    customerName: text(source.customer_name),
+    phone: text(source.phone),
+    licensePlate: text(source.license_plate),
+    city: text(source.city),
+    customerId: nullableText(source.customer_id),
+    customerVehicleId: nullableText(source.customer_vehicle_id),
+    customerMatchSource: text(source.customer_match_source),
+    customerLinkedAt: nullableText(source.customer_linked_at),
   };
 }
 
@@ -402,7 +453,27 @@ export function normalizeCustomerHistory(value: unknown): CustomerHistory {
     bookings: normalizeArrayRows(source.bookings, normalizeHistoryBooking),
     orders: normalizeArrayRows(source.orders, normalizeHistoryOrder),
     invoices: normalizeArrayRows(source.invoices, normalizeHistoryInvoice),
+    rescue: normalizeArrayRows(source.rescue, normalizeHistoryRescue),
     events: normalizeArrayRows(source.events, normalizeHistoryEvent),
+  };
+}
+
+export function normalizeCustomerLinkSuggestion(row: unknown): CustomerLinkSuggestion | null {
+  const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+  const activityId = text(source.activity_id);
+  const customerId = text(source.customer_id);
+  if (!activityId || !customerId) return null;
+
+  return {
+    activityType: normalizeActivityType(source.activity_type),
+    activityId,
+    title: text(source.title, 'Activity') || 'Activity',
+    subtitle: text(source.subtitle),
+    matchSource: text(source.match_source, 'manual') || 'manual',
+    confidence: finiteCount(source.confidence),
+    occurredAt: nullableText(source.occurred_at),
+    customerId,
+    customerVehicleId: nullableText(source.customer_vehicle_id),
   };
 }
 
