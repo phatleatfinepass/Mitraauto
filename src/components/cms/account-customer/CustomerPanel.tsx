@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, Filter, GitMerge, Link2, Plus, RefreshCcw, Search, TriangleAlert } from 'lucide-react';
+import { AlertCircle, BadgePercent, Filter, GitMerge, Link2, Plus, RefreshCcw, Search, TriangleAlert } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -215,8 +215,8 @@ export function CustomerPanel() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 2xl:grid-cols-[minmax(620px,1fr)_minmax(460px,640px)]">
-        <div className="space-y-4">
+      <div className="grid gap-5 xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)]">
+        <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
         {access?.isSuperAdmin && plateConflicts.length ? (
           <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-4 text-amber-950">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -236,15 +236,17 @@ export function CustomerPanel() {
           </div>
         ) : null}
 
-        <div className="overflow-hidden rounded-lg border">
-          <div className="grid min-w-[860px] grid-cols-[minmax(180px,1.4fr)_minmax(180px,1fr)_minmax(140px,.8fr)_minmax(170px,.9fr)_120px] border-b bg-muted/40 px-4 py-3 text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-            <span>Customer</span>
-            <span>Contact</span>
-            <span>Vehicle</span>
-            <span>Activity</span>
-            <span>Status</span>
+        <div className="overflow-hidden rounded-lg border bg-background">
+          <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+            <div>
+              <h4 className="text-sm font-semibold text-foreground">Customer list</h4>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {loaded ? `${rows.length} records loaded` : 'Load records to begin'}
+              </p>
+            </div>
+            {loading ? <Badge variant="outline">Loading</Badge> : null}
           </div>
-          <div className="max-h-[720px] min-w-[860px] overflow-y-auto">
+          <div className="max-h-[760px] overflow-y-auto">
             {rows.length === 0 ? (
               <div className="px-4 py-8 text-sm text-muted-foreground">
                 {loaded ? 'No customer records found.' : 'Click Load customers to fetch records.'}
@@ -257,34 +259,44 @@ export function CustomerPanel() {
                   setSelectedKey(row.key);
                   setCreating(false);
                 }}
-                className={`grid w-full grid-cols-[minmax(180px,1.4fr)_minmax(180px,1fr)_minmax(140px,.8fr)_minmax(170px,.9fr)_120px] items-center border-b px-4 py-3 text-left text-sm last:border-b-0 ${
-                  !creating && selectedRow?.key === row.key ? 'bg-primary/10' : 'hover:bg-muted/60'
+                className={`block w-full border-b px-4 py-3 text-left text-sm last:border-b-0 ${
+                  !creating && selectedRow?.key === row.key ? 'bg-primary/10 ring-1 ring-inset ring-primary/30' : 'hover:bg-muted/60'
                 }`}
               >
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{row.name}</div>
-                  <div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground">
-                    <span>{row.source === 'customer_record' ? 'Saved profile' : 'From activity'}</span>
-                    {row.hidden ? <span>Hidden</span> : null}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-foreground">{row.name}</div>
+                    <div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground">
+                      <span>{row.source === 'customer_record' ? 'Saved profile' : 'From activity'}</span>
+                      {row.hidden ? <span>Hidden</span> : null}
+                      {row.accountId ? <span>{row.portalEnabled ? 'Portal on' : 'Account linked'}</span> : null}
+                    </div>
                   </div>
-                </div>
-                <div className="min-w-0 text-muted-foreground">
-                  <div className="truncate">{row.email || '-'}</div>
-                  <div className="truncate">{row.phone || '-'}</div>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {row.licensePlates.slice(0, 3).map((plate) => (
-                    <Badge key={`${row.key}-${plate}`} variant="outline">{plate}</Badge>
-                  ))}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  <div>{row.bookingCount} bookings / {row.orderCount} orders</div>
-                  <div>{row.invoiceCount} receipts</div>
-                  <div>{formatDate(row.lastActivityAt)}</div>
-                </div>
-                <div className="flex flex-col items-start gap-1">
                   <Badge variant={row.status === 'blocked' || row.status === 'deleted' ? 'destructive' : 'secondary'}>{row.status}</Badge>
-                  {row.tags.slice(0, 2).map((tag) => <Badge key={`${row.key}-${tag}`} variant="outline">{tag}</Badge>)}
+                </div>
+
+                <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+                  <div className="min-w-0">
+                    <div className="truncate">{row.email || 'No email'}</div>
+                    <div className="truncate">{row.phone || 'No phone'}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {row.licensePlates.slice(0, 3).map((plate) => (
+                      <Badge key={`${row.key}-${plate}`} variant="outline">{plate}</Badge>
+                    ))}
+                    {row.licensePlates.length > 3 ? <Badge variant="outline">+{row.licensePlates.length - 3}</Badge> : null}
+                    {row.licensePlates.length === 0 ? <span>No plates</span> : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge variant="outline" className="gap-1">
+                      <BadgePercent className="h-3 w-3" />
+                      {row.benefitPoints} pts
+                    </Badge>
+                    {row.benefitTier ? <Badge variant="outline" className="capitalize">{row.benefitTier}</Badge> : null}
+                    {row.tags.slice(0, 2).map((tag) => <Badge key={`${row.key}-${tag}`} variant="outline">{tag}</Badge>)}
+                  </div>
+                  <div>{row.bookingCount} bookings / {row.orderCount} orders / {row.invoiceCount} receipts</div>
+                  <div>Last activity: {formatDate(row.lastActivityAt)}</div>
                 </div>
               </button>
             ))}
@@ -314,15 +326,17 @@ export function CustomerPanel() {
         ) : null}
         </div>
 
-        {creating || selectedRow ? (
-          <CustomerEditorPanel overviewRow={creating ? null : selectedRow} onSaved={refreshAfterSave} />
-        ) : (
+        <div className="min-w-0">
+          {creating || selectedRow ? (
+            <CustomerEditorPanel overviewRow={creating ? null : selectedRow} onSaved={refreshAfterSave} />
+          ) : (
           <div className="rounded-lg border bg-background p-5">
             <div className="text-sm text-muted-foreground">
               Load customers, select a row, or create a new saved profile.
             </div>
           </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );

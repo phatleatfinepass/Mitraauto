@@ -34,6 +34,10 @@ type CmsPwaAccessRow = {
   is_super_admin?: boolean | null;
 };
 
+function isCmsPwaStaffRole(role: string) {
+  return role === 'super_admin' || role === 'admin' || role === 'supervisor' || role === 'staff';
+}
+
 async function resolveAdminSession() {
   const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 10000): Promise<T> => {
     return await Promise.race([
@@ -65,7 +69,7 @@ async function resolveAdminSession() {
     const isSuperAdmin = Boolean(access?.is_super_admin);
     const email = access?.email ?? session.user.email ?? '';
 
-    if (accountStatus !== 'active') {
+    if (accountStatus !== 'active' || !isCmsPwaStaffRole(role)) {
       return { state: 'not-admin' as const, email };
     }
 

@@ -6,7 +6,7 @@ import { getCustomerHistory, unlinkCustomerActivity } from './api';
 import { formatDate, formatMoney } from './safe';
 import type { CustomerActivityType, CustomerHistory } from './types';
 
-type HistoryTab = 'bookings' | 'orders' | 'invoices' | 'rescue' | 'timeline';
+type HistoryTab = 'bookings' | 'orders' | 'invoices' | 'rescue' | 'audit';
 
 type CustomerHistoryPanelProps = {
   customerId: string;
@@ -37,7 +37,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
     orders: history.orders.length,
     invoices: history.invoices.length,
     rescue: history.rescue.length,
-    timeline: history.events.length,
+    audit: history.events.length,
   }), [history]);
 
   const loadHistory = async () => {
@@ -129,7 +129,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
           { id: 'orders' as const, label: 'Orders', icon: Package },
           { id: 'invoices' as const, label: 'Receipts', icon: ReceiptText },
           { id: 'rescue' as const, label: 'Rescue', icon: AlertCircle },
-          { id: 'timeline' as const, label: 'Timeline', icon: FileText },
+          { id: 'audit' as const, label: 'Audit log', icon: FileText },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -230,8 +230,8 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
           ))
         ) : null}
 
-        {activeTab === 'timeline' ? (
-          history.events.length === 0 ? renderEmpty('timeline events') : history.events.map((event) => (
+        {activeTab === 'audit' ? (
+          history.events.length === 0 ? renderEmpty('audit events') : history.events.map((event) => (
             <div key={event.id} className="border-b px-3 py-3 text-sm last:border-b-0">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{event.eventType}</span>
@@ -242,7 +242,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
               </div>
               {Object.keys(event.details).length ? (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {Object.entries(event.details).slice(0, 4).map(([key, value]) => (
+                  {Object.entries(event.details).slice(0, 6).map(([key, value]) => (
                     <Badge key={`${event.id}-${key}`} variant="outline">{key}: {String(value)}</Badge>
                   ))}
                 </div>

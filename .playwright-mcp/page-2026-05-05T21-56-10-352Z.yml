@@ -1,0 +1,95 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: MA
+    - generic [ref=e5]:
+      - paragraph [ref=e6]: Mitra Auto
+      - paragraph [ref=e7]: Loading garage services and booking tools.
+  - generic [ref=e11]:
+    - link "Skip to main content" [ref=e12] [cursor=pointer]:
+      - /url: "#main-content"
+    - navigation [ref=e13]:
+      - generic [ref=e15]:
+        - link "Mitra Auto Mitra Auto" [ref=e16] [cursor=pointer]:
+          - /url: /
+          - img "Mitra Auto" [ref=e17]
+          - generic [ref=e18]: Mitra Auto
+        - generic [ref=e19]:
+          - link "Home" [ref=e20] [cursor=pointer]:
+            - /url: /
+          - link "Services" [ref=e21] [cursor=pointer]:
+            - /url: /services
+          - link "Catalog" [ref=e22] [cursor=pointer]:
+            - /url: /catalog
+          - link "Tire Hotel" [ref=e23] [cursor=pointer]:
+            - /url: /tire-hotel
+        - generic [ref=e24]:
+          - button "Toggle theme" [ref=e25]:
+            - img [ref=e26]
+          - button "Toggle language" [ref=e28]:
+            - img [ref=e29]
+            - generic [ref=e32]: en
+          - button "Cart" [ref=e33]:
+            - img [ref=e34]
+          - button "Login" [ref=e38]:
+            - img [ref=e39]
+    - main [ref=e42]:
+      - main [ref=e43]
+    - contentinfo [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - img "Mitra Auto" [ref=e52]
+              - generic [ref=e53]: Mitra Auto
+            - paragraph [ref=e54]: Full-service garage with tire, maintenance and repair services.
+          - generic [ref=e55]:
+            - heading "Shop" [level=3] [ref=e56]
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - link "Catalog" [ref=e59] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=e60]:
+            - heading "Services" [level=3] [ref=e61]
+            - list [ref=e62]:
+              - listitem [ref=e63]:
+                - link "Car Service" [ref=e64] [cursor=pointer]:
+                  - /url: /services
+              - listitem [ref=e65]:
+                - link "Tire Hotel" [ref=e66] [cursor=pointer]:
+                  - /url: /tire-hotel
+          - generic [ref=e67]:
+            - heading "Company" [level=3] [ref=e68]
+            - list [ref=e69]:
+              - listitem [ref=e70]:
+                - link "About Us" [ref=e71] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e72]:
+                - link "Contact" [ref=e73] [cursor=pointer]:
+                  - /url: /
+          - generic [ref=e74]:
+            - heading "Legal" [level=3] [ref=e75]
+            - list [ref=e76]:
+              - listitem [ref=e77]:
+                - link "Privacy" [ref=e78] [cursor=pointer]:
+                  - /url: /legal/privacy
+              - listitem [ref=e79]:
+                - link "Terms" [ref=e80] [cursor=pointer]:
+                  - /url: /legal/terms
+        - generic [ref=e82]:
+          - paragraph [ref=e83]: © Mitra Auto 2026
+          - generic [ref=e84]:
+            - link "Facebook" [ref=e85] [cursor=pointer]:
+              - /url: https://facebook.com
+              - img [ref=e86]
+            - link "Twitter" [ref=e88] [cursor=pointer]:
+              - /url: https://twitter.com
+              - img [ref=e89]
+            - link "Instagram" [ref=e91] [cursor=pointer]:
+              - /url: https://instagram.com
+              - img [ref=e92]
+            - link "LinkedIn" [ref=e95] [cursor=pointer]:
+              - /url: https://linkedin.com
+              - img [ref=e96]
+          - generic [ref=e100]:
+            - button "FI" [ref=e101]
+            - button "EN" [ref=e102]

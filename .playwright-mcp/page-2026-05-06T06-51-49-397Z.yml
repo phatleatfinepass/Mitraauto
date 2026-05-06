@@ -1,0 +1,398 @@
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation [ref=e5]:
+    - generic [ref=e7]:
+      - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "Mitra Auto" [ref=e9]
+        - generic [ref=e10]: Mitra Auto
+      - generic [ref=e11]:
+        - link "Home" [ref=e12] [cursor=pointer]:
+          - /url: /
+        - link "Services" [ref=e13] [cursor=pointer]:
+          - /url: /services
+        - link "Catalog" [ref=e14] [cursor=pointer]:
+          - /url: /catalog
+        - link "Tire Hotel" [ref=e15] [cursor=pointer]:
+          - /url: /tire-hotel
+      - generic [ref=e16]:
+        - button "Toggle theme" [ref=e17]:
+          - img [ref=e18]
+        - button "Toggle language" [ref=e20]:
+          - img [ref=e21]
+          - generic [ref=e24]: en
+        - button "Cart" [ref=e25]:
+          - img [ref=e26]
+        - button [ref=e30]:
+          - img [ref=e31]
+  - main [ref=e34]:
+    - generic [ref=e97]:
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - paragraph [ref=e101]: CMS Beta
+            - heading "Control Center" [level=1] [ref=e102]
+          - generic [ref=e103]: Switch tabs to access schedule and catalog tools
+        - paragraph [ref=e105]: Navigate between operations, catalog, account, and customer tools.
+      - generic [ref=e107]:
+        - button "Rescue 24/7" [ref=e108]:
+          - generic [ref=e110]: Rescue 24/7
+        - button "Booking Schedule" [ref=e111]:
+          - generic [ref=e113]: Booking Schedule
+        - button "Tire Catalog" [ref=e114]:
+          - generic [ref=e116]: Tire Catalog
+        - button "Rim Catalog" [ref=e117]:
+          - generic [ref=e119]: Rim Catalog
+        - button "Order & Invoice" [ref=e120]:
+          - generic [ref=e122]: Order & Invoice
+        - button "Receipt" [ref=e123]:
+          - generic [ref=e125]: Receipt
+        - button "Account" [ref=e126]:
+          - generic [ref=e128]: Account
+        - button "Future Tools" [ref=e129]:
+          - generic [ref=e131]: Future Tools
+      - generic [ref=e133]:
+        - generic [ref=e134]:
+          - heading "Account" [level=2] [ref=e136]
+          - generic [ref=e137]:
+            - button "Customer" [ref=e138]:
+              - img [ref=e139]
+              - text: Customer
+            - button "Staff" [ref=e144]:
+              - img [ref=e145]
+              - text: Staff
+            - button "Account settings" [ref=e157]:
+              - img
+        - generic [ref=e158]:
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - heading "Staff" [level=3] [ref=e161]
+              - paragraph [ref=e162]: Super admin workspace. Account changes are saved through the CMS staff RPC.
+            - generic [ref=e163]:
+              - button "Add account" [ref=e164]:
+                - img
+                - text: Add account
+              - button "Load staff" [ref=e165]:
+                - img
+                - text: Load staff
+          - generic [ref=e367]: Active link sent to phat.le@finepass.fi.
+          - generic [ref=e167]:
+            - generic [ref=e168]:
+              - img
+              - textbox "Search staff" [ref=e169]
+            - combobox [ref=e170]:
+              - option "All roles" [selected]
+              - option "super_admin"
+              - option "admin"
+              - option "supervisor"
+              - option "staff"
+              - option "customer"
+              - option "user"
+              - option "disabled"
+            - combobox [ref=e171]:
+              - option "All statuses" [selected]
+              - option "active"
+              - option "hidden"
+              - option "suspended"
+              - option "deleted"
+            - generic [ref=e172]:
+              - checkbox "Show hidden" [checked] [ref=e173]
+              - text: Show hidden
+          - generic [ref=e174]:
+            - generic [ref=e175]:
+              - button "Phat Le phat.le@finepass.fi super_admin" [ref=e179]:
+                - generic [ref=e180]:
+                  - generic [ref=e181]: Phat Le
+                  - generic [ref=e182]: phat.le@finepass.fi
+                - generic [ref=e184]: super_admin
+              - button "Jamshid Nuri contact@mitra-auto.fi admin" [ref=e185]:
+                - generic [ref=e186]:
+                  - generic [ref=e187]: Jamshid Nuri
+                  - generic [ref=e188]: contact@mitra-auto.fi
+                - generic [ref=e190]: admin
+            - generic [ref=e191]:
+              - generic [ref=e192]:
+                - generic [ref=e193]:
+                  - generic [ref=e194]:
+                    - generic [ref=e195]:
+                      - img [ref=e196]
+                      - text: Account information
+                    - generic [ref=e199]:
+                      - generic [ref=e200]:
+                        - generic [ref=e201]: Email
+                        - textbox [disabled]: phat.le@finepass.fi
+                      - generic [ref=e202]:
+                        - generic [ref=e203]: Display name
+                        - textbox [ref=e204]: Phat Le
+                      - generic [ref=e205]:
+                        - generic [ref=e206]:
+                          - generic [ref=e207]: Role
+                          - combobox [ref=e208]:
+                            - option "super_admin" [selected]
+                            - option "admin"
+                            - option "supervisor"
+                            - option "staff"
+                            - option "customer"
+                            - option "user"
+                            - option "disabled"
+                        - generic [ref=e209]:
+                          - generic [ref=e210]: Status
+                          - combobox [ref=e211]:
+                            - option "active" [selected]
+                            - option "hidden"
+                            - option "suspended"
+                            - option "deleted"
+                      - generic [ref=e212]:
+                        - checkbox "Hide from normal account lists" [ref=e213]
+                        - text: Hide from normal account lists
+                  - generic [ref=e214]:
+                    - generic [ref=e215]:
+                      - img [ref=e216]
+                      - text: MFA status
+                    - generic [ref=e219]:
+                      - generic [ref=e220]:
+                        - generic [ref=e221]: Required
+                        - text: Staff CMS access
+                      - generic [ref=e222]:
+                        - generic [ref=e223]: Current rule
+                        - text: Verified 2FA for CMS writes
+                  - generic [ref=e224]:
+                    - generic [ref=e225]:
+                      - img [ref=e226]
+                      - text: Account access
+                    - generic [ref=e229]:
+                      - generic [ref=e230]: active
+                      - button "Send active link" [ref=e231]:
+                        - img
+                        - text: Send active link
+                - generic [ref=e233]:
+                  - generic [ref=e234]:
+                    - img [ref=e235]
+                    - text: Permissions
+                  - generic [ref=e238]:
+                    - generic [ref=e239]: Module
+                    - generic [ref=e240]: Access
+                  - generic [ref=e241]:
+                    - generic [ref=e242]: Rescue
+                    - combobox [ref=e243]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+                  - generic [ref=e244]:
+                    - generic [ref=e245]: Schedule
+                    - combobox [ref=e246]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+                  - generic [ref=e247]:
+                    - generic [ref=e248]: Tires
+                    - combobox [ref=e249]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+                  - generic [ref=e250]:
+                    - generic [ref=e251]: Rims
+                    - combobox [ref=e252]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+                  - generic [ref=e253]:
+                    - generic [ref=e254]: Orders
+                    - combobox [ref=e255]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+                  - generic [ref=e256]:
+                    - generic [ref=e257]: Receipts
+                    - combobox [ref=e258]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+                  - generic [ref=e259]:
+                    - generic [ref=e260]: Customers
+                    - combobox [ref=e261]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: Accounts
+                    - combobox [ref=e264]:
+                      - option "none"
+                      - option "read"
+                      - option "read_write" [selected]
+              - generic [ref=e265]:
+                - button "Save staff permissions" [ref=e266]:
+                  - img
+                  - text: Save staff permissions
+                - button "Suspend" [disabled]:
+                  - img
+                  - text: Suspend
+                - button "Delete account" [disabled]:
+                  - img
+                  - text: Delete account
+              - generic [ref=e267]:
+                - generic [ref=e268]:
+                  - generic [ref=e269]:
+                    - img [ref=e270]
+                    - text: Account audit
+                  - button "Refresh" [ref=e274]
+                - generic [ref=e275]:
+                  - generic [ref=e368]:
+                    - generic [ref=e369]:
+                      - generic [ref=e370]: staff_account_setup_link_sent
+                      - generic [ref=e371]: 06.05.2026 klo 09.51
+                    - generic [ref=e372]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e373]:
+                      - generic [ref=e374]: "role: super_admin"
+                      - generic [ref=e375]: "email: phat.le@finepass.fi"
+                      - generic [ref=e376]: "provider: gmail"
+                  - generic [ref=e276]:
+                    - generic [ref=e277]:
+                      - generic [ref=e278]: staff_account_setup_link_sent
+                      - generic [ref=e279]: 06.05.2026 klo 09.29
+                    - generic [ref=e280]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e281]:
+                      - generic [ref=e282]: "role: super_admin"
+                      - generic [ref=e283]: "email: phat.le@finepass.fi"
+                      - generic [ref=e284]: "provider: gmail"
+                  - generic [ref=e285]:
+                    - generic [ref=e286]:
+                      - generic [ref=e287]: staff_account_updated
+                      - generic [ref=e288]: 05.05.2026 klo 16.10
+                    - generic [ref=e289]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e290]:
+                      - generic [ref=e291]: "role: super_admin"
+                      - generic [ref=e292]: "account_hidden: true"
+                      - generic [ref=e293]: "account_status: active"
+                  - generic [ref=e294]:
+                    - generic [ref=e295]:
+                      - generic [ref=e296]: staff_password_changed_self
+                      - generic [ref=e297]: 05.05.2026 klo 11.58
+                    - generic [ref=e298]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e299]:
+                      - generic [ref=e300]: "actor_email: phat.le@finepass.fi"
+                      - generic [ref=e301]: "self_change: true"
+                  - generic [ref=e302]:
+                    - generic [ref=e303]:
+                      - generic [ref=e304]: super_admin_password_bootstrap_reset
+                      - generic [ref=e305]: 05.05.2026 klo 11.55
+                    - generic [ref=e306]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e308]: "email: phat.le@finepass.fi"
+                  - generic [ref=e309]:
+                    - generic [ref=e310]:
+                      - generic [ref=e311]: account_password_recovery_sent
+                      - generic [ref=e312]: 05.05.2026 klo 11.50
+                    - generic [ref=e313]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e314]:
+                      - generic [ref=e315]: "email: phat.le@finepass.fi"
+                      - generic [ref=e316]: "provider: gmail"
+                  - generic [ref=e317]:
+                    - generic [ref=e318]:
+                      - generic [ref=e319]: account_password_recovery_sent
+                      - generic [ref=e320]: 05.05.2026 klo 11.50
+                    - generic [ref=e321]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e322]:
+                      - generic [ref=e323]: "email: phat.le@finepass.fi"
+                      - generic [ref=e324]: "provider: gmail"
+                  - generic [ref=e325]:
+                    - generic [ref=e326]:
+                      - generic [ref=e327]: account_password_recovery_sent
+                      - generic [ref=e328]: 05.05.2026 klo 11.48
+                    - generic [ref=e329]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e330]:
+                      - generic [ref=e331]: "email: phat.le@finepass.fi"
+                      - generic [ref=e332]: "provider: gmail"
+                  - generic [ref=e333]:
+                    - generic [ref=e334]:
+                      - generic [ref=e335]: staff_password_changed_self
+                      - generic [ref=e336]: 05.05.2026 klo 11.42
+                    - generic [ref=e337]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e338]:
+                      - generic [ref=e339]: "actor_email: phat.le@finepass.fi"
+                      - generic [ref=e340]: "self_change: true"
+                  - generic [ref=e341]:
+                    - generic [ref=e342]:
+                      - generic [ref=e343]: account_password_recovery_sent
+                      - generic [ref=e344]: 05.05.2026 klo 11.38
+                    - generic [ref=e345]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e346]:
+                      - generic [ref=e347]: "email: phat.le@finepass.fi"
+                      - generic [ref=e348]: "provider: gmail"
+                  - generic [ref=e349]:
+                    - generic [ref=e350]:
+                      - generic [ref=e351]: staff_account_updated
+                      - generic [ref=e352]: 05.05.2026 klo 00.31
+                    - generic [ref=e353]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e354]:
+                      - generic [ref=e355]: "role: super_admin"
+                      - generic [ref=e356]: "account_hidden: true"
+                      - generic [ref=e357]: "account_status: active"
+                  - generic [ref=e358]:
+                    - generic [ref=e359]:
+                      - generic [ref=e360]: staff_account_updated
+                      - generic [ref=e361]: 05.05.2026 klo 00.30
+                    - generic [ref=e362]: "Actor: phat.le@finepass.fi"
+                    - generic [ref=e363]:
+                      - generic [ref=e364]: "role: super_admin"
+                      - generic [ref=e365]: "account_hidden: true"
+                      - generic [ref=e366]: "account_status: active"
+  - contentinfo [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - img "Mitra Auto" [ref=e45]
+            - generic [ref=e46]: Mitra Auto
+          - paragraph [ref=e47]: Full-service garage with tire, maintenance and repair services.
+        - generic [ref=e48]:
+          - heading "Shop" [level=3] [ref=e49]
+          - list [ref=e50]:
+            - listitem [ref=e51]:
+              - link "Catalog" [ref=e52] [cursor=pointer]:
+                - /url: /catalog
+        - generic [ref=e53]:
+          - heading "Services" [level=3] [ref=e54]
+          - list [ref=e55]:
+            - listitem [ref=e56]:
+              - link "Car Service" [ref=e57] [cursor=pointer]:
+                - /url: /services
+            - listitem [ref=e58]:
+              - link "Tire Hotel" [ref=e59] [cursor=pointer]:
+                - /url: /tire-hotel
+        - generic [ref=e60]:
+          - heading "Company" [level=3] [ref=e61]
+          - list [ref=e62]:
+            - listitem [ref=e63]:
+              - link "About Us" [ref=e64] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e65]:
+              - link "Contact" [ref=e66] [cursor=pointer]:
+                - /url: /
+        - generic [ref=e67]:
+          - heading "Legal" [level=3] [ref=e68]
+          - list [ref=e69]:
+            - listitem [ref=e70]:
+              - link "Privacy" [ref=e71] [cursor=pointer]:
+                - /url: /legal/privacy
+            - listitem [ref=e72]:
+              - link "Terms" [ref=e73] [cursor=pointer]:
+                - /url: /legal/terms
+      - generic [ref=e75]:
+        - paragraph [ref=e76]: © Mitra Auto 2026
+        - generic [ref=e77]:
+          - link "Facebook" [ref=e78] [cursor=pointer]:
+            - /url: https://facebook.com
+            - img [ref=e79]
+          - link "Twitter" [ref=e81] [cursor=pointer]:
+            - /url: https://twitter.com
+            - img [ref=e82]
+          - link "Instagram" [ref=e84] [cursor=pointer]:
+            - /url: https://instagram.com
+            - img [ref=e85]
+          - link "LinkedIn" [ref=e88] [cursor=pointer]:
+            - /url: https://linkedin.com
+            - img [ref=e89]
+        - generic [ref=e93]:
+          - button "FI" [ref=e94]
+          - button "EN" [ref=e95]

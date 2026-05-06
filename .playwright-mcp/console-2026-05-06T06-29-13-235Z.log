@@ -1,0 +1,18 @@
+[     201ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:21608
+[     260ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/EmergencyTowModal.tsx:37
+[     261ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778048701725:1046
+[     330ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778048701725:762
+[  333723ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778048701725:762
+[  378194ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:21608
+[  378233ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/EmergencyTowModal.tsx:37
+[  378235ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049331168:1046
+[  378274ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049331168:762
+[  397116ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049331168:762
+[  471376ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049331168:762
+[  921224ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:1046
+[  921226ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:762
+[  990804ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:762
+[ 1066474ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:1046
+[ 1066476ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:762
+[ 1332051ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:762
+[ 1440988ms] [LOG] Auth state changed: TOKEN_REFRESHED 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:762

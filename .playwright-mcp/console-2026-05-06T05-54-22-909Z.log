@@ -1,0 +1,12 @@
+[     210ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:21608
+[     265ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/EmergencyTowModal.tsx:37
+[     266ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx:1046
+[     380ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762
+[    1238ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762
+[    6240ms] [WARNING] @supabase/gotrue-js: Lock "lock:sb-rcmmbwdebnmicrweoiyz-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover. @ http://127.0.0.1:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=33ca7dc7:13963
+[   19501ms] [LOG] Auth state changed: MFA_CHALLENGE_VERIFIED 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762
+[   36522ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762
+[   46443ms] [LOG] Auth state changed: MFA_CHALLENGE_VERIFIED 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762
+[  129700ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762
+[  138801ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762
+[  160176ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx:762

@@ -1,5 +1,23 @@
 project_id = "rcmmbwdebnmicrweoiyz"
 
+[auth]
+site_url = "https://www.mitra-auto.fi"
+additional_redirect_urls = [
+  "https://www.mitra-auto.fi/**",
+  "https://mitra-auto.fi/**",
+  "https://www.mitra-auto.fi/cms/password-setup",
+  "https://mitra-auto.fi/cms/password-setup",
+  "http://127.0.0.1:5173/**"
+]
+
+[auth.email]
+double_confirm_changes = false
+max_frequency = "1m0s"
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [functions.payments_paytrail_webhook]
 verify_jwt = false
 
@@ -8,3 +26,26 @@ verify_jwt = false
 
 [functions.invoice_start_payment]
 verify_jwt = false
+
+[functions.cms_account_recovery]
+verify_jwt = false
+
+[functions.cms_password_setup]
+verify_jwt = false
+
+[functions.cms_password_setup_redirect]
+verify_jwt = false
+
+[functions.cms_account_action]
+enabled = true
+verify_jwt = true
+import_map = "./functions/cms_account_action/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/cms_account_action/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/cms_account_action/*.html" ]
+
+[functions.cms_account_mfa]
+verify_jwt = true

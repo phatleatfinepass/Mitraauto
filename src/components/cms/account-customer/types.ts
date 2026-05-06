@@ -6,6 +6,10 @@ export type AccountStatus = 'active' | 'hidden' | 'suspended' | 'deleted';
 export type CustomerStatus = 'active' | 'hidden' | 'blocked' | 'merged' | 'deleted';
 export type CustomerType = 'personal' | 'business' | 'fleet';
 export type CustomerNoteVisibility = 'internal' | 'super_admin';
+export type ServiceBookEntryType = 'maintenance' | 'service' | 'inspection' | 'estimate' | 'repair' | 'tire' | 'cleaning' | 'note';
+export type MaintenanceReminderStatus = 'active' | 'paused' | 'sent' | 'completed' | 'cancelled';
+export type CustomerNotificationStatus = 'queued' | 'sent' | 'failed' | 'cancelled';
+export type CustomerNotificationChannel = 'email' | 'sms' | 'push' | 'phone' | 'internal';
 
 export interface CustomerOverviewRow {
   key: string;
@@ -22,6 +26,12 @@ export interface CustomerOverviewRow {
   source: string;
   hidden: boolean;
   tags: string[];
+  accountId: string | null;
+  accountEmail: string;
+  portalEnabled: boolean;
+  benefitPoints: number;
+  benefitTier: string;
+  benefitDiscountPercent: number;
 }
 
 export interface StaffAccountRow {
@@ -43,8 +53,6 @@ export interface StaffDraft {
   hidden: boolean;
   permissions: Record<string, CmsPermissionValue>;
 }
-
-export type StaffPresetId = 'super_admin' | 'admin' | 'supervisor' | 'staff_limited' | 'disabled';
 
 export interface AccountEventRow {
   id: string;
@@ -76,9 +84,22 @@ export interface CustomerNoteRow {
   createdAt: string | null;
 }
 
+export interface CustomerBenefitSummary {
+  pointsBalance: number;
+  lifetimePoints: number;
+  tier: string;
+  discountPercent: number;
+  updatedAt: string | null;
+}
+
 export interface CustomerDetail {
   id: string;
   customerType: CustomerType;
+  accountId: string | null;
+  accountEmail: string;
+  portalEnabled: boolean;
+  portalInvitedAt: string | null;
+  benefits: CustomerBenefitSummary;
   primaryEmail: string;
   primaryPhone: string;
   fullName: string;
@@ -131,6 +152,89 @@ export interface CustomerVehicleDraft {
   vin: string;
   notes: string;
   hidden: boolean;
+}
+
+export interface CustomerServiceBookEntry {
+  id: string;
+  customerId: string;
+  customerVehicleId: string | null;
+  entryType: ServiceBookEntryType;
+  title: string;
+  description: string;
+  workDate: string | null;
+  mileageKm: number | null;
+  parts: unknown[];
+  sourceType: string;
+  sourceId: string | null;
+  invoiceId: string | null;
+  bookingId: string | null;
+  staffNotes: string;
+  visibleToCustomer: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface CustomerServiceBookDraft {
+  id: string | null;
+  customerId: string;
+  customerVehicleId: string | null;
+  entryType: ServiceBookEntryType;
+  title: string;
+  description: string;
+  workDate: string;
+  mileageKm: string;
+  partsText: string;
+  staffNotes: string;
+  visibleToCustomer: boolean;
+}
+
+export interface CustomerMaintenanceReminder {
+  id: string;
+  customerId: string;
+  customerVehicleId: string | null;
+  reminderType: string;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  dueMileageKm: number | null;
+  lastKnownMileageKm: number | null;
+  status: MaintenanceReminderStatus;
+  serviceCritical: boolean;
+  nextEmailAt: string | null;
+  lastEmailAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface CustomerMaintenanceReminderDraft {
+  id: string | null;
+  customerId: string;
+  customerVehicleId: string | null;
+  reminderType: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  dueMileageKm: string;
+  lastKnownMileageKm: string;
+  status: MaintenanceReminderStatus;
+  serviceCritical: boolean;
+  nextEmailAt: string;
+}
+
+export interface CustomerNotificationHistoryRow {
+  id: string;
+  customerId: string | null;
+  customerVehicleId: string | null;
+  reminderId: string | null;
+  notificationType: string;
+  channel: CustomerNotificationChannel;
+  recipient: string;
+  subject: string;
+  status: CustomerNotificationStatus;
+  providerMessageId: string;
+  sentAt: string | null;
+  details: Record<string, unknown>;
+  createdAt: string | null;
 }
 
 export interface CustomerOverviewFilters {

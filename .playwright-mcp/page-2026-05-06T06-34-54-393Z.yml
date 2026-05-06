@@ -1,0 +1,162 @@
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation [ref=e5]:
+    - generic [ref=e7]:
+      - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "Mitra Auto" [ref=e9]
+        - generic [ref=e10]: Mitra Auto
+      - generic [ref=e11]:
+        - link "Home" [ref=e12] [cursor=pointer]:
+          - /url: /
+        - link "Services" [ref=e13] [cursor=pointer]:
+          - /url: /services
+        - link "Catalog" [ref=e14] [cursor=pointer]:
+          - /url: /catalog
+        - link "Tire Hotel" [ref=e15] [cursor=pointer]:
+          - /url: /tire-hotel
+      - generic [ref=e16]:
+        - button "Toggle theme" [ref=e17]:
+          - img [ref=e18]
+        - button "Toggle language" [ref=e20]:
+          - img [ref=e21]
+          - generic [ref=e24]: en
+        - button "Cart" [ref=e25]:
+          - img [ref=e26]
+        - button [ref=e96]:
+          - img [ref=e97]
+  - main [ref=e34]:
+    - generic [ref=e101]:
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - paragraph [ref=e105]: CMS Beta
+            - heading "Control Center" [level=1] [ref=e106]
+          - generic [ref=e107]: Switch tabs to access schedule and catalog tools
+        - paragraph [ref=e109]: Navigate between operations, catalog, account, and customer tools.
+      - generic [ref=e111]:
+        - button "Rescue 24/7" [ref=e112]:
+          - generic [ref=e114]: Rescue 24/7
+        - button "Booking Schedule" [ref=e115]:
+          - generic [ref=e117]: Booking Schedule
+        - button "Tire Catalog" [ref=e118]:
+          - generic [ref=e120]: Tire Catalog
+        - button "Rim Catalog" [ref=e121]:
+          - generic [ref=e123]: Rim Catalog
+        - button "Order & Invoice" [ref=e124]:
+          - generic [ref=e126]: Order & Invoice
+        - button "Receipt" [ref=e127]:
+          - generic [ref=e129]: Receipt
+        - button "Account & Customer" [ref=e130]:
+          - generic [ref=e132]: Account & Customer
+        - button "Future Tools" [ref=e133]:
+          - generic [ref=e135]: Future Tools
+      - generic [ref=e137]:
+        - generic [ref=e138]:
+          - heading "Account & Customer" [level=2] [ref=e140]
+          - generic [ref=e141]:
+            - button "Customer" [ref=e142]:
+              - img [ref=e143]
+              - text: Customer
+            - button "Staff" [active] [ref=e148]:
+              - img [ref=e149]
+              - text: Staff
+            - button "Account settings" [ref=e161]:
+              - img
+        - generic [ref=e191]:
+          - generic [ref=e192]:
+            - generic [ref=e193]:
+              - heading "Staff" [level=3] [ref=e194]
+              - paragraph [ref=e195]: Super admin workspace. Account changes are saved through the CMS staff RPC.
+            - generic [ref=e196]:
+              - button "Add account" [ref=e197]:
+                - img
+                - text: Add account
+              - button "Load staff" [ref=e198]:
+                - img
+                - text: Load staff
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - img
+              - textbox "Search staff" [ref=e202]
+            - combobox [ref=e203]:
+              - option "All roles" [selected]
+              - option "super_admin"
+              - option "admin"
+              - option "supervisor"
+              - option "staff"
+              - option "customer"
+              - option "user"
+              - option "disabled"
+            - combobox [ref=e204]:
+              - option "All statuses" [selected]
+              - option "active"
+              - option "hidden"
+              - option "suspended"
+              - option "deleted"
+            - generic [ref=e205]:
+              - checkbox "Show hidden" [checked] [ref=e206]
+              - text: Show hidden
+          - generic [ref=e207]:
+            - generic [ref=e209]: Click Load staff to fetch accounts.
+            - paragraph [ref=e211]: Load and select a staff account to edit permissions.
+  - contentinfo [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - img "Mitra Auto" [ref=e45]
+            - generic [ref=e46]: Mitra Auto
+          - paragraph [ref=e47]: Full-service garage with tire, maintenance and repair services.
+        - generic [ref=e48]:
+          - heading "Shop" [level=3] [ref=e49]
+          - list [ref=e50]:
+            - listitem [ref=e51]:
+              - link "Catalog" [ref=e52] [cursor=pointer]:
+                - /url: /catalog
+        - generic [ref=e53]:
+          - heading "Services" [level=3] [ref=e54]
+          - list [ref=e55]:
+            - listitem [ref=e56]:
+              - link "Car Service" [ref=e57] [cursor=pointer]:
+                - /url: /services
+            - listitem [ref=e58]:
+              - link "Tire Hotel" [ref=e59] [cursor=pointer]:
+                - /url: /tire-hotel
+        - generic [ref=e60]:
+          - heading "Company" [level=3] [ref=e61]
+          - list [ref=e62]:
+            - listitem [ref=e63]:
+              - link "About Us" [ref=e64] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e65]:
+              - link "Contact" [ref=e66] [cursor=pointer]:
+                - /url: /
+        - generic [ref=e67]:
+          - heading "Legal" [level=3] [ref=e68]
+          - list [ref=e69]:
+            - listitem [ref=e70]:
+              - link "Privacy" [ref=e71] [cursor=pointer]:
+                - /url: /legal/privacy
+            - listitem [ref=e72]:
+              - link "Terms" [ref=e73] [cursor=pointer]:
+                - /url: /legal/terms
+      - generic [ref=e75]:
+        - paragraph [ref=e76]: © Mitra Auto 2026
+        - generic [ref=e77]:
+          - link "Facebook" [ref=e78] [cursor=pointer]:
+            - /url: https://facebook.com
+            - img [ref=e79]
+          - link "Twitter" [ref=e81] [cursor=pointer]:
+            - /url: https://twitter.com
+            - img [ref=e82]
+          - link "Instagram" [ref=e84] [cursor=pointer]:
+            - /url: https://instagram.com
+            - img [ref=e85]
+          - link "LinkedIn" [ref=e88] [cursor=pointer]:
+            - /url: https://linkedin.com
+            - img [ref=e89]
+        - generic [ref=e93]:
+          - button "FI" [ref=e94]
+          - button "EN" [ref=e95]

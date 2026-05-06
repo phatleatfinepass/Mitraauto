@@ -1,0 +1,145 @@
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation [ref=e5]:
+    - generic [ref=e7]:
+      - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "Mitra Auto" [ref=e9]
+        - generic [ref=e10]: Mitra Auto
+      - button [ref=e96]:
+        - img [ref=e97]
+  - main [ref=e34]:
+    - generic [ref=e99]:
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - paragraph [ref=e103]: CMS Beta
+            - heading "Control Center" [level=1] [ref=e104]
+          - generic [ref=e105]: Switch tabs to access schedule and catalog tools
+        - paragraph [ref=e107]: Navigate between operations, catalog, account, and customer tools.
+      - generic [ref=e109]:
+        - button "Rescue 24/7" [ref=e110]:
+          - generic [ref=e112]: Rescue 24/7
+        - button "Booking Schedule" [ref=e113]:
+          - generic [ref=e115]: Booking Schedule
+        - button "Tire Catalog" [ref=e116]:
+          - generic [ref=e118]: Tire Catalog
+        - button "Rim Catalog" [ref=e119]:
+          - generic [ref=e121]: Rim Catalog
+        - button "Order & Invoice" [ref=e122]:
+          - generic [ref=e124]: Order & Invoice
+        - button "Receipt" [ref=e125]:
+          - generic [ref=e127]: Receipt
+        - button "Account & Customer" [ref=e128]:
+          - generic [ref=e130]: Account & Customer
+        - button "Future Tools" [ref=e131]:
+          - generic [ref=e133]: Future Tools
+      - generic [ref=e135]:
+        - generic [ref=e136]:
+          - heading "Account & Customer" [level=2] [ref=e138]
+          - generic [ref=e139]:
+            - button "Customer" [ref=e140]:
+              - img [ref=e141]
+              - text: Customer
+            - button "Staff" [active] [ref=e146]:
+              - img [ref=e147]
+              - text: Staff
+            - button "Account settings" [ref=e159]:
+              - img
+        - generic [ref=e189]:
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - heading "Staff" [level=3] [ref=e192]
+              - paragraph [ref=e193]: Super admin workspace. Account changes are saved through the CMS staff RPC.
+            - generic [ref=e194]:
+              - button "Add account" [ref=e195]:
+                - img
+                - text: Add account
+              - button "Load staff" [ref=e196]:
+                - img
+                - text: Load staff
+          - generic [ref=e198]:
+            - generic [ref=e199]:
+              - img
+              - textbox "Search staff" [ref=e200]
+            - combobox [ref=e201]:
+              - option "All roles" [selected]
+              - option "super_admin"
+              - option "admin"
+              - option "supervisor"
+              - option "staff"
+              - option "customer"
+              - option "user"
+              - option "disabled"
+            - combobox [ref=e202]:
+              - option "All statuses" [selected]
+              - option "active"
+              - option "hidden"
+              - option "suspended"
+              - option "deleted"
+            - generic [ref=e203]:
+              - checkbox "Show hidden" [checked] [ref=e204]
+              - text: Show hidden
+          - generic [ref=e205]:
+            - generic [ref=e207]: Click Load staff to fetch accounts.
+            - paragraph [ref=e209]: Load and select a staff account to edit permissions.
+  - contentinfo [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - img "Mitra Auto" [ref=e45]
+            - generic [ref=e46]: Mitra Auto
+          - paragraph [ref=e47]: Full-service garage with tire, maintenance and repair services.
+        - generic [ref=e48]:
+          - heading "Shop" [level=3] [ref=e49]
+          - list [ref=e50]:
+            - listitem [ref=e51]:
+              - link "Catalog" [ref=e52] [cursor=pointer]:
+                - /url: /catalog
+        - generic [ref=e53]:
+          - heading "Services" [level=3] [ref=e54]
+          - list [ref=e55]:
+            - listitem [ref=e56]:
+              - link "Car Service" [ref=e57] [cursor=pointer]:
+                - /url: /services
+            - listitem [ref=e58]:
+              - link "Tire Hotel" [ref=e59] [cursor=pointer]:
+                - /url: /tire-hotel
+        - generic [ref=e60]:
+          - heading "Company" [level=3] [ref=e61]
+          - list [ref=e62]:
+            - listitem [ref=e63]:
+              - link "About Us" [ref=e64] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e65]:
+              - link "Contact" [ref=e66] [cursor=pointer]:
+                - /url: /
+        - generic [ref=e67]:
+          - heading "Legal" [level=3] [ref=e68]
+          - list [ref=e69]:
+            - listitem [ref=e70]:
+              - link "Privacy" [ref=e71] [cursor=pointer]:
+                - /url: /legal/privacy
+            - listitem [ref=e72]:
+              - link "Terms" [ref=e73] [cursor=pointer]:
+                - /url: /legal/terms
+      - generic [ref=e75]:
+        - paragraph [ref=e76]: © Mitra Auto 2026
+        - generic [ref=e77]:
+          - link "Facebook" [ref=e78] [cursor=pointer]:
+            - /url: https://facebook.com
+            - img [ref=e79]
+          - link "Twitter" [ref=e81] [cursor=pointer]:
+            - /url: https://twitter.com
+            - img [ref=e82]
+          - link "Instagram" [ref=e84] [cursor=pointer]:
+            - /url: https://instagram.com
+            - img [ref=e85]
+          - link "LinkedIn" [ref=e88] [cursor=pointer]:
+            - /url: https://linkedin.com
+            - img [ref=e89]
+        - generic [ref=e93]:
+          - button "FI" [ref=e94]
+          - button "EN" [ref=e95]

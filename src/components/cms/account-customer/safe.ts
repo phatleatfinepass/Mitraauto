@@ -1,4 +1,4 @@
-import { ACCOUNT_STATUSES, CMS_MODULES, CUSTOMER_STATUSES, CUSTOMER_TYPES, PERMISSION_VALUES, STAFF_ROLES } from './constants';
+import { ACCOUNT_STATUSES, CMS_MODULES, CUSTOMER_NOTIFICATION_CHANNELS, CUSTOMER_NOTIFICATION_STATUSES, CUSTOMER_STATUSES, CUSTOMER_TYPES, MAINTENANCE_REMINDER_STATUSES, PERMISSION_VALUES, STAFF_ROLES } from './constants';
 import type {
   AccountStatus,
   CmsPermissionValue,
@@ -13,9 +13,14 @@ import type {
   CustomerHistoryOrder,
   CustomerHistoryRescue,
   CustomerLinkSuggestion,
+  CustomerMaintenanceReminder,
+  CustomerMaintenanceReminderDraft,
+  CustomerNotificationHistoryRow,
   CustomerNoteRow,
   CustomerNoteVisibility,
   CustomerOverviewRow,
+  CustomerServiceBookDraft,
+  CustomerServiceBookEntry,
   CustomerStatus,
   CustomerType,
   CustomerVehicleDraft,
@@ -25,7 +30,6 @@ import type {
   LicensePlateImportResult,
   StaffAccountRow,
   StaffDraft,
-  StaffPresetId,
   StaffRole,
 } from './types';
 
@@ -101,6 +105,28 @@ function normalizeNoteVisibility(value: unknown): CustomerNoteVisibility {
   return candidate === 'super_admin' ? 'super_admin' : 'internal';
 }
 
+function normalizeServiceBookEntryType(value: unknown): CustomerServiceBookEntry['entryType'] {
+  const candidate = text(value) as CustomerServiceBookEntry['entryType'];
+  return ['maintenance', 'service', 'inspection', 'estimate', 'repair', 'tire', 'cleaning', 'note'].includes(candidate)
+    ? candidate
+    : 'maintenance';
+}
+
+function normalizeMaintenanceReminderStatus(value: unknown): CustomerMaintenanceReminder['status'] {
+  const candidate = text(value) as CustomerMaintenanceReminder['status'];
+  return MAINTENANCE_REMINDER_STATUSES.includes(candidate) ? candidate : 'active';
+}
+
+function normalizeNotificationStatus(value: unknown): CustomerNotificationHistoryRow['status'] {
+  const candidate = text(value) as CustomerNotificationHistoryRow['status'];
+  return CUSTOMER_NOTIFICATION_STATUSES.includes(candidate) ? candidate : 'queued';
+}
+
+function normalizeNotificationChannel(value: unknown): CustomerNotificationHistoryRow['channel'] {
+  const candidate = text(value) as CustomerNotificationHistoryRow['channel'];
+  return CUSTOMER_NOTIFICATION_CHANNELS.includes(candidate) ? candidate : 'email';
+}
+
 function normalizePermission(value: unknown): CmsPermissionValue {
   const candidate = text(value) as CmsPermissionValue;
   return PERMISSION_VALUES.includes(candidate) ? candidate : 'none';
@@ -133,6 +159,12 @@ export function normalizeCustomerRow(row: unknown, index: number): CustomerOverv
     source: text(source.source, 'activity') || 'activity',
     hidden: Boolean(source.hidden),
     tags: normalizeArray(source.tags),
+    accountId: nullableText(source.account_id),
+    accountEmail: text(source.account_email),
+    portalEnabled: Boolean(source.portal_enabled),
+    benefitPoints: finiteCount(source.benefit_points),
+    benefitTier: text(source.benefit_tier, 'bronze') || 'bronze',
+    benefitDiscountPercent: Number(source.benefit_discount_percent ?? 0) || 0,
   };
 }
 
@@ -178,64 +210,6 @@ export function buildDefaultStaffPermissions(role: StaffRole) {
   }
 
   return permissions;
-}
-
-export function buildStaffDraftForPreset(presetId: StaffPresetId, current?: StaffDraft | null): StaffDraft {
-  const baseDisplayName = current?.displayName ?? '';
-
-  if (presetId === 'super_admin') {
-    return {
-      displayName: baseDisplayName,
-      role: 'super_admin',
-      accountStatus: 'active',
-      hidden: false,
-      permissions: buildDefaultStaffPermissions('super_admin'),
-    };
-  }
-
-  if (presetId === 'admin') {
-    return {
-      displayName: baseDisplayName,
-      role: 'admin',
-      accountStatus: 'active',
-      hidden: false,
-      permissions: buildDefaultStaffPermissions('admin'),
-    };
-  }
-
-  if (presetId === 'supervisor') {
-    return {
-      displayName: baseDisplayName,
-      role: 'supervisor',
-      accountStatus: 'active',
-      hidden: false,
-      permissions: buildDefaultStaffPermissions('supervisor'),
-    };
-  }
-
-  if (presetId === 'staff_limited') {
-    const permissions = buildDefaultStaffPermissions('staff');
-    permissions.rescue = 'read';
-    permissions.schedule = 'read';
-    permissions.orders = 'read';
-    permissions.invoices = 'read';
-    permissions.customers = 'read';
-    return {
-      displayName: baseDisplayName,
-      role: 'staff',
-      accountStatus: 'active',
-      hidden: false,
-      permissions,
-    };
-  }
-
-  return {
-    displayName: baseDisplayName,
-    role: 'disabled',
-    accountStatus: 'deleted',
-    hidden: true,
-    permissions: buildDefaultStaffPermissions('disabled'),
-  };
 }
 
 export function normalizeAccountEventRow(row: unknown): AccountEventRow | null {
@@ -290,14 +264,145 @@ function normalizeNoteRow(row: unknown): CustomerNoteRow | null {
   };
 }
 
+export function normalizeServiceBookEntry(row: unknown): CustomerServiceBookEntry | null {
+  const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+  const id = text(source.id);
+  const customerId = text(source.customer_id);
+  if (!id || !customerId) return null;
+
+  const parts = Array.isArray(source.parts) ? source.parts : [];
+
+  return {
+    id,
+    customerId,
+    customerVehicleId: nullableText(source.customer_vehicle_id),
+    entryType: normalizeServiceBookEntryType(source.entry_type),
+    title: text(source.title),
+    description: text(source.description),
+    workDate: nullableText(source.work_date),
+    mileageKm: nullableNumber(source.mileage_km),
+    parts,
+    sourceType: text(source.source_type),
+    sourceId: nullableText(source.source_id),
+    invoiceId: nullableText(source.invoice_id),
+    bookingId: nullableText(source.booking_id),
+    staffNotes: text(source.staff_notes),
+    visibleToCustomer: source.visible_to_customer !== false,
+    createdAt: nullableText(source.created_at),
+    updatedAt: nullableText(source.updated_at),
+  };
+}
+
+export function buildServiceBookDraft(customerId: string, entry?: CustomerServiceBookEntry | null): CustomerServiceBookDraft {
+  return {
+    id: entry?.id ?? null,
+    customerId,
+    customerVehicleId: entry?.customerVehicleId ?? null,
+    entryType: entry?.entryType ?? 'maintenance',
+    title: entry?.title ?? '',
+    description: entry?.description ?? '',
+    workDate: entry?.workDate ?? new Date().toISOString().slice(0, 10),
+    mileageKm: entry?.mileageKm === null || entry?.mileageKm === undefined ? '' : String(entry.mileageKm),
+    partsText: (entry?.parts ?? []).map((part) => {
+      if (typeof part === 'string') return part;
+      if (part && typeof part === 'object' && 'label' in part) return text((part as any).label);
+      return text(part);
+    }).filter(Boolean).join('\n'),
+    staffNotes: entry?.staffNotes ?? '',
+    visibleToCustomer: entry?.visibleToCustomer ?? true,
+  };
+}
+
+export function normalizeMaintenanceReminder(row: unknown): CustomerMaintenanceReminder | null {
+  const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+  const id = text(source.id);
+  const customerId = text(source.customer_id);
+  if (!id || !customerId) return null;
+
+  return {
+    id,
+    customerId,
+    customerVehicleId: nullableText(source.customer_vehicle_id),
+    reminderType: text(source.reminder_type, 'maintenance') || 'maintenance',
+    title: text(source.title),
+    description: text(source.description),
+    dueDate: nullableText(source.due_date),
+    dueMileageKm: nullableNumber(source.due_mileage_km),
+    lastKnownMileageKm: nullableNumber(source.last_known_mileage_km),
+    status: normalizeMaintenanceReminderStatus(source.status),
+    serviceCritical: source.service_critical !== false,
+    nextEmailAt: nullableText(source.next_email_at),
+    lastEmailAt: nullableText(source.last_email_at),
+    createdAt: nullableText(source.created_at),
+    updatedAt: nullableText(source.updated_at),
+  };
+}
+
+export function buildMaintenanceReminderDraft(customerId: string, reminder?: CustomerMaintenanceReminder | null): CustomerMaintenanceReminderDraft {
+  return {
+    id: reminder?.id ?? null,
+    customerId,
+    customerVehicleId: reminder?.customerVehicleId ?? null,
+    reminderType: reminder?.reminderType ?? 'maintenance',
+    title: reminder?.title ?? '',
+    description: reminder?.description ?? '',
+    dueDate: reminder?.dueDate ?? '',
+    dueMileageKm: reminder?.dueMileageKm === null || reminder?.dueMileageKm === undefined ? '' : String(reminder.dueMileageKm),
+    lastKnownMileageKm: reminder?.lastKnownMileageKm === null || reminder?.lastKnownMileageKm === undefined ? '' : String(reminder.lastKnownMileageKm),
+    status: reminder?.status ?? 'active',
+    serviceCritical: reminder?.serviceCritical ?? true,
+    nextEmailAt: reminder?.nextEmailAt ? reminder.nextEmailAt.slice(0, 16) : '',
+  };
+}
+
+export function normalizeNotificationHistoryRow(row: unknown): CustomerNotificationHistoryRow | null {
+  const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+  const id = text(source.id);
+  if (!id) return null;
+
+  const details = source.details && typeof source.details === 'object'
+    ? source.details as Record<string, unknown>
+    : {};
+
+  return {
+    id,
+    customerId: nullableText(source.customer_id),
+    customerVehicleId: nullableText(source.customer_vehicle_id),
+    reminderId: nullableText(source.reminder_id),
+    notificationType: text(source.notification_type),
+    channel: normalizeNotificationChannel(source.channel),
+    recipient: text(source.recipient),
+    subject: text(source.subject),
+    status: normalizeNotificationStatus(source.status),
+    providerMessageId: text(source.provider_message_id),
+    sentAt: nullableText(source.sent_at),
+    details,
+    createdAt: nullableText(source.created_at),
+  };
+}
+
 export function normalizeCustomerDetail(value: unknown): CustomerDetail | null {
   const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   const id = text(source.id);
   if (!id) return null;
+  const benefits = source.benefits && typeof source.benefits === 'object'
+    ? source.benefits as Record<string, unknown>
+    : {};
 
   return {
     id,
     customerType: normalizeCustomerType(source.customer_type),
+    accountId: nullableText(source.account_id),
+    accountEmail: text(source.account_email),
+    portalEnabled: Boolean(source.portal_enabled),
+    portalInvitedAt: nullableText(source.portal_invited_at),
+    benefits: {
+      pointsBalance: finiteCount(benefits.points_balance),
+      lifetimePoints: finiteCount(benefits.lifetime_points),
+      tier: text(benefits.tier, 'bronze') || 'bronze',
+      discountPercent: Number(benefits.discount_percent ?? 0) || 0,
+      updatedAt: nullableText(benefits.updated_at),
+    },
     primaryEmail: text(source.primary_email),
     primaryPhone: text(source.primary_phone),
     fullName: text(source.full_name),

@@ -512,6 +512,44 @@ function buildRawMessage(args: {
   return { raw: lines.join("\r\n"), messageId };
 }
 
+export async function sendGmailRawEmail(args: {
+  toEmail: string;
+  toName?: string | null;
+  subject: string;
+  text: string;
+  html?: string | null;
+  mailboxEmail?: string;
+}) {
+  const mailboxEmail = (args.mailboxEmail ?? gmailMailboxLabel()).toLowerCase();
+  const rawMessage = buildRawMessage({
+    fromEmail: mailboxEmail,
+    fromName: "Mitra Auto",
+    toEmail: args.toEmail,
+    toName: args.toName ?? null,
+    subject: args.subject,
+    text: args.text,
+    html: args.html ?? null,
+    messageId: `<account-recovery-${randomToken(12)}@mitra-auto.fi>`,
+  });
+
+  const result = await gmailApi<GmailMessageResource>({
+    mailboxEmail,
+    path: "/messages/send",
+    method: "POST",
+    body: {
+      raw: toBase64Url(rawMessage.raw),
+    },
+  });
+
+  return {
+    provider: "gmail",
+    mailboxEmail,
+    messageId: result.id,
+    threadId: result.threadId,
+    messageIdHeader: rawMessage.messageId,
+  };
+}
+
 function buildMessageBodies(booking: BookingRow, message: string) {
   const bookingSummary = [
     booking.service_name ? `Service: ${booking.service_name}` : null,

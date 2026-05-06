@@ -1,0 +1,57 @@
+[     130ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:21608
+[     182ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/EmergencyTowModal.tsx:37
+[     183ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049331168:1046
+[     247ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049331168:762
+[   74476ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049331168:762
+[  524328ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:1046
+[  524332ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:762
+[  544850ms] ReferenceError: Filter is not defined
+    at StaffPanel (http://127.0.0.1:5173/src/components/cms/account-customer/StaffPanel.tsx?t=1778049894893:722:40)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:11596:26)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:14630:28)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:15972:22)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:3680:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:3705:24)
+    at invokeGuardedCallback (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:3739:39)
+    at beginWork$1 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:19818:15)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:19251:20)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:19190:13)
+[  544854ms] ReferenceError: Filter is not defined
+    at StaffPanel (http://127.0.0.1:5173/src/components/cms/account-customer/StaffPanel.tsx?t=1778049894893:722:40)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:11596:26)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:14630:28)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:15972:22)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:3680:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:3705:24)
+    at invokeGuardedCallback (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:3739:39)
+    at beginWork$1 (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:19818:15)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:19251:20)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:19190:13)
+[  544855ms] [ERROR] The above error occurred in the <StaffPanel> component:
+
+    at StaffPanel (http://127.0.0.1:5173/src/components/cms/account-customer/StaffPanel.tsx?t=1778049894893:27:30)
+    at div
+    at AccountCustomerCMSPage (http://127.0.0.1:5173/src/components/cms/AccountCustomerCMSPage.tsx?t=1778049877906:30:24)
+    at Suspense
+    at CmsTabContent (http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:193:26)
+    at CmsTabErrorBoundary (http://127.0.0.1:5173/src/components/cms/CmsTabErrorBoundary.tsx:9:5)
+    at div
+    at div
+    at div
+    at CmsControlCenter (http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:318:3)
+    at CmsAccessProvider (http://127.0.0.1:5173/src/components/cms/CmsAccessContext.tsx:20:37)
+    at CmsGuard (http://127.0.0.1:5173/src/components/cms/CmsGuard.tsx?t=1778047569756:63:28)
+    at main
+    at div
+    at HomePage (http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:734:27)
+    at CartProvider (http://127.0.0.1:5173/src/components/CartContext.tsx:57:32)
+    at LanguageProvider (http://127.0.0.1:5173/src/components/LanguageContext.tsx:1103:36)
+    at ThemeProvider (http://127.0.0.1:5173/src/components/ThemeContext.tsx:25:33)
+    at App
+
+React will try to recreate this component tree from scratch using the error boundary you provided, CmsTabErrorBoundary. @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:14079
+[  593903ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778049874325:762
+[  669581ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:1046
+[  669583ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:762
+[  935150ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:762
+[ 1044088ms] [LOG] Auth state changed: TOKEN_REFRESHED 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778050019539:762

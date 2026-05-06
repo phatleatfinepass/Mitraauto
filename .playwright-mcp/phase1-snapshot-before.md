@@ -1,0 +1,52 @@
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation [ref=e5]:
+    - generic [ref=e7]:
+      - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "Mitra Auto" [ref=e9]
+        - generic [ref=e10]: Mitra Auto
+      - generic [ref=e11]:
+        - link "Home" [ref=e12] [cursor=pointer]:
+          - /url: /
+        - link "Services" [ref=e13] [cursor=pointer]:
+          - /url: /services
+        - link "Catalog" [ref=e14] [cursor=pointer]:
+          - /url: /catalog
+        - link "Tire Hotel" [ref=e15] [cursor=pointer]:
+          - /url: /tire-hotel
+      - generic [ref=e16]:
+        - button "Toggle theme" [ref=e17]
+        - button "Toggle language" [ref=e20]
+        - button "Cart" [ref=e25]
+        - button [ref=e96]
+  - main [ref=e34]:
+    - generic [ref=e101]:
+      - generic [ref=e102]:
+        - generic [ref=e103]
+        - paragraph [ref=e109]: Navigate between operations, catalog, account, and customer tools.
+      - generic [ref=e111]:
+        - button "Rescue 24/7" [ref=e112]
+        - button "Booking Schedule" [ref=e115]
+        - button "Tire Catalog" [ref=e118]
+        - button "Rim Catalog" [ref=e121]
+        - button "Order & Invoice" [ref=e124]
+        - button "Receipt" [ref=e127]
+        - button "Account & Customer" [ref=e130]
+        - button "Future Tools" [ref=e133]
+      - generic [ref=e137]:
+        - generic [ref=e138]
+        - generic [ref=e162]
+  - contentinfo [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e42]:
+        - generic [ref=e43]
+        - generic [ref=e48]
+        - generic [ref=e53]
+        - generic [ref=e60]
+        - generic [ref=e67]
+      - generic [ref=e75]:
+        - paragraph [ref=e76]: © Mitra Auto 2026
+        - generic [ref=e77]
+        - generic [ref=e93]

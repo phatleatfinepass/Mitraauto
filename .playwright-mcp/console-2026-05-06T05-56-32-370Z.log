@@ -1,0 +1,6 @@
+[     147ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:21608
+[     203ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/EmergencyTowModal.tsx:37
+[     204ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778046977297:1046
+[     282ms] [LOG] Auth state changed: INITIAL_SESSION 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778046977297:762
+[    9341ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778046977297:762
+[   30715ms] [LOG] Auth state changed: SIGNED_IN 03c304c1-383d-461a-8f70-8790843df0f2 @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1778046977297:762

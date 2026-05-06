@@ -1,4 +1,4 @@
-import type { AccountStatus, CmsPermissionValue, CustomerStatus, CustomerType, StaffPresetId, StaffRole } from './types';
+import type { AccountStatus, CmsPermissionValue, CustomerNotificationChannel, CustomerNotificationStatus, CustomerStatus, CustomerType, MaintenanceReminderStatus, ServiceBookEntryType, StaffRole } from './types';
 
 export const STAFF_ROLES: StaffRole[] = [
   'super_admin',
@@ -13,6 +13,10 @@ export const STAFF_ROLES: StaffRole[] = [
 export const ACCOUNT_STATUSES: AccountStatus[] = ['active', 'hidden', 'suspended', 'deleted'];
 export const CUSTOMER_STATUSES: CustomerStatus[] = ['active', 'hidden', 'blocked', 'merged', 'deleted'];
 export const CUSTOMER_TYPES: CustomerType[] = ['personal', 'business', 'fleet'];
+export const SERVICE_BOOK_ENTRY_TYPES: ServiceBookEntryType[] = ['maintenance', 'service', 'inspection', 'estimate', 'repair', 'tire', 'cleaning', 'note'];
+export const MAINTENANCE_REMINDER_STATUSES: MaintenanceReminderStatus[] = ['active', 'paused', 'sent', 'completed', 'cancelled'];
+export const CUSTOMER_NOTIFICATION_STATUSES: CustomerNotificationStatus[] = ['queued', 'sent', 'failed', 'cancelled'];
+export const CUSTOMER_NOTIFICATION_CHANNELS: CustomerNotificationChannel[] = ['email', 'sms', 'push', 'phone', 'internal'];
 export const PERMISSION_VALUES: CmsPermissionValue[] = ['none', 'read', 'read_write'];
 
 export const CMS_MODULES = [
@@ -24,12 +28,4 @@ export const CMS_MODULES = [
   { id: 'invoices', label: 'Receipts' },
   { id: 'customers', label: 'Customers' },
   { id: 'accounts', label: 'Accounts' },
-];
-
-export const STAFF_PRESETS: Array<{ id: StaffPresetId; label: string; description: string }> = [
-  { id: 'super_admin', label: 'Super Admin', description: 'Full CMS access and account control.' },
-  { id: 'admin', label: 'Admin', description: 'Full operational CMS access without super-admin label.' },
-  { id: 'supervisor', label: 'Supervisor', description: 'Customer workspace only.' },
-  { id: 'staff_limited', label: 'Staff Limited', description: 'Read-only operational access.' },
-  { id: 'disabled', label: 'Disabled', description: 'No CMS access.' },
 ];

@@ -209,12 +209,13 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
       }
 
       const supabase = getSupabaseClient();
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error: resetError } = await supabase.functions.invoke('cms_account_recovery', {
+        method: 'POST',
+        body: { email: resetEmail },
       });
 
-      if (resetError) {
-        setError(resetError.message);
+      if (resetError || (data as any)?.error) {
+        setError(resetError?.message ?? String((data as any).error));
         setLoading(false);
         return;
       }

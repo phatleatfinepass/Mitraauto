@@ -1,13 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, EyeOff, FileText, ListPlus, Plus, Save, ShieldAlert } from 'lucide-react';
+import { AlertCircle, BadgePercent, EyeOff, FileText, Link2, ListPlus, Plus, Save, ShieldAlert, UserRound } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { CUSTOMER_STATUSES, CUSTOMER_TYPES } from './constants';
-import { addCustomerNote, bulkImportCustomerPlates, getCustomerDetail, saveCustomer, saveCustomerVehicle, setCustomerStatus } from './api';
+import {
+  addCustomerNote,
+  adjustCustomerBenefitPoints,
+  bulkImportCustomerPlates,
+  createCustomerPortalAccount,
+  getCustomerDetail,
+  linkCustomerAccountByEmail,
+  saveCustomer,
+  saveCustomerVehicle,
+  sendCustomerPortalActivationLink,
+  setCustomerPortalEnabled,
+  setCustomerStatus,
+} from './api';
 import { CustomerHistoryPanel } from './CustomerHistoryPanel';
 import { CustomerLinkSuggestionsPanel } from './CustomerLinkSuggestionsPanel';
+import { CustomerMaintenanceReminderPanel } from './CustomerMaintenanceReminderPanel';
+import { CustomerNotificationHistoryPanel } from './CustomerNotificationHistoryPanel';
+import { CustomerServiceBookPanel } from './CustomerServiceBookPanel';
 import { buildCustomerDraft, buildCustomerDraftFromOverview, buildVehicleDraft, formatDate } from './safe';
 import type {
   CustomerDetail,
@@ -23,6 +38,8 @@ type CustomerEditorPanelProps = {
   overviewRow: CustomerOverviewRow | null;
   onSaved: (customerId?: string | null) => void;
 };
+
+type CustomerDetailTab = 'detail' | 'vehicles' | 'serviceBook' | 'reminders' | 'notifications' | 'history';
 
 function consentValue(value: boolean | null) {
   if (value === true) return 'yes';
@@ -50,7 +67,12 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   const [bulkPlates, setBulkPlates] = useState('');
   const [bulkVehicleName, setBulkVehicleName] = useState('');
   const [bulkResult, setBulkResult] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountActionMessage, setAccountActionMessage] = useState('');
+  const [benefitDelta, setBenefitDelta] = useState('');
+  const [benefitReason, setBenefitReason] = useState('');
   const [mappingRefreshKey, setMappingRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<CustomerDetailTab>('detail');
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +86,12 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     setDetail(null);
     setVehicleDraft(null);
     setBulkResult('');
+    setAccountEmail('');
+    setAccountActionMessage('');
+    setBenefitDelta('');
+    setBenefitReason('');
     setMappingRefreshKey(0);
+    setActiveTab('detail');
 
     if (!overviewRow) {
       setDraft(buildCustomerDraftFromOverview(null));
@@ -87,7 +114,10 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
       .then((nextDetail) => {
         if (!active) return;
         setDetail(nextDetail);
-        if (nextDetail) setDraft(buildCustomerDraft(nextDetail));
+        if (nextDetail) {
+          setDraft(buildCustomerDraft(nextDetail));
+          setAccountEmail(nextDetail.accountEmail || nextDetail.primaryEmail || '');
+        }
       })
       .catch((err: any) => {
         if (!active) return;
@@ -106,6 +136,14 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     () => detail?.vehicles.filter((vehicle) => !vehicle.hidden) ?? [],
     [detail],
   );
+
+  const benefitSummary = detail?.benefits ?? {
+    discountPercent: overviewRow?.benefitDiscountPercent ?? 0,
+    lifetimePoints: overviewRow?.benefitPoints ?? 0,
+    pointsBalance: overviewRow?.benefitPoints ?? 0,
+    tier: overviewRow?.benefitTier || 'bronze',
+    updatedAt: null,
+  };
 
   const saveDraft = async () => {
     if (saving) return;
@@ -205,6 +243,141 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     }
   };
 
+  const linkAccount = async () => {
+    if (!draft.id || saving) return;
+    const email = accountEmail.trim() || draft.primaryEmail.trim();
+    if (!email) {
+      setError('Auth account email is required.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setAccountActionMessage('');
+
+    try {
+      await linkCustomerAccountByEmail(draft.id, email, true);
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      if (nextDetail) {
+        setDraft(buildCustomerDraft(nextDetail));
+        setAccountEmail(nextDetail.accountEmail || email);
+      }
+      setAccountActionMessage('Customer account linked and portal access enabled.');
+      onSaved(draft.id);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to link customer account.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const createPortalAccount = async () => {
+    if (!draft.id || saving) return;
+    const email = accountEmail.trim() || draft.primaryEmail.trim();
+    if (!email) {
+      setError('Customer email is required before creating a portal account.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setAccountActionMessage('');
+
+    try {
+      await createCustomerPortalAccount(draft.id, email, draft.fullName);
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      if (nextDetail) {
+        setDraft(buildCustomerDraft(nextDetail));
+        setAccountEmail(nextDetail.accountEmail || email);
+      }
+      setAccountActionMessage('Customer portal account created and activation link sent.');
+      onSaved(draft.id);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to create customer portal account.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendActivationLink = async () => {
+    if (!draft.id || saving) return;
+    const email = accountEmail.trim() || detail?.accountEmail || draft.primaryEmail.trim();
+    if (!email) {
+      setError('Customer email is required before sending an activation link.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setAccountActionMessage('');
+
+    try {
+      await sendCustomerPortalActivationLink(draft.id, email, draft.fullName);
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      if (nextDetail) {
+        setDraft(buildCustomerDraft(nextDetail));
+        setAccountEmail(nextDetail.accountEmail || email);
+      }
+      setAccountActionMessage('Customer portal activation link sent.');
+      onSaved(draft.id);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to send customer portal activation link.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const togglePortal = async () => {
+    if (!draft.id || saving) return;
+    setSaving(true);
+    setError(null);
+    setAccountActionMessage('');
+
+    try {
+      await setCustomerPortalEnabled(draft.id, !detail?.portalEnabled);
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      if (nextDetail) setDraft(buildCustomerDraft(nextDetail));
+      onSaved(draft.id);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to update customer portal access.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const adjustBenefits = async () => {
+    if (!draft.id || saving) return;
+    const delta = Number.parseInt(benefitDelta, 10);
+    if (!Number.isFinite(delta) || delta === 0) {
+      setError('Point adjustment must be a non-zero whole number.');
+      return;
+    }
+    if (!benefitReason.trim()) {
+      setError('Point adjustment reason is required for audit history.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await adjustCustomerBenefitPoints(draft.id, delta, benefitReason);
+      const nextDetail = await getCustomerDetail(draft.id);
+      setDetail(nextDetail);
+      setBenefitDelta('');
+      setBenefitReason('');
+      onSaved(draft.id);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to adjust customer benefit points.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const startVehicleEdit = (vehicle?: CustomerVehicleRow) => {
     if (!draft.id) {
       setError('Save the customer before adding vehicles.');
@@ -245,6 +418,15 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     onSaved(draft.id);
   };
 
+  const tabs: Array<{ id: CustomerDetailTab; label: string; disabled?: boolean }> = [
+    { id: 'detail', label: 'Detail' },
+    { id: 'vehicles', label: 'Vehicles', disabled: !hasSavedCustomer },
+    { id: 'serviceBook', label: 'Service book', disabled: !hasSavedCustomer },
+    { id: 'reminders', label: 'Reminders', disabled: !hasSavedCustomer },
+    { id: 'notifications', label: 'Notifications', disabled: !hasSavedCustomer },
+    { id: 'history', label: 'History', disabled: !hasSavedCustomer },
+  ];
+
   return (
     <aside className="space-y-5 rounded-lg border bg-background p-5">
       <div className="flex items-start justify-between gap-3">
@@ -265,6 +447,128 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
           {error}
         </div>
       ) : null}
+
+      <div className="flex gap-1 overflow-x-auto border-b">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            disabled={tab.disabled}
+            onClick={() => setActiveTab(tab.id)}
+            className={`h-10 whitespace-nowrap border-b-2 px-3 text-sm ${
+              activeTab === tab.id
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            } ${tab.disabled ? 'cursor-not-allowed opacity-40 hover:text-muted-foreground' : ''}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'detail' ? (
+        <>
+      <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <UserRound className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold text-foreground">Customer portal & benefits</h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={detail?.accountId ? 'secondary' : 'outline'}>
+              {detail?.accountId ? 'Account linked' : 'No account'}
+            </Badge>
+            <Badge variant={detail?.portalEnabled ? 'secondary' : 'outline'}>
+              {detail?.portalEnabled ? 'Portal on' : 'Portal off'}
+            </Badge>
+          </div>
+        </div>
+
+        {!hasSavedCustomer ? (
+          <p className="text-sm text-muted-foreground">Save the customer before linking a login account or adjusting benefits.</p>
+        ) : (
+          <div className="grid gap-4">
+            <div className="grid gap-3">
+              <div className="space-y-2">
+                <Label>Portal account email</Label>
+                <Input
+                  value={accountEmail}
+                  onChange={(event) => setAccountEmail(event.target.value)}
+                  placeholder={draft.primaryEmail || 'customer@example.com'}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {detail?.accountEmail ? `Linked to ${detail.accountEmail}` : 'Create a customer login account or link an existing customer auth user.'}
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <Button variant="outline" onClick={createPortalAccount} disabled={saving || Boolean(detail?.accountId)} className="justify-start">
+                  <UserRound className="mr-2 h-4 w-4" />
+                  Create account
+                </Button>
+                <Button variant="outline" onClick={linkAccount} disabled={saving} className="justify-start">
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Link account
+                </Button>
+                <Button variant="outline" onClick={sendActivationLink} disabled={saving || !detail?.accountId} className="justify-start">
+                  Send activation
+                </Button>
+                <Button variant="outline" onClick={togglePortal} disabled={saving || !detail?.accountId} className="justify-start">
+                  {detail?.portalEnabled ? 'Disable portal' : 'Enable portal'}
+                </Button>
+              </div>
+            </div>
+            {accountActionMessage ? (
+              <div className="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
+                {accountActionMessage}
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <div className="text-xs text-muted-foreground">Points</div>
+                <div className="text-lg font-semibold text-foreground">{benefitSummary.pointsBalance}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Tier</div>
+                <div className="text-lg font-semibold capitalize text-foreground">{benefitSummary.tier}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Discount</div>
+                <div className="text-lg font-semibold text-foreground">{benefitSummary.discountPercent}%</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Lifetime</div>
+                <div className="text-lg font-semibold text-foreground">{benefitSummary.lifetimePoints}</div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 xl:grid-cols-[130px_minmax(0,1fr)_auto] xl:items-end">
+              <div className="space-y-2">
+                <Label>Point change</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  value={benefitDelta}
+                  onChange={(event) => setBenefitDelta(event.target.value)}
+                  placeholder="+50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Audit reason</Label>
+                <Input
+                  value={benefitReason}
+                  onChange={(event) => setBenefitReason(event.target.value)}
+                  placeholder="Service completed, manual correction, campaign benefit"
+                />
+              </div>
+              <Button variant="outline" onClick={adjustBenefits} disabled={saving} className="justify-start">
+                <BadgePercent className="mr-2 h-4 w-4" />
+                Adjust points
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="space-y-5">
         <div className="space-y-3">
@@ -439,10 +743,13 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
           </>
         ) : null}
       </div>
+        </>
+      ) : null}
 
       {draft.id ? (
         <>
-          <div className="space-y-3 border-t pt-5">
+          {activeTab === 'vehicles' ? (
+          <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h4 className="font-semibold text-foreground">Vehicles</h4>
               <Button variant="outline" size="sm" onClick={() => startVehicleEdit()}>
@@ -512,7 +819,9 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
               </div>
             ) : null}
           </div>
+          ) : null}
 
+          {activeTab === 'detail' ? (
           <div className="space-y-3 border-t pt-5">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
@@ -552,10 +861,27 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
               <p className="text-sm text-muted-foreground">No notes saved.</p>
             )}
           </div>
+          ) : null}
 
-          <CustomerLinkSuggestionsPanel customerId={draft.id} onLinked={handleActivityLinked} />
+          {activeTab === 'history' ? (
+            <CustomerLinkSuggestionsPanel customerId={draft.id} onLinked={handleActivityLinked} />
+          ) : null}
 
-          <CustomerHistoryPanel key={`${draft.id}-${mappingRefreshKey}`} customerId={draft.id} />
+          {activeTab === 'serviceBook' ? (
+            <CustomerServiceBookPanel customerId={draft.id} vehicles={detail?.vehicles ?? []} />
+          ) : null}
+
+          {activeTab === 'reminders' ? (
+            <CustomerMaintenanceReminderPanel customerId={draft.id} vehicles={detail?.vehicles ?? []} />
+          ) : null}
+
+          {activeTab === 'notifications' ? (
+            <CustomerNotificationHistoryPanel customerId={draft.id} vehicles={detail?.vehicles ?? []} />
+          ) : null}
+
+          {activeTab === 'history' ? (
+            <CustomerHistoryPanel key={`${draft.id}-${mappingRefreshKey}`} customerId={draft.id} />
+          ) : null}
         </>
       ) : (
         <p className="border-t pt-5 text-sm text-muted-foreground">

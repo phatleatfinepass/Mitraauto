@@ -31,6 +31,7 @@ import { TireChangePage } from './components/TireChangePage';
 import { DiagnosticsPage } from './components/DiagnosticsPage';
 import { CarWashPage } from './components/CarWashPage';
 import { CustomerBookingManagePage } from './components/CustomerBookingManagePage';
+import { CustomerAccountPage } from './components/CustomerAccountPage';
 import { NotFoundPage } from './components/NotFoundPage';
 import { CmsPwaScreen } from './CmsPwaApp';
 import { Button } from './components/ui/button';
@@ -654,7 +655,7 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'cms-invoices' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'cms-invoices' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -812,7 +813,7 @@ function HomePage() {
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
       const normalizedPath = normalizeAppPath(path);
       const nextCmsTab =
-        normalizedPath === '/cms' || normalizedPath === '/cms/rescue'
+        normalizedPath === '/cms' || normalizedPath === '/cms/rescue' || normalizedPath === '/cms/password-setup'
           ? resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined)
           : undefined;
 
@@ -877,6 +878,14 @@ function HomePage() {
         transitionNavigationState('about');
       } else if (normalizedPath === '/booking/manage' || normalizedPath === '/en/booking/manage') {
         transitionNavigationState('booking-manage');
+      } else if (
+        normalizedPath === '/account' ||
+        normalizedPath === '/customer/account' ||
+        normalizedPath === '/customer' ||
+        normalizedPath === '/en/account' ||
+        normalizedPath === '/en/customer/account'
+      ) {
+        transitionNavigationState('customer-account');
       }
       
       // Admin/CMS/Protected routes
@@ -892,7 +901,7 @@ function HomePage() {
         transitionNavigationState('pwa-cms');
       } else if (normalizedPath === '/pwa' || normalizedPath.startsWith('/pwa/')) {
         transitionNavigationState('pwa-not-found');
-      } else if (normalizedPath === '/cms' || normalizedPath === '/cms/rescue') {
+      } else if (normalizedPath === '/cms' || normalizedPath === '/cms/rescue' || normalizedPath === '/cms/password-setup') {
         transitionNavigationState('cms-beta', null, nextCmsTab);
       } else if (normalizedPath === '/cms/rescue-board') {
         transitionNavigationState('cms-rescue');
@@ -1032,7 +1041,7 @@ function HomePage() {
 
     const handleHashChange = () => {
       const normalizedPath = normalizeAppPath(window.location.pathname);
-      if (normalizedPath === '/cms') {
+      if (normalizedPath === '/cms' || normalizedPath === '/cms/password-setup') {
         startTransition(() => {
           setCmsTab(resolveCmsTabFromHash(window.location.hash));
         });
@@ -1067,7 +1076,7 @@ function HomePage() {
 
     if (typeof window !== 'undefined') {
       const normalizedPath = normalizeAppPath(window.location.pathname);
-      if (normalizedPath === '/cms') {
+      if (normalizedPath === '/cms' || normalizedPath === '/cms/password-setup') {
         window.history.replaceState(window.history.state, '', `${normalizedPath}#${tab}`);
       }
     }
@@ -1085,6 +1094,7 @@ function HomePage() {
       const currentPath = normalizeAppPath(window.location.pathname);
       const targetPath = requestedProtectedPathRef.current ?? (
         currentPath === '/cms' ||
+        currentPath === '/cms/password-setup' ||
         currentPath === '/cms/orders' ||
         currentPath === '/cms-orders' ||
         currentPath === '/cms/invoices' ||
@@ -1263,7 +1273,7 @@ function HomePage() {
     { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
     { id: 'orders' as const, label: 'Order & Invoice', description: 'Track purchases and invoice payments' },
     { id: 'invoices' as const, label: 'Receipt', description: 'Receipts and paid documents' },
-    { id: 'account-customer' as const, label: 'Account & Customer', description: 'Manage CMS access and customer records' },
+    { id: 'account-customer' as const, label: 'Account', description: 'Manage CMS access and customer records' },
     { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
   ];
 
@@ -1433,6 +1443,11 @@ function HomePage() {
           <CheckoutCancelPage
             onNavigateHome={() => navigate('/')}
             onNavigateToCheckout={() => navigate('/checkout')}
+          />
+        ) : currentPage === 'customer-account' ? (
+          <CustomerAccountPage
+            onLoginNeeded={handleLogin}
+            onNavigateHome={() => navigate('/')}
           />
         ) : currentPage === 'admin-schedule' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="schedule">
