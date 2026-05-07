@@ -10,6 +10,7 @@ import { requestCmsAccountRecovery } from './account-customer/api';
 
 const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v3';
 const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v3';
+const CMS_PASSWORD_SETUP_PARAMS_KEY = 'mitra.cms.password-setup.params.v1';
 
 function clearCmsSessionCaches() {
   if (typeof window === 'undefined') return;
@@ -47,7 +48,9 @@ function getPasswordRecoveryState() {
     hash.has('refresh_token') ||
     hash.has('token') ||
     url.searchParams.has('code') ||
-    url.searchParams.has('token');
+    url.searchParams.has('token') ||
+    url.searchParams.has('token_hash') ||
+    hash.has('token_hash');
   const hasRecoveryError = hash.has('error') || hash.has('error_code') || url.searchParams.has('error') || url.searchParams.has('error_code');
   const errorCode = hash.get('error_code') || url.searchParams.get('error_code') || '';
   const errorDescription = hash.get('error_description') || url.searchParams.get('error_description') || '';
@@ -86,7 +89,7 @@ function getPasswordSetupUrlParams() {
   const tokenHash = read('token_hash');
   const type = read('type') || 'recovery';
 
-  return {
+  const params = {
     accessToken,
     refreshToken,
     expiresIn,
@@ -96,6 +99,49 @@ function getPasswordSetupUrlParams() {
     type,
     hasImplicitSession: Boolean(accessToken && refreshToken && expiresIn && tokenType),
   };
+
+  if (params.hasImplicitSession || params.code || params.tokenHash) {
+    window.sessionStorage.setItem(CMS_PASSWORD_SETUP_PARAMS_KEY, JSON.stringify({
+      accessToken,
+      refreshToken,
+      expiresIn,
+      tokenType,
+      code,
+      tokenHash,
+      type,
+      savedAt: Date.now(),
+    }));
+    return params;
+  }
+
+  const saved = window.sessionStorage.getItem(CMS_PASSWORD_SETUP_PARAMS_KEY);
+  if (!saved) return params;
+
+  try {
+    const parsed = JSON.parse(saved);
+    if (!parsed?.savedAt || Date.now() - Number(parsed.savedAt) > 1000 * 60 * 30) {
+      window.sessionStorage.removeItem(CMS_PASSWORD_SETUP_PARAMS_KEY);
+      return params;
+    }
+
+    const savedAccessToken = String(parsed.accessToken ?? '');
+    const savedRefreshToken = String(parsed.refreshToken ?? '');
+    const savedExpiresIn = String(parsed.expiresIn ?? '');
+    const savedTokenType = String(parsed.tokenType ?? '');
+    return {
+      accessToken: savedAccessToken,
+      refreshToken: savedRefreshToken,
+      expiresIn: savedExpiresIn,
+      tokenType: savedTokenType,
+      code: String(parsed.code ?? ''),
+      tokenHash: String(parsed.tokenHash ?? ''),
+      type: String(parsed.type ?? 'recovery') || 'recovery',
+      hasImplicitSession: Boolean(savedAccessToken && savedRefreshToken && savedExpiresIn && savedTokenType),
+    };
+  } catch {
+    window.sessionStorage.removeItem(CMS_PASSWORD_SETUP_PARAMS_KEY);
+    return params;
+  }
 }
 
 function normalizeCmsAccessRow(accessRows: unknown, fallbackUser: { id: string; email?: string | null }): CmsAccess | null {
@@ -475,6 +521,9 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
       }
       setRecoveryPassword('');
       setRecoveryConfirm('');
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem(CMS_PASSWORD_SETUP_PARAMS_KEY);
+      }
       setResetMessage(language === 'fi' ? 'Salasana vaihdettu.' : 'Password changed.');
       if (typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/cms/password-setup') {
         window.history.replaceState(window.history.state, '', '/cms');

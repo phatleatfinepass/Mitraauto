@@ -263,10 +263,10 @@ export function LicensePlateDisplay({
     onChange(plateFormat.format(e.target.value).slice(0, plateFormat.maxLength));
   };
 
-  const renderStripCodeOverlay = (stripWidthPercent: number, stripTextPx: number) => (
+  const renderStripCodeOverlay = (stripWidth: number, stripTextPx: number) => (
     <div
       className="pointer-events-none absolute bottom-0 left-0 z-20 flex h-[40%] items-center justify-center rounded-bl-[11px] bg-[#155DFC] md:rounded-bl-[12px] lg:rounded-bl-[14px]"
-      style={{ width: `${stripWidthPercent}%` }}
+      style={{ width: stripWidth }}
     >
       <span
         className="font-bold leading-none text-white"
@@ -276,10 +276,10 @@ export function LicensePlateDisplay({
       </span>
     </div>
   );
-  const renderNorwayStripOverlay = (stripWidthPercent: number, stripTextPx: number) => (
+  const renderNorwayStripOverlay = (stripWidth: number, stripTextPx: number) => (
     <div
       className="pointer-events-none absolute left-0 top-0 z-20 flex flex-col items-center rounded-l-[11px] bg-[#155DFC] md:rounded-l-[12px] lg:rounded-l-[14px]"
-      style={{ width: `${stripWidthPercent}%`, height: '100%' }}
+      style={{ width: stripWidth, height: '100%' }}
     >
       <span
         className="relative mt-[13.5%] aspect-square w-[55%] overflow-hidden rounded-full"
@@ -298,14 +298,14 @@ export function LicensePlateDisplay({
       </span>
     </div>
   );
-  const renderCountryStripTrigger = (stripWidthPercent: number) => onCountryClick ? (
+  const renderCountryStripTrigger = (stripWidth: number) => onCountryClick ? (
     <button
       type="button"
       tabIndex={-1}
       aria-label={language === 'fi' ? 'Valitse maa' : 'Country'}
       onClick={onCountryClick}
       className="absolute left-0 top-0 z-30 h-full cursor-default bg-transparent"
-      style={{ width: `${stripWidthPercent}%` }}
+      style={{ width: stripWidth }}
     />
   ) : null;
   const renderPlate = (
@@ -317,9 +317,6 @@ export function LicensePlateDisplay({
     const plateWidth = PLATE_WIDTHS[size][widthLevel];
     const stripWidth = PLATE_STRIP_WIDTHS[size];
     const plateHeight = PLATE_HEIGHTS[size];
-    const basePlateWidth = PLATE_WIDTHS[size].base;
-    const stripWidthPercent = (stripWidth / basePlateWidth) * 100;
-    const numberWidthPercent = 100 - stripWidthPercent;
     const formatLength = effectivePlaceholder.replace(/\s+/g, '').length;
     const fontSize = isLongPlateFormat || formatLength >= 7 ? longFontPx : fontPx;
     const minFontSize = Math.round(fontSize * 0.72);
@@ -337,13 +334,13 @@ export function LicensePlateDisplay({
         }}
       >
         <PlateGraphic />
-        {isNorway ? renderNorwayStripOverlay(stripWidthPercent, stripTextPx) : renderStripCodeOverlay(stripWidthPercent, stripTextPx)}
-        {renderCountryStripTrigger(stripWidthPercent)}
+        {isNorway ? renderNorwayStripOverlay(stripWidth, stripTextPx) : renderStripCodeOverlay(stripWidth, stripTextPx)}
+        {renderCountryStripTrigger(stripWidth)}
         <div
           className="absolute top-0 flex items-center justify-center"
           style={{
-            left: `${stripWidthPercent}%`,
-            width: `${numberWidthPercent}%`,
+            left: stripWidth,
+            width: `calc(100% - ${stripWidth}px)`,
             height: '100%',
             padding: `clamp(${minPaddingPx}px, ${(paddingPx / plateWidth) * 100}cqw, ${paddingPx}px)`,
           }}

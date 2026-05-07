@@ -290,7 +290,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                 theme === 'dark' ? 'text-white' : 'text-[#101828]'
               }`}
             >
-              <span className="size-8 shrink-0 overflow-hidden rounded-full">
+              <span className="size-8 shrink-0 overflow-hidden rounded-full ring-1 ring-black/10 shadow-[0_1px_3px_rgba(16,24,40,0.22)]">
                 <img
                   src={country.flagSrc}
                   alt=""
