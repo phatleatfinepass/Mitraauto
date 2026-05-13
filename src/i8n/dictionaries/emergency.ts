@@ -1,0 +1,40 @@
+import type { TranslationDictionary } from '../types';
+
+export const emergencyTranslations = {
+  // Emergency Roadside Rescue 24/7
+  'emergency.cta': { fi: 'Hätäapu 24/7', en: 'Rescue 24/7' },
+  'emergency.title': { fi: 'Hätäapu 24/7', en: 'Rescue 24/7' },
+  'emergency.description': { fi: 'Tarvitsetko hätähinausta? Kerro sijaintisi ja otamme yhteyttä välittömästi.', en: 'Need emergency towing? Share your location and we\'ll contact you immediately.' },
+  'emergency.chooseMethod': { fi: 'Valitse sijaintimenetelmä', en: 'Choose location method' },
+  'emergency.chooseMethodDesc': { fi: 'Valitse kuinka haluat jakaa sijaintisi', en: 'Choose how you want to share your location' },
+  'emergency.useGpsButton': { fi: 'Käytä GPS-sijaintia', en: 'Use GPS Location' },
+  'emergency.useManualButton': { fi: 'Syötä osoite manuaalisesti', en: 'Enter Address Manually' },
+  'emergency.gettingLocation': { fi: 'Haetaan sijaintia...', en: 'Getting location...' },
+  'emergency.gpsActive': { fi: 'GPS-sijainti aktiivinen', en: 'GPS location active' },
+  'emergency.customerName': { fi: 'Asiakkaan nimi', en: 'Customer Name' },
+  'emergency.customerNamePlaceholder': { fi: 'Esim. Matti Meikäläinen', en: 'e.g. Matti Meikalainen' },
+  'emergency.licensePlate': { fi: 'Rekisterinumero', en: 'License Plate' },
+  'emergency.licensePlatePlaceholder': { fi: 'Esim. ABC-123', en: 'e.g. ABC-123' },
+  'emergency.phone': { fi: 'Puhelinnumero', en: 'Phone Number' },
+  'emergency.street': { fi: 'Katuosoite', en: 'Street Address' },
+  'emergency.streetPlaceholder': { fi: 'Esim. Mannerheimintie 10', en: 'e.g. Mannerheimintie 10' },
+  'emergency.postcode': { fi: 'Postinumero', en: 'Postcode' },
+  'emergency.city': { fi: 'Kaupunki', en: 'City' },
+  'emergency.submit': { fi: 'Lähetä hätäpyyntö', en: 'Send Emergency Request' },
+  'emergency.sending': { fi: 'Lähetetään...', en: 'Sending...' },
+  'emergency.success': { fi: '✓ Pyyntö lähetetty! Otamme sinuun yhteyttä pian.', en: '✓ Request sent! We\'ll contact you soon.' },
+  'emergency.switchToManual': { fi: 'Vaihda manuaaliseen syöttöön', en: 'Switch to manual entry' },
+  'emergency.switchToGps': { fi: 'Vaihda GPS-sijaintiin', en: 'Switch to GPS location' },
+  
+  // Emergency Errors
+  'emergency.error.noGps': { fi: 'GPS ei ole tuettu tässä laitteessa', en: 'GPS is not supported on this device' },
+  'emergency.error.gpsPermission': { fi: 'GPS-käyttöoikeus evätty. Salli sijainti asetuksista.', en: 'GPS permission denied. Please enable location access.' },
+  'emergency.error.gpsUnavailable': { fi: 'GPS-sijainti ei ole saatavilla', en: 'GPS location unavailable' },
+  'emergency.error.gpsTimeout': { fi: 'GPS-paikannuksen aikakatkaisu', en: 'GPS location timeout' },
+  'emergency.error.gpsGeneral': { fi: 'Virhe GPS-paikannuksessa', en: 'Error getting GPS location' },
+  'emergency.error.noLocation': { fi: 'Sijaintia ei ole määritetty', en: 'Location not provided' },
+  'emergency.error.noName': { fi: 'Asiakkaan nimi vaaditaan', en: 'Customer name required' },
+  'emergency.error.noLicensePlate': { fi: 'Rekisterinumero vaaditaan', en: 'License plate required' },
+  'emergency.error.noPhone': { fi: 'Puhelinnumero vaaditaan', en: 'Phone number required' },
+  'emergency.error.submit': { fi: 'Virhe pyynnön lähetyksessä. Yritä uudelleen.', en: 'Error submitting request. Please try again.' },
+} satisfies TranslationDictionary;
