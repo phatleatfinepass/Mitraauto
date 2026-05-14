@@ -34,6 +34,23 @@ function normalizePermissions(value: unknown) {
   }, {});
 }
 
+function defaultPermissionsForRole(role: string) {
+  const permissions = normalizePermissions({});
+
+  if (role === "super_admin" || role === "admin") {
+    for (const module of CMS_MODULES) {
+      permissions[module] = "read_write";
+    }
+    return permissions;
+  }
+
+  if (role === "supervisor" || role === "staff") {
+    permissions.customers = "read_write";
+  }
+
+  return permissions;
+}
+
 function passwordSetupUrl() {
   const explicitSetupUrl = String(Deno.env.get("CMS_PASSWORD_SETUP_URL") ?? "").trim();
   if (explicitSetupUrl) return explicitSetupUrl.replace(/\/+$/, "");
@@ -182,7 +199,16 @@ async function ensureAccountManager(request: Request) {
     throw new Error("Forbidden");
   }
 
-  return user;
+  const { data: accessRows, error: accessError } = await userClient.rpc("cms_get_current_access");
+  const accessRow = Array.isArray(accessRows) ? accessRows[0] : null;
+  if (accessError || !accessRow) {
+    throw new Error("Forbidden");
+  }
+
+  return {
+    user,
+    isSuperAdmin: accessRow.role === "super_admin" && accessRow.account_status === "active",
+  };
 }
 
 Deno.serve(async (request) => {
@@ -195,13 +221,17 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const actor = await ensureAccountManager(request);
+    const actorAccess = await ensureAccountManager(request);
+    const actor = actorAccess.user;
     const body = await request.json().catch(() => ({}));
     const email = normalizeText(body?.email).toLowerCase();
     const action = normalizeText(body?.action) || "create";
-    const role = normalizeRole(body?.role);
+    const requestedRole = normalizeRole(body?.role);
+    const role = actorAccess.isSuperAdmin ? requestedRole : "supervisor";
     const displayName = normalizeText(body?.displayName);
-    const permissions = normalizePermissions(body?.permissions);
+    const permissions = actorAccess.isSuperAdmin
+      ? normalizePermissions(body?.permissions)
+      : defaultPermissionsForRole(role);
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return jsonResponse({ error: "Valid email is required" }, 400);

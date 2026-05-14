@@ -1,4 +1,5 @@
 import { AlertTriangle, Edit, Eye, EyeOff } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { TiresCmsPagination } from './TiresCmsPagination';
 import type { TireRow } from './types';
 
@@ -30,7 +31,6 @@ interface TiresTableSectionProps {
   hasMissingSupplierPrice: (tire: TireRow | null) => boolean;
   hideWarningTooltip: () => void;
   isDark: boolean;
-  language: string;
   loading: boolean;
   refreshing: boolean;
   mustHideFromStore: (tire: TireRow | null) => boolean;
@@ -56,7 +56,6 @@ export function TiresCmsTableSection({
   hasMissingSupplierPrice,
   hideWarningTooltip,
   isDark,
-  language,
   loading,
   refreshing,
   mustHideFromStore,
@@ -66,6 +65,7 @@ export function TiresCmsTableSection({
   totalCount,
   totalPages,
 }: TiresTableSectionProps) {
+  const { t } = useLanguage();
   const matchBadgeClasses = (status: string | undefined) => {
     if (status === 'matched') {
       return isDark ? 'bg-green-500/15 text-green-200' : 'bg-green-50 text-green-700';
@@ -92,40 +92,40 @@ export function TiresCmsTableSection({
   const formatMatchLabel = (status: string | undefined) => {
     switch (status) {
       case 'matched':
-        return language === 'fi' ? 'Osuma' : 'Matched';
+        return t('tiresCmsTable.match.matched');
       case 'no_match':
-        return language === 'fi' ? 'Ei osumaa' : 'No match';
+        return t('tiresCmsTable.match.noMatch');
       case 'multiple_matches':
-        return language === 'fi' ? 'Useita osumia' : 'Multiple';
+        return t('tiresCmsTable.match.multiple');
       case 'wrong_product_group':
-        return language === 'fi' ? 'Väärä ryhmä' : 'Wrong group';
+        return t('tiresCmsTable.match.wrongGroup');
       case 'blocked':
-        return language === 'fi' ? 'Estetty' : 'Blocked';
+        return t('tiresCmsTable.match.blocked');
       case 'unverified':
-        return language === 'fi' ? 'Vahvistamaton' : 'Unverified';
+        return t('tiresCmsTable.match.unverified');
       case 'error':
-        return 'Error';
+        return t('tiresCmsTable.match.error');
       default:
-        return language === 'fi' ? 'Ei tarkistettu' : 'Not checked';
+        return t('tiresCmsTable.match.notChecked');
     }
   };
 
   const formatReviewLabel = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'Pending';
+        return t('tiresCmsTable.review.pending');
       case 'accepted':
-        return language === 'fi' ? 'Hyväksytty' : 'Accepted';
+        return t('tiresCmsTable.review.accepted');
       case 'audited':
-        return language === 'fi' ? 'Auditoitu' : 'Audited';
+        return t('tiresCmsTable.review.audited');
       case 'rejected':
-        return language === 'fi' ? 'Hylätty' : 'Rejected';
+        return t('tiresCmsTable.review.rejected');
       case 'kept_current':
-        return language === 'fi' ? 'Pidä nykyinen' : 'Kept current';
+        return t('tiresCmsTable.review.keptCurrent');
       case 'mixed':
-        return 'Mixed';
+        return t('tiresCmsTable.review.mixed');
       default:
-        return language === 'fi' ? 'Ei reviewta' : 'No review';
+        return t('tiresCmsTable.review.none');
     }
   };
 
@@ -149,40 +149,38 @@ export function TiresCmsTableSection({
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-          {language === 'fi' ? `Vähintään ${totalCount} tuotetta` : `At least ${totalCount} items`}
+          {t('tiresCmsTable.atLeastItems', { count: totalCount })}
         </p>
         <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          {language === 'fi'
-            ? `Näytetään ${startItem}-${endItem} (sivu ${currentPage})`
-            : `Showing ${startItem}-${endItem} (page ${currentPage})`}
+          {t('tiresCmsTable.showingPage', { start: startItem, end: endItem, page: currentPage })}
         </p>
       </div>
 
       {refreshing ? (
         <div className={`mb-3 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          {language === 'fi' ? 'Päivitetään listaa…' : 'Refreshing list…'}
+          {t('tiresCmsTable.refreshing')}
         </div>
       ) : null}
 
       <div className={`mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
         <span className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-          {language === 'fi' ? 'EPREL-pilotti näkyvissä:' : 'EPREL pilot in view:'}
+          {t('tiresCmsTable.eprelPilotInView')}
         </span>
         <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-green-500/15 text-green-200' : 'bg-green-50 text-green-700'}`}>
-          {language === 'fi' ? 'Osumat' : 'Matched'}: {eprelPilotSummary.matched}
+          {t('tiresCmsTable.matched')}: {eprelPilotSummary.matched}
         </span>
         <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-blue-500/15 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>
-          {language === 'fi' ? 'Pending review' : 'Pending review'}: {eprelPilotSummary.pending_review}
+          {t('tiresCmsTable.pendingReview')}: {eprelPilotSummary.pending_review}
         </span>
         <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>
-          {language === 'fi' ? 'Useita osumia' : 'Multiple'}: {eprelPilotSummary.multiple_matches}
+          {t('tiresCmsTable.multiple')}: {eprelPilotSummary.multiple_matches}
         </span>
         <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-gray-500/15 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-          {language === 'fi' ? 'Ei tarkistettu' : 'Not checked'}: {eprelPilotSummary.not_checked}
+          {t('tiresCmsTable.match.notChecked')}: {eprelPilotSummary.not_checked}
         </span>
         {eprelListLoading ? (
           <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' ? 'Haetaan EPREL-statuksia…' : 'Loading EPREL statuses…'}
+            {t('tiresCmsTable.loadingEprelStatuses')}
           </span>
         ) : null}
       </div>
@@ -192,14 +190,14 @@ export function TiresCmsTableSection({
           <table className="w-full">
             <thead className={isDark ? 'bg-white/5' : 'bg-gray-50'}>
               <tr>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Brändi' : 'Brand'}</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Malli' : 'Model'}</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Koko' : 'Size'}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.brand')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.model')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.size')}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>EAN</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>EPREL</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Hinta' : 'Price'}</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Näkyvyys' : 'Visible'}</th>
-                <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Toiminnot' : 'Actions'}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.price')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.visible')}</th>
+                <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
@@ -229,9 +227,7 @@ export function TiresCmsTableSection({
                       )}
                       {tire.is_non_passenger && (
                         <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>
-                          {language === 'fi'
-                            ? (tire.is_non_passenger_manual ? 'Ei-henkilöauto (manuaali)' : 'Ei-henkilöauto')
-                            : (tire.is_non_passenger_manual ? 'Non-passenger (manual)' : 'Non-passenger')}
+                          {tire.is_non_passenger_manual ? t('tiresCmsTable.nonPassengerManual') : t('tiresCmsTable.nonPassenger')}
                         </span>
                       )}
                     </div>
@@ -245,7 +241,7 @@ export function TiresCmsTableSection({
                       if (!status) {
                         return (
                           <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                            {language === 'fi' ? 'Ei tarkistettu' : 'Not checked'}
+                            {t('tiresCmsTable.match.notChecked')}
                           </span>
                         );
                       }
@@ -266,7 +262,7 @@ export function TiresCmsTableSection({
                     {tire.final_price_eur !== null && tire.final_price_eur !== undefined ? `€${tire.final_price_eur.toFixed(2)}` : '—'}
                     {hasMissingSupplierPrice(tire) && (
                       <p className={`mt-1 text-xs ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                        {language === 'fi' ? 'Toimittajahinta puuttuu' : 'Missing supplier price'}
+                        {t('tiresCmsTable.missingSupplierPrice')}
                       </p>
                     )}
                   </td>
@@ -290,7 +286,7 @@ export function TiresCmsTableSection({
                       }`}
                     >
                       <Edit className="h-4 w-4" />
-                      {language === 'fi' ? 'Muokkaa' : 'Edit'}
+                      {t('tiresCmsTable.edit')}
                     </button>
                   </td>
                 </tr>
@@ -303,14 +299,13 @@ export function TiresCmsTableSection({
       {filteredTires.length === 0 && (
         <div className="py-20 text-center">
           <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' ? 'Ei renkaita löytynyt' : 'No tires found'}
+            {t('tiresCmsTable.noTiresFound')}
           </p>
         </div>
       )}
 
       <TiresCmsPagination
         isDark={isDark}
-        language={language}
         currentPage={currentPage}
         totalPages={totalPages}
         totalCount={totalCount}

@@ -1,4 +1,9 @@
 import { getSupabaseClient } from './supabase/client';
+import type { VehicleRimMountingInput } from './rimFitment';
+
+export interface VehicleRimMountingData extends VehicleRimMountingInput {
+  source?: 'provider' | 'development-fallback' | 'cache' | null;
+}
 
 export interface VehicleTyreLookupResult {
   plate: string;
@@ -16,6 +21,7 @@ export interface VehicleTyreLookupResult {
   maxSpeedKmh?: number | null;
   powerKw?: number | null;
   engineSizeCc?: number | null;
+  rimMounting?: VehicleRimMountingData | null;
   source: 'carsxe' | 'development-fallback';
   specifications?: Record<string, unknown>;
   lookups?: {

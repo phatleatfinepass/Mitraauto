@@ -17,6 +17,7 @@ export interface VehicleRimMountingInput {
   factoryRimWidthIn?: number | null;
   boltThread?: string | null;
   boltSeat?: string | null;
+  brakeClearanceNotes?: string | null;
 }
 
 export interface RimFitmentProfile {
@@ -33,6 +34,7 @@ export interface RimFitmentProfile {
     factoryOffsetMm: number | null;
     boltThread: string | null;
     boltSeat: string | null;
+    brakeClearanceNotes: string | null;
   };
   catalogFilters: {
     rimDiameterIn: number;
@@ -124,6 +126,7 @@ export async function buildRimFitmentProfile(
       factoryOffsetMm: nullableNumber(mounting.factoryOffsetMm),
       boltThread: cleanString(mounting.boltThread),
       boltSeat: cleanString(mounting.boltSeat),
+      brakeClearanceNotes: cleanString(mounting.brakeClearanceNotes),
     },
     catalogFilters: {
       rimDiameterIn: parsedTyre.rimDiameterIn,

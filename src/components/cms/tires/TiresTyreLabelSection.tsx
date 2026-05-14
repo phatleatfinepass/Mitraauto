@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Check, Copy, ExternalLink, RefreshCw, SearchCheck } from 'lucide-react';
 import { TYRE_LABEL_SECTION_TITLE, type TyreLabelSectionData } from '../../../utils/tyreLabel';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TireEanAuditResult, TireEanAuditCheck, TireEprelIdSuggestion } from './eanAudit';
 import type { TireRow } from './types';
 
@@ -64,7 +65,6 @@ interface TiresTyreLabelSectionProps {
   getIdentityOverride: () => IdentityOverride | undefined;
   hasEuOverride: boolean;
   isDark: boolean;
-  language: string;
   onAuditByEan: () => void;
   onSuggestEprelId: () => void;
   onSetAuditReviewStatus: (field: string, status: 'accepted' | 'rejected' | 'kept_current') => void;
@@ -78,15 +78,15 @@ interface TiresTyreLabelSectionProps {
   updateSizePart: (field: 'width' | 'aspect' | 'rim' | 'load_index' | 'speed_rating', value: string) => void;
 }
 
-const TIRE_BADGES: Array<{ key: TireBadgeKey; labelFi: string; labelEn: string; regulated?: boolean }> = [
-  { key: 'ev_ready', labelFi: 'EV', labelEn: 'EV' },
-  { key: 'sound_absorber', labelFi: 'Äänenvaimennus', labelEn: 'Sound absorber' },
-  { key: 'runflat', labelFi: 'RunFlat', labelEn: 'RunFlat' },
-  { key: 'xl', labelFi: 'XL', labelEn: 'XL' },
-  { key: 'studded', labelFi: 'Nastat', labelEn: 'Studded' },
-  { key: 'threepmsf', labelFi: '3PMSF', labelEn: '3PMSF', regulated: true },
-  { key: 'winter_approved', labelFi: 'M+S', labelEn: 'M+S' },
-  { key: 'ice_approved', labelFi: 'Jää', labelEn: 'Ice approved', regulated: true },
+const TIRE_BADGES: Array<{ key: TireBadgeKey; labelKey: string; regulated?: boolean }> = [
+  { key: 'ev_ready', labelKey: 'tiresTyreLabel.badge.evReady' },
+  { key: 'sound_absorber', labelKey: 'tiresTyreLabel.badge.soundAbsorber' },
+  { key: 'runflat', labelKey: 'tiresTyreLabel.badge.runflat' },
+  { key: 'xl', labelKey: 'tiresTyreLabel.badge.xl' },
+  { key: 'studded', labelKey: 'tiresTyreLabel.badge.studded' },
+  { key: 'threepmsf', labelKey: 'tiresTyreLabel.badge.threepmsf', regulated: true },
+  { key: 'winter_approved', labelKey: 'tiresTyreLabel.badge.winterApproved' },
+  { key: 'ice_approved', labelKey: 'tiresTyreLabel.badge.iceApproved', regulated: true },
 ];
 
 const EU_GRADES = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -229,14 +229,14 @@ function eprelStatusTone(
 function AuditChecks({
   checks,
   isDark,
-  language,
   onSetReviewStatus,
 }: {
   checks: TireEanAuditCheck[];
   isDark: boolean;
-  language: string;
   onSetReviewStatus: (field: string, status: 'accepted' | 'rejected' | 'kept_current') => void;
 }) {
+  const { t } = useLanguage();
+
   if (checks.length === 0) return null;
 
   return (
@@ -267,13 +267,13 @@ function AuditChecks({
           <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
             <div>
               <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>
-                {language === 'fi' ? 'Nykyinen' : 'Current'}:
+                {t('tiresTyreLabel.current')}:
               </span>{' '}
               <span className={isDark ? 'text-gray-200' : 'text-gray-700'}>{check.current_value || '—'}</span>
             </div>
             <div>
               <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>
-                {language === 'fi' ? 'Auditoitu' : 'Audited'}:
+                {t('tiresTyreLabel.audited')}:
               </span>{' '}
               <span className={isDark ? 'text-gray-200' : 'text-gray-700'}>{check.audited_value || '—'}</span>
             </div>
@@ -286,7 +286,7 @@ function AuditChecks({
                 isDark ? 'bg-green-500/15 text-green-200 hover:bg-green-500/25' : 'bg-green-50 text-green-700 hover:bg-green-100'
               }`}
             >
-              {language === 'fi' ? 'Hyväksy' : 'Accept'}
+              {t('tiresTyreLabel.accept')}
             </button>
             <button
               type="button"
@@ -295,7 +295,7 @@ function AuditChecks({
                 isDark ? 'bg-red-500/15 text-red-200 hover:bg-red-500/25' : 'bg-red-50 text-red-700 hover:bg-red-100'
               }`}
             >
-              {language === 'fi' ? 'Hylkää' : 'Reject'}
+              {t('tiresTyreLabel.reject')}
             </button>
             <button
               type="button"
@@ -304,7 +304,7 @@ function AuditChecks({
                 isDark ? 'bg-amber-500/15 text-amber-200 hover:bg-amber-500/25' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
               }`}
             >
-              {language === 'fi' ? 'Pidä nykyinen' : 'Keep current'}
+              {t('tiresTyreLabel.keepCurrent')}
             </button>
           </div>
         </div>
@@ -338,7 +338,6 @@ export function TiresTyreLabelSection({
   getIdentityOverride,
   hasEuOverride,
   isDark,
-  language,
   onAuditByEan,
   onSuggestEprelId,
   onSetAuditReviewStatus,
@@ -351,6 +350,7 @@ export function TiresTyreLabelSection({
   tyreLabelSection,
   updateSizePart,
 }: TiresTyreLabelSectionProps) {
+  const { t } = useLanguage();
   const identityOverride = getIdentityOverride();
   const euOverride = getEuOverride();
   const [eanCopied, setEanCopied] = useState(false);
@@ -424,24 +424,24 @@ export function TiresTyreLabelSection({
   };
 
   const identityFields = [
-    { key: 'supplier_name', label: language === 'fi' ? 'Toimittaja / Supplier' : 'Supplier', value: tyreLabelSection.identity.supplier_name ?? '', placeholder: baseBrand },
-    { key: 'supplier_trademark', label: language === 'fi' ? 'Tavaramerkki' : 'Supplier trademark', value: tyreLabelSection.identity.supplier_trademark ?? '', placeholder: baseBrand },
-    { key: 'commercial_name', label: language === 'fi' ? 'Kaupallinen nimi' : 'Commercial name', value: tyreLabelSection.identity.commercial_name ?? '', placeholder: baseModel },
-    { key: 'tyre_type_identifier', label: language === 'fi' ? 'Tyypin tunniste' : 'Tyre type identifier', value: tyreLabelSection.identity.tyre_type_identifier ?? '', placeholder: '1542013' },
-    { key: 'tyre_class', label: language === 'fi' ? 'Rengasluokka' : 'Tyre class', value: tyreLabelSection.identity.tyre_class ?? '', placeholder: 'C1' },
-    { key: 'load_version', label: language === 'fi' ? 'Load version' : 'Load version', value: tyreLabelSection.identity.load_version ?? '', placeholder: 'XL' },
+    { key: 'supplier_name', label: t('tiresTyreLabel.supplier'), value: tyreLabelSection.identity.supplier_name ?? '', placeholder: baseBrand },
+    { key: 'supplier_trademark', label: t('tiresTyreLabel.supplierTrademark'), value: tyreLabelSection.identity.supplier_trademark ?? '', placeholder: baseBrand },
+    { key: 'commercial_name', label: t('tiresTyreLabel.commercialName'), value: tyreLabelSection.identity.commercial_name ?? '', placeholder: baseModel },
+    { key: 'tyre_type_identifier', label: t('tiresTyreLabel.tyreTypeIdentifier'), value: tyreLabelSection.identity.tyre_type_identifier ?? '', placeholder: '1542013' },
+    { key: 'tyre_class', label: t('tiresTyreLabel.tyreClass'), value: tyreLabelSection.identity.tyre_class ?? '', placeholder: 'C1' },
+    { key: 'load_version', label: t('tiresTyreLabel.loadVersion'), value: tyreLabelSection.identity.load_version ?? '', placeholder: 'XL' },
   ];
 
   const complianceFields = [
     { group: 'eu_label' as const, key: 'eprel_registration_number', label: 'EPREL', value: tyreLabelSection.eu_label.eprel_registration_number ?? '', placeholder: '704060' },
-    { group: 'eu_label' as const, key: 'eprel_sheet_url', label: language === 'fi' ? 'EPREL fiche' : 'EPREL fiche', value: tyreLabelSection.eu_label.eprel_sheet_url ?? '', placeholder: 'https://eprel.ec.europa.eu/fiches/tyres/Fiche_704060_EN.pdf' },
-    { group: 'compliance' as const, key: 'production_start', label: language === 'fi' ? 'Tuotannon aloitus' : 'Production start', value: tyreLabelSection.compliance.production_start ?? '', placeholder: '12/23' },
-    { group: 'compliance' as const, key: 'production_end', label: language === 'fi' ? 'Tuotannon loppu' : 'Production end', value: tyreLabelSection.compliance.production_end ?? '', placeholder: language === 'fi' ? 'Ei' : 'No' },
-    { group: 'compliance' as const, key: 'market_start', label: language === 'fi' ? 'EU-markkinoille' : 'Placed on Union market', value: tyreLabelSection.compliance.market_start ?? '', placeholder: '23/03/2023' },
-    { group: 'compliance' as const, key: 'supplier_website', label: language === 'fi' ? 'Toimittajan sivusto' : 'Supplier website', value: tyreLabelSection.compliance.supplier_website ?? '', placeholder: 'https://...' },
-    { group: 'compliance' as const, key: 'data_source', label: language === 'fi' ? 'Tietolähde' : 'Data source', value: tyreLabelSection.compliance.data_source ?? '', placeholder: 'eprel' },
-    { group: 'compliance' as const, key: 'data_source_url', label: language === 'fi' ? 'Lähdelinkki' : 'Source URL', value: tyreLabelSection.compliance.data_source_url ?? '', placeholder: 'https://...' },
-    { group: 'compliance' as const, key: 'last_verified_at', label: language === 'fi' ? 'Vahvistettu' : 'Last verified', value: tyreLabelSection.compliance.last_verified_at ?? '', placeholder: '2026-04-20' },
+    { group: 'eu_label' as const, key: 'eprel_sheet_url', label: t('tiresTyreLabel.eprelFiche'), value: tyreLabelSection.eu_label.eprel_sheet_url ?? '', placeholder: 'https://eprel.ec.europa.eu/fiches/tyres/Fiche_704060_EN.pdf' },
+    { group: 'compliance' as const, key: 'production_start', label: t('tiresTyreLabel.productionStart'), value: tyreLabelSection.compliance.production_start ?? '', placeholder: '12/23' },
+    { group: 'compliance' as const, key: 'production_end', label: t('tiresTyreLabel.productionEnd'), value: tyreLabelSection.compliance.production_end ?? '', placeholder: t('tiresTyreLabel.no') },
+    { group: 'compliance' as const, key: 'market_start', label: t('tiresTyreLabel.marketStart'), value: tyreLabelSection.compliance.market_start ?? '', placeholder: '23/03/2023' },
+    { group: 'compliance' as const, key: 'supplier_website', label: t('tiresTyreLabel.supplierWebsite'), value: tyreLabelSection.compliance.supplier_website ?? '', placeholder: 'https://...' },
+    { group: 'compliance' as const, key: 'data_source', label: t('tiresTyreLabel.dataSource'), value: tyreLabelSection.compliance.data_source ?? '', placeholder: 'eprel' },
+    { group: 'compliance' as const, key: 'data_source_url', label: t('tiresTyreLabel.sourceUrl'), value: tyreLabelSection.compliance.data_source_url ?? '', placeholder: 'https://...' },
+    { group: 'compliance' as const, key: 'last_verified_at', label: t('tiresTyreLabel.lastVerified'), value: tyreLabelSection.compliance.last_verified_at ?? '', placeholder: '2026-04-20' },
   ];
 
   return (
@@ -449,9 +449,7 @@ export function TiresTyreLabelSection({
       <div className="mb-6">
         <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{TYRE_LABEL_SECTION_TITLE}</h3>
         <p className={`mt-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          {language === 'fi'
-            ? 'Yhdistää tunnistetiedot, EU-rengasmerkinnän, renkaan badget sekä EPREL-yhteensopivuuden.'
-            : 'Combines identity, regulated EU tyre label data, supplementary badges, and EPREL compliance metadata.'}
+          {t('tiresTyreLabel.description')}
         </p>
       </div>
 
@@ -459,28 +457,24 @@ export function TiresTyreLabelSection({
         <div className="space-y-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Identity</h4>
+              <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('tiresTyreLabel.identity')}</h4>
               <RegulationNote
                 isDark={isDark}
-                text={
-                  language === 'fi'
-                    ? 'Tuotteen oikeudelliset ja tunnistavat tiedot. Säilytä nämä tarkkoina EPREL- tai valmistajatietoon nähden.'
-                    : 'Legal and identifying tyre metadata. Keep these aligned with EPREL or manufacturer documentation.'
-                }
+                text={t('tiresTyreLabel.identityNote')}
               />
             </div>
             <button type="button" onClick={clearIdentityOverrides} className={`text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}>
-              {language === 'fi' ? 'Palauta identity-ohitukset' : 'Reset identity overrides'}
+              {t('tiresTyreLabel.resetIdentityOverrides')}
             </button>
           </div>
 
           <div className={`grid gap-4 rounded-xl p-4 ${isDark ? 'bg-white/5' : 'bg-gray-50'} md:grid-cols-2`}>
             <div>
-              <FieldLabel isDark={isDark}>{language === 'fi' ? 'Brändi' : 'Brand'}</FieldLabel>
+              <FieldLabel isDark={isDark}>{t('tiresTyreLabel.brand')}</FieldLabel>
               <TextInput isDark={isDark} value={identityOverride?.brand ?? baseBrand} onChange={(value) => setIdentityField('brand', value)} />
             </div>
             <div>
-              <FieldLabel isDark={isDark}>{language === 'fi' ? 'Malli' : 'Model'}</FieldLabel>
+              <FieldLabel isDark={isDark}>{t('tiresTyreLabel.model')}</FieldLabel>
               <TextInput isDark={isDark} value={identityOverride?.model ?? baseModel} onChange={(value) => setIdentityField('model', value)} />
             </div>
             <div>
@@ -501,13 +495,13 @@ export function TiresTyreLabelSection({
                   }`}
                 >
                   {eanCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {eanCopied ? (language === 'fi' ? 'Kopioitu' : 'Copied') : (language === 'fi' ? 'Kopioi nykyinen' : 'Copy current')}
+                  {eanCopied ? t('tiresTyreLabel.copied') : t('tiresTyreLabel.copyCurrent')}
                 </button>
               </div>
               <TextInput isDark={isDark} value={identityOverride?.ean ?? ''} placeholder={currentBaseEan || 'EAN'} onChange={(value) => setIdentityField('ean', value)} />
               {currentBaseEan ? (
                 <p className={`mt-1 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {language === 'fi' ? 'Nykyinen EAN:' : 'Current EAN:'} {currentBaseEan}
+                  {t('tiresTyreLabel.currentEan')}: {currentBaseEan}
                 </p>
               ) : null}
               <div
@@ -532,7 +526,7 @@ export function TiresTyreLabelSection({
                   }`}
                 >
                   {auditLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
-                  {auditLoading ? (language === 'fi' ? 'Haetaan EPREListä...' : 'Fetching EPREL...') : (language === 'fi' ? 'Hae EPREListä' : 'Fetch from EPREL')}
+                  {auditLoading ? t('tiresTyreLabel.fetchingEprel') : t('tiresTyreLabel.fetchFromEprel')}
                 </button>
                 {currentEprelRegistrationNumber ? (
                   <span className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-mono ${isDark ? 'bg-white/5 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
@@ -548,7 +542,7 @@ export function TiresTyreLabelSection({
                     }`}
                   >
                     <Check className="h-3.5 w-3.5" />
-                    {language === 'fi' ? 'Käytä EPREL-arvoja' : 'Apply EPREL values'}
+                    {t('tiresTyreLabel.applyEprelValues')}
                   </button>
                 ) : null}
                 {auditResult?.match_status === 'no_match' ? (
@@ -568,8 +562,8 @@ export function TiresTyreLabelSection({
                   >
                     <SearchCheck className={`h-3.5 w-3.5 ${auditSuggestionLoading ? 'animate-spin' : ''}`} />
                     {auditSuggestionLoading
-                      ? (language === 'fi' ? 'Ehdotetaan EPREL ID:tä...' : 'Suggesting EPREL ID...')
-                      : (language === 'fi' ? 'Ehdota EPREL ID' : 'Suggest EPREL ID')}
+                      ? t('tiresTyreLabel.suggestingEprelId')
+                      : t('tiresTyreLabel.suggestEprelId')}
                   </button>
                 ) : null}
               </div>
@@ -596,16 +590,8 @@ export function TiresTyreLabelSection({
               {auditResult ? (
                 <p className={`mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {reviewCounts.pending > 0
-                    ? (
-                      language === 'fi'
-                        ? `${reviewCounts.pending} kenttää odottaa päätöstä. Käytä EPREL-arvoja hyväksyy vain avoimet kentät, eikä koske hylättyihin tai "pidä nykyinen" -kenttiin.`
-                        : `${reviewCounts.pending} fields are still pending. Apply EPREL values only accepts unresolved fields and leaves rejected or kept-current fields untouched.`
-                    )
-                    : (
-                      language === 'fi'
-                        ? 'Kaikilla EPREL-kentillä on nyt review-tila.'
-                        : 'All EPREL fields now have an explicit review state.'
-                    )}
+                    ? t('tiresTyreLabel.pendingFields', { count: reviewCounts.pending })
+                    : t('tiresTyreLabel.allReviewed')}
                 </p>
               ) : null}
               {auditSuggestionError ? (
@@ -616,11 +602,11 @@ export function TiresTyreLabelSection({
               {auditSuggestion ? (
                 <div className={`mt-3 rounded-lg border p-3 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-gray-50'}`}>
                   <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {language === 'fi' ? 'AI EPREL ID -ehdotus' : 'AI EPREL ID suggestion'}
+                    {t('tiresTyreLabel.aiEprelSuggestion')}
                   </p>
                   <p className={`mt-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{auditSuggestion.summary}</p>
                   <p className={`mt-1 text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi' ? 'Luottamus' : 'Confidence'}: {auditSuggestion.confidence}
+                    {t('tiresTyreLabel.confidence')}: {auditSuggestion.confidence}
                   </p>
                   {auditSuggestion.suggested_registration_number ? (
                     <div className="mt-2">
@@ -653,7 +639,7 @@ export function TiresTyreLabelSection({
               {auditLoading && auditProgress !== null ? (
                 <div className="mt-3 space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{language === 'fi' ? 'Auditin eteneminen' : 'Audit progress'}</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('tiresTyreLabel.auditProgress')}</span>
                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{Math.round(Math.max(0, Math.min(100, auditProgress)))}%</span>
                   </div>
                   <div className={`h-2 overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
@@ -663,27 +649,27 @@ export function TiresTyreLabelSection({
               ) : null}
             </div>
             <div>
-              <FieldLabel isDark={isDark}>{language === 'fi' ? 'Kausi' : 'Season'}</FieldLabel>
+              <FieldLabel isDark={isDark}>{t('tiresTyreLabel.season')}</FieldLabel>
               <SelectInput isDark={isDark} value={identityOverride?.season ?? baseSeason ?? ''} onChange={(value) => setIdentityField('season', value)}>
-                <option value="">{language === 'fi' ? 'Perusta (ei muutosta)' : 'Use base value'}</option>
-                <option value="summer">{language === 'fi' ? 'Kesä' : 'Summer'}</option>
-                <option value="winter">{language === 'fi' ? 'Talvi' : 'Winter'}</option>
-                <option value="all_season">{language === 'fi' ? 'Ympärivuotinen' : 'All Season'}</option>
+                <option value="">{t('tiresTyreLabel.useBaseValue')}</option>
+                <option value="summer">{t('tiresTyreLabel.summer')}</option>
+                <option value="winter">{t('tiresTyreLabel.winter')}</option>
+                <option value="all_season">{t('tiresTyreLabel.allSeason')}</option>
               </SelectInput>
             </div>
             {selectedTire.manufacture_year ? (
               <div>
-                <FieldLabel isDark={isDark}>{language === 'fi' ? 'DOT-vuosi' : 'DOT year'}</FieldLabel>
+                <FieldLabel isDark={isDark}>{t('tiresTyreLabel.dotYear')}</FieldLabel>
                 <div className={`rounded-lg border px-3 py-2 text-sm ${
                   isDark ? 'border-white/20 bg-white/5 text-white' : 'border-gray-300 bg-gray-50 text-gray-900'
                 }`}>
                   {selectedTire.manufacture_year}
                 </div>
-                <RegulationNote isDark={isDark} text={language === 'fi' ? 'Normalisoitu toimittajan DOT-kentästä.' : 'Normalized from the supplier DOT field.'} />
+                <RegulationNote isDark={isDark} text={t('tiresTyreLabel.normalizedDot')} />
               </div>
             ) : null}
             <div className="md:col-span-2">
-              <FieldLabel isDark={isDark}>{language === 'fi' ? 'Koko' : 'Size'}</FieldLabel>
+              <FieldLabel isDark={isDark}>{t('tiresTyreLabel.size')}</FieldLabel>
               <div className="grid grid-cols-5 gap-2">
                 <TextInput isDark={isDark} value={sizeParts.width} placeholder="205" onChange={(value) => updateSizePart('width', value)} />
                 <TextInput isDark={isDark} value={sizeParts.aspect} placeholder="55" onChange={(value) => updateSizePart('aspect', value)} />
@@ -691,7 +677,7 @@ export function TiresTyreLabelSection({
                 <TextInput isDark={isDark} value={sizeParts.load_index} placeholder="91" onChange={(value) => updateSizePart('load_index', value)} />
                 <TextInput isDark={isDark} value={sizeParts.speed_rating} placeholder="V" onChange={(value) => updateSizePart('speed_rating', value.toUpperCase())} />
               </div>
-              <RegulationNote isDark={isDark} text={language === 'fi' ? 'Muoto: 205 / 55 R16 91 V' : 'Format: 205 / 55 R16 91 V'} />
+              <RegulationNote isDark={isDark} text={t('tiresTyreLabel.sizeFormat')} />
             </div>
             {identityFields.map((field) => (
               <div key={field.key}>
@@ -707,13 +693,11 @@ export function TiresTyreLabelSection({
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{language === 'fi' ? 'EPREL-yhteenveto' : 'EPREL summary'}</p>
+                      <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('tiresTyreLabel.eprelSummary')}</p>
                       <p className={`mt-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{auditResult.summary}</p>
                       {auditResult.fallback_mode === 'search' ? (
                         <p className={`mt-2 text-xs ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
-                          {language === 'fi'
-                            ? 'GTIN-haku epäonnistui. Tämä tulos tuli EPREL fallback-hausta käyttäen brandia, mallia ja kokoa.'
-                            : 'GTIN lookup failed. This result came from EPREL fallback search using brand, model, and size.'}
+                          {t('tiresTyreLabel.fallbackSearchNotice')}
                         </p>
                       ) : null}
                       {auditResult.eprel_registration_number ? (
@@ -729,29 +713,29 @@ export function TiresTyreLabelSection({
                           ? statusClassName(isDark, 'missing_current')
                           : statusClassName(isDark, 'unknown')
                     }`}>
-                      {language === 'fi' ? 'Luottamus' : 'Confidence'}: {auditResult.confidence}
+                      {t('tiresTyreLabel.confidence')}: {auditResult.confidence}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <span className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${
                       isDark ? 'border-white/10 bg-white/5 text-gray-300' : 'border-gray-200 bg-gray-100 text-gray-700'
                     }`}>
-                      {language === 'fi' ? 'Pending' : 'Pending'}: {reviewCounts.pending}
+                      {t('tiresTyreLabel.pending')}: {reviewCounts.pending}
                     </span>
                     <span className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${
                       isDark ? 'border-green-500/25 bg-green-500/15 text-green-300' : 'border-green-200 bg-green-50 text-green-700'
                     }`}>
-                      {language === 'fi' ? 'Hyväksytty' : 'Accepted'}: {reviewCounts.accepted}
+                      {t('tiresTyreLabel.accepted')}: {reviewCounts.accepted}
                     </span>
                     <span className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${
                       isDark ? 'border-red-500/25 bg-red-500/15 text-red-300' : 'border-red-200 bg-red-50 text-red-700'
                     }`}>
-                      {language === 'fi' ? 'Hylätty' : 'Rejected'}: {reviewCounts.rejected}
+                      {t('tiresTyreLabel.rejected')}: {reviewCounts.rejected}
                     </span>
                     <span className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${
                       isDark ? 'border-amber-500/25 bg-amber-500/15 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700'
                     }`}>
-                      {language === 'fi' ? 'Pidä nykyinen' : 'Kept current'}: {reviewCounts.kept_current}
+                      {t('tiresTyreLabel.keptCurrent')}: {reviewCounts.kept_current}
                     </span>
                   </div>
                   {auditResult.source_urls.length > 0 ? (
@@ -766,7 +750,7 @@ export function TiresTyreLabelSection({
                   {auditResult.candidates && auditResult.candidates.length > 0 ? (
                     <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-gray-50'}`}>
                       <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {language === 'fi' ? 'Fallback-ehdokkaat' : 'Fallback candidates'}
+                        {t('tiresTyreLabel.fallbackCandidates')}
                       </p>
                       <div className="mt-2 space-y-2">
                         {auditResult.candidates.map((candidate) => (
@@ -781,7 +765,7 @@ export function TiresTyreLabelSection({
                               <span className="font-mono">ID {candidate.registration_number}</span>
                             </div>
                             <div className={`mt-1 flex flex-wrap gap-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                              <span>{language === 'fi' ? 'Pisteet' : 'Score'}: {candidate.score}</span>
+                              <span>{t('tiresTyreLabel.score')}: {candidate.score}</span>
                               {candidate.tyre_class ? <span>{candidate.tyre_class}</span> : null}
                               {candidate.match_reasons.length > 0 ? <span>{candidate.match_reasons.join(', ')}</span> : null}
                             </div>
@@ -795,7 +779,7 @@ export function TiresTyreLabelSection({
                       </div>
                     </div>
                   ) : null}
-                  <AuditChecks checks={auditResult.checks} isDark={isDark} language={language} onSetReviewStatus={onSetAuditReviewStatus} />
+                  <AuditChecks checks={auditResult.checks} isDark={isDark} onSetReviewStatus={onSetAuditReviewStatus} />
                 </div>
               ) : null}
             </div>
@@ -805,18 +789,14 @@ export function TiresTyreLabelSection({
         <div className="space-y-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>EU Label</h4>
+              <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('tiresTyreLabel.euLabel')}</h4>
               <RegulationNote
                 isDark={isDark}
-                text={
-                  language === 'fi'
-                    ? 'Säilytä tässä vain EU 2020/740 -säädellyt label-arvot ja EPREL-yhteydet.'
-                    : 'Keep only Regulation (EU) 2020/740 label values and EPREL references here.'
-                }
+                text={t('tiresTyreLabel.euLabelNote')}
               />
             </div>
             <button type="button" onClick={clearEUOverrides} className={`text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}>
-              {language === 'fi' ? 'Palauta EU-ohitukset' : 'Reset EU overrides'}
+              {t('tiresTyreLabel.resetEuOverrides')}
             </button>
           </div>
 
@@ -824,31 +804,31 @@ export function TiresTyreLabelSection({
             <div className={`rounded-xl border p-4 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-gray-50'}`}>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <FieldLabel isDark={isDark}>{language === 'fi' ? 'Polttoainetehokkuus' : 'Fuel efficiency'}</FieldLabel>
-                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{language === 'fi' ? 'Perustaso:' : 'Base:'} <span className="font-mono font-semibold">{selectedTire.eu_fuel_class || '—'}</span></div>
+                  <FieldLabel isDark={isDark}>{t('tiresTyreLabel.fuelEfficiency')}</FieldLabel>
+                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{t('tiresTyreLabel.base')}: <span className="font-mono font-semibold">{selectedTire.eu_fuel_class || '—'}</span></div>
                   <SelectInput isDark={isDark} value={euOverride?.fuel_class || ''} onChange={(value) => onSetEuField('fuel_class', value || undefined)}>
-                    <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+                    <option value="">{t('tiresTyreLabel.useBaseValueDashed')}</option>
                     {euFuelWetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </SelectInput>
                 </div>
                 <div>
-                  <FieldLabel isDark={isDark}>{language === 'fi' ? 'Märkäpito' : 'Wet grip'}</FieldLabel>
-                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{language === 'fi' ? 'Perustaso:' : 'Base:'} <span className="font-mono font-semibold">{selectedTire.eu_wet_grip_class || '—'}</span></div>
+                  <FieldLabel isDark={isDark}>{t('tiresTyreLabel.wetGrip')}</FieldLabel>
+                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{t('tiresTyreLabel.base')}: <span className="font-mono font-semibold">{selectedTire.eu_wet_grip_class || '—'}</span></div>
                   <SelectInput isDark={isDark} value={euOverride?.wet_grip_class || ''} onChange={(value) => onSetEuField('wet_grip_class', value || undefined)}>
-                    <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+                    <option value="">{t('tiresTyreLabel.useBaseValueDashed')}</option>
                     {euFuelWetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </SelectInput>
                 </div>
                 <div>
-                  <FieldLabel isDark={isDark}>{language === 'fi' ? 'Melutaso (dB)' : 'Noise level (dB)'}</FieldLabel>
-                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{language === 'fi' ? 'Perustaso:' : 'Base:'} <span className="font-mono font-semibold">{selectedTire.eu_noise_db ? `${selectedTire.eu_noise_db} dB` : '—'}</span></div>
-                  <TextInput isDark={isDark} type="number" value={euOverride?.noise_db === undefined ? '' : String(euOverride?.noise_db)} placeholder={language === 'fi' ? 'Käytä perustasoa' : 'Use base value'} onChange={(value) => onSetEuField('noise_db', value ? Number.parseInt(value, 10) : undefined)} />
+                  <FieldLabel isDark={isDark}>{t('tiresTyreLabel.noiseLevelDb')}</FieldLabel>
+                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{t('tiresTyreLabel.base')}: <span className="font-mono font-semibold">{selectedTire.eu_noise_db ? `${selectedTire.eu_noise_db} dB` : '—'}</span></div>
+                  <TextInput isDark={isDark} type="number" value={euOverride?.noise_db === undefined ? '' : String(euOverride?.noise_db)} placeholder={t('tiresTyreLabel.useBaseValue')} onChange={(value) => onSetEuField('noise_db', value ? Number.parseInt(value, 10) : undefined)} />
                 </div>
                 <div>
-                  <FieldLabel isDark={isDark}>{language === 'fi' ? 'Meluluokka' : 'Noise class'}</FieldLabel>
-                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{language === 'fi' ? 'Perustaso:' : 'Base:'} <span className="font-mono font-semibold">{selectedTire.eu_noise_class || '—'}</span></div>
+                  <FieldLabel isDark={isDark}>{t('tiresTyreLabel.noiseClass')}</FieldLabel>
+                  <div className={`mb-2 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5 text-gray-300' : 'bg-white text-gray-700'}`}>{t('tiresTyreLabel.base')}: <span className="font-mono font-semibold">{selectedTire.eu_noise_class || '—'}</span></div>
                   <SelectInput isDark={isDark} value={euOverride?.noise_class || ''} onChange={(value) => onSetEuField('noise_class', value || undefined)}>
-                    <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+                    <option value="">{t('tiresTyreLabel.useBaseValueDashed')}</option>
                     {euNoiseClassOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </SelectInput>
                 </div>
@@ -858,22 +838,22 @@ export function TiresTyreLabelSection({
             <div className={`rounded-xl border p-4 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-gray-200 bg-white'}`}>
               <div className="mb-4 flex items-center justify-between gap-2">
                 <div>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{language === 'fi' ? 'Reguloitu label-preview' : 'Regulated label preview'}</p>
-                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{language === 'fi' ? 'Polttoaine, märkäpito, ulkoinen melu, lumi/jää ja EPREL.' : 'Fuel, wet grip, external noise, snow/ice, and EPREL.'}</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('tiresTyreLabel.regulatedLabelPreview')}</p>
+                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('tiresTyreLabel.regulatedLabelDescription')}</p>
                 </div>
-                {hasEuOverride ? <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-blue-500/15 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>Override active</span> : null}
+                {hasEuOverride ? <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${isDark ? 'bg-blue-500/15 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>{t('tiresTyreLabel.overrideActive')}</span> : null}
               </div>
 
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <p className={`mb-2 text-xs uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Fuel</p>
+                    <p className={`mb-2 text-xs uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('tiresTyreLabel.fuel')}</p>
                     <div className="space-y-1">
                       {EU_GRADES.map((grade) => <div key={`fuel-${grade}`} className={`rounded-md border px-3 py-1.5 text-sm font-medium ${gradeTone(isDark, tyreLabelSection.eu_label.fuel_efficiency_class, tyreLabelSection.eu_label.fuel_efficiency_class === grade)}`}>{grade}</div>)}
                     </div>
                   </div>
                   <div>
-                    <p className={`mb-2 text-xs uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Wet grip</p>
+                    <p className={`mb-2 text-xs uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('tiresTyreLabel.wetGrip')}</p>
                     <div className="space-y-1">
                       {EU_GRADES.map((grade) => <div key={`wet-${grade}`} className={`rounded-md border px-3 py-1.5 text-sm font-medium ${gradeTone(isDark, tyreLabelSection.eu_label.wet_grip_class, tyreLabelSection.eu_label.wet_grip_class === grade)}`}>{grade}</div>)}
                     </div>
@@ -881,7 +861,7 @@ export function TiresTyreLabelSection({
                 </div>
                 <div className={`rounded-lg border px-3 py-3 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-gray-50'}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{language === 'fi' ? 'External rolling noise' : 'External rolling noise'}</span>
+                    <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('tiresTyreLabel.externalRollingNoise')}</span>
                     <span className={`font-mono text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{tyreLabelSection.eu_label.external_noise_db ? `${tyreLabelSection.eu_label.external_noise_db} dB` : '—'}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
@@ -890,12 +870,12 @@ export function TiresTyreLabelSection({
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Snow</div>
+                    <div className="text-xs uppercase tracking-wide text-gray-500">{t('tiresTyreLabel.snow')}</div>
                     <div className={`mt-1 text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{tyreLabelSection.eu_label.severe_snow ? '3PMSF' : '—'}</div>
                   </div>
                   <div className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Ice</div>
-                    <div className={`mt-1 text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{tyreLabelSection.eu_label.severe_ice ? 'Ice approved' : '—'}</div>
+                    <div className="text-xs uppercase tracking-wide text-gray-500">{t('tiresTyreLabel.ice')}</div>
+                    <div className={`mt-1 text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{tyreLabelSection.eu_label.severe_ice ? t('tiresTyreLabel.iceApproved') : '—'}</div>
                   </div>
                 </div>
               </div>
@@ -906,18 +886,14 @@ export function TiresTyreLabelSection({
         <div className="space-y-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Tyre Badges</h4>
+              <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('tiresTyreLabel.tyreBadges')}</h4>
               <RegulationNote
                 isDark={isDark}
-                text={
-                  language === 'fi'
-                    ? 'Pidä kaupalliset feature-badget erillään säädellystä EU-labelista.'
-                    : 'Keep merchandising feature badges distinct from the regulated EU label.'
-                }
+                text={t('tiresTyreLabel.tyreBadgesNote')}
               />
             </div>
             <button type="button" onClick={clearFeatureOverrides} className={`text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}>
-              {language === 'fi' ? 'Palauta badge-ohitukset' : 'Reset badge overrides'}
+              {t('tiresTyreLabel.resetBadgeOverrides')}
             </button>
           </div>
 
@@ -925,7 +901,7 @@ export function TiresTyreLabelSection({
             {TIRE_BADGES.map((feature) => (
               <label key={feature.key} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-white'}`}>
                 <input type="checkbox" checked={getEffectiveFeatureValue(feature.key)} onChange={(event) => setFeatureField(feature.key, event.target.checked)} className="h-4 w-4 rounded border-gray-300" />
-                <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{language === 'fi' ? feature.labelFi : feature.labelEn}</span>
+                <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{t(feature.labelKey)}</span>
                 {feature.regulated ? <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${isDark ? 'bg-blue-500/15 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>EU</span> : null}
               </label>
             ))}
@@ -934,7 +910,7 @@ export function TiresTyreLabelSection({
 
         <div className="space-y-5">
           <div>
-            <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>EPREL & Compliance</h4>
+            <h4 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{t('tiresTyreLabel.eprelCompliance')}</h4>
           </div>
           <div className={`grid gap-4 rounded-xl p-4 md:grid-cols-2 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
             {complianceFields.map((field) => (
@@ -944,15 +920,15 @@ export function TiresTyreLabelSection({
               </div>
             ))}
             <div>
-              <FieldLabel isDark={isDark}>{language === 'fi' ? 'Yhteyshenkilö' : 'Supplier contact'}</FieldLabel>
+              <FieldLabel isDark={isDark}>{t('tiresTyreLabel.supplierContact')}</FieldLabel>
               <TextInput isDark={isDark} value={tyreLabelSection.compliance.supplier_contact_name ?? ''} placeholder="Customer care" onChange={(value) => onTyreLabelFieldChange('compliance', 'supplier_contact_name', value)} />
             </div>
             <div>
-              <FieldLabel isDark={isDark}>{language === 'fi' ? 'Yhteyssähköposti' : 'Contact email'}</FieldLabel>
+              <FieldLabel isDark={isDark}>{t('tiresTyreLabel.contactEmail')}</FieldLabel>
               <TextInput isDark={isDark} value={tyreLabelSection.compliance.supplier_contact_email ?? ''} placeholder="support@example.com" onChange={(value) => onTyreLabelFieldChange('compliance', 'supplier_contact_email', value)} />
             </div>
             <div>
-              <FieldLabel isDark={isDark}>{language === 'fi' ? 'Puhelin' : 'Contact phone'}</FieldLabel>
+              <FieldLabel isDark={isDark}>{t('tiresTyreLabel.contactPhone')}</FieldLabel>
               <TextInput isDark={isDark} value={tyreLabelSection.compliance.supplier_contact_phone ?? ''} placeholder="+358..." onChange={(value) => onTyreLabelFieldChange('compliance', 'supplier_contact_phone', value)} />
             </div>
           </div>
@@ -960,7 +936,7 @@ export function TiresTyreLabelSection({
             <div className={`flex flex-wrap gap-3 rounded-xl border p-4 ${isDark ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-white'}`}>
               <a href={tyreLabelSection.eu_label.eprel_sheet_url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${isDark ? 'bg-blue-500/15 text-blue-200 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}>
                 <ExternalLink className="h-4 w-4" />
-                {language === 'fi' ? 'Avaa EPREL fiche' : 'Open EPREL fiche'}
+                {t('tiresTyreLabel.openEprelFiche')}
               </a>
             </div>
           ) : null}

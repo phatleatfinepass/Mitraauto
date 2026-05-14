@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BadgePercent, EyeOff, FileText, Link2, ListPlus, Plus, Save, ShieldAlert, UserRound } from 'lucide-react';
+import { AlertCircle, BadgePercent, EyeOff, FileText, Link2, ListPlus, Plus, Save, Search, ShieldAlert, UserRound } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -12,6 +12,7 @@ import {
   createCustomerPortalAccount,
   getCustomerDetail,
   linkCustomerAccountByEmail,
+  lookupCustomerVehicleByPlate,
   saveCustomer,
   saveCustomerVehicle,
   sendCustomerPortalActivationLink,
@@ -24,12 +25,15 @@ import { CustomerMaintenanceReminderPanel } from './CustomerMaintenanceReminderP
 import { CustomerNotificationHistoryPanel } from './CustomerNotificationHistoryPanel';
 import { CustomerServiceBookPanel } from './CustomerServiceBookPanel';
 import { buildCustomerDraft, buildCustomerDraftFromOverview, buildVehicleDraft, formatDate } from './safe';
+import { lookupVehicleTyreFitment, normalizePlate } from '../../../utils/vehicleFitmentLookup';
+import type { VehicleTyreLookupResult } from '../../../utils/vehicleFitmentLookup';
 import type {
   CustomerDetail,
   CustomerDraft,
   CustomerNoteVisibility,
   CustomerOverviewRow,
   CustomerStatus,
+  CustomerVehiclePlateLookupRow,
   CustomerVehicleDraft,
   CustomerVehicleRow,
 } from './types';
@@ -37,9 +41,13 @@ import type {
 type CustomerEditorPanelProps = {
   overviewRow: CustomerOverviewRow | null;
   onSaved: (customerId?: string | null) => void;
+  canWriteCustomers: boolean;
 };
 
 type CustomerDetailTab = 'detail' | 'vehicles' | 'serviceBook' | 'reminders' | 'notifications' | 'history';
+type VehicleLookupDetails =
+  | { source: 'cms'; vehicle: CustomerVehiclePlateLookupRow }
+  | { source: 'provider'; vehicle: VehicleTyreLookupResult; localVehicle?: CustomerVehiclePlateLookupRow | null };
 
 function consentValue(value: boolean | null) {
   if (value === true) return 'yes';
@@ -53,10 +61,115 @@ function parseConsentValue(value: string) {
   return null;
 }
 
-export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPanelProps) {
+function displayLookupValue(value: unknown, suffix = '') {
+  if (value === null || value === undefined || value === '') return '-';
+  return `${value}${suffix}`;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function formatVehicleProviderLabel(value: string) {
+  return value
+    .replace(/^attributes\./i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatVehicleProviderValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '';
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => formatVehicleProviderValue(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  if (isPlainObject(value)) {
+    return Object.entries(value)
+      .map(([key, child]) => {
+        const formatted = formatVehicleProviderValue(child);
+        return formatted ? `${formatVehicleProviderLabel(key)}: ${formatted}` : '';
+      })
+      .filter(Boolean)
+      .join('; ');
+  }
+  return String(value).trim();
+}
+
+function collectVehicleProviderEntries(vehicle: VehicleTyreLookupResult) {
+  const normalizedKeys = new Set([
+    'plate',
+    'country',
+    'description',
+    'vin',
+    'make',
+    'model',
+    'year',
+    'model_year',
+    'registration_year',
+    'variant',
+    'trim',
+    'wheel_size',
+    'wheel_size_array',
+    'tire_size',
+    'tyre_size',
+    'max_weight_kg',
+    'weight_empty_kg',
+    'max_speed_kmh',
+    'power',
+    'engine_size',
+    'engine_size_cc',
+  ]);
+  const entries: Array<{ key: string; label: string; value: string }> = [];
+  const seen = new Set<string>();
+
+  const addEntry = (key: string, value: unknown, source = '') => {
+    const normalizedKey = key.toLowerCase();
+    if (normalizedKeys.has(normalizedKey) || normalizedKey.includes('plate')) return;
+    const formattedValue = formatVehicleProviderValue(value);
+    if (!formattedValue || formattedValue === '-' || formattedValue === '[object Object]') return;
+
+    const dedupeKey = `${normalizedKey}:${formattedValue}`;
+    if (seen.has(dedupeKey)) return;
+    seen.add(dedupeKey);
+    entries.push({
+      key: `${source}${key}`,
+      label: formatVehicleProviderLabel(key),
+      value: formattedValue,
+    });
+  };
+
+  const addObject = (source: string, value: unknown) => {
+    if (!isPlainObject(value)) return;
+    Object.entries(value).forEach(([key, child]) => {
+      if (isPlainObject(child) && (key === 'attributes' || key === 'Attributes')) {
+        Object.entries(child).forEach(([attributeKey, attributeValue]) => addEntry(attributeKey, attributeValue, `${source}.attributes.`));
+        return;
+      }
+      addEntry(key, child, `${source}.`);
+    });
+  };
+
+  addObject('specifications', vehicle.specifications);
+  addObject('plateDecoder', vehicle.lookups?.plateDecoder);
+  addObject('vinDecoder', vehicle.lookups?.internationalVinDecoder);
+  addObject('specificationLookup', vehicle.lookups?.specifications);
+
+  return entries
+    .filter((entry) => entry.value.length <= 240)
+    .slice(0, 80);
+}
+
+export function CustomerEditorPanel({ overviewRow, onSaved, canWriteCustomers }: CustomerEditorPanelProps) {
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [draft, setDraft] = useState<CustomerDraft>(() => buildCustomerDraftFromOverview(null));
   const [vehicleDraft, setVehicleDraft] = useState<CustomerVehicleDraft | null>(null);
+  const [vehicleLookupLoading, setVehicleLookupLoading] = useState(false);
+  const [vehicleLookupMessage, setVehicleLookupMessage] = useState('');
+  const [vehicleLookupDetails, setVehicleLookupDetails] = useState<VehicleLookupDetails | null>(null);
+  const [lastVehicleLookupPlate, setLastVehicleLookupPlate] = useState('');
   const [initialVehicleDraft, setInitialVehicleDraft] = useState({
     licensePlate: '',
     vehicleName: '',
@@ -85,6 +198,9 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
     setError(null);
     setDetail(null);
     setVehicleDraft(null);
+    setVehicleLookupMessage('');
+    setVehicleLookupDetails(null);
+    setLastVehicleLookupPlate('');
     setBulkResult('');
     setAccountEmail('');
     setAccountActionMessage('');
@@ -146,7 +262,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const saveDraft = async () => {
-    if (saving) return;
+    if (saving || !canWriteCustomers) return;
     if (!draft.fullName.trim() && !draft.primaryEmail.trim() && !draft.primaryPhone.trim()) {
       setError('Add at least a name, email, or phone before saving.');
       return;
@@ -181,7 +297,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const saveVehicleDraft = async () => {
-    if (!vehicleDraft || saving) return;
+    if (!vehicleDraft || saving || !canWriteCustomers) return;
     if (!vehicleDraft.licensePlate.trim()) {
       setError('License plate is required.');
       return;
@@ -204,7 +320,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const addNote = async () => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     if (!noteBody.trim()) {
       setError('Note body is required.');
       return;
@@ -226,7 +342,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const quickStatus = async (status: CustomerStatus, hidden?: boolean) => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     setSaving(true);
     setError(null);
 
@@ -244,7 +360,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const linkAccount = async () => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     const email = accountEmail.trim() || draft.primaryEmail.trim();
     if (!email) {
       setError('Auth account email is required.');
@@ -273,7 +389,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const createPortalAccount = async () => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     const email = accountEmail.trim() || draft.primaryEmail.trim();
     if (!email) {
       setError('Customer email is required before creating a portal account.');
@@ -302,7 +418,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const sendActivationLink = async () => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     const email = accountEmail.trim() || detail?.accountEmail || draft.primaryEmail.trim();
     if (!email) {
       setError('Customer email is required before sending an activation link.');
@@ -331,7 +447,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const togglePortal = async () => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     setSaving(true);
     setError(null);
     setAccountActionMessage('');
@@ -350,7 +466,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
   };
 
   const adjustBenefits = async () => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     const delta = Number.parseInt(benefitDelta, 10);
     if (!Number.isFinite(delta) || delta === 0) {
       setError('Point adjustment must be a non-zero whole number.');
@@ -383,11 +499,178 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
       setError('Save the customer before adding vehicles.');
       return;
     }
+    if (!canWriteCustomers) {
+      setError('Customer write access is required.');
+      return;
+    }
     setVehicleDraft(buildVehicleDraft(draft.id, vehicle ?? null));
+    setVehicleLookupMessage('');
+    setVehicleLookupDetails(null);
+    setLastVehicleLookupPlate('');
+  };
+
+  const lookupVehicleDraftByPlate = async () => {
+    if (!vehicleDraft || vehicleLookupLoading || !canWriteCustomers) return;
+    const normalizedPlate = normalizePlate(vehicleDraft.licensePlate, 'FI');
+    const compactPlate = normalizedPlate.replace(/[^A-Z0-9]/g, '');
+    if (compactPlate.length < 2) {
+      setError('License plate is required before lookup.');
+      return;
+    }
+
+    setVehicleLookupLoading(true);
+    setVehicleLookupMessage('');
+    setVehicleLookupDetails(null);
+    setError(null);
+
+    try {
+      const localVehicle = await lookupCustomerVehicleByPlate(normalizedPlate);
+      if (localVehicle) {
+        setVehicleDraft((current) => current ? {
+          ...current,
+          licensePlate: localVehicle.licensePlate || normalizedPlate,
+          vehicleName: localVehicle.vehicleName || current.vehicleName,
+          vin: localVehicle.vin || current.vin,
+          notes: localVehicle.customerId === current.customerId && localVehicle.notes ? localVehicle.notes : current.notes,
+        } : current);
+      }
+
+      const externalVehicle = await lookupVehicleTyreFitment(normalizedPlate, 'FI');
+      setLastVehicleLookupPlate(normalizePlate(externalVehicle.plate || normalizedPlate, 'FI'));
+      const vehicleName = [
+        externalVehicle.year,
+        externalVehicle.make,
+        externalVehicle.model,
+        externalVehicle.variant,
+      ].filter(Boolean).join(' ') || externalVehicle.description || '';
+
+      setVehicleDraft((current) => current ? {
+        ...current,
+        licensePlate: normalizePlate(externalVehicle.plate || normalizedPlate, 'FI'),
+        vehicleName: vehicleName || current.vehicleName,
+          vin: externalVehicle.vin || current.vin,
+      } : current);
+      if (localVehicle) {
+        const owner = [localVehicle.customerName, localVehicle.customerEmail].filter(Boolean).join(' / ');
+        setVehicleLookupMessage(`Found CMS vehicle${owner ? ` under ${owner}` : ''}. Technical car data loaded from the plate lookup provider/cache.`);
+      } else {
+        setVehicleLookupMessage('No saved CMS vehicle found. Technical car data loaded from the plate lookup provider/cache.');
+      }
+      setVehicleLookupDetails({ source: 'provider', vehicle: externalVehicle, localVehicle });
+    } catch (err: any) {
+      const message = err.message ?? 'Failed to lookup vehicle by license plate.';
+      const normalizedPlateForFallback = normalizePlate(vehicleDraft.licensePlate, 'FI');
+      const localVehicle = await lookupCustomerVehicleByPlate(normalizedPlateForFallback).catch(() => null);
+      if (localVehicle) {
+        setLastVehicleLookupPlate(normalizedPlateForFallback);
+        setVehicleLookupMessage(`Found CMS vehicle, but technical car lookup failed: ${message}`);
+        setVehicleLookupDetails({ source: 'cms', vehicle: localVehicle });
+      } else {
+        setError(message);
+      }
+    } finally {
+      setVehicleLookupLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!vehicleDraft || activeTab !== 'vehicles' || vehicleLookupLoading || !canWriteCustomers) return;
+    const normalizedPlate = normalizePlate(vehicleDraft.licensePlate, 'FI');
+    const compactPlate = normalizedPlate.replace(/[^A-Z0-9]/g, '');
+    if (compactPlate.length < 5 || normalizedPlate === lastVehicleLookupPlate) return;
+
+    const timer = window.setTimeout(() => {
+      void lookupVehicleDraftByPlate();
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [vehicleDraft?.licensePlate, activeTab, canWriteCustomers, lastVehicleLookupPlate, vehicleLookupLoading]);
+
+  const renderVehicleLookupDetails = () => {
+    if (!vehicleLookupDetails) return null;
+
+    if (vehicleLookupDetails.source === 'cms') {
+      const vehicle = vehicleLookupDetails.vehicle;
+      const owner = [vehicle.customerName, vehicle.customerEmail].filter(Boolean).join(' / ');
+      return (
+        <div className="rounded-md border bg-muted/20 p-3 md:col-span-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h5 className="text-sm font-semibold text-foreground">Vehicle information</h5>
+            <Badge variant="secondary">CMS database</Badge>
+          </div>
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div><span className="text-muted-foreground">License plate: </span>{displayLookupValue(vehicle.licensePlate)}</div>
+            <div><span className="text-muted-foreground">Vehicle name: </span>{displayLookupValue(vehicle.vehicleName)}</div>
+            <div><span className="text-muted-foreground">VIN: </span>{displayLookupValue(vehicle.vin)}</div>
+            <div><span className="text-muted-foreground">Owner: </span>{displayLookupValue(owner)}</div>
+            <div><span className="text-muted-foreground">Phone: </span>{displayLookupValue(vehicle.customerPhone)}</div>
+            <div><span className="text-muted-foreground">Customer status: </span>{displayLookupValue(vehicle.customerStatus)}</div>
+            <div><span className="text-muted-foreground">Updated: </span>{formatDate(vehicle.updatedAt)}</div>
+            <div><span className="text-muted-foreground">Hidden: </span>{vehicle.hidden ? 'Yes' : 'No'}</div>
+            {vehicle.notes ? (
+              <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{vehicle.notes}</div>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
+
+    const vehicle = vehicleLookupDetails.vehicle;
+    const localVehicle = vehicleLookupDetails.source === 'provider' ? vehicleLookupDetails.localVehicle : null;
+    const owner = localVehicle ? [localVehicle.customerName, localVehicle.customerEmail].filter(Boolean).join(' / ') : '';
+    const tyreSizes = vehicle.factoryTyreSizes?.length ? vehicle.factoryTyreSizes : vehicle.factoryTyreSize ? [vehicle.factoryTyreSize] : [];
+    const providerEntries = collectVehicleProviderEntries(vehicle);
+    return (
+      <div className="rounded-md border bg-muted/20 p-3 md:col-span-2">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h5 className="text-sm font-semibold text-foreground">Vehicle information</h5>
+          <Badge variant="secondary">Plate lookup</Badge>
+        </div>
+        <div className="grid gap-2 text-sm sm:grid-cols-2">
+          <div><span className="text-muted-foreground">License plate: </span>{displayLookupValue(vehicle.plate)}</div>
+          <div><span className="text-muted-foreground">Country: </span>{displayLookupValue(vehicle.country)}</div>
+          <div><span className="text-muted-foreground">Description: </span>{displayLookupValue(vehicle.description)}</div>
+          <div><span className="text-muted-foreground">VIN: </span>{displayLookupValue(vehicle.vin)}</div>
+          <div><span className="text-muted-foreground">Make: </span>{displayLookupValue(vehicle.make)}</div>
+          <div><span className="text-muted-foreground">Model: </span>{displayLookupValue(vehicle.model)}</div>
+          <div><span className="text-muted-foreground">Year: </span>{displayLookupValue(vehicle.year)}</div>
+          <div><span className="text-muted-foreground">Variant: </span>{displayLookupValue(vehicle.variant)}</div>
+          <div><span className="text-muted-foreground">Factory tyre sizes: </span>{tyreSizes.length ? tyreSizes.join(', ') : '-'}</div>
+          <div><span className="text-muted-foreground">Power: </span>{displayLookupValue(vehicle.powerKw, ' kW')}</div>
+          <div><span className="text-muted-foreground">Engine size: </span>{displayLookupValue(vehicle.engineSizeCc, ' cc')}</div>
+          <div><span className="text-muted-foreground">Empty weight: </span>{displayLookupValue(vehicle.weightEmptyKg, ' kg')}</div>
+          <div><span className="text-muted-foreground">Max weight: </span>{displayLookupValue(vehicle.maxWeightKg, ' kg')}</div>
+          <div><span className="text-muted-foreground">Max speed: </span>{displayLookupValue(vehicle.maxSpeedKmh, ' km/h')}</div>
+          <div><span className="text-muted-foreground">Source: </span>{displayLookupValue(vehicle.source)}</div>
+          {localVehicle ? (
+            <>
+              <div><span className="text-muted-foreground">CMS owner: </span>{displayLookupValue(owner)}</div>
+              <div><span className="text-muted-foreground">CMS updated: </span>{formatDate(localVehicle.updatedAt)}</div>
+            </>
+          ) : null}
+          {vehicle.warnings?.length ? (
+            <div className="sm:col-span-2"><span className="text-muted-foreground">Warnings: </span>{vehicle.warnings.join(' ')}</div>
+          ) : null}
+        </div>
+        {providerEntries.length ? (
+          <details className="mt-4 rounded-md border bg-background/70 p-3" open>
+            <summary className="cursor-pointer text-sm font-semibold text-foreground">Additional provider data</summary>
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              {providerEntries.map((entry) => (
+                <div key={`${entry.key}-${entry.value}`} className="min-w-0">
+                  <span className="text-muted-foreground">{entry.label}: </span>
+                  <span className="break-words">{entry.value}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        ) : null}
+      </div>
+    );
   };
 
   const importBulkPlates = async () => {
-    if (!draft.id || saving) return;
+    if (!draft.id || saving || !canWriteCustomers) return;
     if (!bulkPlates.trim()) {
       setError('Add at least one license plate to import.');
       return;
@@ -448,6 +731,12 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
         </div>
       ) : null}
 
+      {!canWriteCustomers ? (
+        <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+          Read-only customer access. Contact Super Admin if this account needs permission to create or edit customer records.
+        </div>
+      ) : null}
+
       <div className="flex gap-1 overflow-x-auto border-b">
         {tabs.map((tab) => (
           <button
@@ -494,6 +783,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
                 <Input
                   value={accountEmail}
                   onChange={(event) => setAccountEmail(event.target.value)}
+                  disabled={!canWriteCustomers}
                   placeholder={draft.primaryEmail || 'customer@example.com'}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -501,18 +791,18 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
                 </p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                <Button variant="outline" onClick={createPortalAccount} disabled={saving || Boolean(detail?.accountId)} className="justify-start">
+                <Button variant="outline" onClick={createPortalAccount} disabled={saving || Boolean(detail?.accountId) || !canWriteCustomers} className="justify-start">
                   <UserRound className="mr-2 h-4 w-4" />
                   Create account
                 </Button>
-                <Button variant="outline" onClick={linkAccount} disabled={saving} className="justify-start">
+                <Button variant="outline" onClick={linkAccount} disabled={saving || !canWriteCustomers} className="justify-start">
                   <Link2 className="mr-2 h-4 w-4" />
                   Link account
                 </Button>
-                <Button variant="outline" onClick={sendActivationLink} disabled={saving || !detail?.accountId} className="justify-start">
+                <Button variant="outline" onClick={sendActivationLink} disabled={saving || !detail?.accountId || !canWriteCustomers} className="justify-start">
                   Send activation
                 </Button>
-                <Button variant="outline" onClick={togglePortal} disabled={saving || !detail?.accountId} className="justify-start">
+                <Button variant="outline" onClick={togglePortal} disabled={saving || !detail?.accountId || !canWriteCustomers} className="justify-start">
                   {detail?.portalEnabled ? 'Disable portal' : 'Enable portal'}
                 </Button>
               </div>
@@ -561,7 +851,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
                   placeholder="Service completed, manual correction, campaign benefit"
                 />
               </div>
-              <Button variant="outline" onClick={adjustBenefits} disabled={saving} className="justify-start">
+              <Button variant="outline" onClick={adjustBenefits} disabled={saving || !canWriteCustomers} className="justify-start">
                 <BadgePercent className="mr-2 h-4 w-4" />
                 Adjust points
               </Button>
@@ -723,21 +1013,21 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={saveDraft} disabled={saving}>
+        <Button onClick={saveDraft} disabled={saving || !canWriteCustomers}>
           <Save className="mr-2 h-4 w-4" />
           {saving ? 'Saving...' : 'Save customer'}
         </Button>
         {draft.id ? (
           <>
-            <Button variant="outline" onClick={() => quickStatus('hidden', true)} disabled={saving}>
+            <Button variant="outline" onClick={() => quickStatus('hidden', true)} disabled={saving || !canWriteCustomers}>
               <EyeOff className="mr-2 h-4 w-4" />
               Hide
             </Button>
-            <Button variant="outline" onClick={() => quickStatus('blocked', draft.hidden)} disabled={saving}>
+            <Button variant="outline" onClick={() => quickStatus('blocked', draft.hidden)} disabled={saving || !canWriteCustomers}>
               <ShieldAlert className="mr-2 h-4 w-4" />
               Block
             </Button>
-            <Button variant="destructive" onClick={() => quickStatus('deleted', true)} disabled={saving}>
+            <Button variant="destructive" onClick={() => quickStatus('deleted', true)} disabled={saving || !canWriteCustomers}>
               Delete
             </Button>
           </>
@@ -752,7 +1042,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h4 className="font-semibold text-foreground">Vehicles</h4>
-              <Button variant="outline" size="sm" onClick={() => startVehicleEdit()}>
+              <Button variant="outline" size="sm" onClick={() => startVehicleEdit()} disabled={!canWriteCustomers}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add vehicle
               </Button>
@@ -777,7 +1067,30 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
 
             {vehicleDraft ? (
               <div className="grid gap-3 rounded-md border p-3 md:grid-cols-2">
-                <Input value={vehicleDraft.licensePlate} onChange={(event) => setVehicleDraft((current) => current ? { ...current, licensePlate: event.target.value.toUpperCase() } : current)} placeholder="License plate" />
+                <div className="flex gap-2 md:col-span-2">
+                  <Input
+                    value={vehicleDraft.licensePlate}
+                    onChange={(event) => {
+                      setVehicleDraft((current) => current ? { ...current, licensePlate: event.target.value.toUpperCase() } : current);
+                      setVehicleLookupMessage('');
+                    }}
+                    placeholder="License plate"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={lookupVehicleDraftByPlate}
+                    disabled={vehicleLookupLoading || saving || !canWriteCustomers || !vehicleDraft.licensePlate.trim()}
+                    className="shrink-0"
+                  >
+                    <Search className="mr-2 h-4 w-4" />
+                    {vehicleLookupLoading ? 'Looking...' : 'Lookup plate'}
+                  </Button>
+                </div>
+                {vehicleLookupMessage ? (
+                  <p className="text-xs text-muted-foreground md:col-span-2">{vehicleLookupMessage}</p>
+                ) : null}
+                {renderVehicleLookupDetails()}
                 <Input value={vehicleDraft.vehicleName} onChange={(event) => setVehicleDraft((current) => current ? { ...current, vehicleName: event.target.value } : current)} placeholder="Vehicle name" />
                 <Input value={vehicleDraft.vin} onChange={(event) => setVehicleDraft((current) => current ? { ...current, vin: event.target.value } : current)} placeholder="VIN" />
                 <label className="flex items-center gap-2 text-sm">
@@ -786,7 +1099,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
                 </label>
                 <Input value={vehicleDraft.notes} onChange={(event) => setVehicleDraft((current) => current ? { ...current, notes: event.target.value } : current)} placeholder="Vehicle notes" className="md:col-span-2" />
                 <div className="flex gap-2 md:col-span-2">
-                  <Button size="sm" onClick={saveVehicleDraft} disabled={saving}>Save vehicle</Button>
+                  <Button size="sm" onClick={saveVehicleDraft} disabled={saving || !canWriteCustomers}>Save vehicle</Button>
                   <Button size="sm" variant="ghost" onClick={() => setVehicleDraft(null)}>Cancel</Button>
                 </div>
               </div>
@@ -811,7 +1124,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
                   placeholder="Optional default vehicle label"
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" onClick={importBulkPlates} disabled={saving}>
+                  <Button size="sm" onClick={importBulkPlates} disabled={saving || !canWriteCustomers}>
                     Import plates
                   </Button>
                   {bulkResult ? <span className="text-xs text-muted-foreground">{bulkResult}</span> : null}
@@ -845,7 +1158,7 @@ export function CustomerEditorPanel({ overviewRow, onSaved }: CustomerEditorPane
                   <option value="internal">Internal</option>
                   <option value="super_admin">Super admin</option>
                 </select>
-                <Button size="sm" onClick={addNote} disabled={saving}>Add note</Button>
+                <Button size="sm" onClick={addNote} disabled={saving || !canWriteCustomers}>Add note</Button>
               </div>
             </div>
 

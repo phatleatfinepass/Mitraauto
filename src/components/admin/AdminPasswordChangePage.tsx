@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useTheme } from '../ThemeContext';
-import { useLanguage } from '../LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -21,7 +21,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
   onLogout 
 }) => {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -29,31 +29,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const t = (key: string) => {
-    const translations: Record<string, { fi: string; en: string }> = {
-      changePassword: { fi: 'Vaihda salasana', en: 'Change Password' },
-      requiredChange: { fi: 'Salasanan vaihto vaaditaan', en: 'Password Change Required' },
-      changeDescription: { fi: 'Turvallisuussyistä sinun täytyy vaihtaa salasanasi ensimmäisen kirjautumisen yhteydessä.', en: 'For security reasons, you must change your password upon first login.' },
-      newPassword: { fi: 'Uusi salasana', en: 'New Password' },
-      confirmPassword: { fi: 'Vahvista salasana', en: 'Confirm Password' },
-      newPasswordPlaceholder: { fi: 'Syötä uusi salasana', en: 'Enter new password' },
-      confirmPasswordPlaceholder: { fi: 'Vahvista uusi salasana', en: 'Confirm new password' },
-      updatePassword: { fi: 'Päivitä salasana', en: 'Update Password' },
-      updating: { fi: 'Päivitetään...', en: 'Updating...' },
-      showPassword: { fi: 'Näytä salasana', en: 'Show password' },
-      hidePassword: { fi: 'Piilota salasana', en: 'Hide password' },
-      passwordsDoNotMatch: { fi: 'Salasanat eivät täsmää', en: 'Passwords do not match' },
-      passwordTooShort: { fi: 'Salasanan tulee olla vähintään 8 merkkiä', en: 'Password must be at least 8 characters' },
-      passwordRequirements: { fi: 'Salasanavaatimukset', en: 'Password Requirements' },
-      minLength: { fi: 'Vähintään 8 merkkiä', en: 'At least 8 characters' },
-      upperCase: { fi: 'Sisältää ison kirjaimen', en: 'Contains uppercase letter' },
-      lowerCase: { fi: 'Sisältää pienen kirjaimen', en: 'Contains lowercase letter' },
-      number: { fi: 'Sisältää numeron', en: 'Contains a number' },
-      specialChar: { fi: 'Sisältää erikoismerkin', en: 'Contains special character' },
-      logout: { fi: 'Kirjaudu ulos', en: 'Logout' },
-    };
-    return translations[key]?.[language] || key;
-  };
+  const adminPasswordText = (key: string) => t(`adminPassword.${key}`);
 
   // Password validation
   const validatePassword = (password: string) => {
@@ -75,13 +51,13 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
 
     // Validate passwords match
     if (newPassword !== confirmPassword) {
-      setError(t('passwordsDoNotMatch'));
+      setError(adminPasswordText('passwordsDoNotMatch'));
       return;
     }
 
     // Validate password strength
     if (!isPasswordValid) {
-      setError(t('passwordTooShort'));
+      setError(adminPasswordText('passwordTooShort'));
       return;
     }
 
@@ -93,11 +69,11 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
       if (result.success) {
         onPasswordChanged();
       } else {
-        setError(result.error || 'Password change failed');
+        setError(result.error || adminPasswordText('failed'));
       }
     } catch (err) {
       console.error('Password change error:', err);
-      setError(language === 'fi' ? 'Salasanan vaihto epäonnistui' : 'Password change failed');
+      setError(adminPasswordText('failed'));
     } finally {
       setLoading(false);
     }
@@ -131,10 +107,10 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
           <h1 className={`text-3xl font-semibold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            {t('requiredChange')}
+            {adminPasswordText('requiredChange')}
           </h1>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            {t('changeDescription')}
+            {adminPasswordText('changeDescription')}
           </p>
         </div>
 
@@ -146,7 +122,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
             {/* New Password Field */}
             <div className="space-y-2">
               <Label htmlFor="newPassword" className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                {t('newPassword')}
+                {adminPasswordText('newPassword')}
               </Label>
               <div className="relative">
                 <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
@@ -157,7 +133,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
                   type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder={t('newPasswordPlaceholder')}
+                  placeholder={adminPasswordText('newPasswordPlaceholder')}
                   required
                   disabled={loading}
                   className={`pl-10 pr-10 ${
@@ -172,7 +148,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
                   className={`absolute right-3 top-1/2 -translate-y-1/2 ${
                     theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
                   }`}
-                  aria-label={showNewPassword ? t('hidePassword') : t('showPassword')}
+                  aria-label={showNewPassword ? adminPasswordText('hidePassword') : adminPasswordText('showPassword')}
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -182,7 +158,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
             {/* Confirm Password Field */}
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                {t('confirmPassword')}
+                {adminPasswordText('confirmPassword')}
               </Label>
               <div className="relative">
                 <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
@@ -193,7 +169,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder={t('confirmPasswordPlaceholder')}
+                  placeholder={adminPasswordText('confirmPasswordPlaceholder')}
                   required
                   disabled={loading}
                   className={`pl-10 pr-10 ${
@@ -208,7 +184,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
                   className={`absolute right-3 top-1/2 -translate-y-1/2 ${
                     theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
                   }`}
-                  aria-label={showConfirmPassword ? t('hidePassword') : t('showPassword')}
+                  aria-label={showConfirmPassword ? adminPasswordText('hidePassword') : adminPasswordText('showPassword')}
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -223,14 +199,14 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
                 <p className={`text-sm font-semibold mb-2 ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  {t('passwordRequirements')}
+                  {adminPasswordText('passwordRequirements')}
                 </p>
                 <div className="space-y-1">
-                  <RequirementItem met={validation.minLength} text={t('minLength')} />
-                  <RequirementItem met={validation.hasUpperCase} text={t('upperCase')} />
-                  <RequirementItem met={validation.hasLowerCase} text={t('lowerCase')} />
-                  <RequirementItem met={validation.hasNumber} text={t('number')} />
-                  <RequirementItem met={validation.hasSpecialChar} text={t('specialChar')} />
+                  <RequirementItem met={validation.minLength} text={adminPasswordText('minLength')} />
+                  <RequirementItem met={validation.hasUpperCase} text={adminPasswordText('upperCase')} />
+                  <RequirementItem met={validation.hasLowerCase} text={adminPasswordText('lowerCase')} />
+                  <RequirementItem met={validation.hasNumber} text={adminPasswordText('number')} />
+                  <RequirementItem met={validation.hasSpecialChar} text={adminPasswordText('specialChar')} />
                 </div>
               </div>
             )}
@@ -253,7 +229,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
               disabled={loading || !isPasswordValid || newPassword !== confirmPassword}
               className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12"
             >
-              {loading ? t('updating') : t('updatePassword')}
+              {loading ? adminPasswordText('updating') : adminPasswordText('updatePassword')}
             </Button>
 
             {/* Logout Button */}
@@ -266,7 +242,7 @@ export const AdminPasswordChangePage: React.FC<AdminPasswordChangePageProps> = (
                 theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {t('logout')}
+              {adminPasswordText('logout')}
             </Button>
           </form>
         </Card>

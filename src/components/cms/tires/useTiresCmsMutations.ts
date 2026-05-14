@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { supabase } from '../../../utils/supabase/client';
 import { getPricingRulesFromSpecOverrides, isFixedBundleTotalCompatible } from '../../../utils/pricing';
 import { buildTyreLabelSectionData } from '../../../utils/tyreLabel';
@@ -273,7 +274,6 @@ export function useTiresCmsMutations({
   fetchTires,
   invalidateCache,
   hasMissingSupplierPrice,
-  language,
   onCloseEditor,
   patchLocalCmsData,
   patchLocalIdentityData,
@@ -286,7 +286,6 @@ export function useTiresCmsMutations({
   fetchTires: (options?: { force?: boolean }) => Promise<any>;
   invalidateCache: () => void;
   hasMissingSupplierPrice: (tire: TireRow | null) => boolean;
-  language: string;
   onCloseEditor: () => void;
   patchLocalCmsData: (variantId: string, cmsData: Partial<ProductCMS> | null) => void;
   patchLocalIdentityData: (variantId: string, specOverrides: any) => void;
@@ -294,6 +293,7 @@ export function useTiresCmsMutations({
   setCatalogSyncMessage: React.Dispatch<React.SetStateAction<string | null>>;
   setHasPendingCatalogSync: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
+  const { t } = useLanguage();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -325,21 +325,13 @@ export function useTiresCmsMutations({
         pricingRules?.qty2?.mode === 'fixed_total' &&
         !isFixedBundleTotalCompatible(pricingRules.qty2.fixed_total_eur, 2)
       ) {
-        throw new Error(
-          language === 'fi'
-            ? '2 kpl kiinteä pakettihinta pitää jakautua tasan kahdelle tuotteelle (sentteihin asti).'
-            : 'Fixed total for 2 items must be divisible evenly across 2 units (in cents).'
-        );
+        throw new Error(t('tiresMutations.invalidBundle2'));
       }
       if (
         pricingRules?.qty4?.mode === 'fixed_total' &&
         !isFixedBundleTotalCompatible(pricingRules.qty4.fixed_total_eur, 4)
       ) {
-        throw new Error(
-          language === 'fi'
-            ? '4 kpl kiinteä pakettihinta pitää jakautua tasan neljälle tuotteelle (sentteihin asti).'
-            : 'Fixed total for 4 items must be divisible evenly across 4 units (in cents).'
-        );
+        throw new Error(t('tiresMutations.invalidBundle4'));
       }
 
       const identityOverride = (specOverrides as any)?.identity ?? {};
@@ -354,11 +346,7 @@ export function useTiresCmsMutations({
       const shouldPatchEan = Boolean(hasEanOverride) && eanDigits !== currentEanDigits;
 
       if (shouldPatchEan && eanDigits.length > 0 && !isValidEan13(eanDigits)) {
-        throw new Error(
-          language === 'fi'
-            ? 'EAN ei ole kelvollinen EAN-13 (tarkistusnumero virheellinen).'
-            : 'EAN is not a valid EAN-13 (check digit mismatch).'
-        );
+        throw new Error(t('tiresMutations.invalidEan13'));
       }
 
       const draftManualNonPassenger = getManualNonPassengerFlag(specOverrides);
@@ -432,9 +420,7 @@ export function useTiresCmsMutations({
         stableSerialize(buildComparableCmsData(selectedTire.variant_id, selectedTire.cms_data ?? null));
 
       if (!shouldPatchEan && !hasCmsChanges) {
-        setCatalogSyncMessage(
-          language === 'fi' ? 'Ei uusia muutoksia synkronoitavaksi.' : 'No new changes to sync.'
-        );
+        setCatalogSyncMessage(t('tiresMutations.noChanges'));
         onCloseEditor();
         return;
       }
@@ -485,12 +471,8 @@ export function useTiresCmsMutations({
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
         shouldPatchEan
-          ? (language === 'fi'
-            ? 'EAN-muutos tallennettu välimuistiin. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
-            : 'EAN change cached. Run "Apply Sync" to publish changes to catalog.')
-          : (language === 'fi'
-            ? 'Muutokset tallennettu. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
-            : 'Changes saved. Run "Apply Sync" to publish changes to catalog.')
+          ? t('tiresMutations.eanChangeCached')
+          : t('tiresMutations.changesSaved')
       );
 
       if (targetVariantId !== selectedTire.variant_id) {
@@ -527,13 +509,9 @@ export function useTiresCmsMutations({
     try {
       if (forceHidden) {
         setCatalogSyncMessage(
-          language === 'fi'
-            ? (missingSupplierPrice
-              ? 'Tuote on piilotettu, koska toimittajahinta puuttuu.'
-              : 'Tuote on piilotettu, koska se ei ole henkilöauton rengas.')
-            : (missingSupplierPrice
-              ? 'Item is hidden because supplier price is missing.'
-              : 'Item is hidden because it is not a passenger-car tire.')
+          missingSupplierPrice
+            ? t('tiresMutations.hiddenMissingSupplierPrice')
+            : t('tiresMutations.hiddenNonPassenger')
         );
       }
 
@@ -555,11 +533,7 @@ export function useTiresCmsMutations({
 
       if (newHiddenState !== previousHiddenState) {
         setHasPendingCatalogSync(true);
-        setCatalogSyncMessage(
-          language === 'fi'
-            ? 'Näkyvyysmuutos tallennettu. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
-            : 'Visibility change saved. Run "Apply Sync" to publish changes to catalog.'
-        );
+        setCatalogSyncMessage(t('tiresMutations.visibilitySaved'));
       }
 
       void refreshAdminSnapshot();
@@ -572,7 +546,7 @@ export function useTiresCmsMutations({
   const handleResetCms = async () => {
     if (!selectedTire) return;
     if (!selectedTire.cms_data) {
-      setCatalogSyncMessage(language === 'fi' ? 'Ei uusia muutoksia synkronoitavaksi.' : 'No new changes to sync.');
+      setCatalogSyncMessage(t('tiresMutations.noChanges'));
       onCloseEditor();
       return;
     }
@@ -597,11 +571,7 @@ export function useTiresCmsMutations({
 
       patchLocalCmsData(selectedTire.variant_id, null);
       setHasPendingCatalogSync(true);
-      setCatalogSyncMessage(
-        language === 'fi'
-          ? 'CMS-ohitukset poistettu. Suorita "Apply Sync" julkaistaksesi muutokset katalogiin.'
-          : 'CMS overrides cleared. Run "Apply Sync" to publish changes to catalog.'
-      );
+      setCatalogSyncMessage(t('tiresMutations.overridesCleared'));
       void refreshAdminSnapshot();
       onCloseEditor();
     } catch (err: any) {

@@ -1,93 +1,53 @@
-export const CMS_PWA_COPY = {
-  fi: {
-    mobileOps: 'Mitra Auto mobile ops',
-    rescueTitle: 'Pelastus',
-    bookingTitle: 'Varaus',
-    orderTitle: 'Tilaus',
-    toolsTitle: 'Future Tools',
-    openDiagnostics: 'Avaa diagnostiikka',
-    signOut: 'Kirjaudu ulos',
-    operationalSummary: 'Operatiivinen yhteenveto',
-    versionLabel: 'Versio',
-    updateLabel: 'Päivitys',
-    refreshedLabel: 'Virkistetty',
-    forceRefresh: 'Pakota päivitys',
-    rescue: 'Pelastus',
-    booking: 'Varaus',
-    order: 'Tilaus',
-    handoffWaitingOne: 'varaus odottaa, että desktop-CMS viimeistelee siirron.',
-    handoffWaitingMany: 'varausta odottaa, että desktop-CMS viimeistelee siirron.',
-    handingOff: 'Siirretään...',
-    handoffNewBookings: 'Siirrä uudet varaukset',
-    noNewBookingsToHandoff: 'Ei uusia varauksia siirrettäväksi',
-    rescueQueue: 'Pelastusjono',
-    bookingQueue: 'Varausjono',
-    orderQueue: 'Tilausjono',
-    plannedTools: 'Suunnitellut työkalut',
-    refreshingQueue: 'Päivitetään jonoa...',
-    noItems: 'Tässä jonossa ei ole kohteita juuri nyt.',
-    pushDiagnostics: 'Push-diagnostiikka',
-    pushDiagnosticsBody: 'Laitteen ilmoitus- ja tilaustilan nykyinen kunto.',
-    close: 'Sulje',
-    permission: 'Lupa',
-    serviceWorker: 'Service worker',
-    pushSupported: 'Push-tuki',
-    localSubscription: 'Paikallinen tilaus',
-    savedToBackend: 'Tallennettu taustaan',
-    ready: 'valmis',
-    notReady: 'ei valmis',
-    yes: 'kyllä',
-    no: 'ei',
-    enabling: 'Otetaan käyttöön...',
-    enableNotifications: 'Ota ilmoitukset käyttöön',
-    rerunDiagnostics: 'Suorita diagnostiikka uudelleen',
-  },
-  en: {
-    mobileOps: 'Mitra Auto mobile ops',
-    rescueTitle: 'Rescue',
-    bookingTitle: 'Booking',
-    orderTitle: 'Order',
-    toolsTitle: 'Future Tools',
-    openDiagnostics: 'Open diagnostics',
-    signOut: 'Sign out',
-    operationalSummary: 'Operational summary',
-    versionLabel: 'Version',
-    updateLabel: 'Update',
-    refreshedLabel: 'Refreshed',
-    forceRefresh: 'Force refresh',
-    rescue: 'Rescue',
-    booking: 'Booking',
-    order: 'Order',
-    handoffWaitingOne: 'booking waiting for desktop CMS to finish handoff.',
-    handoffWaitingMany: 'bookings waiting for desktop CMS to finish handoff.',
-    handingOff: 'Handing off...',
-    handoffNewBookings: 'Handoff new bookings',
-    noNewBookingsToHandoff: 'No new bookings to hand off',
-    rescueQueue: 'Rescue queue',
-    bookingQueue: 'Booking queue',
-    orderQueue: 'Order queue',
-    plannedTools: 'Planned tools',
-    refreshingQueue: 'Refreshing queue...',
-    noItems: 'No items in this queue right now.',
-    pushDiagnostics: 'Push diagnostics',
-    pushDiagnosticsBody: 'Current notification and subscription health on this device.',
-    close: 'Close',
-    permission: 'Permission',
-    serviceWorker: 'Service worker',
-    pushSupported: 'Push supported',
-    localSubscription: 'Local subscription',
-    savedToBackend: 'Saved to backend',
-    ready: 'ready',
-    notReady: 'not ready',
-    yes: 'yes',
-    no: 'no',
-    enabling: 'Enabling...',
-    enableNotifications: 'Enable notifications',
-    rerunDiagnostics: 'Re-run diagnostics',
-  },
-} as const;
-
-export type CmsPwaCopy = typeof CMS_PWA_COPY.fi;
+export type CmsPwaCopy = {
+  mobileOps: string;
+  loginEyebrow: string;
+  loginTitle: string;
+  loginDescription: string;
+  email: string;
+  password: string;
+  signingIn: string;
+  signInMobileOps: string;
+  rescueTitle: string;
+  bookingTitle: string;
+  orderTitle: string;
+  toolsTitle: string;
+  openDiagnostics: string;
+  signOut: string;
+  operationalSummary: string;
+  versionLabel: string;
+  updateLabel: string;
+  refreshedLabel: string;
+  forceRefresh: string;
+  rescue: string;
+  booking: string;
+  order: string;
+  handoffWaitingOne: string;
+  handoffWaitingMany: string;
+  handingOff: string;
+  handoffNewBookings: string;
+  noNewBookingsToHandoff: string;
+  rescueQueue: string;
+  bookingQueue: string;
+  orderQueue: string;
+  plannedTools: string;
+  refreshingQueue: string;
+  noItems: string;
+  pushDiagnostics: string;
+  pushDiagnosticsBody: string;
+  close: string;
+  permission: string;
+  serviceWorker: string;
+  pushSupported: string;
+  localSubscription: string;
+  savedToBackend: string;
+  ready: string;
+  notReady: string;
+  yes: string;
+  no: string;
+  enabling: string;
+  enableNotifications: string;
+  rerunDiagnostics: string;
+};
 
 export function formatBuildStampLocal(value: string) {
   const date = new Date(value);

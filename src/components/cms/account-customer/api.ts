@@ -6,6 +6,7 @@ import {
   normalizeCustomerHistory,
   normalizeCustomerLinkSuggestion,
   normalizeCustomerRow,
+  normalizeCustomerVehiclePlateLookup,
   normalizeLicensePlateConflict,
   normalizeLicensePlateImportResult,
   normalizeMaintenanceReminder,
@@ -14,7 +15,7 @@ import {
   normalizeStaffRow,
   tagsFromText,
 } from './safe';
-import type { CustomerDraft, CustomerLinkSuggestion, CustomerMaintenanceReminderDraft, CustomerNoteVisibility, CustomerOverviewFilters, CustomerServiceBookDraft, CustomerVehicleDraft, StaffDraft, StaffRole } from './types';
+import type { CustomerDraft, CustomerLinkSuggestion, CustomerMaintenanceReminderDraft, CustomerNoteVisibility, CustomerOverviewFilters, CustomerServiceBookDraft, CustomerVehicleDraft, LicensePlateConflict, StaffDraft, StaffRole } from './types';
 
 async function getFunctionErrorMessage(error: unknown) {
   const context = error && typeof error === 'object' && 'context' in error ? (error as any).context : null;
@@ -63,13 +64,33 @@ export async function listCustomerOverview(filters: CustomerOverviewFilters | st
   return (Array.isArray(data) ? data : []).map(normalizeCustomerRow);
 }
 
-export async function mergeCustomers(primaryCustomerId: string, duplicateCustomerId: string) {
-  const { error } = await supabase.rpc('cms_merge_customers', {
+export async function mergeCustomers(
+  primaryCustomerId: string,
+  duplicateCustomerId: string,
+  fieldSources: Record<string, 'primary' | 'duplicate'> = {},
+) {
+  const { error } = await supabase.rpc('cms_merge_customers_with_choices', {
     p_primary_customer_id: primaryCustomerId,
     p_duplicate_customer_id: duplicateCustomerId,
+    p_field_sources: fieldSources,
   });
 
   if (error) throw error;
+}
+
+export async function resolveLicensePlateConflict(
+  licensePlate: string,
+  resolution: 'shared' | 'moved_to_customer',
+  primaryCustomerId?: string | null,
+) {
+  const { data, error } = await supabase.rpc('cms_resolve_license_plate_conflict', {
+    p_license_plate: licensePlate,
+    p_resolution: resolution,
+    p_primary_customer_id: primaryCustomerId ?? null,
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function listStaffAccounts() {
@@ -414,7 +435,9 @@ export async function bulkImportCustomerPlates(customerId: string, rawPlates: st
 export async function listLicensePlateConflicts() {
   const { data, error } = await supabase.rpc('cms_list_license_plate_conflicts');
   if (error) throw error;
-  return (Array.isArray(data) ? data : []).map(normalizeLicensePlateConflict).filter((row) => row !== null);
+  return (Array.isArray(data) ? data : [])
+    .map(normalizeLicensePlateConflict)
+    .filter((row): row is LicensePlateConflict => row !== null);
 }
 
 export async function setCustomerStatus(customerId: string, status: CustomerDraft['status'], hidden?: boolean) {
@@ -440,6 +463,16 @@ export async function saveCustomerVehicle(draft: CustomerVehicleDraft) {
 
   if (error) throw error;
   return String(data ?? '');
+}
+
+export async function lookupCustomerVehicleByPlate(licensePlate: string) {
+  const { data, error } = await supabase.rpc('cms_lookup_customer_vehicle_by_plate', {
+    p_license_plate: licensePlate.trim(),
+  });
+
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  return normalizeCustomerVehiclePlateLookup(rows[0]);
 }
 
 function partsFromText(value: string) {

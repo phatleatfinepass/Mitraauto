@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ProductCMS } from './types';
 import type { TiresAiGenerationState } from './aiCopy';
 
@@ -8,7 +9,6 @@ interface TiresSeoSectionProps {
   aiGenerationProgress: { current: number; total: number; label: string } | null;
   editData: Partial<ProductCMS>;
   isDark: boolean;
-  language: string;
   onEditDataChange: (updater: (prev: Partial<ProductCMS>) => Partial<ProductCMS>) => void;
 }
 
@@ -20,15 +20,15 @@ export function TiresSeoSection({
   aiGenerationProgress,
   editData,
   isDark,
-  language,
   onEditDataChange,
 }: TiresSeoSectionProps) {
+  const { t } = useLanguage();
   const [localeMode, setLocaleMode] = useState<LocaleMode>('fi');
   const englishSeo = (editData.spec_overrides as any)?.i18n?.en ?? {};
   const isFinnish = localeMode === 'fi';
   const labels = {
-    fi: language === 'fi' ? 'Suomi' : 'Finnish',
-    en: 'English',
+    fi: t('tiresSeo.finnish'),
+    en: t('tiresSeo.english'),
   };
 
   const updateLocalizedField = (
@@ -123,7 +123,7 @@ export function TiresSeoSection({
           <div className="space-y-4">
             <div>
               <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'URL-tunniste' : 'SEO Slug'}
+                {t('tiresSeo.slug')}
               </label>
               <input
                 type="text"
@@ -139,7 +139,7 @@ export function TiresSeoSection({
             </div>
             <div>
               <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'SEO-otsikko' : 'SEO Title'}
+                {t('tiresSeo.title')}
               </label>
               <input
                 type="text"
@@ -154,7 +154,7 @@ export function TiresSeoSection({
             </div>
             <div>
               <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'SEO-kuvaus' : 'SEO Description'}
+                {t('tiresSeo.description')}
               </label>
               <textarea
                 rows={3}

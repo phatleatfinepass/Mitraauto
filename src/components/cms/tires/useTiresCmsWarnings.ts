@@ -1,31 +1,25 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TireRow, TiresWarningTooltipState } from './types';
 
-export function useTiresCmsWarnings(language: string) {
+export function useTiresCmsWarnings() {
+  const { t } = useLanguage();
   const [warningTooltip, setWarningTooltip] = useState<TiresWarningTooltipState | null>(null);
 
   const getWarningReasons = (tire: TireRow) => {
     const reasons: string[] = [];
 
     if (tire.has_duplicate_ean_conflict) {
-      reasons.push(
-        language === 'fi'
-          ? 'Sama EAN löytyy useasta eri tuotteesta/specistä'
-          : 'Same EAN appears on multiple different variants/specs'
-      );
+      reasons.push(t('tiresWarnings.duplicateEan'));
     }
     if (tire.has_mandatory_field_conflict) {
-      reasons.push(language === 'fi' ? 'Pakollisia kenttiä puuttuu' : 'Mandatory fields are missing');
+      reasons.push(t('tiresWarnings.mandatoryFieldsMissing'));
     }
     if (tire.has_missing_ean) {
-      reasons.push(language === 'fi' ? 'EAN puuttuu tai on väliaikainen' : 'EAN is missing or still a placeholder');
+      reasons.push(t('tiresWarnings.missingEan'));
     }
     if (Boolean(tire.ean_conflict_open) && reasons.length === 0) {
-      reasons.push(
-        language === 'fi'
-          ? 'Katalogissa on avoin konflikti tälle tuotteelle'
-          : 'There is an open catalog conflict for this item'
-      );
+      reasons.push(t('tiresWarnings.openConflict'));
     }
 
     return reasons;
@@ -34,10 +28,10 @@ export function useTiresCmsWarnings(language: string) {
   const getWarningTooltip = (tire: TireRow) => {
     const reasons = getWarningReasons(tire);
     if (reasons.length === 0) {
-      return language === 'fi' ? 'Varoitus' : 'Warning';
+      return t('tiresWarnings.warning');
     }
 
-    const prefix = language === 'fi' ? 'Varoitus:' : 'Warning:';
+    const prefix = t('tiresWarnings.warningPrefix');
     return `${prefix} ${reasons.join(' | ')}`;
   };
 

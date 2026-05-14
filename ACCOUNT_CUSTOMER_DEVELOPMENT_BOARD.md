@@ -26,15 +26,15 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 - [x] Suspend account
 - [x] Soft-delete account
 - [x] Prevent super admin from deleting/suspending self
-- [x] Add permission presets
+- [x] Remove permission presets and manage module access directly
 - [x] Add staff/account search
 - [x] Add staff/account role filter
 - [x] Add staff/account status filter
 - [x] Add hidden-account toggle
-- [x] Add staff account audit log UI
+- [x] Keep staff account audit events at backend level
 - [x] Add secure invite/create-account flow through Edge Function
 - [x] Add explicit `Send active link` action after account creation
-- [x] Move active-link sending into the selected account Permissions panel
+- [x] Move active-link sending into the selected account access panel
 - [x] Add secure staff account delete Edge Function
 - [x] Delete staff account from both CMS profile access and Supabase Auth
 - [x] Add browser confirmation before staff account delete
@@ -58,6 +58,7 @@ This board tracks the CMS **Account & Customer** tab development step by step.
 - [x] Add hidden/deleted customer toggle for super admin
 - [x] Add customer duplicate detection
 - [x] Add customer merge flow
+- [x] Add license plate conflict actions: merge customer, allow shared plate, or move plate ownership/activity to one customer
 
 ## Phase 4: Customer History
 
@@ -381,9 +382,9 @@ Phase 1 evidence:
 - [x] Setup email link opens CMS password setup on the production domain, not localhost, by Edge Function redirect construction.
 - [x] `/cms/password-setup` renders the dedicated password setup form instead of the CMS login-required screen.
 - [x] Recovery hash changes on `/cms/password-setup` are handled without stale expired-link state.
-- [ ] New staff account can set password from the active link.
-- [ ] New staff account can complete TOTP setup before entering CMS.
-- [ ] New staff account can log in after password setup and TOTP.
+- [x] New staff account can set password from the active link.
+- [x] New staff account can complete TOTP setup before entering CMS.
+- [x] New staff account can log in after password setup and TOTP.
 - [x] Super admin can edit display name at rollback RPC layer.
 - [x] Super admin can edit role at rollback RPC layer.
 - [x] Super admin can edit account status at rollback RPC layer.
@@ -400,7 +401,7 @@ Phase 1 evidence:
 - [x] Super admin cannot suspend self.
 - [x] Super admin cannot delete self.
 - [x] Non-super-admin cannot manage account permissions.
-- [x] Account audit shows create, active-link, update, suspend, and delete events.
+- [x] Account audit events are retained in the backend; visible account audit UI was removed.
 
 Phase 2 evidence:
 - Browser QA verified Staff tab loads for super admin, `phat.le@finepass.fi` appears, the Permissions panel renders, `Send active link` is visible, and self `Suspend` / `Delete account` buttons are disabled.
@@ -416,45 +417,66 @@ Phase 2 evidence:
 - Static QA verified `cms_account_invite`, `cms_account_action`, `cms_account_password`, and `cms_account_recovery` pass `deno check`.
 - Remote function smoke QA verified anonymous access is rejected for `cms_account_invite`, `cms_account_action`, and `cms_account_password`; `cms_account_recovery` intentionally returns generic success to avoid account enumeration.
 - Code cleanup: removed leftover permission-preset constants/types/helpers after the visible preset UI was removed.
+- Phase 2 closeout patch: Staff Account Management now separates Account Access from Super Admin-only Permissions, and database/Edge Function guards prevent non-super-admin role or permission changes.
 
 ### Phase 3: Customer Management QA
 
-- [ ] Customer list loads without crash.
-- [ ] Customer search works by name.
-- [ ] Customer search works by email.
-- [ ] Customer search works by phone.
-- [ ] Customer search works by license plate.
-- [ ] Status filter works.
-- [ ] Tag filter works.
-- [ ] Include hidden/deleted toggle works.
-- [ ] Create personal customer saves.
-- [ ] Create business customer saves.
-- [ ] Create fleet customer saves.
-- [ ] Edit contact details saves.
-- [ ] Edit business details saves.
-- [ ] Edit address saves.
-- [ ] Marketing consent saves.
-- [ ] Contact consent saves.
-- [ ] Hide customer hides from normal list.
-- [ ] Block customer persists.
-- [ ] Soft-delete customer persists.
-- [ ] Add customer note saves.
-- [ ] Customer note visibility is respected.
-- [ ] Duplicate customer detection appears where expected.
-- [ ] Customer merge keeps selected primary customer.
-- [ ] Customer merge audit/history is visible.
+- [x] Customer list loads without crash.
+- [x] Customer search works by name.
+- [x] Customer search works by email.
+- [x] Customer search works by phone.
+- [x] Customer search works by license plate.
+- [x] Status filter works.
+- [x] Tag filter works.
+- [x] Include hidden/deleted toggle works.
+- [x] Create personal customer saves.
+- [x] Create business customer saves.
+- [x] Create fleet customer saves.
+- [x] Edit contact details saves.
+- [x] Edit business details saves.
+- [x] Edit address saves.
+- [x] Marketing consent saves.
+- [x] Contact consent saves.
+- [x] Hide customer hides from normal list.
+- [x] Block customer persists.
+- [x] Soft-delete customer persists.
+- [x] Add customer note saves.
+- [x] Customer note visibility is respected.
+- [x] Duplicate customer detection appears where expected.
+- [x] Customer merge keeps selected primary customer.
+- [x] Customer merge audit/history is visible.
+- [x] License plate conflict can be marked as intentionally shared.
+- [x] License plate conflict can be moved to one selected customer.
+
+Phase 3 evidence:
+- Phase 3 restart patch: Customer Management now distinguishes `customers: read` from `customers: read_write`; read-only users can inspect customer records but cannot create, edit, delete, merge, auto-link, adjust benefits, manage portal access, add notes, or edit vehicles.
+- User QA confirmed customer search works by name, email, phone, and license plate.
+- Patch added explicit license plate conflict handling: keep as shared across multiple customer accounts, or move plate ownership/activity to one selected customer.
+- Patch added direct search-result merge action so staff can select the primary customer and merge another visible saved customer into it, even when automatic duplicate detection does not show a conflict card.
+- Patch replaced one-click merge with a review step that shows both customers and requires staff to choose which customer is kept before confirming.
+- Recovery applied for accidental merge of `box.ryanle@gmail.com` into `phat.le@finepass.fi`; Box customer was restored to active and pre-merge events were moved back.
+- Master QA pass verified the Phase 3 frontend paths compile and map to guarded backend operations: customer filters call `cms_list_customer_overview_v2`, customer create/edit saves call the current `cms_upsert_customer` overload with `p_customer_type`, quick status changes call `cms_set_customer_status`, notes call `cms_add_customer_note`, merge review calls `cms_merge_customers_with_choices`, and plate conflict actions call `cms_resolve_license_plate_conflict`.
+- Remote SQL QA verified Phase 3 RPC/function inventory exists on linked Supabase with authenticated execute grants and expected read/write permission gates for `cms_list_customer_overview_v2`, `cms_upsert_customer`, `cms_set_customer_status`, `cms_add_customer_note`, `cms_merge_customers_with_choices`, `cms_list_license_plate_conflicts`, and `cms_resolve_license_plate_conflict`.
+- Phase 3 build QA passed after the latest CMS routing and Vehicle tab patches.
 
 ### Phase 4: Customer History QA
 
-- [ ] Customer detail history loads bookings.
-- [ ] Customer detail history loads orders.
-- [ ] Customer detail history loads invoices/receipts.
-- [ ] Customer detail history loads rescue/service events where available.
-- [ ] Customer event timeline renders newest-first.
-- [ ] Links from history to booking/order/invoice views work.
-- [ ] Last activity detail is visible and understandable.
-- [ ] Empty history state renders clearly.
-- [ ] History data respects customer visibility/deleted status rules.
+- [x] Customer detail history loads bookings.
+- [x] Customer detail history loads orders.
+- [x] Customer detail history loads invoices/receipts.
+- [x] Customer detail history loads rescue/service events where available.
+- [x] Customer event timeline renders newest-first.
+- [x] Links from history to booking/order/invoice views work.
+- [x] Last activity detail is visible and understandable.
+- [x] Empty history state renders clearly.
+- [x] History data respects customer visibility/deleted status rules.
+- [x] Manual unlink/correct mapping action works where available.
+
+Phase 4 evidence:
+- Remote SQL QA verified `cms_get_customer_history` is deployed with authenticated execute grant, `customers: read` gate, bookings/orders/invoices/rescue/events payloads, customer link metadata, and newest-first event ordering.
+- Static UI QA verified `CustomerHistoryPanel` renders tab counts, clear empty states, booking/order/receipt/rescue/audit sections, link-source badges, linked timestamps, and manual unlink actions through `cms_unlink_customer_activity`.
+- Patch applied: history links now target tabbed CMS routes directly with `/cms#schedule`, `/cms#orders`, `/cms#invoices`, and `/cms#rescue`; `#schedule` is now parsed by the CMS tab resolver.
+- Phase 4 build QA passed after the history link patch.
 
 ### Phase 5: Vehicles, License Plates, And Mapping QA
 

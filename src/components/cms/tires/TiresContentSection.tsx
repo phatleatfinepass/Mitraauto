@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Loader2, Wand2 } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ProductCMS } from './types';
 import type { TiresAiGenerationState } from './aiCopy';
 
@@ -12,7 +13,6 @@ interface TiresContentSectionProps {
   identityModel: string;
   identitySizeString: string;
   isDark: boolean;
-  language: string;
   onEditDataChange: (updater: (prev: Partial<ProductCMS>) => Partial<ProductCMS>) => void;
   onGenerateAllFields: () => void;
 }
@@ -28,16 +28,16 @@ export function TiresContentSection({
   identityModel,
   identitySizeString,
   isDark,
-  language,
   onEditDataChange,
   onGenerateAllFields,
 }: TiresContentSectionProps) {
+  const { t } = useLanguage();
   const [localeMode, setLocaleMode] = useState<LocaleMode>('fi');
   const englishContent = (editData.spec_overrides as any)?.i18n?.en ?? {};
   const isFinnish = localeMode === 'fi';
   const labels = {
-    fi: language === 'fi' ? 'Suomi' : 'Finnish',
-    en: 'English',
+    fi: t('tiresSeo.finnish'),
+    en: t('tiresSeo.english'),
   };
 
   const updateLocalizedField = (
@@ -87,7 +87,7 @@ export function TiresContentSection({
     <div>
       <div className="mb-4">
         <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {language === 'fi' ? 'Tuotesisältö & SEO' : 'Product Content & SEO'}
+          {t('tiresContent.title')}
         </h3>
       </div>
       <div className="space-y-4">
@@ -141,13 +141,13 @@ export function TiresContentSection({
               } disabled:cursor-not-allowed disabled:opacity-60`}
             >
               {aiGeneratingField === 'all_fields' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-              AI Fill
+              {t('tiresContent.aiFill')}
             </button>
           </div>
           <div className="space-y-4">
             <div>
               <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Tuoteotsikko' : 'Product Title'}
+                {t('tiresContent.productTitle')}
               </label>
               <input
                 type="text"
@@ -163,7 +163,7 @@ export function TiresContentSection({
             </div>
             <div>
               <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Tuotteen alaotsikko' : 'Product Subtitle'}
+                {t('tiresContent.productSubtitle')}
               </label>
               <input
                 type="text"
@@ -179,7 +179,7 @@ export function TiresContentSection({
             </div>
             <div>
               <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Tuotteen lyhyet tiedot' : 'Product Short Detail'}
+                {t('tiresContent.shortDetail')}
               </label>
               <textarea
                 rows={3}
@@ -194,7 +194,7 @@ export function TiresContentSection({
             </div>
             <div>
               <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Tuotekuvaus' : 'Product Description'}
+                {t('tiresContent.description')}
               </label>
               <textarea
                 rows={6}

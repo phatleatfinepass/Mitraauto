@@ -20,25 +20,25 @@ function normalizeBookingStatus(status?: string | null) {
 
 function getMissingCompletionFields(
   bookingLike: Partial<Pick<ScheduleBooking, 'license_plate' | 'customer_phone' | 'customer_email'>>,
-  language: string,
+  t: (key: string) => string,
 ) {
   const missingFields: string[] = [];
 
   if (!bookingLike.license_plate?.trim()) {
-    missingFields.push(language === 'fi' ? 'rekisterinumero' : 'license plate');
+    missingFields.push(t('missingLicensePlate'));
   }
   if (!bookingLike.customer_phone?.trim()) {
-    missingFields.push(language === 'fi' ? 'puhelinnumero' : 'phone number');
+    missingFields.push(t('missingPhone'));
   }
   if (!bookingLike.customer_email?.trim()) {
-    missingFields.push(language === 'fi' ? 'sähköposti' : 'email');
+    missingFields.push(t('missingEmail'));
   }
 
   return missingFields;
 }
 
-function isBookingAwaitingCustomerCompletion(booking: ScheduleBooking, language: string) {
-  return normalizeBookingStatus(booking.status) === awaitingCustomerCompletionStatus || getMissingCompletionFields(booking, language).length > 0;
+function isBookingAwaitingCustomerCompletion(booking: ScheduleBooking, t: (key: string) => string) {
+  return normalizeBookingStatus(booking.status) === awaitingCustomerCompletionStatus || getMissingCompletionFields(booking, t).length > 0;
 }
 
 interface AdminScheduleBookingPanelProps {
@@ -129,8 +129,8 @@ function BookingGroupSection({
             {group.bookings.map((booking) => {
               const isArchived = Boolean(booking.isArchived) || normalizeBookingStatus(booking.status) === 'cancelled';
               const archivedAccentClass = theme === 'dark' ? 'text-amber-300' : 'text-amber-700';
-              const bookingCompletionMode = !isArchived && isBookingAwaitingCustomerCompletion(booking, language);
-              const bookingMissingFields = getMissingCompletionFields(booking, language);
+              const bookingCompletionMode = !isArchived && isBookingAwaitingCustomerCompletion(booking, t);
+              const bookingMissingFields = getMissingCompletionFields(booking, t);
 
               return (
                 <motion.button
@@ -228,9 +228,9 @@ export function AdminScheduleBookingPanel({
 }: AdminScheduleBookingPanelProps) {
   const reservationEmptyText = showArchivedBookings
     ? showArchivedInline
-      ? (language === 'fi' ? 'Ei varauksia valitulla näkymällä.' : 'No bookings in the current view.')
+      ? t('noBookingsCurrentView')
       : t('noArchivedBookings')
-    : (language === 'fi' ? 'Ei tulevia varauksia seuraaville seitsemälle päivälle.' : 'No upcoming bookings for the next seven days.');
+    : t('noUpcomingBookings');
 
   return (
     <>
@@ -245,12 +245,12 @@ export function AdminScheduleBookingPanel({
                   <div className="mt-3 grid gap-3 md:grid-cols-2">
                     <label className="block">
                       <span className={`text-xs font-medium ${theme === 'dark' ? 'text-red-100/80' : 'text-red-800'}`}>
-                        {language === 'fi' ? 'Syy suomeksi' : 'Reason in Finnish'}
+                        {t('reasonFi')}
                       </span>
                       <textarea
                         value={blockReasonFi}
                         onChange={(event) => setBlockReasonFi(event.target.value)}
-                        placeholder={language === 'fi' ? 'Esim. Vappu' : 'e.g. Vappu'}
+                        placeholder={t('reasonFiPlaceholder')}
                         className={`mt-1 min-h-[78px] w-full rounded-md border px-3 py-2 text-sm ${
                           theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white placeholder:text-gray-500' : 'border-red-200 bg-white text-gray-900 placeholder:text-gray-500'
                         }`}
@@ -258,12 +258,12 @@ export function AdminScheduleBookingPanel({
                     </label>
                     <label className="block">
                       <span className={`text-xs font-medium ${theme === 'dark' ? 'text-red-100/80' : 'text-red-800'}`}>
-                        {language === 'fi' ? 'Syy englanniksi' : 'Reason in English'}
+                        {t('reasonEn')}
                       </span>
                       <textarea
                         value={blockReasonEn}
                         onChange={(event) => setBlockReasonEn(event.target.value)}
-                        placeholder={language === 'fi' ? 'Esim. May Day holiday' : 'e.g. May Day holiday'}
+                        placeholder={t('reasonEnPlaceholder')}
                         className={`mt-1 min-h-[78px] w-full rounded-md border px-3 py-2 text-sm ${
                           theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white placeholder:text-gray-500' : 'border-red-200 bg-white text-gray-900 placeholder:text-gray-500'
                         }`}

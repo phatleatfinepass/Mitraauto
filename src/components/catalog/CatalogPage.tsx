@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
-import { useCart } from '../CartContext';
+import { translateForLanguage, useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
+import { useCart } from '../site/cart/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { DEFAULT_TIRE_FILTERS, TireFilters } from './TireFilters';
-import { RimFilters } from './RimFilters';
+import { DEFAULT_RIM_FILTERS, RimFilters } from './RimFilters';
 import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { RimCatalogLayout } from './RimCatalogLayout';
@@ -41,6 +41,8 @@ export interface CatalogProduct {
   delivery_days_min?: number;
   delivery_days_max?: number;
   pricing_rules?: ProductPricingRules | null;
+  tags?: string[];
+  generated_tags?: string[];
   ean?: string;
   manufacture_year?: number;
   // Tire specific
@@ -68,7 +70,9 @@ export interface CatalogProduct {
   cb?: number;
   color?: string;
   material?: string;
+  finish?: string;
   bolts_included?: boolean;
+  wheel_load_kg?: number;
 }
 
 interface CatalogPageProps {
@@ -138,7 +142,7 @@ function getFallbackImage(brand?: string, model?: string) {
 }
 
 function getCatalogProductHref(product: CatalogProduct) {
-  const identifier = product.product_type === 'tire' && product.seo_slug
+  const identifier = product.seo_slug
     ? product.seo_slug
     : product.id;
 
@@ -479,6 +483,13 @@ function getTagList(tags: unknown): string[] {
   return tags.map((tag) => String(tag).toLowerCase());
 }
 
+function getDisplayTagList(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map((tag) => String(tag ?? '').trim())
+    .filter((tag) => tag.length > 0);
+}
+
 function hasAnyTag(tags: string[], patterns: string[]) {
   return patterns.some((pattern) => tags.some((tag) => tag.includes(pattern)));
 }
@@ -696,6 +707,8 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   const priceEur = effectivePrice !== null && effectivePrice !== undefined ? effectivePrice : undefined;
   const sizeParts = parseTireSizeParts(row.size_string);
   const tags = getTagList(row.tags);
+  const displayTags = getDisplayTagList(row.tags);
+  const generatedTags = getDisplayTagList((row as any).generated_tags);
   const cmsTitle = String((row as any).title ?? '').trim() || undefined;
   const cmsSubtitle = String((row as any).subtitle ?? '').trim() || undefined;
   const cmsShortDescription = String((row as any).short_description ?? '').trim() || undefined;
@@ -710,6 +723,7 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   const galleryImages = cmsGallery.length > 0 ? cmsGallery : [heroImage];
   const deliveryMin = typeof (row as any).delivery_days_min === 'number' ? (row as any).delivery_days_min : undefined;
   const deliveryMax = typeof (row as any).delivery_days_max === 'number' ? (row as any).delivery_days_max : undefined;
+  const deliveryDayUnit = translateForLanguage(language, 'catalog.delivery.dayUnit');
   const supplierCode = String((row as any).supplier_code_best ?? '').trim();
   const supplierName =
     supplierCode === 'VT' ? 'Vannetukku' :
@@ -718,9 +732,9 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
   const deliveryDays =
     deliveryMin !== undefined && deliveryMax !== undefined
       ? (deliveryMin === deliveryMax
-          ? `${deliveryMin} ${language === 'fi' ? 'päivää' : 'Days'}`
-          : `${deliveryMin}-${deliveryMax} ${language === 'fi' ? 'päivää' : 'Days'}`)
-      : (deliveryMin !== undefined ? `${deliveryMin} ${language === 'fi' ? 'päivää' : 'Days'}` : undefined);
+          ? `${deliveryMin} ${deliveryDayUnit}`
+          : `${deliveryMin}-${deliveryMax} ${deliveryDayUnit}`)
+      : (deliveryMin !== undefined ? `${deliveryMin} ${deliveryDayUnit}` : undefined);
   const euLabel = safeParseJson((row as any).eu_label_json);
   const euFuel = normalizeEuRating(
     getFirstMeaningfulValue(
@@ -831,6 +845,8 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     in_stock: row.in_stock ?? false,
     stock_qty: row.stock_qty ?? undefined,
     pricing_rules: row.pricing_rules ?? null,
+    tags: displayTags,
+    generated_tags: generatedTags,
     product_type: productType,
     // Tire-specific fields
     season,
@@ -856,12 +872,14 @@ export function mapProductSearchRow(row: ProductSearchRow, productType: 'tire' |
     color: productType === 'rim' ? row.color ?? undefined : undefined,
     cb: productType === 'rim' ? (row as any).cb_mm ?? (row as any).center_bore_mm ?? undefined : undefined,
     material: productType === 'rim' ? (row as any).material ?? row.finish ?? undefined : undefined,
+    finish: productType === 'rim' ? row.finish ?? undefined : undefined,
     bolts_included: productType === 'rim' ? (row as any).bolts_included ?? undefined : undefined,
+    wheel_load_kg: productType === 'rim' ? parseNumber((row as any).wheel_load_kg) : undefined,
   };
 }
 
 export function CatalogPage({ onProductSelect }: CatalogPageProps) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { theme } = useTheme();
   const { addToCart } = useCart();
   const initialRestoreRef = React.useRef(readCatalogRestore(language));
@@ -1015,10 +1033,11 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
 
 
   // Only fetch when search is explicitly triggered
-  const handleSearch = () => {
+  const handleSearch = (filtersOverride?: any) => {
+    const nextFilters = filtersOverride ?? filters;
     setHasSearched(true);
     setCurrentPage(1);
-    fetchProducts(1, filters, mode);
+    fetchProducts(1, nextFilters, mode);
   };
 
   // Trigger fetch when state is restored
@@ -1072,12 +1091,8 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
       const isSupabaseConfigError = message.includes('VITE_SUPABASE_ANON_KEY');
       setErrorMessage(
         isSupabaseConfigError
-          ? (language === 'fi'
-              ? 'Supabase-asetukset puuttuvat. Lisää VITE_SUPABASE_ANON_KEY Vite-ympäristöön.'
-              : 'Supabase config is missing. Add VITE_SUPABASE_ANON_KEY to the Vite environment.')
-          : (language === 'fi'
-              ? 'Tuotteiden lataus epäonnistui. Yritä uudelleen hetken kuluttua.'
-              : 'Failed to load products. Please try again soon.')
+          ? t('catalog.missingSupabaseConfig')
+          : t('catalog.failedLoadProducts')
       );
     } finally {
       if (!options.silent) {
@@ -1170,14 +1185,14 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 />
               )}
               <span className="relative z-10">
-                {language === 'fi' ? 'Renkaat' : 'Tires'}
+                {t('catalog.tires')}
               </span>
             </button>
 
             <button
               onClick={() => {
                 setMode('rims');
-                setFilters({});
+                setFilters({ ...DEFAULT_RIM_FILTERS });
                 setHasSearched(false);
                 setProducts([]);
                 setErrorMessage(null);
@@ -1202,7 +1217,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 />
               )}
               <span className="relative z-10">
-                {language === 'fi' ? 'Vanteet' : 'Rims'}
+                {t('catalog.rimsTitle')}
               </span>
             </button>
           </div>
@@ -1231,12 +1246,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           emptyBeforeSearch={(
             <div className={`rounded-xl border px-6 py-12 text-center ${theme === 'dark' ? 'border-white/10 bg-[#0f1319]' : 'border-gray-200 bg-gray-50'}`}>
               <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Aloita vannemitoituksen haku' : 'Start a rim fitment search'}
+                {t('catalog.startRimFitmentSearch')}
               </h2>
               <p className={`mx-auto mt-2 max-w-xl text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? 'Hae rekisterinumerolla, jos haluat suositellut vaihtoehdot ajoneuvolle. Käytä manuaalista hakua, kun tiedät halkaisijan, leveyden tai PCD:n jo valmiiksi.'
-                  : 'Use vehicle search for recommended fitment, or switch to manual search when you already know the diameter, width, or PCD you need.'}
+                {t('catalog.startRimFitmentSearchDescription')}
               </p>
             </div>
           )}
@@ -1283,12 +1296,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           emptyAfterSearch={(
             <div className={`rounded-xl border px-6 py-12 text-center ${theme === 'dark' ? 'border-white/10 bg-[#0f1319]' : 'border-gray-200 bg-gray-50'}`}>
               <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Hakuehdoilla ei löytynyt vanteita' : 'No rims matched these filters'}
+                {t('catalog.noRimsMatched')}
               </h2>
               <p className={`mx-auto mt-2 max-w-xl text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? 'Kokeile toista halkaisijaa, väljempää PCD-suodatusta tai poista ET- ja keskiöreikärajaukset.'
-                  : 'Try a different diameter, a wider PCD match, or remove the ET and center-bore constraints.'}
+                {t('catalog.noRimsMatchedDescription')}
               </p>
             </div>
           )}
@@ -1349,12 +1360,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           >
             <div className="text-center mb-8">
               <h1 className={`text-5xl lg:text-6xl mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Löydä Renkaasi' : 'Find Your Tires'}
+                {t('catalog.findYourTires')}
               </h1>
               <p className={`text-xl ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? 'Valitse hakutapa löytääksesi täydellisen sopivuuden ajoneuvollesi.'
-                  : 'Choose your search method to find the perfect fit for your vehicle.'}
+                {t('catalog.findYourTiresDescription')}
               </p>
             </div>
           </motion.div>
@@ -1402,10 +1411,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               <div className="min-w-0 space-y-2.5">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
                   {[
-                    { label: language === 'fi' ? 'Rekisteri' : 'Plate', value: vehicle.plate, mono: true },
-                    { label: language === 'fi' ? 'Merkki' : 'Make', value: vehicle.make || '-' },
-                    { label: language === 'fi' ? 'Malli' : 'Model', value: vehicle.model || vehicle.description || '-' },
-                    { label: language === 'fi' ? 'Vuosi' : 'Year', value: vehicle.year || '-', mono: true },
+                    { label: t('catalog.plate'), value: vehicle.plate, mono: true },
+                    { label: t('catalog.make'), value: vehicle.make || '-' },
+                    { label: t('catalog.model'), value: vehicle.model || vehicle.description || '-' },
+                    { label: t('catalog.year'), value: vehicle.year || '-', mono: true },
                   ].map((item) => (
                     <div key={item.label} className="min-w-0">
                       <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
@@ -1420,10 +1429,10 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
 
                 <div className={`grid grid-cols-2 gap-x-3 gap-y-2 border-t pt-2.5 sm:grid-cols-4 ${theme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}>
                   {[
-                    { label: language === 'fi' ? 'Moottori' : 'Engine', value: getVehicleEngineSummary(vehicle) },
-                    { label: language === 'fi' ? 'Paino' : 'Weight', value: weightSummary },
-                    { label: language === 'fi' ? 'Nopeusindeksi' : 'Speed index', value: speedIndexSummary },
-                    { label: language === 'fi' ? 'Vanne' : 'Rim', value: rimWidthSummary },
+                    { label: t('catalog.engine'), value: getVehicleEngineSummary(vehicle) },
+                    { label: t('catalog.weight'), value: weightSummary },
+                    { label: t('catalog.speedIndex'), value: speedIndexSummary },
+                    { label: t('catalog.rim'), value: rimWidthSummary },
                   ].map((item) => (
                     <div key={item.label} className="min-w-0">
                       <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
@@ -1450,23 +1459,23 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className={`text-[10px] font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-orange-200/80' : 'text-[#C2410C]/80'}`}>
-                      {language === 'fi' ? 'Tehdaskoko' : 'Factory size'}
+                      {t('catalog.factorySize')}
                     </div>
                     <div className={`mt-1 break-words font-mono text-lg font-semibold leading-tight ${theme === 'dark' ? 'text-orange-100' : 'text-[#9A3412]'}`}>
                       {factorySizes.join(', ')}
                     </div>
                     <div className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-orange-200/75' : 'text-[#C2410C]/75'}`}>
                       {otherSizeCount > 0
-                        ? (language === 'fi' ? `Turvallinen haku · ${otherSizeCount} vaihtoehtoa` : `Safe search · ${otherSizeCount} alternatives`)
-                        : (language === 'fi' ? 'Vain tehdaskoko' : 'Factory size only')}
+                        ? t('catalog.safeSearchAlternatives', { count: otherSizeCount })
+                        : t('catalog.factorySizeOnly')}
                     </div>
                   </div>
                   <span className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold transition-colors ${
                     theme === 'dark' ? 'bg-black/20 text-orange-100 group-hover:bg-black/30' : 'bg-white/70 text-[#C2410C] group-hover:bg-white'
                   }`}>
                     {fitmentDetailsOpen
-                      ? (language === 'fi' ? 'Sulje' : 'Close')
-                      : (language === 'fi' ? 'Avaa' : 'Open')}
+                      ? t('productDetail.close')
+                      : t('catalog.open')}
                     {fitmentDetailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                   </span>
                 </div>
@@ -1476,26 +1485,24 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
             {fitmentDetailsOpen && (
               <div className={`mt-4 border-t pt-4 ${theme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}>
                 <div className="mb-3 text-sm font-semibold">
-                  {language === 'fi' ? 'Tehdaskoko ja ETRTO-vaihtoehdot' : 'Factory size and ETRTO alternatives'}
+                  {t('catalog.factoryAndEtrtoAlternatives')}
                 </div>
                 {referenceOnlyCount > 0 && (
                   <p className={`mb-3 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                    {language === 'fi'
-                      ? `${referenceOnlyCount} mahdollista kokoa näytetään vain tarkistusta varten. Tuotekortit käyttävät vain tehdaskokoa ja suositeltuja vaihtoehtoja.`
-                      : `${referenceOnlyCount} possible sizes are shown for checking only. Product cards use only factory and recommended sizes.`}
+                    {t('catalog.referenceOnlySizes', { count: referenceOnlyCount })}
                   </p>
                 )}
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {candidates.map((candidate) => {
                     const isFactory = candidate.confidence === 'factory';
                     const badgeText = isFactory
-                      ? (language === 'fi' ? 'Tehdas' : 'Factory')
+                      ? t('catalog.factory')
                       : candidate.confidence === 'recommended'
-                        ? (language === 'fi' ? 'Suositus' : 'Recommended')
-                        : (language === 'fi' ? 'Mahdollinen' : 'Possible');
+                        ? t('catalog.recommended')
+                        : t('catalog.possible');
                     const subtitle = isFactory
-                      ? (language === 'fi' ? 'Auton tehdaskoko' : 'Vehicle factory size')
-                      : `${language === 'fi' ? 'Halkaisijaero' : 'Diameter difference'}: ${candidate.diameterDifferencePercent > 0 ? '+' : ''}${candidate.diameterDifferencePercent.toFixed(1)}%`;
+                      ? t('catalog.vehicleFactorySize')
+                      : `${t('catalog.diameterDifference')}: ${candidate.diameterDifferencePercent > 0 ? '+' : ''}${candidate.diameterDifferencePercent.toFixed(1)}%`;
                     const loadVersion = candidate.loadVersion === 'highLoad'
                       ? ' HL'
                       : candidate.loadVersion === 'reinforced'
@@ -1601,9 +1608,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
         {hasSearched && !loading && products.length === 0 && (
           <div className="text-center py-20">
             <p className={`text-2xl mb-4 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>
-              {language === 'fi'
-                ? 'Ei renkaita hakuehdoillasi'
-                : 'No tires found with your filters'}
+              {t('catalog.noTiresFound')}
             </p>
             <Button
               onClick={() => {
@@ -1615,7 +1620,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
               }}
               className="bg-[#FF6B35] hover:bg-[#FF6B35]/80"
             >
-              {language === 'fi' ? 'Tyhjennä haku' : 'Clear Search'}
+              {t('catalog.clearSearch')}
             </Button>
           </div>
         )}

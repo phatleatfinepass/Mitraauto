@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
@@ -124,7 +124,7 @@ export const DEFAULT_TIRE_FILTERS = {
 };
 
 export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation, onSearchModeChange, searchMode: _searchMode, filters: externalFilters }: TireFiltersProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const [licensePlate, setLicensePlate] = useState('');
   const [plateCountry, setPlateCountry] = useState<PlateCountryCode>('FI');
@@ -212,9 +212,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
         : null;
 
       if (!recommendation) {
-        throw new Error(language === 'fi'
-          ? 'Tehdaskokoa ei löytynyt ETRTO-aineistosta.'
-          : 'The factory size was not found in the ETRTO dataset.');
+        throw new Error(t('catalog.factorySizeMissing'));
       }
 
       const factoryFilters = {
@@ -315,7 +313,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             : 'border-[#d1d5dc] bg-[#f3f4f6] text-[#4a5565] hover:bg-gray-100'
         }`}
       >
-        {language === 'fi' ? 'Takaisin' : 'Back'}
+        {t('catalog.back')}
       </Button>
     </div>
   );
@@ -324,22 +322,22 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div>
           <Label className={`${textClass} mb-2 block text-sm`}>
-            {language === 'fi' ? 'Kausi' : 'Season'}
+            {t('catalog.filter.season')}
           </Label>
           <Select value={filters.season} onValueChange={(value) => updateFilter('season', value)}>
             <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
               <SelectValue placeholder="—" />
             </SelectTrigger>
             <SelectContent className={`${selectBgClass} ${borderClass}`}>
-              <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+              <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
               <SelectItem value="summer" className={`${textClass} hover:bg-white/10`}>
-                {language === 'fi' ? 'Kesä' : 'Summer'}
+                {t('productDetail.summer')}
               </SelectItem>
               <SelectItem value="winter" className={`${textClass} hover:bg-white/10`}>
-                {language === 'fi' ? 'Talvi' : 'Winter'}
+                {t('productDetail.winter')}
               </SelectItem>
               <SelectItem value="all_season" className={`${textClass} hover:bg-white/10`}>
-                {language === 'fi' ? 'Ympärivuotinen' : 'All Season'}
+                {t('productDetail.allSeason')}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -347,7 +345,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
         <div>
           <Label className={`${textClass} mb-2 block text-sm`}>
-            {language === 'fi' ? 'Järjestä' : 'Sort By'}
+            {t('catalog.sortBy')}
           </Label>
           <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
             <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
@@ -355,16 +353,16 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             </SelectTrigger>
             <SelectContent className={`${selectBgClass} ${borderClass}`}>
               <SelectItem value="price_asc" className={`${textClass} hover:bg-white/10`}>
-                {language === 'fi' ? 'Hinta ↑' : 'Price ↑'}
+                {t('catalog.priceAsc')}
               </SelectItem>
               <SelectItem value="price_desc" className={`${textClass} hover:bg-white/10`}>
-                {language === 'fi' ? 'Hinta ↓' : 'Price ↓'}
+                {t('catalog.priceDesc')}
               </SelectItem>
               <SelectItem value="wet_grip" className={`${textClass} hover:bg-white/10`}>
-                {language === 'fi' ? 'Märkäpito' : 'Wet Grip'}
+                {t('productDetail.wetGrip')}
               </SelectItem>
               <SelectItem value="noise" className={`${textClass} hover:bg-white/10`}>
-                {language === 'fi' ? 'Melu' : 'Noise'}
+                {t('catalog.noise')}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -410,7 +408,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             className="data-[state=checked]:bg-[#FF6B35]"
           />
           <Label className={`${textClass} text-sm`}>
-            {language === 'fi' ? 'Nastat' : 'Studded'}
+            {t('productDetail.studdedShort')}
           </Label>
         </div>
 
@@ -421,7 +419,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             className="data-[state=checked]:bg-[#FF6B35]"
           />
           <Label className={`${textClass} text-sm`}>
-            {language === 'fi' ? 'Varastossa' : 'In Stock'}
+            {t('productDetail.inStock')}
           </Label>
         </div>
 
@@ -432,7 +430,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             className="data-[state=checked]:bg-[#FF6B35]"
           />
           <Label className={`${textClass} text-sm`}>
-            {language === 'fi' ? 'Pinnoitetut' : 'Retreaded'}
+            {t('catalog.retreaded')}
           </Label>
         </div>
 
@@ -443,7 +441,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             className="data-[state=checked]:bg-[#FF6B35]"
           />
           <Label className={`${textClass} text-sm`}>
-            {language === 'fi' ? 'Sähköauto' : 'Electric Car'}
+            {t('catalog.electricCar')}
           </Label>
         </div>
 
@@ -454,14 +452,14 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             className="data-[state=checked]:bg-[#FF6B35]"
           />
           <Label className={`${textClass} text-sm`}>
-            {language === 'fi' ? 'Äänenvaimennus' : 'Sound absorber'}
+            {t('productDetail.soundAbsorber')}
           </Label>
         </div>
       </div>
 
       <div>
         <Label className={`${textClass} mb-2 block text-sm`}>
-          {language === 'fi' ? 'Suodata merkeittäin' : 'Filter by brand'}
+          {t('catalog.filterByBrand')}
         </Label>
         <Button
           type="button"
@@ -471,15 +469,13 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
         >
           <span className="truncate">
             {selectedBrands.length === 0
-              ? (language === 'fi' ? 'Valitse merkit' : 'Choose brands')
+              ? t('catalog.chooseBrands')
               : selectedBrands.length === 1
                 ? selectedBrands[0]
-                : language === 'fi'
-                  ? `${selectedBrands.length} merkkiä valittu`
-                  : `${selectedBrands.length} brands selected`}
+                : t('catalog.brandsSelected', { count: selectedBrands.length })}
           </span>
           <span className={`${secondaryTextClass} text-xs`}>
-            {language === 'fi' ? 'Avaa' : 'Open'}
+            {t('catalog.open')}
           </span>
         </Button>
         {selectedBrands.length > 0 && (
@@ -507,7 +503,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
         onClick={clearFilters}
         className={`mx-auto flex ${secondaryTextClass} hover:${textClass} hover:bg-white/10`}
       >
-        {language === 'fi' ? 'Tyhjennä suodattimet' : 'Clear All Filters'}
+        {t('catalog.clearAllFilters')}
       </Button>
     </div>
   );
@@ -530,7 +526,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
               }>
                 <div className="w-full">
                   <Label className={`${textClass} mb-6 flex h-[30px] items-center justify-center text-xl font-semibold`}>
-                    {language === 'fi' ? 'Syötä rekisteritunnus' : 'Enter License Plate'}
+                    {t('catalog.enterLicensePlate')}
                   </Label>
                   <LicensePlateDisplay
                     value={licensePlate}
@@ -552,7 +548,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                       className="mx-auto mt-6 flex h-8 items-center gap-3 rounded-[10px] px-3 text-sm font-semibold text-[#FF6B35] hover:bg-[#FF6B35]/10 hover:text-[#FF6B35]"
                     >
                       <Filter className="size-4" />
-                      {language === 'fi' ? 'Lisäsuodattimet' : 'Advanced Filters'}
+                      {t('catalog.advancedFilters')}
                     </Button>
                   ) : null}
                 </div>
@@ -575,8 +571,8 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                 }`}
               >
                 {showAdvancedFilters
-                  ? (language === 'fi' ? 'Rekisteritunnus' : 'License Plate')
-                  : (language === 'fi' ? 'Manuaalinen haku' : 'Manual Input')}
+                  ? t('catalog.licensePlate')
+                  : t('catalog.manualInput')}
               </Button>
               <Button
                 onClick={handleVehicleLookup}
@@ -584,8 +580,8 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                 className="h-[42px] min-w-[174px] rounded-lg bg-[#FF6B35] px-16 text-sm font-semibold text-white shadow-[0_0_10px_rgba(255,107,53,0.24)] hover:bg-[#E85F2F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {vehicleLookupLoading
-                  ? (language === 'fi' ? 'Haetaan...' : 'Searching...')
-                  : (language === 'fi' ? 'Hae' : 'Search')}
+                  ? t('catalog.searching')
+                  : t('catalog.search')}
               </Button>
             </div>
           </div>
@@ -596,19 +592,19 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
               <div className="flex w-full justify-center xl:justify-start">
                 <div className="flex w-full max-w-[568px] flex-col gap-4 self-stretch">
                   <Label className={`${textClass} flex items-center justify-center text-xl font-semibold`}>
-                    {language === 'fi' ? 'Syötä rengaskoko' : 'Enter Tire Size'}
+                    {t('catalog.enterTireSize')}
                   </Label>
                   <div className="flex w-full flex-col gap-4">
                     <div>
                       <Label className={`${textClass} mb-2 block text-xs font-semibold`}>
-                        {language === 'fi' ? 'Leveys' : 'Width'}
+                        {t('productDetail.width')}
                       </Label>
                       <Select value={filters.width} onValueChange={(value) => updateFilter('width', value)}>
                         <SelectTrigger className={`h-9 ${inputBgClass} ${borderClass} ${textClass}`}>
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                           {widthOptions.map(w => (
                             <SelectItem key={w} value={w} className={`${textClass} hover:bg-white/10`}>
                               {w}
@@ -620,14 +616,14 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
                     <div>
                       <Label className={`${textClass} mb-2 block text-xs font-semibold`}>
-                        {language === 'fi' ? 'Korkeus' : 'Aspect'}
+                        {t('catalog.aspect')}
                       </Label>
                       <Select value={filters.aspectRatio} onValueChange={(value) => updateFilter('aspectRatio', value)}>
                         <SelectTrigger className={`h-9 ${inputBgClass} ${borderClass} ${textClass}`}>
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                           {aspectOptions.map(a => (
                             <SelectItem key={a} value={a} className={`${textClass} hover:bg-white/10`}>
                               {a}
@@ -639,14 +635,14 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
                     <div>
                       <Label className={`${textClass} mb-2 block text-xs font-semibold`}>
-                        {language === 'fi' ? 'Halkaisija' : 'Diameter'}
+                        {t('productDetail.diameter')}
                       </Label>
                       <Select value={filters.diameter} onValueChange={(value) => updateFilter('diameter', value)}>
                         <SelectTrigger className={`h-9 ${inputBgClass} ${borderClass} ${textClass}`}>
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                          <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                           {diameterOptions.map(d => (
                             <SelectItem key={d} value={d} className={`${textClass} hover:bg-white/10`}>
                               {d}"
@@ -673,13 +669,13 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                     : 'border-[#d1d5dc] bg-[#f3f4f6] text-[#4a5565] hover:bg-gray-100'
                 }`}
               >
-                {language === 'fi' ? 'Rekisteritunnus' : 'License Plate'}
+                {t('catalog.licensePlate')}
               </Button>
               <Button
                 onClick={onSearch}
                 className="h-[42px] min-w-[174px] rounded-lg bg-[#FF6B35] px-16 text-sm font-semibold text-white shadow-[0_0_10px_rgba(255,107,53,0.24)] hover:bg-[#E85F2F]"
               >
-                {language === 'fi' ? 'Hae' : 'Search'}
+                {t('catalog.search')}
               </Button>
             </div>
           </>
@@ -688,11 +684,9 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
       <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
         <DialogContent className={`${theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : 'border-gray-200 bg-white text-gray-900'} max-w-[calc(100vw-2rem)] sm:max-w-xl`}>
           <DialogHeader>
-            <DialogTitle>{language === 'fi' ? 'Valitse rengasmerkit' : 'Choose tire brands'}</DialogTitle>
+            <DialogTitle>{t('catalog.chooseTireBrands')}</DialogTitle>
             <DialogDescription className={theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}>
-              {language === 'fi'
-                ? 'Valitse yksi tai useampi merkki suodattaaksesi hakutuloksia.'
-                : 'Select one or more brands to narrow the search results.'}
+              {t('catalog.chooseTireBrandsDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -702,7 +696,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
               <Input
                 value={brandSearchTerm}
                 onChange={(e) => setBrandSearchTerm(e.target.value)}
-                placeholder={language === 'fi' ? 'Etsi merkkiä' : 'Search brands'}
+                placeholder={t('catalog.searchBrands')}
                 className={`pl-10 ${inputBgClass} ${borderClass} ${textClass}`}
               />
             </div>
@@ -710,11 +704,11 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             <div className={`max-h-[320px] space-y-3 overflow-y-auto rounded-xl border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#0f1319]' : 'border-gray-200 bg-gray-50'}`}>
               {brandOptions.length === 0 ? (
                 <p className={`text-sm ${secondaryTextClass}`}>
-                  {language === 'fi' ? 'Ladataan merkkejä...' : 'Loading brands...'}
+                  {t('catalog.loadingBrands')}
                 </p>
               ) : filteredBrandOptions.length === 0 ? (
                 <p className={`text-sm ${secondaryTextClass}`}>
-                  {language === 'fi' ? 'Ei merkkejä tällä haulla.' : 'No brands match this search.'}
+                  {t('catalog.noBrandsMatch')}
                 </p>
               ) : (
                 filteredBrandOptions.map((brand) => {
@@ -741,14 +735,14 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
               onClick={clearBrands}
               className={theme === 'dark' ? 'text-[#B0B8C4] hover:bg-white/10 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}
             >
-              {language === 'fi' ? 'Tyhjennä merkit' : 'Clear brands'}
+              {t('catalog.clearBrands')}
             </Button>
             <Button
               type="button"
               onClick={() => setBrandDialogOpen(false)}
               className="bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white"
             >
-              {language === 'fi' ? 'Valmis' : 'Done'}
+              {t('catalog.done')}
             </Button>
           </DialogFooter>
         </DialogContent>

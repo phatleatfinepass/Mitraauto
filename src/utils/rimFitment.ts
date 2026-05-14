@@ -7,6 +7,7 @@ export interface VehicleRimMountingInput {
   factoryRimWidthIn?: number | null;
   boltThread?: string | null;
   boltSeat?: string | null;
+  brakeClearanceNotes?: string | null;
 }
 
 export interface RimFitmentProfile {
@@ -23,6 +24,7 @@ export interface RimFitmentProfile {
     factoryOffsetMm: number | null;
     boltThread: string | null;
     boltSeat: string | null;
+    brakeClearanceNotes: string | null;
   };
   catalogFilters: {
     rimDiameterIn: number;

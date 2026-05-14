@@ -1,0 +1,37 @@
+[     255ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:3000/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=33ca7dc7:21608
+[     308ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:3000/src/components/EmergencyTowModal.tsx:37
+[     309ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:3000/src/SiteApp.tsx:1071
+[     371ms] [LOG] Auth state changed: INITIAL_SESSION undefined @ http://127.0.0.1:3000/src/SiteApp.tsx:782
+[   10618ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3000/@vite/client:963
+[   10621ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   11625ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   12628ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   13632ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   14634ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   15637ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   16640ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   17644ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   18649ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   19654ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   20657ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   21664ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   22678ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   23690ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   24703ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   25712ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   26726ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   27739ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   28780ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   29847ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   30936ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   32076ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   33343ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   34444ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   35985ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   37142ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   38868ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   40326ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   42670ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   46026ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   51250ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034
+[   55036ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:3000/' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:3000/@vite/client:1034

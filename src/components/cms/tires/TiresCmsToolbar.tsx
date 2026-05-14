@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, Search, SlidersHorizontal } from 'lucide-react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   Sheet,
   SheetContent,
@@ -10,38 +11,38 @@ import {
 } from '../../ui/sheet';
 
 const METADATA_OPTIONS = [
-  { key: 'brand', fi: 'Brand', en: 'Brand' },
-  { key: 'model', fi: 'Model', en: 'Model' },
-  { key: 'ean', fi: 'EAN', en: 'EAN' },
-  { key: 'size', fi: 'Size', en: 'Size' },
-  { key: 'season', fi: 'Season', en: 'Season' },
-  { key: 'ev_ready', fi: 'EV', en: 'EV' },
-  { key: 'sound_absorber', fi: 'Sound absorber', en: 'Sound absorber' },
-  { key: 'runflat', fi: 'RunFlat', en: 'RunFlat' },
-  { key: 'xl', fi: 'XL', en: 'XL' },
-  { key: 'studded', fi: 'Studded', en: 'Studded' },
-  { key: 'threepmsf', fi: '3PMSF', en: '3PMSF' },
-  { key: 'winter_approved', fi: 'M+S', en: 'M+S' },
-  { key: 'ice_approved', fi: 'Ice approved', en: 'Ice approved' },
-  { key: 'eu_fuel_class', fi: 'Fuel efficiency', en: 'Fuel efficiency' },
-  { key: 'eu_wet_grip_class', fi: 'Wet grip', en: 'Wet grip' },
-  { key: 'eu_noise_db', fi: 'Noise level (dB)', en: 'Noise level (dB)' },
-  { key: 'eu_noise_class', fi: 'Noise class', en: 'Noise class' },
+  { key: 'brand', labelKey: 'tiresCmsToolbar.option.brand' },
+  { key: 'model', labelKey: 'tiresCmsToolbar.option.model' },
+  { key: 'ean', labelKey: 'tiresCmsToolbar.option.ean' },
+  { key: 'size', labelKey: 'tiresCmsToolbar.option.size' },
+  { key: 'season', labelKey: 'tiresCmsToolbar.option.season' },
+  { key: 'ev_ready', labelKey: 'tiresCmsToolbar.option.evReady' },
+  { key: 'sound_absorber', labelKey: 'tiresCmsToolbar.option.soundAbsorber' },
+  { key: 'runflat', labelKey: 'tiresCmsToolbar.option.runflat' },
+  { key: 'xl', labelKey: 'tiresCmsToolbar.option.xl' },
+  { key: 'studded', labelKey: 'tiresCmsToolbar.option.studded' },
+  { key: 'threepmsf', labelKey: 'tiresCmsToolbar.option.threepmsf' },
+  { key: 'winter_approved', labelKey: 'tiresCmsToolbar.option.winterApproved' },
+  { key: 'ice_approved', labelKey: 'tiresCmsToolbar.option.iceApproved' },
+  { key: 'eu_fuel_class', labelKey: 'tiresCmsToolbar.option.fuelEfficiency' },
+  { key: 'eu_wet_grip_class', labelKey: 'tiresCmsToolbar.option.wetGrip' },
+  { key: 'eu_noise_db', labelKey: 'tiresCmsToolbar.option.noiseLevelDb' },
+  { key: 'eu_noise_class', labelKey: 'tiresCmsToolbar.option.noiseClass' },
 ] as const;
 
 const SEO_OPTIONS = [
-  { key: 'title', fi: 'Title', en: 'Title' },
-  { key: 'subtitle', fi: 'Subtitle', en: 'Subtitle' },
-  { key: 'short_description', fi: 'Short description', en: 'Short description' },
-  { key: 'long_description', fi: 'Long description', en: 'Long description' },
-  { key: 'seo_slug', fi: 'SEO slug', en: 'SEO slug' },
-  { key: 'seo_title', fi: 'SEO title', en: 'SEO title' },
-  { key: 'seo_description', fi: 'SEO description', en: 'SEO description' },
+  { key: 'title', labelKey: 'tiresCmsToolbar.option.title' },
+  { key: 'subtitle', labelKey: 'tiresCmsToolbar.option.subtitle' },
+  { key: 'short_description', labelKey: 'tiresCmsToolbar.option.shortDescription' },
+  { key: 'long_description', labelKey: 'tiresCmsToolbar.option.longDescription' },
+  { key: 'seo_slug', labelKey: 'tiresCmsToolbar.option.seoSlug' },
+  { key: 'seo_title', labelKey: 'tiresCmsToolbar.option.seoTitle' },
+  { key: 'seo_description', labelKey: 'tiresCmsToolbar.option.seoDescription' },
 ] as const;
 
 interface TiresCmsToolbarProps {
   isDark: boolean;
-  language: string;
+  hideHeader?: boolean;
   searchTerm: string;
   showNonPassengerDraft: boolean;
   missingMetadataFieldsDraft: string[];
@@ -90,7 +91,7 @@ function toggleItem(values: string[], key: string) {
 
 export function TiresCmsToolbar({
   isDark,
-  language,
+  hideHeader = false,
   searchTerm,
   showNonPassengerDraft,
   missingMetadataFieldsDraft,
@@ -132,6 +133,7 @@ export function TiresCmsToolbar({
   onApplyCatalogSync,
   onResolveConflict,
 }: TiresCmsToolbarProps) {
+  const { t } = useLanguage();
   const bulkMarkupSupplierOption =
     bulkMarkupSupplier
       ? supplierOptions.find((option) => option.code === bulkMarkupSupplier) ?? {
@@ -146,29 +148,25 @@ export function TiresCmsToolbar({
     (bulkMarkupMatchCount ?? 0) > 0;
   const bulkAdjustmentLabel =
     bulkMarkupAmount.trim() !== ''
-      ? language === 'fi'
-        ? 'euromuutos'
-        : 'amount'
+      ? t('tiresCmsToolbar.amountAdjustment')
       : bulkMarkupPercent.trim() !== ''
-        ? language === 'fi'
-          ? 'prosenttimuutos'
-          : 'percent adjustment'
+        ? t('tiresCmsToolbar.percentAdjustment')
         : null;
 
   return (
     <>
-      <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
-        <div className="px-8 py-6">
-          <h1 className={`text-3xl mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Renkaat CMS' : 'Tires CMS'}
-          </h1>
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi'
-              ? 'Hallitse renkaiden sisältöä, EU-merkintöjä, hintoja ja kuvia'
-              : 'Manage tire content, EU labels, pricing, and images'}
-          </p>
+      {!hideHeader && (
+        <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
+          <div className="px-8 py-6">
+            <h1 className={`text-3xl mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {t('tiresCmsToolbar.title')}
+            </h1>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {t('tiresCmsToolbar.subtitle')}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'} px-8 py-4`}>
         <div className="flex flex-col gap-4">
@@ -177,7 +175,7 @@ export function TiresCmsToolbar({
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
               <input
                 type="text"
-                placeholder={language === 'fi' ? 'Hae brändin, mallin, koon tai EAN:n mukaan...' : 'Search by brand, model, size, or EAN...'}
+                placeholder={t('tiresCmsToolbar.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
@@ -200,7 +198,7 @@ export function TiresCmsToolbar({
                   }`}
                 >
                   <AlertTriangle className="h-4 w-4" />
-                  Resolve conflict ({pendingConflictCount})
+                  {t('tiresCmsToolbar.resolveConflict', { count: pendingConflictCount })}
                 </button>
               )}
 
@@ -214,7 +212,7 @@ export function TiresCmsToolbar({
                 }`}
               >
                 <SlidersHorizontal className="h-4 w-4" />
-                {language === 'fi' ? 'Näkymän asetukset' : 'View settings'}
+                {t('tiresCmsToolbar.viewSettings')}
               </button>
 
               <button
@@ -228,8 +226,8 @@ export function TiresCmsToolbar({
                 } disabled:cursor-not-allowed`}
               >
                 {syncingCatalog
-                  ? (language === 'fi' ? 'Synkronoidaan...' : 'Syncing...')
-                  : 'Apply Sync'}
+                  ? t('tiresCmsToolbar.syncing')
+                  : t('tiresCmsToolbar.applySync')}
               </button>
             </div>
           </div>
@@ -252,9 +250,10 @@ export function TiresCmsToolbar({
               />
             </div>
             <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi'
-                ? `Synkronoidaan ${catalogSyncProgress.processed} / ${catalogSyncProgress.total}`
-                : `Syncing ${catalogSyncProgress.processed} / ${catalogSyncProgress.total}`}
+              {t('tiresCmsToolbar.syncingProgress', {
+                processed: catalogSyncProgress.processed,
+                total: catalogSyncProgress.total,
+              })}
             </p>
           </div>
         ) : null}
@@ -267,12 +266,10 @@ export function TiresCmsToolbar({
         >
           <SheetHeader className={isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}>
             <SheetTitle className={isDark ? 'text-white' : 'text-gray-900'}>
-              {language === 'fi' ? 'Renkaiden näkymäasetukset' : 'Tires view settings'}
+              {t('tiresCmsToolbar.settingsTitle')}
             </SheetTitle>
             <SheetDescription className={isDark ? 'text-gray-400' : 'text-gray-600'}>
-              {language === 'fi'
-                ? 'Rajaa nykyinen näkymä auditointia ja toimittajakohtaista hinnoittelua varten.'
-                : 'Filter the current view for audit work and supplier pricing.'}
+              {t('tiresCmsToolbar.settingsDescription')}
             </SheetDescription>
           </SheetHeader>
 
@@ -281,7 +278,7 @@ export function TiresCmsToolbar({
               <div className="space-y-4">
                 <div>
                   <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Näytä toimittajan mukaan' : 'Show items by supplier'}
+                    {t('tiresCmsToolbar.showBySupplier')}
                   </label>
                   <select
                     value={supplierDraft}
@@ -290,7 +287,7 @@ export function TiresCmsToolbar({
                       isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                     }`}
                   >
-                    <option value="all">{language === 'fi' ? 'Kaikki toimittajat' : 'All suppliers'}</option>
+                    <option value="all">{t('tiresCmsToolbar.allSuppliers')}</option>
                     {supplierOptions.map((option) => (
                       <option key={option.code} value={option.code}>
                         {option.label}
@@ -308,12 +305,10 @@ export function TiresCmsToolbar({
                   />
                   <div>
                     <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {language === 'fi' ? 'Näytä ei-henkilöauton renkaat' : 'Show non-passenger tires'}
+                      {t('tiresCmsToolbar.showNonPassenger')}
                     </p>
                     <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {language === 'fi'
-                        ? 'Jos tämä on pois päältä, CMS jättää nämä tuotteet pois ja latautuu kevyemmin.'
-                        : 'Turn this off to hide those items and keep the CMS lighter.'}
+                      {t('tiresCmsToolbar.showNonPassengerHint')}
                     </p>
                   </div>
                 </label>
@@ -324,12 +319,10 @@ export function TiresCmsToolbar({
               <div className="space-y-4">
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Näytä tuotteet joilta puuttuu metadataa' : 'Show items missing metadata'}
+                    {t('tiresCmsToolbar.missingMetadata')}
                   </p>
                   <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi'
-                      ? 'Valitse tarkat tiedot, joista puuttuvat tuotteet haluat nostaa näkyviin.'
-                      : 'Choose the exact metadata you want to audit as missing.'}
+                    {t('tiresCmsToolbar.missingMetadataHint')}
                   </p>
                 </div>
 
@@ -343,7 +336,7 @@ export function TiresCmsToolbar({
                         className="h-4 w-4 rounded border-gray-300"
                       />
                       <span className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                        {language === 'fi' ? option.fi : option.en}
+                        {t(option.labelKey)}
                       </span>
                     </label>
                   ))}
@@ -361,7 +354,7 @@ export function TiresCmsToolbar({
                 />
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Näytä tuotteet joilla on EPREL' : 'Show items with EPREL'}
+                    {t('tiresCmsToolbar.showWithEprel')}
                   </p>
                 </div>
               </label>
@@ -377,12 +370,10 @@ export function TiresCmsToolbar({
                 />
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Näytä tuotteet joilta puuttuu kuvia' : 'Show items missing images'}
+                    {t('tiresCmsToolbar.showMissingImages')}
                   </p>
                   <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi'
-                      ? 'Nostaa näkyviin renkaat, joilta puuttuu hero-kuva ja galleriakuvat.'
-                      : 'Shows tires that are missing both the hero image and gallery images.'}
+                    {t('tiresCmsToolbar.showMissingImagesHint')}
                   </p>
                 </div>
               </label>
@@ -392,12 +383,10 @@ export function TiresCmsToolbar({
               <div className="space-y-4">
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Näytä tuotteet joilta puuttuu sisältöä tai SEO-tietoja' : 'Show items missing content or SEO'}
+                    {t('tiresCmsToolbar.missingContentSeo')}
                   </p>
                   <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi'
-                      ? 'Valitse mitä puuttuvia sisältö- tai SEO-kenttiä haluat tarkistaa.'
-                      : 'Choose which content or SEO fields should be treated as missing.'}
+                    {t('tiresCmsToolbar.missingContentSeoHint')}
                   </p>
                 </div>
 
@@ -411,7 +400,7 @@ export function TiresCmsToolbar({
                         className="h-4 w-4 rounded border-gray-300"
                       />
                       <span className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                        {language === 'fi' ? option.fi : option.en}
+                        {t(option.labelKey)}
                       </span>
                     </label>
                   ))}
@@ -423,12 +412,10 @@ export function TiresCmsToolbar({
               <div className="space-y-4">
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Toimittajan massahinnoittelu' : 'Supplier bulk markup'}
+                    {t('tiresCmsToolbar.bulkMarkup')}
                   </p>
                   <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi'
-                      ? 'Valitse toimittaja ja anna muutos euroina tai prosentteina. Negatiivinen arvo laskee hintaa.'
-                      : 'Choose a supplier and set a markup or discount. Negative values reduce the price.'}
+                    {t('tiresCmsToolbar.bulkMarkupHint')}
                   </p>
                 </div>
 
@@ -439,7 +426,7 @@ export function TiresCmsToolbar({
                     isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 >
-                  <option value="">{language === 'fi' ? 'Valitse toimittaja' : 'Choose supplier'}</option>
+                  <option value="">{t('tiresCmsToolbar.chooseSupplier')}</option>
                   {supplierOptions.map((option) => (
                     <option key={option.code} value={option.code}>
                       {option.label}
@@ -453,7 +440,7 @@ export function TiresCmsToolbar({
                     step="0.01"
                     value={bulkMarkupAmount}
                     onChange={(e) => onBulkMarkupAmountChange(e.target.value)}
-                    placeholder={language === 'fi' ? 'Euromuutos €' : 'Amount input €'}
+                    placeholder={t('tiresCmsToolbar.amountInput')}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       isDark
                         ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
@@ -466,7 +453,7 @@ export function TiresCmsToolbar({
                     step="0.01"
                     value={bulkMarkupPercent}
                     onChange={(e) => onBulkMarkupPercentChange(e.target.value)}
-                    placeholder={language === 'fi' ? 'Prosenttimuutos %' : 'Percent input %'}
+                    placeholder={t('tiresCmsToolbar.percentInput')}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       isDark
                         ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
@@ -477,14 +464,13 @@ export function TiresCmsToolbar({
 
                 <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {loadingBulkMarkupCount
-                    ? (language === 'fi' ? 'Lasketaan osuvia tuotteita...' : 'Counting matching items...')
+                    ? t('tiresCmsToolbar.countingItems')
                     : bulkMarkupSupplierOption && bulkMarkupMatchCount !== null
-                      ? (language === 'fi'
-                          ? `${bulkMarkupSupplierOption.label}: ${bulkMarkupMatchCount} tuotetta nykyisillä näkymäsuodattimilla.`
-                          : `${bulkMarkupSupplierOption.label}: ${bulkMarkupMatchCount} items match the current view filters.`)
-                      : (language === 'fi'
-                          ? 'Valitse toimittaja, niin näet kuinka moneen tuotteeseen muutos kohdistuu.'
-                          : 'Choose a supplier to see how many items will be updated.')}
+                      ? t('tiresCmsToolbar.matchingItems', {
+                          supplier: bulkMarkupSupplierOption.label,
+                          count: bulkMarkupMatchCount,
+                        })
+                      : t('tiresCmsToolbar.chooseSupplierForCount')}
                 </p>
 
                 {bulkMarkupProgress ? (
@@ -500,9 +486,15 @@ export function TiresCmsToolbar({
                       />
                     </div>
                     <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {language === 'fi'
-                        ? `${bulkMarkupProgress.mode === 'revert' ? 'Palautetaan' : 'Päivitetään'} ${bulkMarkupProgress.processed} / ${bulkMarkupProgress.total}`
-                        : `${bulkMarkupProgress.mode === 'revert' ? 'Reverting' : 'Updating'} ${bulkMarkupProgress.processed} / ${bulkMarkupProgress.total}`}
+                      {t(
+                        bulkMarkupProgress.mode === 'revert'
+                          ? 'tiresCmsToolbar.revertingProgress'
+                          : 'tiresCmsToolbar.updatingProgress',
+                        {
+                          processed: bulkMarkupProgress.processed,
+                          total: bulkMarkupProgress.total,
+                        },
+                      )}
                     </p>
                   </div>
                 ) : null}
@@ -519,12 +511,13 @@ export function TiresCmsToolbar({
                     } disabled:cursor-not-allowed`}
                   >
                     {applyingBulkMarkup
-                      ? (language === 'fi' ? 'Päivitetään...' : 'Applying...')
+                      ? t('tiresCmsToolbar.applying')
                       : bulkMarkupMatchCount !== null && bulkMarkupMatchCount > 0 && bulkAdjustmentLabel
-                        ? (language === 'fi'
-                            ? `Käytä tämä ${bulkAdjustmentLabel} ${bulkMarkupMatchCount} tuotteeseen`
-                            : `Apply this ${bulkAdjustmentLabel} to ${bulkMarkupMatchCount} items`)
-                        : (language === 'fi' ? 'Valitse toimittaja ja muutos' : 'Choose supplier and amount')}
+                        ? t('tiresCmsToolbar.applyBulkMarkup', {
+                            adjustment: bulkAdjustmentLabel,
+                            count: bulkMarkupMatchCount,
+                          })
+                        : t('tiresCmsToolbar.chooseSupplierAndAmount')}
                   </button>
 
                   <button
@@ -538,8 +531,8 @@ export function TiresCmsToolbar({
                     } disabled:cursor-not-allowed`}
                   >
                     {revertingBulkMarkup
-                      ? (language === 'fi' ? 'Palautetaan...' : 'Reverting...')
-                      : (language === 'fi' ? 'Palauta hintamuutos API-hintaan' : 'Revert markup to API price')}
+                      ? t('tiresCmsToolbar.reverting')
+                      : t('tiresCmsToolbar.revertToApiPrice')}
                   </button>
                 </div>
               </div>
@@ -557,7 +550,7 @@ export function TiresCmsToolbar({
                   : 'bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400'
               } disabled:cursor-not-allowed`}
             >
-              {language === 'fi' ? 'Käytä asetukset' : 'Apply settings'}
+              {t('tiresCmsToolbar.applySettings')}
             </button>
           </div>
         </SheetContent>

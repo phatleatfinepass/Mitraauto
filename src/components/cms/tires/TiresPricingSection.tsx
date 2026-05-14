@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { RotateCcw } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ProductCMS, TireRow } from './types';
 
 interface TiresPricingSectionProps {
@@ -8,7 +9,6 @@ interface TiresPricingSectionProps {
   editData: Partial<ProductCMS>;
   effectiveDraftPrice: number | null;
   isDark: boolean;
-  language: string;
   onApplySupplierMarkup: () => void;
   onEditDataChange: (updater: (prev: Partial<ProductCMS>) => Partial<ProductCMS>) => void;
   originalApiPrice: number | null;
@@ -28,7 +28,6 @@ export function TiresPricingSection({
   editData,
   effectiveDraftPrice,
   isDark,
-  language,
   onApplySupplierMarkup,
   onEditDataChange,
   originalApiPrice,
@@ -41,6 +40,7 @@ export function TiresPricingSection({
   supplierMarkupPercent,
   toPriceWithVat,
 }: TiresPricingSectionProps) {
+  const { t } = useLanguage();
   const formatMoney = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : `€${value.toFixed(2)}`;
   const baseEffectivePrice = costAfterFeesExVat ?? originalApiPrice;
@@ -104,14 +104,14 @@ export function TiresPricingSection({
   return (
     <div>
       <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {language === 'fi' ? 'Hinnoittelu' : 'Pricing'}
+        {t('tiresPricing.title')}
       </h3>
 
       <div className="space-y-4">
         <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
           <div className="flex justify-between items-center mb-2">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'API / tietokannan alkuperäinen hinta (ilman ALV):' : 'Original API / database price (excl. VAT):'}
+              {t('tiresPricing.originalApiPriceExVat')}
             </span>
             <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {formatMoney(originalApiPrice)}
@@ -119,7 +119,7 @@ export function TiresPricingSection({
           </div>
           <div className="flex justify-between items-center mb-2">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Kierrätysmaksu (ilman ALV):' : 'Recycling fee (excl. VAT):'}
+              {t('tiresPricing.recyclingFeeExVat')}
             </span>
             <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
               {formatMoney(recyclingFeeExVat)}
@@ -127,7 +127,7 @@ export function TiresPricingSection({
           </div>
           <div className="flex justify-between items-center mb-2">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Toimitus (ilman ALV):' : 'Shipping (excl. VAT):'}
+              {t('tiresPricing.shippingExVat')}
             </span>
             <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
               {formatMoney(shippingFeeExVat)}
@@ -135,9 +135,7 @@ export function TiresPricingSection({
           </div>
           <div className="flex justify-between items-center mb-2">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi'
-                ? 'Kustannus kierrätyksen + toimituksen jälkeen (ilman ALV):'
-                : 'Cost after recycling + shipping excl. VAT:'}
+              {t('tiresPricing.costAfterFeesExVat')}
             </span>
             <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
               {formatMoney(costAfterFeesExVat)}
@@ -145,13 +143,13 @@ export function TiresPricingSection({
           </div>
           <div className="flex justify-between items-center">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Nykyinen voimassa oleva hinta (ilman ALV):' : 'Current effective price (excl. VAT):'}
+              {t('tiresPricing.currentEffectivePriceExVat')}
             </span>
             {renderPriceValue(effectiveDraftPrice, baseEffectivePrice, showOverridePreview)}
           </div>
           <div className="flex justify-between items-center mt-2">
             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Lopullinen voimassa oleva hinta ALV 25.5% kanssa:' : 'Final effective price incl. VAT 25.5%:'}
+              {t('tiresPricing.finalEffectivePriceInclVat')}
             </span>
             {renderPriceValue(finalDraftPriceWithVat, finalBasePriceWithVat, showOverridePreview)}
           </div>
@@ -161,12 +159,10 @@ export function TiresPricingSection({
           <div className="flex items-center justify-between gap-3">
             <div>
               <h4 className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Hintaero tälle renkaalle' : 'Markup or discount by'}
+                {t('tiresPricing.singleMarkupTitle')}
               </h4>
               <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? 'Koskee vain tätä rengasta. Massahinnoittelu tehdään erillisestä näkymäasetuksesta.'
-                  : 'Applies only to this tire. Bulk pricing stays in the dedicated view settings action.'}
+                {t('tiresPricing.singleMarkupHint')}
               </p>
             </div>
             <button
@@ -174,14 +170,14 @@ export function TiresPricingSection({
               onClick={onApplySupplierMarkup}
               className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
             >
-              {language === 'fi' ? 'Käytä' : 'Apply'}
+              {t('tiresPricing.apply')}
             </button>
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
               <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi' ? 'Prosentti (%)' : 'Percent (%)'}
+                {t('tiresPricing.percent')}
               </label>
               <input
                 type="number"
@@ -201,7 +197,7 @@ export function TiresPricingSection({
 
             <div>
               <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi' ? 'Summa (€)' : 'Amount (€)'}
+                {t('tiresPricing.amount')}
               </label>
               <input
                 type="number"
@@ -220,9 +216,7 @@ export function TiresPricingSection({
           </div>
 
           <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi'
-              ? 'Lasketaan nykyisestä API-kustannuksesta. Negatiivinen prosentti tai summa laskee hintaa.'
-              : 'Calculated from the current API cost. Negative percent or amount lowers the price.'}
+            {t('tiresPricing.adjustmentHint')}
           </p>
           {hasPriceOverride && (
             <button
@@ -239,7 +233,7 @@ export function TiresPricingSection({
               }`}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              {language === 'fi' ? 'Palauta API-hinta' : 'Restore API price'}
+              {t('tiresPricing.restoreApiPrice')}
             </button>
           )}
         </div>
@@ -253,7 +247,7 @@ export function TiresPricingSection({
               className="w-5 h-5 rounded border-gray-300"
             />
             <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'Tarjoushinta käytössä' : 'Promotional price enabled'}
+              {t('tiresPricing.promoEnabled')}
             </span>
           </label>
 
@@ -261,7 +255,7 @@ export function TiresPricingSection({
             <div className="space-y-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Tarjoushinta (€)' : 'Promo Price (€)'}
+                  {t('tiresPricing.promoPrice')}
                 </label>
                 <input
                   type="number"
@@ -283,7 +277,7 @@ export function TiresPricingSection({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Alkaa' : 'Start Date'}
+                    {t('tiresPricing.startDate')}
                   </label>
                   <input
                     type="date"
@@ -294,14 +288,14 @@ export function TiresPricingSection({
                     }`}
                   />
                   <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi' ? 'ALV 25.5% kanssa:' : 'Incl. VAT 25.5%:'}{' '}
+                    {t('tiresPricing.inclVat')}{' '}
                     €{(toPriceWithVat(editData.promo_price_eur ?? null) ?? 0).toFixed(2)}
                   </p>
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'Päättyy' : 'End Date'}
+                    {t('tiresPricing.endDate')}
                   </label>
                   <input
                     type="date"

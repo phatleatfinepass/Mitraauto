@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Copy, Check, SearchCheck, RefreshCw } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TireEanAuditResult } from './eanAudit';
 
 interface IdentityOverride {
@@ -31,7 +32,6 @@ interface TiresIdentitySectionProps {
   clearIdentityOverrides: () => void;
   getIdentityOverride: () => IdentityOverride | undefined;
   isDark: boolean;
-  language: string;
   onAuditByEan: () => void;
   setIdentityField: (field: 'brand' | 'model' | 'ean' | 'size_string' | 'season' | 'load_index' | 'speed_rating', value?: string) => void;
   sizeParts: SizeParts;
@@ -52,12 +52,12 @@ export function TiresIdentitySection({
   clearIdentityOverrides,
   getIdentityOverride,
   isDark,
-  language,
   onAuditByEan,
   setIdentityField,
   sizeParts,
   updateSizePart,
 }: TiresIdentitySectionProps) {
+  const { t } = useLanguage();
   const identityOverride = getIdentityOverride();
   const [eanCopied, setEanCopied] = useState(false);
   const isPlaceholderEan = (value?: string | null) =>
@@ -143,21 +143,21 @@ export function TiresIdentitySection({
     <div>
       <div className="flex items-center justify-between mb-2">
         <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {language === 'fi' ? 'Tunnisteet' : 'Identity'}
+          {t('tiresTyreLabel.identity')}
         </h3>
         <button
           type="button"
           onClick={clearIdentityOverrides}
           className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}
         >
-          {language === 'fi' ? 'Palauta perustasot' : 'Reset to base'}
+          {t('tiresIdentity.resetToBase')}
         </button>
       </div>
 
       <div className={`grid grid-cols-2 gap-4 p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
         <div>
           <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' ? 'Brändi' : 'Brand'}
+            {t('tiresTyreLabel.brand')}
           </label>
           <input
             type="text"
@@ -171,7 +171,7 @@ export function TiresIdentitySection({
 
         <div>
           <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' ? 'Malli' : 'Model'}
+            {t('tiresTyreLabel.model')}
           </label>
           <input
             type="text"
@@ -204,8 +204,8 @@ export function TiresIdentitySection({
             >
               {eanCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               {eanCopied
-                ? (language === 'fi' ? 'Kopioitu' : 'Copied')
-                : (language === 'fi' ? 'Kopioi nykyinen' : 'Copy current')}
+                ? t('tiresTyreLabel.copied')
+                : t('tiresTyreLabel.copyCurrent')}
             </button>
           </div>
           <input
@@ -218,13 +218,11 @@ export function TiresIdentitySection({
             }`}
           />
           <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-            {language === 'fi'
-              ? 'Syötä oikea EAN korvaamaan puuttuva EAN.'
-              : 'Enter real EAN to replace missing EAN.'}
+            {t('tiresIdentity.eanHint')}
           </p>
           {currentBaseEan && (
             <p className={`mt-1 text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Nykyinen EAN:' : 'Current EAN:'} {currentBaseEan}
+              {t('tiresTyreLabel.currentEan')}: {currentBaseEan}
             </p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -244,8 +242,8 @@ export function TiresIdentitySection({
             >
               {auditLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
               {auditLoading
-                ? (language === 'fi' ? 'Haetaan EPREListä...' : 'Fetching EPREL...')
-                : (language === 'fi' ? 'Hae EPREListä' : 'Fetch from EPREL')}
+                ? t('tiresTyreLabel.fetchingEprel')
+                : t('tiresTyreLabel.fetchFromEprel')}
             </button>
             {auditResult && (
               <button
@@ -256,7 +254,7 @@ export function TiresIdentitySection({
                 }`}
               >
                 <Check className="h-3.5 w-3.5" />
-                {language === 'fi' ? 'Käytä EPREL-arvoja' : 'Apply EPREL values'}
+                {t('tiresTyreLabel.applyEprelValues')}
               </button>
             )}
           </div>
@@ -264,7 +262,7 @@ export function TiresIdentitySection({
             <div className="mt-3 space-y-1.5">
               <div className="flex items-center justify-between text-[11px]">
                 <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>
-                  {language === 'fi' ? 'Auditin eteneminen' : 'Audit progress'}
+                  {t('tiresTyreLabel.auditProgress')}
                 </span>
                 <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{Math.max(0, Math.min(100, Math.round(auditProgress)))}%</span>
               </div>
@@ -280,7 +278,7 @@ export function TiresIdentitySection({
 
         <div>
           <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' ? 'Koko' : 'Size'}
+            {t('tiresTyreLabel.size')}
           </label>
           <div className="grid grid-cols-5 gap-2">
             <input
@@ -334,13 +332,13 @@ export function TiresIdentitySection({
             />
           </div>
           <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-            {language === 'fi' ? 'Muoto: 205 / 55 R16 91 V' : 'Format: 205 / 55 R16 91 V'}
+            {t('tiresTyreLabel.sizeFormat')}
           </p>
         </div>
 
         <div>
           <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi' ? 'Kausi' : 'Season'}
+            {t('tiresTyreLabel.season')}
           </label>
           <select
             value={identityOverride?.season ?? baseSeason ?? ''}
@@ -349,10 +347,10 @@ export function TiresIdentitySection({
               isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
-            <option value="">{language === 'fi' ? 'Perusta (ei muutosta)' : 'Use base value'}</option>
-            <option value="summer">{language === 'fi' ? 'Kesä' : 'Summer'}</option>
-            <option value="winter">{language === 'fi' ? 'Talvi' : 'Winter'}</option>
-            <option value="all_season">{language === 'fi' ? 'Ympärivuotinen' : 'All Season'}</option>
+            <option value="">{t('tiresTyreLabel.useBaseValue')}</option>
+            <option value="summer">{t('tiresTyreLabel.summer')}</option>
+            <option value="winter">{t('tiresTyreLabel.winter')}</option>
+            <option value="all_season">{t('tiresTyreLabel.allSeason')}</option>
           </select>
         </div>
       </div>
@@ -368,7 +366,7 @@ export function TiresIdentitySection({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {language === 'fi' ? 'EPREL-yhteenveto' : 'EPREL summary'}
+                    {t('tiresTyreLabel.eprelSummary')}
                   </p>
                   <p className={`mt-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                     {auditResult.summary}
@@ -386,14 +384,14 @@ export function TiresIdentitySection({
                       ? statusClassName('missing_current')
                       : statusClassName('unknown')
                 }`}>
-                  {language === 'fi' ? 'Luottamus' : 'Confidence'}: {auditResult.confidence}
+                  {t('tiresTyreLabel.confidence')}: {auditResult.confidence}
                 </span>
               </div>
 
               {auditResult.source_urls.length > 0 && (
                 <div>
                   <p className={`mb-2 text-xs font-medium uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi' ? 'EPREL-lähteet' : 'EPREL sources'}
+                    {t('tiresIdentity.eprelSources')}
                   </p>
                   <div className="space-y-1">
                     {auditResult.source_urls.map((url) => (
@@ -442,13 +440,13 @@ export function TiresIdentitySection({
                       <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
                         <div>
                           <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>
-                            {language === 'fi' ? 'Nykyinen' : 'Current'}:
+                            {t('tiresTyreLabel.current')}:
                           </span>{' '}
                           <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{check.current_value || '—'}</span>
                         </div>
                         <div>
                           <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>
-                            {language === 'fi' ? 'Auditoitu' : 'Audited'}:
+                            {t('tiresTyreLabel.audited')}:
                           </span>{' '}
                           <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{check.audited_value || '—'}</span>
                         </div>

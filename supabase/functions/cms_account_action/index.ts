@@ -14,7 +14,7 @@ function normalizeText(value: unknown) {
   return String(value ?? "").trim();
 }
 
-async function ensureAccountManager(request: Request) {
+async function ensureSuperAdmin(request: Request) {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) throw new Error("Unauthenticated");
 
@@ -27,12 +27,8 @@ async function ensureAccountManager(request: Request) {
   const { data: { user }, error: userError } = await userClient.auth.getUser();
   if (userError || !user) throw new Error("Unauthenticated");
 
-  const { data: canManageAccounts, error: permissionError } = await userClient.rpc("cms_has_permission", {
-    p_module: "accounts",
-    p_action: "write",
-  });
-
-  if (permissionError || canManageAccounts !== true) {
+  const { data: isSuperAdmin, error: permissionError } = await userClient.rpc("cms_is_super_admin");
+  if (permissionError || isSuperAdmin !== true) {
     throw new Error("Forbidden");
   }
 
@@ -49,7 +45,7 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const actor = await ensureAccountManager(request);
+    const actor = await ensureSuperAdmin(request);
     const body = await request.json().catch(() => ({}));
     const action = normalizeText(body?.action);
     const targetProfileId = normalizeText(body?.targetProfileId);
@@ -84,22 +80,6 @@ Deno.serve(async (request) => {
 
     if (!targetProfile?.id) {
       return jsonResponse({ error: "Target account profile not found" }, 404);
-    }
-
-    if (targetProfile.role === "super_admin") {
-      const { data: actorProfile, error: actorProfileError } = await serviceClient
-        .from("profiles")
-        .select("role, account_status")
-        .eq("id", actor.id)
-        .maybeSingle();
-
-      if (actorProfileError) {
-        return jsonResponse({ error: actorProfileError.message }, 400);
-      }
-
-      if (actorProfile?.role !== "super_admin" || actorProfile?.account_status !== "active") {
-        return jsonResponse({ error: "Only active super admin can delete another super admin account" }, 403);
-      }
     }
 
     const { error: updateError } = await serviceClient

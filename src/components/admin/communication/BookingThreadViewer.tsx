@@ -20,15 +20,15 @@ export function BookingThreadViewer({
   t,
   onReply,
 }: BookingThreadViewerProps) {
+  const dateLocale = { fi: 'fi-FI', en: 'en-US' }[language as 'fi' | 'en'] ?? 'en-US';
+
   if (!message) {
     return (
       <section className={`flex min-h-[320px] min-w-0 items-center justify-center border-t px-6 py-10 lg:border-t-0 xl:min-h-0 xl:border-r ${theme === 'dark' ? 'border-white/10 bg-[#111318] text-gray-400' : 'border-gray-200 bg-white text-gray-600'}`}>
         <div className="max-w-sm text-center">
-          <p className="text-base font-medium">{language === 'fi' ? 'Valitse viesti' : 'Select a message'}</p>
+          <p className="text-base font-medium">{t('selectMessage')}</p>
           <p className="mt-2 text-sm">
-            {language === 'fi'
-              ? 'Avaa viesti vasemmalta nähdäksesi koko sisällön ja vastataksesi siihen.'
-              : 'Open a message from the left rail to read the full content and reply.'}
+            {t('selectMessageDescription')}
           </p>
         </div>
       </section>
@@ -44,7 +44,7 @@ export function BookingThreadViewer({
       <div className={`border-b px-6 py-5 ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold">{message.subject || (language === 'fi' ? 'Viesti' : 'Message')}</p>
+            <p className="truncate text-lg font-semibold">{message.subject || t('messageFallback')}</p>
             <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               {isInbound ? (message.fromEmail || '—') : (message.toEmail || '—')}
             </p>
@@ -64,7 +64,7 @@ export function BookingThreadViewer({
         </div>
 
         <p className={`mt-3 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-          {new Date(timestamp).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}
+          {new Date(timestamp).toLocaleString(dateLocale)}
         </p>
       </div>
 

@@ -76,6 +76,21 @@ export interface CustomerVehicleRow {
   updatedAt: string | null;
 }
 
+export interface CustomerVehiclePlateLookupRow {
+  vehicleId: string;
+  customerId: string;
+  licensePlate: string;
+  vehicleName: string;
+  vin: string;
+  notes: string;
+  hidden: boolean;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerStatus: string;
+  updatedAt: string | null;
+}
+
 export interface CustomerNoteRow {
   id: string;
   body: string;
@@ -263,6 +278,9 @@ export interface LicensePlateConflict {
   licensePlate: string;
   customerCount: number;
   customers: LicensePlateConflictOwner[];
+  resolution: string;
+  primaryCustomerId: string | null;
+  resolutionDetails: Record<string, unknown>;
 }
 
 export interface CustomerHistoryBooking {

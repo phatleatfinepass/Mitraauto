@@ -1,6 +1,6 @@
 import React from 'react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import { motion } from 'motion/react';
 import { ShoppingCart, PackageX, Sun, Snowflake, SunSnow } from 'lucide-react';
 import svgPaths from '../../imports/svg-eon971h5o4';
@@ -51,7 +51,7 @@ const PREVIEW_TIRE_PRODUCT: NonNullable<TireCardProps['product']> = {
 };
 
 export function TireCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart, disableInitialAnimation = false }: TireCardProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const product = productProp ?? PREVIEW_TIRE_PRODUCT;
 
@@ -68,9 +68,9 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
   const getSeasonLabel = (season?: string) => {
     if (!season) return '';
     const labels = {
-      summer: language === 'fi' ? 'Kesä' : 'Summer',
-      winter: language === 'fi' ? 'Talvi' : 'Winter',
-      all_season: language === 'fi' ? 'Ympärivuotinen' : 'All Season',
+      summer: t('productDetail.summer'),
+      winter: t('productDetail.winter'),
+      all_season: t('productDetail.allSeason'),
     };
     return labels[season.toLowerCase() as keyof typeof labels] || season;
   };
@@ -120,13 +120,13 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
 
   const featureBadges = [
     { key: 'ev', show: Boolean(product.ev_ready), label: 'EV' },
-    { key: 'sound', show: Boolean(product.sound_absorber), label: language === 'fi' ? 'Hiljainen' : 'Silent' },
+    { key: 'sound', show: Boolean(product.sound_absorber), label: t('catalog.silent') },
     { key: 'runflat', show: Boolean(product.runflat), label: 'RunFlat' },
     { key: 'xl', show: Boolean(product.xl), label: 'XL' },
-    { key: 'studded', show: Boolean(product.studded), label: language === 'fi' ? 'Nastat' : 'Studded' },
+    { key: 'studded', show: Boolean(product.studded), label: t('productDetail.studdedShort') },
     { key: 'threepmsf', show: Boolean(product.threepmsf), label: '3PMSF' },
     { key: 'winter', show: Boolean(product.winter_approved) && !Boolean(product.studded), label: 'M+S' },
-    { key: 'ice', show: Boolean(product.ice_approved), label: language === 'fi' ? 'Jää' : 'Ice Approved' },
+    { key: 'ice', show: Boolean(product.ice_approved), label: t('catalog.iceApproved') },
   ].filter((badge) => badge.show);
 
   const handleCardLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -322,7 +322,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                                   <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
                                     theme === 'dark' ? 'text-gray-400' : 'text-[#6a7282]'
                                   }`}>
-                                    {language === 'fi' ? 'POLT' : 'fuel'}
+                                    {t('catalog.fuelShort')}
                                   </p>
                                 </div>
                               </div>
@@ -364,7 +364,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                                   <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
                                     theme === 'dark' ? 'text-gray-400' : 'text-[#6a7282]'
                                   }`}>
-                                    {language === 'fi' ? 'MRKÄ' : 'WeT'}
+                                    {t('catalog.wetGripShort')}
                                   </p>
                                 </div>
                               </div>
@@ -554,7 +554,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                       <div className="h-[20px] relative shrink-0">
                         <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border h-[20px] relative">
                           <p className="font-semibold leading-[20px] not-italic text-[14px] text-nowrap tracking-[-0.2904px] whitespace-pre">
-                            {language === 'fi' ? 'Lisää' : 'Add'}
+                            {t('catalog.addShort')}
                           </p>
                         </div>
                       </div>
@@ -567,7 +567,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                       <div className="h-[20px] relative shrink-0">
                         <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border h-[20px] relative">
                           <p className="font-semibold leading-[20px] not-italic text-[14px] text-nowrap tracking-[-0.2904px] whitespace-pre">
-                            {language === 'fi' ? 'Loppu' : 'Out'}
+                            {t('catalog.outShort')}
                           </p>
                         </div>
                       </div>

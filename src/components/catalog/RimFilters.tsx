@@ -1,49 +1,120 @@
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
-import { Filter } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '../ui/sheet';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { LicensePlateDisplay } from './LicensePlateDisplay';
+import { lookupVehicleTyreFitment } from '../../utils/vehicleFitmentLookup';
+import { requestFitmentRecommendations } from '../../utils/fitmentRecommendations';
+import { supabase } from '../../utils/supabase/client';
 
 interface RimFiltersProps {
   onFilterChange: (filters: any) => void;
-  onSearch: () => void;
+  onSearch: (filtersOverride?: any) => void;
   searchMode: 'license' | 'vehicle' | 'manual';
 }
 
+type RimPcdOption = {
+  value: string;
+  label: string;
+  count?: number;
+};
+
+export const DEFAULT_RIM_FILTERS = {
+  rimDiameter: 'all',
+  rimWidth: 'all',
+  rimWidths: undefined as number[] | undefined,
+  brand: 'all',
+  pcd: 'all',
+  etOffset: '',
+  cb: '',
+  color: 'all',
+  material: 'all',
+  boltsIncluded: undefined as boolean | undefined,
+  inStockOnly: false,
+  sortBy: 'price_asc',
+  search: '',
+};
+
 export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const [licensePlate, setLicensePlate] = useState('');
-  const [filters, setFilters] = useState({
-    rimDiameter: 'all',
-    rimWidth: 'all',
-    pcd: 'all',
-    etOffset: '',
-    cb: '',
-    color: 'all',
-    material: 'all',
-    boltsIncluded: undefined,
-    inStockOnly: false,
-    sortBy: 'price_asc',
-  });
+  const [filters, setFilters] = useState(DEFAULT_RIM_FILTERS);
+  const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [diameterOptions, setDiameterOptions] = useState<string[]>([]);
+  const [widthOptions, setWidthOptions] = useState<string[]>([]);
+  const [pcdOptions, setPcdOptions] = useState<RimPcdOption[]>([]);
+  const [vehicleLookupLoading, setVehicleLookupLoading] = useState(false);
+  const [vehicleLookupError, setVehicleLookupError] = useState<string | null>(null);
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // Auto-search when license plate is complete (6 characters) or on Enter
   useEffect(() => {
-    if (searchMode === 'license' && licensePlate.length === 7) {
-      onSearch();
+    let active = true;
+
+    const loadFilterOptions = async () => {
+      const { data, error } = await supabase.rpc('catalog_list_rim_filter_options_v1');
+      if (!active) return;
+      if (error) {
+        console.warn('Failed to load rim filter options:', error);
+        return;
+      }
+
+      const payload = data && typeof data === 'object' ? data as any : {};
+      const brands = Array.isArray(payload.brands)
+        ? payload.brands.map((brand: unknown) => String(brand ?? '').trim()).filter(Boolean)
+        : [];
+      const diameters = Array.isArray(payload.diameters)
+        ? payload.diameters.map((value: unknown) => String(value ?? '').trim()).filter(Boolean)
+        : [];
+      const widths = Array.isArray(payload.widths)
+        ? payload.widths.map((value: unknown) => String(value ?? '').trim()).filter(Boolean)
+        : [];
+      const pcds = Array.isArray(payload.pcds)
+        ? payload.pcds
+            .map((option: any) => ({
+              value: String(option?.value ?? '').trim(),
+              label: String(option?.label ?? option?.value ?? '').trim(),
+              count: Number(option?.count),
+            }))
+            .filter((option: RimPcdOption) => option.value.length > 0 && option.label.length > 0)
+        : [];
+
+      setBrandOptions(brands);
+      setDiameterOptions(diameters);
+      setWidthOptions(widths);
+      setPcdOptions(pcds);
+    };
+
+    void loadFilterOptions();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Auto-search when license plate is complete or on Enter.
+  useEffect(() => {
+    const compactPlate = licensePlate.replace(/[^A-Z0-9]/gi, '');
+    if (searchMode === 'license' && compactPlate.length >= 6) {
+      void handleVehicleLookup();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [licensePlate, searchMode]);
 
   const handleLicensePlateKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && licensePlate.length >= 6) {
-      onSearch();
+      void handleVehicleLookup();
     }
   };
 
@@ -53,26 +124,51 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
     onFilterChange(newFilters);
   };
 
+  const handleVehicleLookup = async () => {
+    if (vehicleLookupLoading) return;
+    const compactPlate = licensePlate.replace(/[^A-Z0-9]/gi, '');
+    if (compactPlate.length < 6) return;
+
+    setVehicleLookupError(null);
+    setVehicleLookupLoading(true);
+    try {
+      const vehicle = await lookupVehicleTyreFitment(licensePlate, 'FI');
+      const factoryTyreSize = vehicle.factoryTyreSizes?.[0] || vehicle.factoryTyreSize;
+      const fitment = await requestFitmentRecommendations(factoryTyreSize, {
+        maxWeightKg: vehicle.maxWeightKg,
+        maxSpeedKmh: vehicle.maxSpeedKmh,
+      }, vehicle.rimMounting ?? undefined);
+      const rim = fitment.rim;
+      if (!rim) {
+        throw new Error(t('catalog.rimFitmentMissing'));
+      }
+
+      const preferredWidth = rim.factory.preferredRimWidthIn ?? rim.factory.approvedRimWidthsIn[0] ?? null;
+      const vehicleFilters = {
+        ...filters,
+        rimDiameter: String(rim.catalogFilters.factoryRimDiameterIn),
+        rimWidth: preferredWidth ? String(preferredWidth) : 'all',
+        rimWidths: rim.catalogFilters.factoryApprovedWidthsIn,
+        pcd: rim.catalogFilters.pcd ?? 'all',
+        cb: rim.catalogFilters.centerBoreMinMm != null ? String(rim.catalogFilters.centerBoreMinMm) : '',
+        etOffset: rim.mounting.factoryOffsetMm != null ? String(rim.mounting.factoryOffsetMm) : '',
+      };
+
+      setFilters(vehicleFilters);
+      onFilterChange(vehicleFilters);
+      onSearch(vehicleFilters);
+    } catch (error) {
+      setVehicleLookupError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setVehicleLookupLoading(false);
+    }
+  };
+
   const clearFilters = () => {
-    const emptyFilters = {
-      rimDiameter: 'all',
-      rimWidth: 'all',
-      pcd: 'all',
-      etOffset: '',
-      cb: '',
-      color: 'all',
-      material: 'all',
-      boltsIncluded: undefined,
-      inStockOnly: false,
-      sortBy: 'price_asc',
-    };
+    const emptyFilters = { ...DEFAULT_RIM_FILTERS };
     setFilters(emptyFilters);
     onFilterChange(emptyFilters);
   };
-
-  const diameterOptions = ['13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24'];
-  const widthOptions = ['5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12'];
-  const pcdOptions = ['4×100', '4×108', '5×100', '5×108', '5×112', '5×114.3', '5×120', '6×139.7'];
 
   const bgClass = theme === 'dark' ? 'bg-[#161A22]' : 'bg-white';
   const borderClass = theme === 'dark' ? 'border-white/10' : 'border-gray-200';
@@ -88,13 +184,28 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
         <div className="space-y-4" onKeyDown={handleLicensePlateKeyDown}>
           <div>
             <Label className={`${textClass} mb-4 block text-center text-lg`}>
-              {language === 'fi' ? 'Syötä rekisteritunnus' : 'Enter License Plate'}
+              {t('catalog.enterLicensePlate')}
             </Label>
             <LicensePlateDisplay
               value={licensePlate}
               onChange={setLicensePlate}
               placeholder="ABC-123"
             />
+            <div className="mt-4 flex justify-center">
+              <Button
+                type="button"
+                onClick={() => void handleVehicleLookup()}
+                disabled={vehicleLookupLoading || licensePlate.replace(/[^A-Z0-9]/gi, '').length < 6}
+                className="bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90 disabled:opacity-50"
+              >
+                {vehicleLookupLoading
+                  ? t('catalog.searching')
+                  : t('catalog.findRimSize')}
+              </Button>
+            </div>
+            {vehicleLookupError && (
+              <p className="mt-3 text-center text-sm text-red-500">{vehicleLookupError}</p>
+            )}
           </div>
         </div>
       )}
@@ -102,23 +213,37 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
       {/* Manual Entry */}
       {searchMode === 'manual' && (
         <>
-          {/* Simple Main Filters - Diameter, Width, PCD */}
+          {/* Simple Main Filters - Search, Diameter, Width, PCD, Brand */}
           <div>
             <Label className={`${textClass} text-sm mb-3 block`}>
-              {language === 'fi' ? 'Vanteen koko' : 'Rim size'}
+              {t('catalog.rimSearch')}
             </Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="mb-4">
+              <Label className={`${textClass} mb-2 block text-xs`}>
+                {t('catalog.search')}
+              </Label>
+              <div className="relative">
+                <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${secondaryTextClass}`} />
+                <Input
+                  value={filters.search}
+                  onChange={(e) => updateFilter('search', e.target.value)}
+                  placeholder={t('catalog.searchPlaceholderRim')}
+                  className={`${inputBgClass} ${borderClass} ${textClass} pl-9 placeholder:${secondaryTextClass}/50`}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               {/* Diameter */}
               <div>
                 <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Halkaisija' : 'Diameter'}
+                  {t('productDetail.diameter')}
                 </Label>
                 <Select value={filters.rimDiameter} onValueChange={(value) => updateFilter('rimDiameter', value)}>
                   <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                     {diameterOptions.map(d => (
                       <SelectItem key={d} value={d} className={`${textClass} hover:bg-white/10`}>
                         {d}"
@@ -131,14 +256,14 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
               {/* Width */}
               <div>
                 <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Leveys' : 'Width'}
+                  {t('productDetail.width')}
                 </Label>
                 <Select value={filters.rimWidth} onValueChange={(value) => updateFilter('rimWidth', value)}>
                   <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                     {widthOptions.map(w => (
                       <SelectItem key={w} value={w} className={`${textClass} hover:bg-white/10`}>
                         {w}"
@@ -158,10 +283,30 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                     {pcdOptions.map(p => (
-                      <SelectItem key={p} value={p} className={`${textClass} hover:bg-white/10`}>
-                        {p}
+                      <SelectItem key={p.value} value={p.value} className={`${textClass} hover:bg-white/10`}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Brand */}
+              <div>
+                <Label className={`${textClass} mb-2 block text-xs`}>
+                  {t('catalog.brand')}
+                </Label>
+                <Select value={filters.brand} onValueChange={(value) => updateFilter('brand', value)}>
+                  <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent className={`${selectBgClass} ${borderClass}`}>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
+                    {brandOptions.map((brand) => (
+                      <SelectItem key={brand} value={brand} className={`${textClass} hover:bg-white/10`}>
+                        {brand}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -170,164 +315,135 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
             </div>
           </div>
 
-          {/* Search Button */}
-          <Button
-            onClick={onSearch}
-            className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white mb-4"
-          >
-            {language === 'fi' ? 'Hae vanteet' : 'Search rims'}
-          </Button>
-
-          {/* Advanced Filters Toggle */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-[#FF6B35] hover:text-[#FF6B35]/80 hover:bg-[#FF6B35]/10"
+              onClick={() => onSearch()}
+              className="flex-1 bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
             >
-              <Filter className="w-4 h-4 mr-2" />
-              {language === 'fi' ? 'Lisäsuodattimet' : 'Advanced Filters'}
+              {t('catalog.searchRims')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSettingsDrawerOpen(true)}
+              className={`shrink-0 ${
+                theme === 'dark'
+                  ? 'border-white/10 bg-white/5 text-white hover:bg-white/10'
+                  : 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              {t('catalog.viewSettings')}
             </Button>
           </div>
 
-          {showAdvanced && (
-            <div className={`space-y-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-[#11161d] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
-              {/* ET Offset & CB */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    {language === 'fi' ? 'ET (offset)' : 'ET Offset'}
-                  </Label>
-                  <Input
-                    type="number"
-                    value={filters.etOffset}
-                    onChange={(e) => updateFilter('etOffset', e.target.value)}
-                    placeholder="35"
-                    className={`${inputBgClass} ${borderClass} ${textClass} placeholder:${secondaryTextClass}/50`}
-                  />
-                </div>
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    {language === 'fi' ? 'CB (keskireikä)' : 'CB (center bore)'}
-                  </Label>
-                  <Input
-                    type="number"
-                    value={filters.cb}
-                    onChange={(e) => updateFilter('cb', e.target.value)}
-                    placeholder="66.6"
-                    step="0.1"
-                    className={`${inputBgClass} ${borderClass} ${textClass} placeholder:${secondaryTextClass}/50`}
-                  />
-                </div>
-              </div>
+          <Sheet open={settingsDrawerOpen} onOpenChange={setSettingsDrawerOpen}>
+            <SheetContent
+              side="right"
+              className={`w-full sm:max-w-[520px] ${
+                theme === 'dark' ? 'border-white/10 bg-[#10131A] text-white' : 'border-gray-200 bg-white text-gray-900'
+              }`}
+            >
+              <SheetHeader className={theme === 'dark' ? 'border-b border-white/10' : 'border-b border-gray-200'}>
+                <SheetTitle className={textClass}>
+                  {t('catalog.rimsViewSettings')}
+                </SheetTitle>
+                <SheetDescription className={secondaryTextClass}>
+                  {t('catalog.rimsViewSettingsDescription')}
+                </SheetDescription>
+              </SheetHeader>
 
-              {/* Color & Material */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    {language === 'fi' ? 'Väri' : 'Color'}
-                  </Label>
-                  <Select value={filters.color} onValueChange={(value) => updateFilter('color', value)}>
-                    <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                      <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
-                      <SelectItem value="silver" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Hopea' : 'Silver'}
-                      </SelectItem>
-                      <SelectItem value="black" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Musta' : 'Black'}
-                      </SelectItem>
-                      <SelectItem value="gunmetal" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Tummanharmaa' : 'Gunmetal'}
-                      </SelectItem>
-                      <SelectItem value="white" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Valkoinen' : 'White'}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    {language === 'fi' ? 'Materiaali' : 'Material'}
-                  </Label>
-                  <Select value={filters.material} onValueChange={(value) => updateFilter('material', value)}>
-                    <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                      <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
-                      <SelectItem value="alloy" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Kevytmetalli' : 'Alloy'}
-                      </SelectItem>
-                      <SelectItem value="steel" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Teräs' : 'Steel'}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Sort & Toggles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className={`${textClass} mb-2 block text-sm`}>
-                    {language === 'fi' ? 'Järjestä' : 'Sort By'}
-                  </Label>
-                  <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
-                    <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                      <SelectItem value="price_asc" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Hinta ↑' : 'Price ↑'}
-                      </SelectItem>
-                      <SelectItem value="price_desc" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Hinta ↓' : 'Price ↓'}
-                      </SelectItem>
-                      <SelectItem value="brand_asc" className={`${textClass} hover:bg-white/10`}>
-                        {language === 'fi' ? 'Merkki A-Ö' : 'Brand A-Z'}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={filters.inStockOnly}
-                      onCheckedChange={(checked) => updateFilter('inStockOnly', checked)}
-                      className="data-[state=checked]:bg-[#FF6B35]"
-                    />
-                    <Label className={`${textClass} text-sm`}>
-                      {language === 'fi' ? 'Vain varastossa' : 'In Stock Only'}
-                    </Label>
+              <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+                <section className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label className={`${textClass} mb-2 block text-sm`}>
+                        {t('catalog.etOffset')}
+                      </Label>
+                      <Input
+                        type="number"
+                        value={filters.etOffset}
+                        onChange={(e) => updateFilter('etOffset', e.target.value)}
+                        placeholder="35"
+                        className={`${inputBgClass} ${borderClass} ${textClass} placeholder:${secondaryTextClass}/50`}
+                      />
+                    </div>
+                    <div>
+                      <Label className={`${textClass} mb-2 block text-sm`}>
+                        {t('catalog.centerBore')}
+                      </Label>
+                      <Input
+                        type="number"
+                        value={filters.cb}
+                        onChange={(e) => updateFilter('cb', e.target.value)}
+                        placeholder="66.6"
+                        step="0.1"
+                        className={`${inputBgClass} ${borderClass} ${textClass} placeholder:${secondaryTextClass}/50`}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={filters.boltsIncluded === true}
-                      onCheckedChange={(checked) => updateFilter('boltsIncluded', checked ? true : undefined)}
-                      className="data-[state=checked]:bg-[#FF6B35]"
-                    />
-                    <Label className={`${textClass} text-sm`}>
-                      {language === 'fi' ? 'Pultit mukana' : 'Bolts Included'}
-                    </Label>
+                </section>
+
+                <section className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className={`${textClass} mb-2 block text-sm`}>
+                        {t('catalog.sortBy')}
+                      </Label>
+                      <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
+                        <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className={`${selectBgClass} ${borderClass}`}>
+                          <SelectItem value="price_asc" className={`${textClass} hover:bg-white/10`}>
+                            {t('catalog.priceAsc')}
+                          </SelectItem>
+                          <SelectItem value="price_desc" className={`${textClass} hover:bg-white/10`}>
+                            {t('catalog.priceDesc')}
+                          </SelectItem>
+                          <SelectItem value="brand_asc" className={`${textClass} hover:bg-white/10`}>
+                            {t('catalog.brandAsc')}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <label className="flex items-center gap-3">
+                      <Switch
+                        checked={filters.inStockOnly}
+                        onCheckedChange={(checked) => updateFilter('inStockOnly', checked)}
+                        className="data-[state=checked]:bg-[#FF6B35]"
+                      />
+                      <span className={`${textClass} text-sm`}>
+                        {t('catalog.inStockOnly')}
+                      </span>
+                    </label>
                   </div>
-                </div>
+                </section>
               </div>
 
-              {/* Clear Filters */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className={`${secondaryTextClass} hover:${textClass} hover:bg-white/10`}
-              >
-                {language === 'fi' ? 'Tyhjennä suodattimet' : 'Clear All Filters'}
-              </Button>
-            </div>
-          )}
+              <div className={`border-t px-4 py-4 ${theme === 'dark' ? 'border-white/10 bg-[#10131A]' : 'border-gray-200 bg-white'}`}>
+                <div className="flex gap-3">
+                  <Button
+                    variant="ghost"
+                    onClick={clearFilters}
+                    className={`${secondaryTextClass} hover:${textClass} hover:bg-white/10`}
+                  >
+                    {t('catalog.clear')}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSettingsDrawerOpen(false);
+                      onSearch(filters);
+                    }}
+                    className="flex-1 bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90"
+                  >
+                    {t('catalog.applySettings')}
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </>
       )}
     </div>

@@ -1,8 +1,8 @@
 import React from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface TiresCmsPaginationProps {
   isDark: boolean;
-  language: string;
   currentPage: number;
   totalPages: number;
   totalCount: number;
@@ -13,7 +13,6 @@ interface TiresCmsPaginationProps {
 
 export function TiresCmsPagination({
   isDark,
-  language,
   currentPage,
   totalPages,
   totalCount,
@@ -21,9 +20,13 @@ export function TiresCmsPagination({
   endItem,
   onPageChange,
 }: TiresCmsPaginationProps) {
+  const { t } = useLanguage();
+
   if (totalPages <= 1) {
     return null;
   }
+
+  const totalSuffix = totalCount > 0 ? t('tiresCmsPagination.totalSuffix', { total: totalCount }) : '';
   const pageButtons =
     totalPages <= 7
       ? Array.from({ length: totalPages }, (_, index) => index + 1)
@@ -41,9 +44,7 @@ export function TiresCmsPagination({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6">
       <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-        {language === 'fi'
-          ? `Näytetään ${startItem}-${endItem}${totalCount > 0 ? ` / vähintään ${totalCount}` : ''}`
-          : `Showing ${startItem}-${endItem}${totalCount > 0 ? ` / at least ${totalCount}` : ''}`}
+        {t('tiresCmsPagination.showing', { start: startItem, end: endItem, suffix: totalSuffix })}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -56,7 +57,7 @@ export function TiresCmsPagination({
               : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
           }`}
         >
-          {language === 'fi' ? 'Edellinen' : 'Previous'}
+          {t('tiresCmsPagination.previous')}
         </button>
         {pageButtons.map((page, index) =>
           typeof page === 'number' ? (
@@ -87,9 +88,7 @@ export function TiresCmsPagination({
             isDark ? 'bg-white/5 text-gray-300' : 'bg-gray-100 text-gray-600'
           }`}
         >
-          {language === 'fi'
-            ? `Sivu ${currentPage} / ${totalPages}`
-            : `Page ${currentPage} / ${totalPages}`}
+          {t('tiresCmsPagination.page', { current: currentPage, total: totalPages })}
         </span>
         <button
           type="button"
@@ -101,10 +100,10 @@ export function TiresCmsPagination({
               : 'border-gray-200 text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent'
           }`}
         >
-          {language === 'fi' ? 'Seuraava' : 'Next'}
+          {t('tiresCmsPagination.next')}
         </button>
         <label className={`flex items-center gap-2 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-          <span>{language === 'fi' ? 'Siirry sivulle' : 'Jump to page'}</span>
+          <span>{t('tiresCmsPagination.jumpToPage')}</span>
           <input
             key={currentPage}
             type="number"

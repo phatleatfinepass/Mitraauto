@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { supabase } from '../../../utils/supabase/client';
 
 const WEBSHOP_TIRE_SYNC_BATCH_SIZE = 500;
@@ -6,12 +7,11 @@ const WEBSHOP_TIRE_SYNC_BATCH_SIZE = 500;
 export function useTiresCmsCatalogSync({
   fetchTires,
   invalidateCache,
-  language,
 }: {
   fetchTires: (options?: { force?: boolean }) => Promise<any>;
   invalidateCache: () => void;
-  language: string;
 }) {
+  const { t } = useLanguage();
   const [syncingCatalog, setSyncingCatalog] = useState(false);
   const [hasPendingCatalogSync, setHasPendingCatalogSync] = useState(false);
   const [catalogSyncMessage, setCatalogSyncMessage] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export function useTiresCmsCatalogSync({
 
       const runId = String((startData as any)?.run_id ?? '');
       if (!runId) {
-        throw new Error('Webshop tire sync did not return a run id.');
+        throw new Error(t('tiresCatalogSync.missingRunId'));
       }
 
       let processed = Number((startData as any)?.processed ?? 0);
@@ -75,14 +75,10 @@ export function useTiresCmsCatalogSync({
 
       invalidateCache();
       setHasPendingCatalogSync(false);
-      setCatalogSyncMessage(
-        language === 'fi'
-          ? 'Renkaiden muutokset julkaistu webshoppiin.'
-          : 'Tire changes published to the webshop.'
-      );
+      setCatalogSyncMessage(t('tiresCatalogSync.published'));
     } catch (err: any) {
       console.error('Catalog sync error:', err);
-      setCatalogSyncMessage(err?.message || 'Catalog sync failed');
+      setCatalogSyncMessage(err?.message || t('tiresCatalogSync.failed'));
     } finally {
       setSyncingCatalog(false);
       setCatalogSyncProgress(null);

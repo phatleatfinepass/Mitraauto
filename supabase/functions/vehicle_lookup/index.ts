@@ -16,6 +16,7 @@ interface VehicleTyreLookupResult {
   maxSpeedKmh?: number | null;
   powerKw?: number | null;
   engineSizeCc?: number | null;
+  rimMounting?: VehicleRimMountingData | null;
   source: "carsxe" | "development-fallback";
   specifications?: Record<string, unknown>;
   lookups?: {
@@ -24,6 +25,19 @@ interface VehicleTyreLookupResult {
     internationalVinDecoder: Record<string, unknown> | null;
   };
   warnings?: string[];
+}
+
+interface VehicleRimMountingData {
+  pcd?: string | null;
+  centerBoreMm?: number | null;
+  offsetMinMm?: number | null;
+  offsetMaxMm?: number | null;
+  factoryOffsetMm?: number | null;
+  factoryRimWidthIn?: number | null;
+  boltThread?: string | null;
+  boltSeat?: string | null;
+  brakeClearanceNotes?: string | null;
+  source?: "provider" | "development-fallback" | "cache" | null;
 }
 
 type VehicleLookupCacheRow = {
@@ -70,6 +84,17 @@ const DEVELOPMENT_FIXTURES: Record<string, VehicleTyreLookupResult> = {
     variant: "Hyundai i30 Kombi 1.6 GDI Manuaalinen, 6 vaihdetta, 135ps, 2013",
     factoryTyreSize: "195/65 R15 91H",
     factoryTyreSizes: ["195/65 R15 91H"],
+    rimMounting: {
+      pcd: "5x114.3",
+      centerBoreMm: 67.1,
+      factoryOffsetMm: 48,
+      offsetMinMm: 43,
+      offsetMaxMm: 53,
+      factoryRimWidthIn: 6,
+      boltThread: "M12x1.5",
+      boltSeat: "tapered",
+      source: "development-fallback",
+    },
     maxWeightKg: 1820,
     weightEmptyKg: 1298,
     maxSpeedKmh: 192,
@@ -231,6 +256,12 @@ async function lookupCarsXeVehicle(
       "CarsXE VIN/specification lookup succeeded, but no factory tyre size was returned.",
     );
   }
+  const rimMounting = extractRimMountingData(
+    attributes,
+    plateResponse,
+    internationalVinResponse,
+    specificationsResponse,
+  );
 
   const make = firstString(
     plateResponse.make,
@@ -278,6 +309,7 @@ async function lookupCarsXeVehicle(
         attributes.engine_size ??
         attributes.engine_size_cc,
     ),
+    rimMounting,
     source: "carsxe",
     specifications: attributes,
     lookups: {
@@ -565,6 +597,209 @@ function parseFactoryTyreSizes(...values: unknown[]) {
   return found;
 }
 
+function extractRimMountingData(
+  ...sources: Array<Record<string, unknown> | null>
+): VehicleRimMountingData | null {
+  const source = mergeObjects(...sources);
+  const wheelText = firstString(
+    findFirstValue(source, [
+      "wheel_size",
+      "wheel_sizes",
+      "rim_size",
+      "rim_sizes",
+      "factory_wheel_size",
+      "factory_rim_size",
+    ]),
+  );
+  const parsedWheel = parseWheelMountingText(wheelText);
+
+  const pcd = normalizePcd(firstString(
+    findFirstValue(source, [
+      "pcd",
+      "wheel_pcd",
+      "bolt_pattern",
+      "boltpattern",
+      "lug_pattern",
+      "lugpattern",
+      "bolt_circle",
+      "bolt_circle_mm",
+    ]),
+    parsedWheel.pcd,
+  ));
+  const centerBoreMm = numberOrNull(
+    findFirstValue(source, [
+      "center_bore",
+      "center_bore_mm",
+      "centre_bore",
+      "centre_bore_mm",
+      "hub_bore",
+      "hub_bore_mm",
+      "cb",
+    ]),
+  );
+  const factoryOffsetMm = numberOrNull(
+    findFirstValue(source, [
+      "factory_offset",
+      "factory_offset_mm",
+      "offset",
+      "offset_mm",
+      "wheel_offset",
+      "rim_offset",
+      "et",
+      "et_offset",
+      "et_offset_mm",
+    ]),
+  ) ?? parsedWheel.factoryOffsetMm;
+  const explicitOffsetMin = numberOrNull(
+    findFirstValue(source, [
+      "offset_min",
+      "offset_min_mm",
+      "et_min",
+      "et_min_mm",
+      "min_offset",
+    ]),
+  );
+  const explicitOffsetMax = numberOrNull(
+    findFirstValue(source, [
+      "offset_max",
+      "offset_max_mm",
+      "et_max",
+      "et_max_mm",
+      "max_offset",
+    ]),
+  );
+  const factoryRimWidthIn = numberOrNull(
+    findFirstValue(source, [
+      "factory_rim_width",
+      "factory_rim_width_in",
+      "rim_width",
+      "rim_width_in",
+      "wheel_width",
+      "wheel_width_in",
+    ]),
+  ) ?? parsedWheel.factoryRimWidthIn;
+  const boltThread = firstString(findFirstValue(source, [
+    "bolt_thread",
+    "bolt_thread_size",
+    "lug_thread",
+    "lug_nut_thread",
+    "thread_size",
+    "fastener_thread",
+  ])) || null;
+  const boltSeat = firstString(findFirstValue(source, [
+    "bolt_seat",
+    "lug_seat",
+    "seat_type",
+    "fastener_seat",
+  ])) || null;
+  const brakeClearanceNotes = firstString(findFirstValue(source, [
+    "brake_clearance",
+    "brake_clearance_notes",
+    "brake_notes",
+    "caliper_clearance",
+    "caliper_notes",
+  ])) || null;
+
+  const offsetMinMm = explicitOffsetMin ?? (factoryOffsetMm !== null ? factoryOffsetMm - 5 : null);
+  const offsetMaxMm = explicitOffsetMax ?? (factoryOffsetMm !== null ? factoryOffsetMm + 5 : null);
+  const hasMountingData = Boolean(
+    pcd ||
+      centerBoreMm !== null ||
+      factoryOffsetMm !== null ||
+      explicitOffsetMin !== null ||
+      explicitOffsetMax !== null ||
+      factoryRimWidthIn !== null ||
+      boltThread ||
+      boltSeat ||
+      brakeClearanceNotes,
+  );
+
+  if (!hasMountingData) return null;
+
+  return {
+    pcd,
+    centerBoreMm,
+    offsetMinMm,
+    offsetMaxMm,
+    factoryOffsetMm,
+    factoryRimWidthIn,
+    boltThread,
+    boltSeat,
+    brakeClearanceNotes,
+    source: "provider",
+  };
+}
+
+function mergeObjects(...sources: Array<Record<string, unknown> | null>) {
+  const merged: Record<string, unknown> = {};
+  for (const source of sources) {
+    flattenObject(source, merged);
+  }
+  return merged;
+}
+
+function flattenObject(value: unknown, target: Record<string, unknown>, prefix = "") {
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => flattenObject(item, target, `${prefix}${index}_`));
+    return;
+  }
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const normalizedKey = normalizeFieldKey(key);
+    const fullKey = `${prefix}${normalizedKey}`;
+    if (child === null || child === undefined || child === "") continue;
+    if (typeof child === "object") {
+      flattenObject(child, target, `${fullKey}_`);
+      continue;
+    }
+    target[fullKey] = child;
+    target[normalizedKey] ??= child;
+  }
+}
+
+function findFirstValue(source: Record<string, unknown>, keys: string[]) {
+  const normalizedKeys = keys.map(normalizeFieldKey);
+  for (const key of normalizedKeys) {
+    if (source[key] !== undefined && source[key] !== null && source[key] !== "") {
+      return source[key];
+    }
+  }
+
+  for (const [sourceKey, value] of Object.entries(source)) {
+    if (value === undefined || value === null || value === "") continue;
+    if (normalizedKeys.some((key) => sourceKey.endsWith(`_${key}`))) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function normalizeFieldKey(value: string) {
+  return String(value).trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function parseWheelMountingText(value: string) {
+  const text = value.trim();
+  const widthMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:j|x|×)/i);
+  const etMatch = text.match(/\b(?:et|offset)\s*(-?\d+(?:[.,]\d+)?)/i);
+  const pcdMatch = text.match(/\b(\d)\s*[x×]\s*(\d{2,3}(?:[.,]\d+)?)\b/i);
+
+  return {
+    factoryRimWidthIn: widthMatch ? numberOrNull(widthMatch[1].replace(",", ".")) : null,
+    factoryOffsetMm: etMatch ? numberOrNull(etMatch[1].replace(",", ".")) : null,
+    pcd: pcdMatch ? `${pcdMatch[1]}x${pcdMatch[2].replace(",", ".")}` : null,
+  };
+}
+
+function normalizePcd(value: string) {
+  const text = value.trim();
+  if (!text) return null;
+  const match = text.match(/(\d)\s*[x×]\s*(\d{2,3}(?:[.,]\d+)?)/i);
+  if (!match) return text.replace(/\s+/g, "").replace("×", "x").replace(",", ".").toLowerCase();
+  return `${match[1]}x${match[2].replace(",", ".")}`;
+}
+
 function formatTyreSizeMatch(match: RegExpMatchArray) {
   const [, width, aspect, rim, loadIndex, speedRating] = match;
   return `${width}/${aspect} R${rim}${
@@ -633,6 +868,15 @@ function restoreCachedVehicle(
   );
   restored.factoryTyreSize = restored.factoryTyreSizes[0] ??
     normalizeFactoryTyreSize(restored.factoryTyreSize);
+  if (!restored.rimMounting) {
+    const repairedMounting = extractRimMountingData(
+      restored.specifications ?? null,
+      restored.lookups?.plateDecoder ?? null,
+      restored.lookups?.internationalVinDecoder ?? null,
+      restored.lookups?.specifications ?? null,
+    );
+    restored.rimMounting = repairedMounting ? { ...repairedMounting, source: "cache" } : null;
+  }
   return restored;
 }
 

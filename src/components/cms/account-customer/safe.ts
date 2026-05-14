@@ -23,6 +23,7 @@ import type {
   CustomerServiceBookEntry,
   CustomerStatus,
   CustomerType,
+  CustomerVehiclePlateLookupRow,
   CustomerVehicleDraft,
   CustomerVehicleRow,
   LicensePlateConflict,
@@ -246,6 +247,29 @@ function normalizeVehicleRow(row: unknown): CustomerVehicleRow | null {
     notes: text(source.notes),
     hidden: Boolean(source.hidden),
     createdAt: nullableText(source.created_at),
+    updatedAt: nullableText(source.updated_at),
+  };
+}
+
+export function normalizeCustomerVehiclePlateLookup(row: unknown): CustomerVehiclePlateLookupRow | null {
+  const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+  const vehicleId = text(source.vehicle_id);
+  const customerId = text(source.customer_id);
+  const licensePlate = text(source.license_plate).toUpperCase();
+  if (!vehicleId || !customerId || !licensePlate) return null;
+
+  return {
+    vehicleId,
+    customerId,
+    licensePlate,
+    vehicleName: text(source.vehicle_name),
+    vin: text(source.vin),
+    notes: text(source.notes),
+    hidden: Boolean(source.hidden),
+    customerName: text(source.customer_name),
+    customerEmail: text(source.customer_email),
+    customerPhone: text(source.customer_phone),
+    customerStatus: text(source.customer_status),
     updatedAt: nullableText(source.updated_at),
   };
 }
@@ -664,11 +688,17 @@ export function normalizeLicensePlateConflict(row: unknown): LicensePlateConflic
   const source = row && typeof row === 'object' ? row as Record<string, unknown> : {};
   const licensePlate = text(source.license_plate).toUpperCase();
   if (!licensePlate) return null;
+  const resolutionDetails = source.resolution_details && typeof source.resolution_details === 'object'
+    ? source.resolution_details as Record<string, unknown>
+    : {};
 
   return {
     licensePlate,
     customerCount: finiteCount(source.customer_count),
     customers: normalizeArrayRows(source.customers, normalizeConflictOwner),
+    resolution: text(source.resolution),
+    primaryCustomerId: nullableText(source.primary_customer_id),
+    resolutionDetails,
   };
 }
 

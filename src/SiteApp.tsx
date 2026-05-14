@@ -1,38 +1,46 @@
-import React, { Suspense, lazy, startTransition, useState, useEffect, useCallback, useRef } from 'react';
-import { LanguageProvider, useLanguage } from './components/LanguageContext';
-import { ThemeProvider } from './components/ThemeContext';
-import { CartProvider, useCart } from './components/CartContext';
-import { CartDrawer } from './components/CartDrawer';
-import { CheckoutPage } from './components/CheckoutPage';
-import { CheckoutSuccessPage } from './components/CheckoutSuccessPage';
-import { CheckoutCancelPage } from './components/CheckoutCancelPage';
-import { Navbar } from './components/Navbar';
-import { Footer } from './components/Footer';
-import { ContactSection } from './components/ContactSection';
-import { AuthModal } from './components/AuthModal';
-import { EmergencyTowModal } from './components/EmergencyTowModal';
-import { BookingModal } from './components/BookingModal';
-import { ServicesPage } from './components/ServicesPage';
-import { TireHotelPage } from './components/TireHotelPage';
-import { AboutPage } from './components/AboutPage';
-import { LegalPage } from './components/LegalPage';
+import React, { startTransition, useState, useEffect, useCallback, useRef } from 'react';
+import { LanguageProvider, translateForLanguage, useLanguage } from './i18n/LanguageContext';
+import { ThemeProvider } from './theme/ThemeContext';
+import { Toaster } from './components/shared/Toaster';
+import { CartProvider, useCart } from './components/site/cart/CartContext';
+import { CartDrawer } from './components/site/cart/CartDrawer';
+import { CheckoutPage } from './components/site/checkout/CheckoutPage';
+import { CheckoutSuccessPage } from './components/site/checkout/CheckoutSuccessPage';
+import { CheckoutCancelPage } from './components/site/checkout/CheckoutCancelPage';
+import { Navbar } from './components/site/layout/Navbar';
+import { Footer } from './components/site/layout/Footer';
+import { ContactSection } from './components/site/sections/ContactSection';
+import { AuthModal } from './components/site/modals/AuthModal';
+import { EmergencyTowModal } from './components/site/modals/EmergencyTowModal';
+import { BookingModal } from './components/site/booking/BookingModal';
+import { ServicesPage } from './components/site/pages/ServicesPage';
+import { TireHotelPage } from './components/site/pages/TireHotelPage';
+import { AboutPage } from './components/site/pages/AboutPage';
+import { LegalPage } from './components/site/pages/LegalPage';
 import { CatalogPage } from './components/catalog/CatalogPage';
 import { ProductDetailPage, type Product as ProductDetail, type TireProduct as DetailTireProduct } from './components/catalog/ProductDetailPage';
 import { mapProductSearchRow, type CatalogProduct } from './components/catalog/CatalogPage';
-import { CmsGuard } from './components/cms/CmsGuard';
-import { useCmsAccess } from './components/cms/CmsAccessContext';
-import { CmsTabErrorBoundary } from './components/cms/CmsTabErrorBoundary';
-// NEW PAGES
-import { ContactPage } from './components/ContactPage';
-import { FAQPage } from './components/FAQPage';
-import { HelsinkiPage } from './components/HelsinkiPage';
-import { CarServicePage } from './components/CarServicePage';
-import { TireChangePage } from './components/TireChangePage';
-import { DiagnosticsPage } from './components/DiagnosticsPage';
-import { CarWashPage } from './components/CarWashPage';
-import { CustomerBookingManagePage } from './components/CustomerBookingManagePage';
-import { CustomerAccountPage } from './components/CustomerAccountPage';
-import { NotFoundPage } from './components/NotFoundPage';
+import { CmsGuard } from './components/cms/core/CmsGuard';
+import { CmsControlCenter, type CmsTab } from './components/cms/layout/CmsControlCenter';
+import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
+import { RescueCMSPage } from './components/cms/rescue/RescueCMSPage';
+import { TiresCMSPage } from './components/cms/tires/TiresCMSPage';
+import { TiresConflictResolvePage } from './components/cms/tires/TiresConflictResolvePage';
+import { RimsCMSPage } from './components/cms/rims/RimsCMSPage';
+import { OrdersCMSPage } from './components/cms/orders/OrdersCMSPage';
+import { InvoicesCMSPage } from './components/cms/invoices/InvoicesCMSPage';
+import { AccountCustomerCMSPage } from './components/cms/account-customer/AccountCustomerCMSPage';
+// Site pages
+import { ContactPage } from './components/site/pages/ContactPage';
+import { FAQPage } from './components/site/pages/FAQPage';
+import { HelsinkiPage } from './components/site/pages/HelsinkiPage';
+import { CarServicePage } from './components/site/pages/CarServicePage';
+import { TireChangePage } from './components/site/pages/TireChangePage';
+import { DiagnosticsPage } from './components/site/pages/DiagnosticsPage';
+import { CarWashPage } from './components/site/pages/CarWashPage';
+import { CustomerBookingManagePage } from './components/site/pages/CustomerBookingManagePage';
+import { CustomerAccountPage } from './components/site/pages/CustomerAccountPage';
+import { NotFoundPage } from './components/site/pages/NotFoundPage';
 import { CmsPwaScreen } from './CmsPwaApp';
 import { Button } from './components/ui/button';
 import { Card, CardContent } from './components/ui/card';
@@ -79,31 +87,6 @@ const heroImages = [
   }
 ];
 
-const AdminSchedulePage = lazy(() =>
-  import('./components/admin/AdminSchedulePage').then((module) => ({ default: module.AdminSchedulePage }))
-);
-const RescueCMSPage = lazy(() =>
-  import('./components/cms/RescueCMSPage').then((module) => ({ default: module.RescueCMSPage }))
-);
-const TiresCMSPage = lazy(() =>
-  import('./components/cms/TiresCMSPage').then((module) => ({ default: module.TiresCMSPage }))
-);
-const TiresConflictResolvePage = lazy(() =>
-  import('./components/cms/TiresConflictResolvePage').then((module) => ({ default: module.TiresConflictResolvePage }))
-);
-const RimsCMSPage = lazy(() =>
-  import('./components/cms/RimsCMSPageV2').then((module) => ({ default: module.RimsCMSPageV2 }))
-);
-const OrdersCMSPage = lazy(() =>
-  import('./components/cms/OrdersCMSPage').then((module) => ({ default: module.OrdersCMSPage }))
-);
-const InvoicesCMSPage = lazy(() =>
-  import('./components/cms/InvoicesCMSPage').then((module) => ({ default: module.InvoicesCMSPage }))
-);
-const AccountCustomerCMSPage = lazy(() =>
-  import('./components/cms/AccountCustomerCMSPage').then((module) => ({ default: module.AccountCustomerCMSPage }))
-);
-
 type ParsedTireSize = {
   width?: number;
   aspect?: number;
@@ -113,9 +96,6 @@ type ParsedTireSize = {
   speedRating?: string;
 };
 
-type CmsTab = 'rescue' | 'schedule' | 'catalog-tires' | 'catalog-rims' | 'orders' | 'invoices' | 'account-customer' | 'future';
-const BOOKING_STATUS_HANDOFF = 'handoff';
-
 function resolveCmsTabFromHash(hash?: string): CmsTab {
   const normalized = (hash ?? '').replace('#', '').toLowerCase();
 
@@ -123,12 +103,18 @@ function resolveCmsTabFromHash(hash?: string): CmsTab {
     return 'rescue';
   }
 
-  if (normalized === 'catalog-tires') {
-    return 'catalog-tires';
+  if (normalized === 'schedule') {
+    return 'schedule';
   }
 
-  if (normalized === 'catalog-rims') {
-    return 'catalog-rims';
+  if (
+    normalized === 'catalog' ||
+    normalized === 'catalog-tires' ||
+    normalized === 'catalog-rims' ||
+    normalized === 'catalog/tires' ||
+    normalized === 'catalog/rims'
+  ) {
+    return 'catalog';
   }
 
   if (normalized === 'orders') {
@@ -170,303 +156,6 @@ function parseCatalogDetailPath(path: string): { productType: 'tire' | 'rim'; id
     productType: match[1] as 'tire' | 'rim',
     identifier: decodeURIComponent(match[2]),
   };
-}
-
-function CmsRouteFallback() {
-  return (
-    <div className="min-h-[50vh] flex items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF6B35]" />
-        <p className="text-sm text-muted-foreground">Loading CMS…</p>
-      </div>
-    </div>
-  );
-}
-
-function CmsTabContent({ tab }: { tab: CmsTab }) {
-  if (tab === 'rescue') {
-    return (
-      <Suspense fallback={<CmsRouteFallback />}>
-        <RescueCMSPage />
-      </Suspense>
-    );
-  }
-
-  if (tab === 'schedule') {
-    return (
-      <Suspense fallback={<CmsRouteFallback />}>
-        <AdminSchedulePage />
-      </Suspense>
-    );
-  }
-
-  if (tab === 'catalog-tires') {
-    return (
-      <Suspense fallback={<CmsRouteFallback />}>
-        <TiresCMSPage />
-      </Suspense>
-    );
-  }
-
-  if (tab === 'catalog-rims') {
-    return (
-      <Suspense fallback={<CmsRouteFallback />}>
-        <RimsCMSPage />
-      </Suspense>
-    );
-  }
-
-  if (tab === 'orders') {
-    return (
-      <Suspense fallback={<CmsRouteFallback />}>
-        <OrdersCMSPage />
-      </Suspense>
-    );
-  }
-
-  if (tab === 'invoices') {
-    return (
-      <Suspense fallback={<CmsRouteFallback />}>
-        <InvoicesCMSPage documentScope="receipt" title="Receipt" />
-      </Suspense>
-    );
-  }
-
-  if (tab === 'account-customer') {
-    return (
-      <Suspense fallback={<CmsRouteFallback />}>
-        <AccountCustomerCMSPage />
-      </Suspense>
-    );
-  }
-
-  return (
-    <div className="space-y-2 p-8 text-muted-foreground">
-      <h2 className="text-xl font-semibold text-foreground">Coming soon</h2>
-      <p>Reserved for upcoming CMS modules.</p>
-    </div>
-  );
-}
-
-function CmsControlCenter({
-  cmsTab,
-  cmsTabs,
-  onTabChange,
-}: {
-  cmsTab: CmsTab;
-  cmsTabs: Array<{ id: CmsTab; label: string; description: string }>;
-  onTabChange: (tab: CmsTab) => void;
-}) {
-  const access = useCmsAccess();
-  const visibleTabs = access?.canManageAccounts
-    ? cmsTabs
-    : access?.role === 'admin'
-      ? cmsTabs.filter((tab) => tab.id !== 'account-customer')
-      : cmsTabs.filter((tab) => tab.id === 'account-customer');
-  const activeTab = visibleTabs.some((tab) => tab.id === cmsTab)
-    ? cmsTab
-    : visibleTabs[0]?.id ?? 'account-customer';
-
-  return (
-    <div className="bg-background">
-      <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">CMS Beta</p>
-              <h1 className="text-3xl font-semibold text-foreground">Control Center</h1>
-            </div>
-            {access?.canManageAccounts ? <CmsBetaHandoffControl /> : null}
-          </div>
-          <p className="text-muted-foreground max-w-3xl">
-            {access?.canManageAccounts
-              ? 'Navigate between operations, catalog, account, and customer tools.'
-              : 'Customer workspace for supervisors.'}
-          </p>
-        </div>
-
-        <div className="overflow-x-auto rounded-lg border bg-card p-1 shadow-sm">
-          <div className={`grid gap-1 ${visibleTabs.length === 1 ? 'grid-cols-1' : 'min-w-[960px] grid-cols-8'}`}>
-            {visibleTabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
-                  className={`flex min-h-[58px] min-w-0 items-center justify-center rounded-md px-3 py-2 text-center transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">
-                      {access?.canManageAccounts ? tab.label : 'Customer'}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-card shadow-sm">
-          <CmsTabErrorBoundary resetKey={activeTab}>
-            <CmsTabContent tab={activeTab} />
-          </CmsTabErrorBoundary>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CmsBetaHandoffControl() {
-  const [handoffCount, setHandoffCount] = useState(0);
-  const [forceClearCount, setForceClearCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-
-  const loadCounts = useCallback(async () => {
-    const [{ count: handoff }, forceClearQuery] = await Promise.all([
-      supabase
-        .from('bookings')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', BOOKING_STATUS_HANDOFF),
-      supabase
-        .from('bookings')
-        .select('id, status')
-        .neq('status', 'cancelled'),
-    ]);
-
-    setHandoffCount(handoff ?? 0);
-    setForceClearCount(
-      (forceClearQuery.data ?? []).filter((booking) => (booking.status || 'confirmed').toLowerCase() !== 'confirmed').length,
-    );
-  }, []);
-
-  useEffect(() => {
-    void loadCounts();
-    const intervalId = window.setInterval(() => {
-      void loadCounts();
-    }, 30000);
-
-    return () => window.clearInterval(intervalId);
-  }, [loadCounts]);
-
-  const handleFinishHandoff = async () => {
-    if (loading || handoffCount === 0) return;
-    setLoading(true);
-
-    try {
-      const { data, error: queryError } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('status', BOOKING_STATUS_HANDOFF);
-
-      if (queryError) {
-        throw queryError;
-      }
-
-      const ids = (data ?? []).map((booking) => booking.id).filter(Boolean);
-      if (ids.length === 0) {
-        setHandoffCount(0);
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update({ status: 'confirmed' })
-        .in('id', ids);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      toast.success('Booking handoff cleared');
-      await loadCounts();
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to clear booking handoff');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForceClearAll = async () => {
-    if (loading || forceClearCount === 0) return;
-    setLoading(true);
-
-    try {
-      const { data, error: queryError } = await supabase
-        .from('bookings')
-        .select('id, status')
-        .neq('status', 'cancelled');
-
-      if (queryError) {
-        throw queryError;
-      }
-
-      const ids = (data ?? [])
-        .filter((booking) => (booking.status || 'confirmed').toLowerCase() !== 'confirmed')
-        .map((booking) => booking.id)
-        .filter(Boolean);
-
-      if (ids.length === 0) {
-        setForceClearCount(0);
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update({ status: 'confirmed' })
-        .in('id', ids);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      toast.success('All booking statuses cleared to confirmed');
-      await loadCounts();
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to force clear booking statuses');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (handoffCount > 0 || forceClearCount > 0) {
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        {handoffCount > 0 ? (
-          <button
-            type="button"
-            onClick={handleFinishHandoff}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
-          >
-            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-            {loading ? 'Clearing handoff...' : `Clear handoff (${handoffCount})`}
-          </button>
-        ) : null}
-        {forceClearCount > 0 ? (
-          <button
-            type="button"
-            onClick={handleForceClearAll}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
-          >
-            <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-            {loading ? 'Force clearing...' : `Force clear (${forceClearCount})`}
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
-      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-      Switch tabs to access schedule and catalog tools
-    </span>
-  );
 }
 
 const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
@@ -529,6 +218,8 @@ function generateProductImages(productId: string, baseImageUrl: string, productT
 }
 
 function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en' = 'en'): ProductDetail {
+  const tireDeliveryDays = translateForLanguage(language, 'catalog.delivery.tireDays');
+  const rimDeliveryDays = translateForLanguage(language, 'catalog.delivery.rimDays');
   const cmsImages =
     Array.isArray(product.gallery_images)
       ? product.gallery_images
@@ -602,7 +293,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
       in_stock: product.in_stock,
       stock_quantity: product.in_stock ? Math.max(0, product.stock_qty ?? 0) : 0,
       supplier_name: undefined,
-      delivery_days: product.delivery_days ?? (product.in_stock ? (language === 'fi' ? '1-3 päivää' : '1-3 Days') : undefined),
+      delivery_days: product.delivery_days ?? (product.in_stock ? tireDeliveryDays : undefined),
       delivery_days_min: product.delivery_days_min,
       delivery_days_max: product.delivery_days_max,
       weight: undefined,
@@ -623,8 +314,10 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
     cb: product.cb,
     color: product.color,
     material: product.material,
-    finish: undefined,
+    finish: product.finish,
     weight: undefined,
+    tags: product.tags,
+    generated_tags: product.generated_tags,
     best_price_eur: product.best_price_eur,
     best_image_url: product.best_image_url,
     images: detailImages,
@@ -634,7 +327,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
       in_stock: product.in_stock,
       stock_quantity: product.in_stock ? 4 : 0,
       supplier_name: undefined,
-      delivery_days: product.delivery_days ?? (product.in_stock ? (language === 'fi' ? '2-5 päivää' : '2-5 Days') : undefined),
+      delivery_days: product.delivery_days ?? (product.in_stock ? rimDeliveryDays : undefined),
       delivery_days_min: product.delivery_days_min,
       delivery_days_max: product.delivery_days_max,
       compatible_vehicles: [],
@@ -714,13 +407,13 @@ function HomePage() {
     if (invoicePaymentStatus) {
       const invoiceSuffix = invoiceNumber ? ` ${invoiceNumber}` : '';
       if (invoicePaymentStatus === 'paid') {
-        toast.success(language === 'fi' ? `Maksu vastaanotettu.${invoiceSuffix}` : `Payment received.${invoiceSuffix}`);
+        toast.success(t('toast.paymentReceived', { suffix: invoiceSuffix }));
       } else if (invoicePaymentStatus === 'already_paid') {
-        toast.info(language === 'fi' ? `Lasku on jo maksettu.${invoiceSuffix}` : `Invoice already paid.${invoiceSuffix}`);
+        toast.info(t('toast.invoiceAlreadyPaid', { suffix: invoiceSuffix }));
       } else if (invoicePaymentStatus === 'failed') {
-        toast.error(language === 'fi' ? `Maksu ei valmistunut.${invoiceSuffix}` : `Payment was not completed.${invoiceSuffix}`);
+        toast.error(t('toast.paymentIncomplete', { suffix: invoiceSuffix }));
       } else {
-        toast.info(language === 'fi' ? `Maksua vahvistetaan.${invoiceSuffix}` : `Payment is being confirmed.${invoiceSuffix}`);
+        toast.info(t('toast.paymentConfirming', { suffix: invoiceSuffix }));
       }
 
       params.delete('invoice_payment');
@@ -740,7 +433,7 @@ function HomePage() {
       }).then(({ data, error }) => {
         if (cancelled) return;
         if (error) {
-          toast.error(language === 'fi' ? 'Asennusvarauksen linkki ei ole voimassa.' : 'The install booking link is not valid.');
+          toast.error(t('toast.installBookingInvalid'));
           return;
         }
         setPreSelectedService(data?.serviceId || 'tire-change-car');
@@ -761,7 +454,7 @@ function HomePage() {
       setPreSelectedService('');
       setBookingModalOpen(true);
     }
-  }, [language]);
+  }, [t]);
 
 
 
@@ -889,7 +582,12 @@ function HomePage() {
       }
       
       // Admin/CMS/Protected routes
-      else if (normalizedPath === '/admin/schedule') {
+      else if (normalizedPath === '/dashboard') {
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(window.history.state, '', '/cms');
+        }
+        transitionNavigationState('cms-beta', null, nextCmsTab ?? 'rescue');
+      } else if (normalizedPath === '/admin/schedule') {
         transitionNavigationState('admin-schedule');
       } else if (
         normalizedPath === '/pwa/cms' ||
@@ -986,7 +684,7 @@ function HomePage() {
         setSelectedProduct(detail);
       });
       const detailIdentifier =
-        product.product_type === 'tire' && product.seo_slug
+        product.seo_slug
           ? product.seo_slug
           : product.id;
       const detailPath = `/catalog/${product.product_type}/${detailIdentifier}`;
@@ -1192,26 +890,17 @@ function HomePage() {
     {
       name: 'Matti Virtanen',
       rating: 5,
-      text: {
-        fi: 'Erittäin nopea ja ammattitaitoinen palvelu. Suosittelen lämpimästi!',
-        en: 'Very fast and professional service. Highly recommended!',
-      },
+      textKey: 'common.review.matti',
     },
     {
       name: 'Anna Korhonen',
       rating: 5,
-      text: {
-        fi: 'Rengashotelli toimii loistavasti. Ei tarvitse vaivata kotona.',
-        en: 'Tire hotel works perfectly. No need to store at home.',
-      },
+      textKey: 'common.review.anna',
     },
     {
       name: 'Jukka Nieminen',
       rating: 5,
-      text: {
-        fi: 'Helppo varata verkossa ja hinnat kilpailukykyiset.',
-        en: 'Easy to book online and competitive prices.',
-      },
+      textKey: 'common.review.jukka',
     },
   ];
 
@@ -1267,14 +956,13 @@ function HomePage() {
   ];
 
   const cmsTabs = [
-    { id: 'rescue' as const, label: 'Rescue 24/7', description: 'Manage emergency requests' },
-    { id: 'schedule' as const, label: 'Booking Schedule', description: 'Manage appointments' },
-    { id: 'catalog-tires' as const, label: 'Tire Catalog', description: 'Edit tire content' },
-    { id: 'catalog-rims' as const, label: 'Rim Catalog', description: 'Edit rim content' },
-    { id: 'orders' as const, label: 'Order & Invoice', description: 'Track purchases and invoice payments' },
-    { id: 'invoices' as const, label: 'Receipt', description: 'Receipts and paid documents' },
-    { id: 'account-customer' as const, label: 'Account', description: 'Manage CMS access and customer records' },
-    { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
+    { id: 'rescue' as const, label: t('cmsTabs.rescue'), description: t('cmsTabs.rescueDescription') },
+    { id: 'schedule' as const, label: t('cmsTabs.schedule'), description: t('cmsTabs.scheduleDescription') },
+    { id: 'catalog' as const, label: t('cmsTabs.catalog'), description: t('cmsTabs.catalogDescription') },
+    { id: 'orders' as const, label: t('cmsTabs.orders'), description: t('cmsTabs.ordersDescription') },
+    { id: 'invoices' as const, label: t('cmsTabs.invoices'), description: t('cmsTabs.invoicesDescription') },
+    { id: 'account-customer' as const, label: t('cmsTabs.account'), description: t('cmsTabs.accountDescription') },
+    { id: 'future' as const, label: t('cmsTabs.futureTools'), description: t('cmsTabs.futureToolsDescription') },
   ];
 
   const isPwaRoute = currentPage === 'pwa-cms' || currentPage === 'pwa-not-found';
@@ -1420,9 +1108,11 @@ function HomePage() {
               onAddToCart={(product, quantity) => {
                 addToCart(product, quantity);
                 toast.success(
-                  language === 'fi' 
-                    ? `${quantity} × ${product.brand} ${product.model} lisätty ostoskoriin`
-                    : `${quantity} × ${product.brand} ${product.model} added to cart`
+                  t('toast.addedToCart', {
+                    quantity,
+                    brand: product.brand,
+                    model: product.model,
+                  })
                 );
               }}
             />
@@ -1451,45 +1141,31 @@ function HomePage() {
           />
         ) : currentPage === 'admin-schedule' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="schedule">
-            <Suspense fallback={<CmsRouteFallback />}>
-              <AdminSchedulePage />
-            </Suspense>
+            <AdminSchedulePage />
           </CmsGuard>
         ) : currentPage === 'cms-rescue' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="rescue">
-            <Suspense fallback={<CmsRouteFallback />}>
-              <RescueCMSPage />
-            </Suspense>
+            <RescueCMSPage />
           </CmsGuard>
         ) : currentPage === 'cms-tires' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
-            <Suspense fallback={<CmsRouteFallback />}>
-              <TiresCMSPage />
-            </Suspense>
+            <TiresCMSPage />
           </CmsGuard>
         ) : currentPage === 'cms-tire-conflicts' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
-            <Suspense fallback={<CmsRouteFallback />}>
-              <TiresConflictResolvePage />
-            </Suspense>
+            <TiresConflictResolvePage />
           </CmsGuard>
         ) : currentPage === 'cms-rims' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_rims">
-            <Suspense fallback={<CmsRouteFallback />}>
-              <RimsCMSPage />
-            </Suspense>
+            <RimsCMSPage />
           </CmsGuard>
         ) : currentPage === 'cms-orders' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="orders">
-            <Suspense fallback={<CmsRouteFallback />}>
-              <OrdersCMSPage />
-            </Suspense>
+            <OrdersCMSPage />
           </CmsGuard>
         ) : currentPage === 'cms-invoices' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="invoices">
-            <Suspense fallback={<CmsRouteFallback />}>
-              <InvoicesCMSPage documentScope="receipt" title="Receipt" />
-            </Suspense>
+            <InvoicesCMSPage documentScope="receipt" title="Receipt" />
           </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
@@ -1830,7 +1506,7 @@ function HomePage() {
                       </div>
                     </div>
                   </div>
-                  <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:line-clamp-none sm:text-base">"{review.text[language]}"</p>
+                  <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:line-clamp-none sm:text-base">"{t(review.textKey)}"</p>
                 </div>
               ))}
             </div>
@@ -1847,13 +1523,13 @@ function HomePage() {
                         <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">4.9</span>
                         <span className="text-lg text-muted-foreground sm:text-2xl">/5</span>
                       </div>
-                      <div className="mb-2 flex justify-center gap-0.5 sm:gap-1" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
+                      <div className="mb-2 flex justify-center gap-0.5 sm:gap-1" role="img" aria-label={t('common.ratingAria')}>
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent drop-shadow-sm sm:h-5 sm:w-5" />
                         ))}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {language === 'fi' ? 'Asiakasarvostelut' : 'Customer Rating'}
+                        {t('common.customerRating')}
                       </p>
                     </div>
                   </div>
@@ -1866,7 +1542,7 @@ function HomePage() {
                         <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">500</span>
                         <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">+</span>
                       </div>
-                      <div className="mb-2 flex justify-center gap-1" role="img" aria-label="500+ happy customers">
+                      <div className="mb-2 flex justify-center gap-1" role="img" aria-label={t('common.happyCustomersAria')}>
                         <Users className="h-4 w-4 fill-[#FF6B35] text-[#FF6B35] drop-shadow-sm sm:h-5 sm:w-5" />
                       </div>
                       <p className="text-sm text-muted-foreground">
@@ -1956,6 +1632,7 @@ function App() {
       <LanguageProvider>
         <CartProvider>
           <HomePage />
+          <Toaster />
         </CartProvider>
       </LanguageProvider>
     </ThemeProvider>

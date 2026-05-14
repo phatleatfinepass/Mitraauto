@@ -28,11 +28,13 @@ export function BookingThreadList({
   onSelect,
   onSync,
 }: BookingThreadListProps) {
+  const dateLocale = { fi: 'fi-FI', en: 'en-US' }[language as 'fi' | 'en'] ?? 'en-US';
+
   return (
     <section className={`flex min-h-0 flex-col lg:col-span-2 xl:col-span-1 ${theme === 'dark' ? 'border-white/10 bg-[#0D1015]' : 'border-gray-200 bg-[#F7F7F3]'} xl:border-r`}>
       <div className={`flex items-start justify-between gap-3 border-b px-5 py-4 ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
         <div>
-          <h3 className="text-sm font-semibold">{language === 'fi' ? 'Viestit' : 'Messages'}</h3>
+          <h3 className="text-sm font-semibold">{t('messages')}</h3>
           <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             {t('conversationHistory')}
           </p>
@@ -108,7 +110,7 @@ export function BookingThreadList({
 
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                      {new Date(timestamp).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')}
+                      {new Date(timestamp).toLocaleString(dateLocale)}
                     </p>
                     <button
                       type="button"

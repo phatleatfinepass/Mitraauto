@@ -161,7 +161,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
                 {booking.bookingDate || '-'} {booking.bookingTime || ''} · {booking.licensePlate || 'No plate'}
               </div>
               <div className="mt-2">
-                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms')}>
+                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms#schedule')}>
                   Open schedule
                 </a>
               </div>
@@ -181,7 +181,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
                 {formatDate(order.createdAt)} · {formatMoney(order.totalCents)}
               </div>
               <div className="mt-2">
-                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms/orders')}>
+                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms#orders')}>
                   Open orders
                 </a>
               </div>
@@ -201,7 +201,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
                 {formatDate(invoice.createdAt)} · {formatMoney(invoice.totalCents)}
               </div>
               <div className="mt-2">
-                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms/invoices')}>
+                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms#invoices')}>
                   Open receipts
                 </a>
               </div>
@@ -221,7 +221,7 @@ export function CustomerHistoryPanel({ customerId }: CustomerHistoryPanelProps) 
                 {formatDate(request.createdAt)} · {request.licensePlate || 'No plate'} · {request.city || request.phone || '-'}
               </div>
               <div className="mt-2">
-                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms/rescue')}>
+                <a className="text-xs font-medium text-primary hover:underline" href={cmsHref('/cms#rescue')}>
                   Open rescue
                 </a>
               </div>

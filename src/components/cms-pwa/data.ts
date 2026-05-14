@@ -1,60 +1,41 @@
 import type { BriefingItem } from './CmsPwaBriefingCard';
 import type { CmsPwaTab } from './CmsPwaTabBar';
 import type { BookingRow, CmsPwaRoute, OrderRow, TabSection } from './types';
+import type { Language } from '../../i18n/types';
 import { detectStoredServiceLanguage, localizeStoredServiceName } from '../../utils/serviceCatalog';
 import { isInstalledPwaDisplay, isStandalonePwaDeploy, pwaPath } from '../../config/runtime';
 
 export const REFRESH_INTERVAL_MS = 30_000;
 export const BOOKING_STATUS_HANDOFF = 'handoff';
 
-const BOOKING_CARD_COPY = {
-  fi: {
-    newBookingsTitle: 'Uudet varaukset',
-    newBookingsCaption: 'Ei vielä siirretty desktop-CMS:ään',
-    upcomingTitle: 'Tulevat',
-    upcomingCaption: 'Seuraavat varatut ajat',
-    bookingFallback: 'Varaus',
-    upcomingFallback: 'Tuleva varaus',
-    customerBookingRequest: 'Asiakkaan varaustieto',
-    noNotes: 'Ei varausmuistiinpanoja.',
-    notHandedOff: 'Ei siirretty',
-    handoffActive: 'Siirto aktiivinen',
-    confirmed: 'Vahvistettu',
-    scheduled: 'Ajastettu',
-    handoffLabel: 'Siirretty',
-    createdLabel: 'Luotu',
-    confirmedLabel: 'Vahvistettu',
-    noteLabel: 'Varausmuistiinpano',
-    callCustomer: 'Soita asiakkaalle',
-    emailCustomer: 'Lähetä sähköposti',
-    finnish: 'Suomi',
-    english: 'Englanti',
-    newBookingsZeroTitle: 'Uudet varaukset: 0',
-  },
-  en: {
-    newBookingsTitle: 'New bookings',
-    newBookingsCaption: 'Not yet handed off to desktop CMS',
-    upcomingTitle: 'Upcoming',
-    upcomingCaption: 'Next scheduled bookings',
-    bookingFallback: 'Booking',
-    upcomingFallback: 'Upcoming booking',
-    customerBookingRequest: 'Customer booking request',
-    noNotes: 'No booking notes added yet.',
-    notHandedOff: 'Not handed off',
-    handoffActive: 'Handoff active',
-    confirmed: 'Confirmed',
-    scheduled: 'Scheduled',
-    handoffLabel: 'Handoff',
-    createdLabel: 'Created',
-    confirmedLabel: 'Confirmed',
-    noteLabel: 'Booking note',
-    callCustomer: 'Call customer',
-    emailCustomer: 'Email customer',
-    finnish: 'Finnish',
-    english: 'English',
-    newBookingsZeroTitle: 'New bookings: 0',
-  },
-} as const;
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+
+function buildBookingCardCopy(t: TranslateFn) {
+  return {
+    newBookingsTitle: t('cmsPwa.booking.newBookingsTitle'),
+    newBookingsCaption: t('cmsPwa.booking.newBookingsCaption'),
+    upcomingTitle: t('cmsPwa.booking.upcomingTitle'),
+    upcomingCaption: t('cmsPwa.booking.upcomingCaption'),
+    bookingFallback: t('cmsPwa.booking.bookingFallback'),
+    upcomingFallback: t('cmsPwa.booking.upcomingFallback'),
+    customerBookingRequest: t('cmsPwa.booking.customerBookingRequest'),
+    noNotes: t('cmsPwa.booking.noNotes'),
+    notHandedOff: t('cmsPwa.booking.notHandedOff'),
+    handoffActive: t('cmsPwa.booking.handoffActive'),
+    confirmed: t('cmsPwa.booking.confirmed'),
+    scheduled: t('cmsPwa.booking.scheduled'),
+    handoffLabel: t('cmsPwa.booking.handoffLabel'),
+    createdLabel: t('cmsPwa.booking.createdLabel'),
+    confirmedLabel: t('cmsPwa.booking.confirmedLabel'),
+    noteLabel: t('cmsPwa.booking.noteLabel'),
+    callCustomer: t('cmsPwa.booking.callCustomer'),
+    emailCustomer: t('cmsPwa.booking.emailCustomer'),
+    finnish: t('cmsPwa.booking.finnish'),
+    english: t('cmsPwa.booking.english'),
+    newBookingsZeroTitle: t('cmsPwa.booking.newBookingsZeroTitle'),
+    scheduledFallback: t('cmsPwa.booking.scheduledFallback'),
+  };
+}
 
 function buildTelHref(phone?: string | null) {
   if (!phone) {
@@ -72,110 +53,130 @@ export const tabPathMap: Record<CmsPwaTab, string> = {
   tools: pwaPath('/tools'),
 };
 
-export const toolSections: Array<{
+export function buildToolSections(t: TranslateFn): Array<{
   title: string;
   note: string;
   status: string;
-}> = [
-  { title: 'Rescue 24/7 escalation board', note: 'Planned dedicated queue and escalation routing.', status: 'Planned' },
-  { title: 'Push notification controls', note: 'Permission setup, device registration, and quiet hours.', status: 'Planned' },
-  { title: 'Driver assignment board', note: 'Dispatch view for rescue and urgent bookings.', status: 'Future' },
-  { title: 'Shift briefing shortcuts', note: 'Pinned actions for opening schedule, order, or rescue context.', status: 'Future' },
-];
+}> {
+  return [
+    {
+      title: t('cmsPwa.tools.rescueBoard.title'),
+      note: t('cmsPwa.tools.rescueBoard.note'),
+      status: t('cmsPwa.tools.planned'),
+    },
+    {
+      title: t('cmsPwa.tools.pushControls.title'),
+      note: t('cmsPwa.tools.pushControls.note'),
+      status: t('cmsPwa.tools.planned'),
+    },
+    {
+      title: t('cmsPwa.tools.driverBoard.title'),
+      note: t('cmsPwa.tools.driverBoard.note'),
+      status: t('cmsPwa.tools.future'),
+    },
+    {
+      title: t('cmsPwa.tools.shiftShortcuts.title'),
+      note: t('cmsPwa.tools.shiftShortcuts.note'),
+      status: t('cmsPwa.tools.future'),
+    },
+  ];
+}
 
-export const rescueSections: TabSection[] = [
-  {
-    title: 'New',
-    caption: 'Needs immediate response',
-    items: [
-      {
-        id: 'rescue-1',
-        title: 'BMW 320D stalled near Pasila',
-        subtitle: 'Customer reports engine cutout and cannot restart.',
-        status: 'Urgent rescue',
-        time: 'Created 04:18',
-        tone: 'critical',
-        location: 'Pasila station',
-        phone: '+358 40 555 2481',
-        owner: 'Unassigned',
-        details: [
-          'Vehicle blocks a loading lane and customer needs callback immediately.',
-          'Tow assistance not yet assigned. Customer waiting on site.',
-          'Priority should stay at the top until acknowledged.',
-        ],
-        actions: [
-          { label: 'Call now', kind: 'primary' },
-          { label: 'Assign' },
-          { label: 'Mark in progress' },
-        ],
-      },
-      {
-        id: 'rescue-2',
-        title: 'Tesla Model 3 low-voltage support request',
-        subtitle: 'Phone briefing only. No tow booked yet.',
-        status: 'Needs triage',
-        time: 'Created 03:52',
-        tone: 'warning',
-        location: 'Kalasatama',
-        phone: '+358 50 221 9173',
-        owner: 'Night shift',
-        details: [
-          'Customer needs advice on whether roadside support or workshop visit is required.',
-          'Battery warning visible. Car still movable.',
-        ],
-        actions: [
-          { label: 'Open briefing', kind: 'primary' },
-          { label: 'Call' },
-        ],
-      },
-    ],
-  },
-  {
-    title: 'In progress',
-    caption: 'Already acknowledged',
-    items: [
-      {
-        id: 'rescue-3',
-        title: 'Mercedes GLC tire damage',
-        subtitle: 'Replacement wheel arranged and technician on route.',
-        status: 'Technician assigned',
-        time: 'Updated 03:40',
-        tone: 'normal',
-        location: 'Espoo center',
-        owner: 'Ari K.',
-        details: [
-          'Customer has been contacted and ETA confirmed.',
-          'Keep visible until technician closes the case.',
-        ],
-        actions: [
-          { label: 'Open detail', kind: 'primary' },
-          { label: 'Message customer' },
-        ],
-      },
-    ],
-  },
-  {
-    title: 'Done today',
-    caption: 'Completed rescue work',
-    items: [
-      {
-        id: 'rescue-4',
-        title: 'Volvo XC60 jump-start complete',
-        subtitle: 'Customer released and case closed.',
-        status: 'Completed',
-        time: 'Closed 02:48',
-        tone: 'done',
-        owner: 'Mika L.',
-        details: [
-          'Resolved on site. Workshop follow-up recommended for battery replacement.',
-        ],
-        actions: [
-          { label: 'Open log' },
-        ],
-      },
-    ],
-  },
-];
+export function buildRescueSections(t: TranslateFn): TabSection[] {
+  return [
+    {
+      title: t('cmsPwa.rescue.new'),
+      caption: t('cmsPwa.rescue.needsImmediateResponse'),
+      items: [
+        {
+          id: 'rescue-1',
+          title: t('cmsPwa.rescue.bmwTitle'),
+          subtitle: t('cmsPwa.rescue.bmwSubtitle'),
+          status: t('cmsPwa.rescue.urgentRescue'),
+          time: t('cmsPwa.rescue.created0418'),
+          tone: 'critical',
+          location: t('cmsPwa.rescue.pasilaStation'),
+          phone: '+358 40 555 2481',
+          owner: t('cmsPwa.rescue.unassigned'),
+          details: [
+            t('cmsPwa.rescue.bmwDetail1'),
+            t('cmsPwa.rescue.bmwDetail2'),
+            t('cmsPwa.rescue.bmwDetail3'),
+          ],
+          actions: [
+            { label: t('cmsPwa.rescue.callNow'), kind: 'primary', icon: 'phone' },
+            { label: t('cmsPwa.rescue.assign') },
+            { label: t('cmsPwa.rescue.markInProgress') },
+          ],
+        },
+        {
+          id: 'rescue-2',
+          title: t('cmsPwa.rescue.teslaTitle'),
+          subtitle: t('cmsPwa.rescue.teslaSubtitle'),
+          status: t('cmsPwa.rescue.needsTriage'),
+          time: t('cmsPwa.rescue.created0352'),
+          tone: 'warning',
+          location: 'Kalasatama',
+          phone: '+358 50 221 9173',
+          owner: t('cmsPwa.rescue.nightShift'),
+          details: [
+            t('cmsPwa.rescue.teslaDetail1'),
+            t('cmsPwa.rescue.teslaDetail2'),
+          ],
+          actions: [
+            { label: t('cmsPwa.rescue.openBriefing'), kind: 'primary' },
+            { label: t('cmsPwa.rescue.call'), icon: 'phone' },
+          ],
+        },
+      ],
+    },
+    {
+      title: t('cmsPwa.rescue.inProgress'),
+      caption: t('cmsPwa.rescue.alreadyAcknowledged'),
+      items: [
+        {
+          id: 'rescue-3',
+          title: t('cmsPwa.rescue.mercedesTitle'),
+          subtitle: t('cmsPwa.rescue.mercedesSubtitle'),
+          status: t('cmsPwa.rescue.technicianAssigned'),
+          time: t('cmsPwa.rescue.updated0340'),
+          tone: 'normal',
+          location: t('cmsPwa.rescue.espooCenter'),
+          owner: 'Ari K.',
+          details: [
+            t('cmsPwa.rescue.mercedesDetail1'),
+            t('cmsPwa.rescue.mercedesDetail2'),
+          ],
+          actions: [
+            { label: t('cmsPwa.rescue.openDetail'), kind: 'primary' },
+            { label: t('cmsPwa.rescue.messageCustomer'), icon: 'mail' },
+          ],
+        },
+      ],
+    },
+    {
+      title: t('cmsPwa.rescue.doneToday'),
+      caption: t('cmsPwa.rescue.completedWork'),
+      items: [
+        {
+          id: 'rescue-4',
+          title: t('cmsPwa.rescue.volvoTitle'),
+          subtitle: t('cmsPwa.rescue.volvoSubtitle'),
+          status: t('cmsPwa.rescue.completed'),
+          time: t('cmsPwa.rescue.closed0248'),
+          tone: 'done',
+          owner: 'Mika L.',
+          details: [
+            t('cmsPwa.rescue.volvoDetail1'),
+          ],
+          actions: [
+            { label: t('cmsPwa.rescue.openLog') },
+          ],
+        },
+      ],
+    },
+  ];
+}
 
 export function resolveCmsPwaRoute(pathname: string): CmsPwaRoute {
   const normalized = pathname.replace(/\/+$/, '') || '/';
@@ -289,14 +290,14 @@ function orderTone(status: string): BriefingItem['tone'] {
   return 'normal';
 }
 
-function orderStatusLabel(status: string) {
-  if (status === 'receive') return 'New order';
-  if (status === 'sent') return 'Processing';
-  if (status === 'ready') return 'Ready';
-  if (status === 'delivered') return 'Delivered';
-  if (status === 'done') return 'Done';
-  if (status === 'cancelled') return 'Cancelled';
-  if (status === 'returned') return 'Returned';
+function orderStatusLabel(status: string, t: TranslateFn) {
+  if (status === 'receive') return t('cmsPwa.order.newOrder');
+  if (status === 'sent') return t('cmsPwa.order.processing');
+  if (status === 'ready') return t('cmsPwa.order.ready');
+  if (status === 'delivered') return t('cmsPwa.order.delivered');
+  if (status === 'done') return t('cmsPwa.order.done');
+  if (status === 'cancelled') return t('cmsPwa.order.cancelled');
+  if (status === 'returned') return t('cmsPwa.order.returned');
   return status.replace(/_/g, ' ');
 }
 
@@ -343,8 +344,8 @@ function normalizeBookingLanguage(value: string | null | undefined): 'fi' | 'en'
   return null;
 }
 
-export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en'): TabSection[] {
-  const copy = BOOKING_CARD_COPY[opsLanguage];
+export function buildBookingSections(rows: BookingRow[], opsLanguage: Language, t: TranslateFn): TabSection[] {
+  const copy = buildBookingCardCopy(t);
   const activeRows = rows.filter((booking) => (booking.status ?? 'confirmed').toLowerCase() !== 'cancelled');
   const now = Date.now();
 
@@ -408,7 +409,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
       return {
         id: `${booking.id}-upcoming`,
         title: localizedServiceName || booking.service_name || copy.upcomingFallback,
-        subtitle: booking.customer_name || booking.customer_email || 'Booking scheduled',
+        subtitle: booking.customer_name || booking.customer_email || copy.scheduledFallback,
         status: handoffActive ? copy.handoffActive : acknowledged ? copy.confirmed : copy.scheduled,
         secondaryStatus: handoffTimestamp ? `${copy.handoffLabel} ${formatShortDateTime(handoffTimestamp)}` : undefined,
         time: formatCalendarDateTimeLabel(booking.booking_date, booking.booking_time),
@@ -449,7 +450,7 @@ export function buildBookingSections(rows: BookingRow[], opsLanguage: 'fi' | 'en
   ];
 }
 
-export function buildOrderSections(rows: OrderRow[]): TabSection[] {
+export function buildOrderSections(rows: OrderRow[], t: TranslateFn): TabSection[] {
   const mapped = rows.map((order) => {
     const snapshot = normalizeOrderSnapshot(order.cart_snapshot);
     const derivedStatus = canonicalOrderStatus(
@@ -470,21 +471,21 @@ export function buildOrderSections(rows: OrderRow[]): TabSection[] {
       item: {
         id: order.id,
         title: `Order #${order.id.slice(0, 8)}`,
-        subtitle: firstItem?.name || snapshot.item_name || 'Order requires review',
-        status: orderStatusLabel(derivedStatus),
-        time: order.created_at ? `Created ${formatShortDateTime(order.created_at)}` : 'Created recently',
+        subtitle: firstItem?.name || snapshot.item_name || t('cmsPwa.order.requiresReview'),
+        status: orderStatusLabel(derivedStatus, t),
+        time: order.created_at ? `${t('cmsPwa.order.created')} ${formatShortDateTime(order.created_at)}` : t('cmsPwa.order.createdRecently'),
         tone: orderTone(derivedStatus),
         phone: order.customer_phone || undefined,
         owner: customerName || undefined,
         details: [
-          customerName ? `Customer: ${customerName}` : 'Customer name not available.',
-          order.customer_email ? `Email: ${order.customer_email}` : 'No customer email on file.',
-          totalLabel ? `Total: ${totalLabel}` : 'Total not available.',
+          customerName ? `${t('cmsPwa.order.customer')}: ${customerName}` : t('cmsPwa.order.customerNameMissing'),
+          order.customer_email ? `${t('cmsPwa.order.email')}: ${order.customer_email}` : t('cmsPwa.order.noCustomerEmail'),
+          totalLabel ? `${t('cmsPwa.order.total')}: ${totalLabel}` : t('cmsPwa.order.totalMissing'),
         ],
         actions: [
-          { label: 'Open order', kind: 'primary', href: '/cms' },
+          { label: t('cmsPwa.order.openOrder'), kind: 'primary', href: '/cms' },
           ...(buildTelHref(order.customer_phone)
-            ? [{ label: 'Call', href: buildTelHref(order.customer_phone) }]
+            ? [{ label: t('cmsPwa.order.call'), href: buildTelHref(order.customer_phone) }]
             : []),
         ],
       } satisfies BriefingItem,
@@ -493,13 +494,13 @@ export function buildOrderSections(rows: OrderRow[]): TabSection[] {
 
   return [
     {
-      title: 'New orders',
-      caption: 'Needs operator review',
+      title: t('cmsPwa.order.newOrders'),
+      caption: t('cmsPwa.order.needsReview'),
       items: mapped.filter((entry) => !['ready', 'delivered', 'done'].includes(entry.status)).slice(0, 10).map((entry) => entry.item),
     },
     {
-      title: 'Processed',
-      caption: 'Already handled',
+      title: t('cmsPwa.order.processed'),
+      caption: t('cmsPwa.order.alreadyHandled'),
       items: mapped.filter((entry) => ['ready', 'delivered', 'done'].includes(entry.status)).slice(0, 10).map((entry) => entry.item),
     },
   ];

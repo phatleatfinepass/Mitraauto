@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLanguage } from '../LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Fuel, Droplets, Volume2 } from 'lucide-react';
 
 interface EURatingProps {
@@ -9,7 +9,7 @@ interface EURatingProps {
 }
 
 export function EURating({ fuel, wet, noise }: EURatingProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
 
   const getRatingColor = (rating?: string) => {
     if (!rating) return 'text-[#B0B8C4]';
@@ -32,7 +32,7 @@ export function EURating({ fuel, wet, noise }: EURatingProps) {
   return (
     <div className="space-y-2">
       <p className="text-xs text-[#B0B8C4] uppercase tracking-wider">
-        {language === 'fi' ? 'EU-Merkinnät' : 'EU Labels'}
+        {t('catalog.euLabels')}
       </p>
       
       <div className="grid grid-cols-3 gap-2">
@@ -44,7 +44,7 @@ export function EURating({ fuel, wet, noise }: EURatingProps) {
               {fuel.toUpperCase()}
             </span>
             <span className="text-[10px] text-[#B0B8C4] text-center mt-0.5">
-              {language === 'fi' ? 'Polttoaine' : 'Fuel'}
+              {t('productDetail.fuelEfficiency')}
             </span>
           </div>
         )}
@@ -57,7 +57,7 @@ export function EURating({ fuel, wet, noise }: EURatingProps) {
               {wet.toUpperCase()}
             </span>
             <span className="text-[10px] text-[#B0B8C4] text-center mt-0.5">
-              {language === 'fi' ? 'Märkäpito' : 'Wet Grip'}
+              {t('productDetail.wetGrip')}
             </span>
           </div>
         )}

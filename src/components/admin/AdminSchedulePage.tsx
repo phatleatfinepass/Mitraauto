@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../ThemeContext';
-import { useLanguage } from '../LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
@@ -192,7 +192,8 @@ function AdminRestoreBookingDialog({
 
 export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }) => {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const dateLocale = { fi: 'fi-FI', en: 'en-US' }[language];
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [timeSlots, setTimeSlots] = useState<ScheduleTimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<ScheduleTimeSlot | null>(null);
@@ -219,179 +220,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const [restoringBookingId, setRestoringBookingId] = useState<string | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
 
-  const t = (key: string) => {
-    const translations: Record<string, { fi: string; en: string }> = {
-      scheduling: { fi: 'Ajanvaraukset', en: 'Scheduling' },
-      selectedDate: { fi: 'Valittu päivä', en: 'Selected Date' },
-      totalBookings: { fi: 'Varauksia yhteensä', en: 'Total Bookings' },
-      blockedSlots: { fi: 'Estettyä aikaa', en: 'Blocked Slots' },
-      today: { fi: 'Tänään', en: 'Today' },
-      tomorrow: { fi: 'Huomenna', en: 'Tomorrow' },
-      thisWeek: { fi: 'Tämä viikko', en: 'This Week' },
-      closed: { fi: 'Suljettu', en: 'Closed' },
-      sundayClosed: { fi: 'Sunnuntaisin suljettu', en: 'Closed on Sundays' },
-      emptySlot: { fi: 'Vapaa', en: 'Available' },
-      booked: { fi: 'Varattu', en: 'Booked' },
-      blocked: { fi: 'Estetty', en: 'Blocked' },
-      timeSlots: { fi: 'Ajat', en: 'Time slots' },
-      blockThisSlot: { fi: 'Estä tämä aika', en: 'Block this slot' },
-      slotDetails: { fi: 'Ajanvarauksen tiedot', en: 'Slot Details' },
-      bookingsList: { fi: 'Varaukset', en: 'Bookings' },
-      licensePlate: { fi: 'Rekisterinumero', en: 'License Plate' },
-      createdAt: { fi: 'Luotu', en: 'Created At' },
-      blockingControls: { fi: 'Eston hallinta', en: 'Blocking Controls' },
-      reasonOptional: { fi: 'Syy (valinnainen)', en: 'Reason (optional)' },
-      blockSlot: { fi: 'Estä aika', en: 'Block Slot' },
-      blockUntilEndOfDay: { fi: 'Estä loppupäivä', en: 'Block Until End of Day' },
-      unblockSlot: { fi: 'Poista esto', en: 'Unblock Slot' },
-      noBookings: { fi: 'Ei varauksia', en: 'No bookings' },
-      blockSuccessful: { fi: 'Aika estetty onnistuneesti', en: 'Slot blocked successfully' },
-      unblockSuccessful: { fi: 'Esto poistettu onnistuneesti', en: 'Slot unblocked successfully' },
-      errorBlocking: { fi: 'Virhe eston luomisessa', en: 'Error blocking slot' },
-      errorUnblocking: { fi: 'Virhe eston poistamisessa', en: 'Error unblocking slot' },
-      selectDate: { fi: 'Valitse päivä', en: 'Select Date' },
-      customerName: { fi: 'Asiakas', en: 'Customer' },
-      customerPhone: { fi: 'Puhelin', en: 'Phone' },
-      customerEmail: { fi: 'Sähköposti', en: 'Email' },
-      serviceName: { fi: 'Palvelu', en: 'Service' },
-      notes: { fi: 'Lisätiedot', en: 'Notes' },
-      status: { fi: 'Tila', en: 'Status' },
-      noNotes: { fi: 'Ei lisätietoja', en: 'No notes' },
-      blockSelectedSlots: { fi: 'Estä', en: 'Block' },
-      selectSlotsToBlock: { fi: 'Estä', en: 'Block' },
-      cancelSelection: { fi: 'Peru valinta', en: 'Cancel selection' },
-      slotsSelected: { fi: 'aikaa valittu', en: 'slots selected' },
-      clearSelection: { fi: 'Tyhjennä valinta', en: 'Clear selection' },
-      selectionModeHint: {
-        fi: 'Klikkaa vapaita aikoja estääksesi ne tai estettyjä aikoja poistaaksesi eston. Varattuja aikoja ei hallita tässä tilassa.',
-        en: 'Click available slots to block them or blocked slots to remove the block. Booked slots cannot be changed in this mode.',
-      },
-      batchBlockSuccessful: { fi: 'Valittujen aikojen muutokset tallennettiin', en: 'Selected slot changes saved' },
-      bookedSlotsNotManageable: { fi: 'Varattuja aikoja ei voi hallita tässä tilassa', en: 'Booked slots cannot be changed in this mode' },
-      selectAllDaySlots: { fi: 'Valitse koko päivä', en: 'Select whole day' },
-      allDaySlotsSelected: { fi: 'Koko päivä valittu', en: 'Whole day selected' },
-      resendConfirmation: { fi: 'Lähetä uudelleen', en: 'Resend confirmation' },
-      resendSuccessful: { fi: 'Vahvistusviesti lähetetty uudelleen', en: 'Confirmation email sent again' },
-      resendFailed: { fi: 'Vahvistusviestin uudelleenlähetys epäonnistui', en: 'Failed to resend confirmation email' },
-      noEmailAddress: { fi: 'Ei sähköpostiosoitetta', en: 'No email address' },
-      sending: { fi: 'Lähetetään...', en: 'Sending...' },
-      resendCount: { fi: 'Lähetyksiä', en: 'Resends' },
-      cancelBooking: { fi: 'Peruuta', en: 'Cancel booking' },
-      cancelling: { fi: 'Perutaan...', en: 'Cancelling...' },
-      saving: { fi: 'Tallennetaan...', en: 'Saving...' },
-      cancelSuccessful: { fi: 'Varaus peruttu', en: 'Booking cancelled' },
-      cancelFailed: { fi: 'Varauksen peruminen epäonnistui', en: 'Failed to cancel booking' },
-      cancellationEmailSent: { fi: 'Peruutusviesti lähetetty asiakkaalle', en: 'Cancellation email sent to customer' },
-      cancellationNote: { fi: 'Peruutuksen syy', en: 'Cancellation note' },
-      cancellationNotePlaceholder: { fi: 'Esim. Aika ei ole enää saatavilla tai varausta siirrettiin puhelimitse', en: 'For example, the slot is no longer available or the booking was moved by phone' },
-      cancelBookingConfirmTitle: { fi: 'Perutaanko varaus?', en: 'Cancel this booking?' },
-      cancelBookingConfirmDescription: { fi: 'Peruutusviesti lähetetään asiakkaalle ja varaus merkitään perutuksi.', en: 'A cancellation email will be sent to the customer and the booking will be marked as cancelled.' },
-      keepBooking: { fi: 'Pidä varaus', en: 'Keep booking' },
-      confirmCancelBooking: { fi: 'Peruuta varaus', en: 'Cancel booking' },
-      createBooking: { fi: 'Luo varaus', en: 'Create booking' },
-      creatingBooking: { fi: 'Luodaan varausta...', en: 'Creating booking...' },
-      createBookingDescription: { fi: 'Kirjaa puhelimitse tai tiskillä tehty varaus ja lähetä vahvistus asiakkaalle.', en: 'Create a booking made by phone or at the desk and send the confirmation to the customer.' },
-      editBooking: { fi: 'Muokkaa varausta', en: 'Edit booking' },
-      saveBooking: { fi: 'Tallenna varaus', en: 'Save booking' },
-      saveChanges: { fi: 'Tallenna muutokset', en: 'Save changes' },
-      bookingSaved: { fi: 'Varaus tallennettu', en: 'Booking saved' },
-      bookingUpdated: { fi: 'Varaus päivitetty', en: 'Booking updated' },
-      bookingConfirmationEmailSent: { fi: 'Vahvistusviesti lähetetty asiakkaalle', en: 'Confirmation email sent to customer' },
-      bookingUpdateEmailSent: { fi: 'Päivitysviesti lähetetty asiakkaalle', en: 'Update email sent to customer' },
-      bookingSaveFailed: { fi: 'Varauksen tallennus epäonnistui', en: 'Failed to save booking' },
-      bookingControls: { fi: 'Varauksen hallinta', en: 'Booking controls' },
-      bookingControlsDescription: { fi: 'Lähetä vahvistus uudelleen, muokkaa varausta tai viesti asiakkaalle tästä varauksesta.', en: 'Resend confirmation, edit this booking, or contact the customer about this booking.' },
-      awaitingCustomerCompletion: { fi: 'Odottaa asiakkaan täydennystä', en: 'Awaiting customer completion' },
-      partialBooking: { fi: 'Osittainen varaus', en: 'Partial booking' },
-      requestCompletion: { fi: 'Pyydä täydennystä', en: 'Request completion' },
-      completionRequestSent: { fi: 'Täydennyspyyntö lähetetty asiakkaalle', en: 'Completion request sent to customer' },
-      completionRequestFailed: { fi: 'Täydennyspyynnön lähetys epäonnistui', en: 'Failed to send completion request' },
-      completionMode: { fi: 'Täydennyspyyntö', en: 'Completion request' },
-      completionModeDescription: { fi: 'Tallenna varaus vaikka kaikki asiakastiedot eivät vielä ole valmiit. Asiakas voi täydentää puuttuvat tiedot myöhemmin.', en: 'Save the booking even if not all customer details are known yet. The customer can complete the missing details later.' },
-      incompleteBookingWarning: { fi: 'Puuttuvia tietoja', en: 'Missing details' },
-      blockingControlsDescription: { fi: 'Estä tämä aika kokonaan tai loppupäiväksi. Tämä vaikuttaa julkiseen varausnäkymään.', en: 'Block this slot completely or until end of day. This affects public booking availability.' },
-      bookingLanguage: { fi: 'Varauksen kieli', en: 'Booking language' },
-      finnish: { fi: 'Suomi', en: 'Finnish' },
-      english: { fi: 'Englanti', en: 'English' },
-      date: { fi: 'Päivämäärä', en: 'Date' },
-      time: { fi: 'Aika', en: 'Time' },
-      servicePlaceholder: { fi: 'Valitse palvelu', en: 'Select a service' },
-      noEmailNoSend: { fi: 'Sähköposti puuttuu, joten viestiä ei voi lähettää', en: 'Missing email address, so the message cannot be sent' },
-      sendMessage: { fi: 'Lähetä viesti', en: 'Send message' },
-      sendingMessage: { fi: 'Lähetetään viestiä...', en: 'Sending message...' },
-      messageSubject: { fi: 'Viestin aihe', en: 'Message subject' },
-      messageBody: { fi: 'Viesti', en: 'Message' },
-      messageSubjectPlaceholder: { fi: 'Esim. Tarvitsemme rengaskoon ennen käyntiä', en: 'e.g. We need the tire size before your visit' },
-      messageBodyPlaceholder: { fi: 'Kirjoita asiakkaalle lähetettävä viesti tähän.', en: 'Write the message that will be sent to the customer here.' },
-      adminMessageSent: { fi: 'Viesti lähetetty asiakkaalle', en: 'Message sent to customer' },
-      adminMessageFailed: { fi: 'Viestin lähetys epäonnistui', en: 'Failed to send message' },
-      conversationHistory: { fi: 'Viestiketju', en: 'Conversation history' },
-      conversationLoading: { fi: 'Ladataan viestiketjua...', en: 'Loading conversation...' },
-      conversationLoadFailed: { fi: 'Viestiketjun lataus epäonnistui', en: 'Failed to load conversation' },
-      conversationEmpty: { fi: 'Tälle varaukselle ei ole vielä viestihistoriaa.', en: 'No conversation history exists for this booking yet.' },
-      sentLabel: { fi: 'Lähetetty', en: 'Sent' },
-      receivedLabel: { fi: 'Vastaanotettu', en: 'Received' },
-      syncConversation: { fi: 'Synkronoi', en: 'Sync' },
-      syncingConversation: { fi: 'Synkronoidaan...', en: 'Syncing...' },
-      replyToMessage: { fi: 'Vastaa viestiin', en: 'Reply to message' },
-      threadConnected: { fi: 'Ketju yhdistetty', en: 'Thread connected' },
-      noThreadYet: { fi: 'Ei aktiivista ketjua vielä', en: 'No active thread yet' },
-      lastSyncedLabel: { fi: 'Synkronoitu', en: 'Last synced' },
-      messageRequired: { fi: 'Kirjoita aihe ja viesti ennen lähettämistä', en: 'Enter both a subject and a message before sending' },
-      cancel: { fi: 'Peruuta', en: 'Cancel' },
-      cancelEditing: { fi: 'Peruuta muokkaus', en: 'Cancel edit' },
-      closeComposer: { fi: 'Sulje viesti', en: 'Close message' },
-      slotSummary: { fi: 'Valittu aika', en: 'Selected slot' },
-      slotStatus: { fi: 'Tilanne', en: 'Status' },
-      slotAvailable: { fi: 'Vapaa', en: 'Available' },
-      slotBlocked: { fi: 'Estetty', en: 'Blocked' },
-      slotBookingsCount: { fi: 'Varauksia', en: 'Bookings' },
-      bookingInformation: { fi: 'Varauksen tiedot', en: 'Booking information' },
-      bookingActions: { fi: 'Toiminnot', en: 'Actions' },
-      blockReason: { fi: 'Eston syy', en: 'Block reason' },
-      currentBlock: { fi: 'Nykyinen esto', en: 'Current block' },
-      noBlockReason: { fi: 'Ei syytä annettu', en: 'No reason provided' },
-      selectedSlotControls: { fi: 'Valitun ajan hallinta', en: 'Selected slot controls' },
-      selectedSlotControlsDescription: { fi: 'Estä tai vapauta valittu aika ilman, että avaat varaustiedot uudelleen.', en: 'Block or release the selected slot without opening booking details again.' },
-      fullInformation: { fi: 'Täydet tiedot', en: 'Full information' },
-      collapseInformation: { fi: 'Tiivistä', en: 'Collapse information' },
-      bookingSummaryService: { fi: 'Palvelu', en: 'Service' },
-      bookingSummaryCustomer: { fi: 'Asiakas', en: 'Customer' },
-      searchBookings: { fi: 'Etsi varauksia', en: 'Search bookings' },
-      scheduleTab: { fi: 'Aikataulu', en: 'Schedule' },
-      reservationTab: { fi: 'Varaukset', en: 'Reservation' },
-      searchBookingsPlaceholder: { fi: 'Rekisterinumero, nimi, puhelin, sähköposti tai varaustunnus', en: 'License plate, name, phone, email or booking id' },
-      search: { fi: 'Hae', en: 'Search' },
-      searching: { fi: 'Haetaan...', en: 'Searching...' },
-      searchResultsTitle: { fi: 'Hakutulokset', en: 'Search results' },
-      searchDialogDescription: { fi: 'Kirjoita asiakkaan nimi, puhelin, sähköposti, rekisterinumero tai varauksen tunnus.', en: 'Type a customer name, phone, email, license plate, or booking ID.' },
-      startTypingToSearch: { fi: 'Aloita kirjoittaminen nähdäksesi hakutulokset.', en: 'Start typing to see matching bookings.' },
-      upcomingBookings: { fi: 'Tulevat varaukset', en: 'Upcoming bookings' },
-      archivedBookings: { fi: 'Arkistoidut varaukset', en: 'Archived bookings' },
-      archivedStatus: { fi: 'Arkistoitu', en: 'Archived' },
-      archivedInline: { fi: 'Arkistoidut samassa listassa', en: 'Archived inline' },
-      showArchivedBookings: { fi: 'Näytä arkistoidut', en: 'Show archived' },
-      hideArchivedBookings: { fi: 'Piilota arkistoidut', en: 'Hide archived' },
-      noArchivedBookings: { fi: 'Ei arkistoituja varauksia', en: 'No archived bookings' },
-      noSearchResults: { fi: 'Hakutuloksia ei löytynyt', en: 'No matching bookings found' },
-      searchHint: { fi: 'Haku käy myös peruttuihin varauksiin.', en: 'Search includes cancelled bookings too.' },
-      sundayLabel: { fi: 'Su', en: 'Su' },
-      archivedBookingDetails: { fi: 'Arkistoidun varauksen tiedot', en: 'Archived booking details' },
-      restoreBooking: { fi: 'Palauta varaus', en: 'Restore booking' },
-      restoreBookingConfirmTitle: { fi: 'Palautetaanko varaus?', en: 'Restore this booking?' },
-      restoreBookingConfirmDescription: { fi: 'Varaus merkitään taas aktiiviseksi. Voit halutessasi lähettää asiakkaalle uuden vahvistusviestin.', en: 'The booking will become active again. You can optionally send a new confirmation email to the customer.' },
-      sendRestoreEmail: { fi: 'Lähetä asiakkaalle uusi vahvistusviesti', en: 'Send a new confirmation email to the customer' },
-      restoreSuccessful: { fi: 'Varaus palautettu', en: 'Booking restored' },
-      restoreFailed: { fi: 'Varauksen palautus epäonnistui', en: 'Failed to restore booking' },
-      deleteBookingPermanently: { fi: 'Poista pysyvästi', en: 'Delete permanently' },
-      deleteBookingConfirmTitle: { fi: 'Poistetaanko varaus pysyvästi?', en: 'Delete booking permanently?' },
-      deleteBookingConfirmDescription: { fi: 'Tätä toimintoa ei voi perua. Vain arkistoidut varaukset kannattaa poistaa pysyvästi.', en: 'This action cannot be undone. Only archived bookings should be permanently deleted.' },
-      deleting: { fi: 'Poistetaan...', en: 'Deleting...' },
-      deleteSuccessful: { fi: 'Varaus poistettu pysyvästi', en: 'Booking permanently deleted' },
-      deleteFailed: { fi: 'Varauksen pysyvä poisto epäonnistui', en: 'Failed to permanently delete booking' },
-    };
-    return translations[key]?.[language] || key;
-  };
+  const adminScheduleText = (key: string) => t(`adminSchedule.${key}`);
 
   const selectedLanguageServiceCategories = (selectedLanguage: SupportedBookingLanguage) =>
     getLocalizedServiceCategories(selectedLanguage);
@@ -501,7 +330,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       setTimelineBookings((timelineData || []).filter((booking) => (booking.status || 'confirmed').toLowerCase() !== 'cancelled'));
     } catch (error) {
       console.error('[CMS] Error fetching schedule data:', error);
-      toast.error(language === 'fi' ? 'Virhe tietojen lataamisessa' : 'Error loading data');
+      toast.error(adminScheduleText('errorLoadingData'));
       // Set empty data so UI doesn't break
       setBookings([]);
       setTimelineBookings([]);
@@ -541,7 +370,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   });
 
   const getBookingLanguage = (booking: ScheduleBooking): SupportedBookingLanguage =>
-    booking.booking_language === 'en' ? 'en' : 'fi';
+    ({ fi: 'fi', en: 'en' } as const)[booking.booking_language as SupportedBookingLanguage] ?? 'fi';
 
   const getBookingServiceNameForCms = (serviceName?: string | null) =>
     localizeStoredServiceName(serviceName, language);
@@ -682,7 +511,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
   const sendCustomerCompletionRequest = async (booking: ScheduleBooking) => {
     if (!booking.customer_email) {
-      toast.error(t('noEmailAddress'));
+      toast.error(adminScheduleText('noEmailAddress'));
       return false;
     }
 
@@ -744,7 +573,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           date: dateStr,
           start_time: time,
           end_time: endTime,
-          reason: (language === 'fi' ? blockReasonFi : blockReasonEn).trim() || blockReasonFi.trim() || blockReasonEn.trim() || null,
+          reason: ({ fi: blockReasonFi, en: blockReasonEn }[language]).trim() || blockReasonFi.trim() || blockReasonEn.trim() || null,
           reason_fi: blockReasonFi.trim() || null,
           reason_en: blockReasonEn.trim() || null,
         };
@@ -765,7 +594,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         if (insertError) throw insertError;
       }
 
-      toast.success(t('batchBlockSuccessful'));
+      toast.success(adminScheduleText('batchBlockSuccessful'));
       setBlockReasonFi('');
       setBlockReasonEn('');
       setSelectedBlockTimes([]);
@@ -773,7 +602,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error blocking selected slots:', error);
-      toast.error(t('errorBlocking'));
+      toast.error(adminScheduleText('errorBlocking'));
     }
   };
 
@@ -792,10 +621,10 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           [booking.id]: (current[booking.id] || 0) + 1,
         }));
         await refreshBookingConversationIfLoaded(booking.id);
-        toast.success(t('completionRequestSent'));
+        toast.success(adminScheduleText('completionRequestSent'));
       } else {
         if (!booking.customer_email) {
-          toast.error(t('noEmailAddress'));
+          toast.error(adminScheduleText('noEmailAddress'));
           return;
         }
 
@@ -817,11 +646,11 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         }));
 
         await refreshBookingConversationIfLoaded(booking.id);
-        toast.success(t('resendSuccessful'));
+        toast.success(adminScheduleText('resendSuccessful'));
       }
     } catch (error) {
       console.error('Error resending booking confirmation:', error);
-      toast.error(isBookingAwaitingCustomerCompletion(booking) ? t('completionRequestFailed') : t('resendFailed'));
+      toast.error(isBookingAwaitingCustomerCompletion(booking) ? adminScheduleText('completionRequestFailed') : adminScheduleText('resendFailed'));
     } finally {
       setResendingBookingId(null);
     }
@@ -871,16 +700,14 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           }
 
           await refreshBookingConversationIfLoaded(booking.id);
-          toast.success(t('cancellationEmailSent'));
+          toast.success(adminScheduleText('cancellationEmailSent'));
         } catch (emailError) {
           console.error('Booking cancelled but cancellation email failed:', emailError);
-          emailFailureMessage = language === 'fi'
-            ? 'Varaus peruttiin, mutta asiakkaan peruutusviestiä ei voitu lähettää.'
-            : 'The booking was cancelled, but the customer cancellation email could not be sent.';
+          emailFailureMessage = adminScheduleText('cancelledButEmailFailed');
         }
       }
 
-      toast.success(t('cancelSuccessful'));
+      toast.success(adminScheduleText('cancelSuccessful'));
       setCancelBookingTarget(null);
       setCancelBookingNote('');
       setIsDrawerOpen(false);
@@ -890,7 +717,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       }
     } catch (error) {
       console.error('Error cancelling booking:', error);
-      toast.error(t('cancelFailed'));
+      toast.error(adminScheduleText('cancelFailed'));
     } finally {
       setCancellingBookingId(null);
     }
@@ -898,7 +725,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
   const handleForceConfirmBooking = async (booking: ScheduleBooking) => {
     if (isBookingAwaitingCustomerCompletion(booking)) {
-      toast.error(language === 'fi' ? 'Täydennä puuttuvat tiedot ennen vahvistusta' : 'Complete the missing details before confirming');
+      toast.error(adminScheduleText('confirmMissingDetails'));
       return;
     }
 
@@ -915,11 +742,11 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         throw error;
       }
 
-      toast.success(language === 'fi' ? 'Varaus vahvistettu' : 'Booking confirmed');
+      toast.success(adminScheduleText('confirmSuccessful'));
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error force confirming booking:', error);
-      toast.error(language === 'fi' ? 'Varauksen vahvistus epäonnistui' : 'Failed to confirm booking');
+      toast.error(adminScheduleText('confirmFailed'));
     } finally {
       setConfirmingBookingId(null);
     }
@@ -966,7 +793,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         await refreshBookingConversationIfLoaded(booking.id);
       }
 
-      toast.success(t('restoreSuccessful'));
+      toast.success(adminScheduleText('restoreSuccessful'));
       setRestoreArchivedBookingTarget(null);
       setArchivedBookingModal(null);
       setSendRestoreEmail(true);
@@ -974,7 +801,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error restoring booking:', error);
-      toast.error(t('restoreFailed'));
+      toast.error(adminScheduleText('restoreFailed'));
     } finally {
       setRestoringBookingId(null);
     }
@@ -987,14 +814,14 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
       const { error } = await supabase.from('bookings').delete().eq('id', booking.id);
       if (error) throw error;
 
-      toast.success(t('deleteSuccessful'));
+      toast.success(adminScheduleText('deleteSuccessful'));
       setArchivedBookingModal(null);
       setArchivedBookings((current) => current.filter((item) => item.id !== booking.id));
       setSearchResults((current) => current.filter((item) => item.id !== booking.id));
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error deleting archived booking:', error);
-      toast.error(t('deleteFailed'));
+      toast.error(adminScheduleText('deleteFailed'));
     } finally {
       setDeletingBookingId(null);
     }
@@ -1019,19 +846,19 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
 
       if (error) throw error;
 
-      toast.success(t('unblockSuccessful'));
+      toast.success(adminScheduleText('unblockSuccessful'));
       setIsDrawerOpen(false);
       fetchScheduleData(selectedDate);
     } catch (error) {
       console.error('Error unblocking slot:', error);
-      toast.error(t('errorUnblocking'));
+      toast.error(adminScheduleText('errorUnblocking'));
     }
   };
 
   const handleSlotClick = (slot: ScheduleTimeSlot, time: string) => {
     if (isBatchBlockMode) {
       if (slot.bookings.length > 0) {
-        toast.error(t('bookedSlotsNotManageable'));
+        toast.error(adminScheduleText('bookedSlotsNotManageable'));
         return;
       }
 
@@ -1049,7 +876,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+    return date.toLocaleDateString(dateLocale, {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -1058,7 +885,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   };
 
   const formatGridDate = (date: Date) => {
-    const weekday = date.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+    const weekday = date.toLocaleDateString(dateLocale, {
       weekday: 'short',
     });
     const day = String(date.getDate()).padStart(2, '0');
@@ -1088,21 +915,19 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
   const hasBlockingSelections = selectedManageIntentSet.has('block');
   const hasUnblockingSelections = selectedManageIntentSet.has('unblock');
 
-  let manageModeHint = t('selectionModeHint');
+  let manageModeHint = adminScheduleText('selectionModeHint');
   if (hasUnblockingSelections && !hasBlockingSelections) {
-    manageModeHint = language === 'fi'
-      ? 'Klikkaa estettyjä aikoja poistaaksesi eston.'
-      : 'Click blocked slots to remove the block.';
+    manageModeHint = adminScheduleText('unblockSelectionModeHint');
   }
 
-  let manageActionLabel = t('blockSelectedSlots');
+  let manageActionLabel = adminScheduleText('blockSelectedSlots');
   let manageActionButtonClass = 'bg-[#E74C3C] hover:bg-[#E74C3C]/90 text-white';
 
   if (hasUnblockingSelections && !hasBlockingSelections) {
-    manageActionLabel = language === 'fi' ? 'Poista esto' : 'Unblock';
+    manageActionLabel = adminScheduleText('unblockSelectedSlots');
     manageActionButtonClass = 'bg-emerald-600 hover:bg-emerald-700 text-white';
   } else if (hasBlockingSelections && hasUnblockingSelections) {
-    manageActionLabel = language === 'fi' ? 'Tallenna muutokset' : 'Apply changes';
+    manageActionLabel = adminScheduleText('applySlotChanges');
     manageActionButtonClass = 'bg-amber-600 hover:bg-amber-700 text-white';
   }
 
@@ -1156,7 +981,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           panelClass={panelClass}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
-          t={t}
+          t={adminScheduleText}
           theme={theme}
           titleClass={titleClass}
         />
@@ -1206,7 +1031,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
             showArchivedInline={showArchivedInline}
             showArchivedBookings={showArchivedBookings}
             subtleTextClass={subtleTextClass}
-            t={t}
+            t={adminScheduleText}
             theme={theme}
             titleClass={titleClass}
           />
@@ -1225,7 +1050,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
               panelClass={panelClass}
               selectedDateLabel={formatGridDate(selectedDate)}
               selectedBlockTimes={selectedBlockTimes}
-              t={t}
+              t={adminScheduleText}
               theme={theme}
               timeSlots={timeSlots}
               titleClass={titleClass}
@@ -1248,7 +1073,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         searchResults={searchResults}
         setSearchQuery={setSearchQuery}
         subtleTextClass={subtleTextClass}
-        t={t}
+        t={adminScheduleText}
         theme={theme}
         titleClass={titleClass}
       />
@@ -1303,7 +1128,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         setEditingBookingId={setEditingBookingId}
         syncCreateBookingServiceName={syncCreateBookingServiceName}
         syncEditBookingServiceName={syncEditBookingServiceName}
-        t={t}
+        t={adminScheduleText}
         theme={theme}
       />
 
@@ -1316,7 +1141,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         open={Boolean(composeMessageBookingId)}
         sending={activeCommunicationBooking ? sendingMessageBookingId === activeCommunicationBooking.id : false}
         theme={theme}
-        t={t}
+        t={adminScheduleText}
         onDraftChange={handleBookingMessageDraftChange}
         onOpenChange={(open) => {
           if (!open) setComposeMessageBookingId(null);
@@ -1343,7 +1168,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
         }}
         savingBookingId={savingBookingId}
         setEditingBookingId={setEditingBookingId}
-        t={t}
+        t={adminScheduleText}
         theme={theme}
       />
 
@@ -1362,7 +1187,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
             setCancelBookingNote('');
           }
         }}
-        t={t}
+        t={adminScheduleText}
         theme={theme}
       />
 
@@ -1377,7 +1202,7 @@ export const AdminSchedulePage: React.FC<AdminSchedulePageProps> = ({ onLogout }
           if (!open) setRestoreArchivedBookingTarget(null);
         }}
         onSendRestoreEmailChange={setSendRestoreEmail}
-        t={t}
+        t={adminScheduleText}
         theme={theme}
       />
     </div>

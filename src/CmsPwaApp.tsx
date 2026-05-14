@@ -10,20 +10,19 @@ import { CmsPwaHeader } from './components/cms-pwa/CmsPwaHeader';
 import { CmsPwaSummary } from './components/cms-pwa/CmsPwaSummary';
 import { CmsPwaScreenState } from './components/cms-pwa/CmsPwaScreenState';
 import { CmsPwaDiagnosticsSheet } from './components/cms-pwa/CmsPwaDiagnosticsSheet';
-import { CMS_PWA_COPY } from './components/cms-pwa/copy';
 import {
   BOOKING_STATUS_HANDOFF,
   buildBookingSections,
   buildOrderSections,
+  buildRescueSections,
+  buildToolSections,
   isBookingAttentionItem,
   isMissingColumnError,
   REFRESH_INTERVAL_MS,
-  rescueSections,
   resolveCmsPwaRoute,
   tabPathMap,
-  toolSections,
 } from './components/cms-pwa/data';
-import { LanguageProvider, useLanguage } from './components/LanguageContext';
+import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 import type { AuthState, BookingRow, LiveSectionsState, LoginState, OrderRow } from './components/cms-pwa/types';
 
 type CmsPwaAccessRow = {
@@ -100,8 +99,59 @@ async function resolveAdminSession() {
 }
 
 export function CmsPwaScreen() {
-  const { language, setLanguage } = useLanguage();
-  const copy = CMS_PWA_COPY[language];
+  const { language, setLanguage, t } = useLanguage();
+  const copy = useMemo(() => ({
+    mobileOps: t('cmsPwa.mobileOps'),
+    loginEyebrow: t('cmsPwa.loginEyebrow'),
+    loginTitle: t('cmsPwa.loginTitle'),
+    loginDescription: t('cmsPwa.loginDescription'),
+    email: t('cmsPwa.email'),
+    password: t('cmsPwa.password'),
+    signingIn: t('cmsPwa.signingIn'),
+    signInMobileOps: t('cmsPwa.signInMobileOps'),
+    rescueTitle: t('cmsPwa.rescueTitle'),
+    bookingTitle: t('cmsPwa.bookingTitle'),
+    orderTitle: t('cmsPwa.orderTitle'),
+    toolsTitle: t('cmsPwa.toolsTitle'),
+    openDiagnostics: t('cmsPwa.openDiagnostics'),
+    signOut: t('cmsPwa.signOut'),
+    operationalSummary: t('cmsPwa.operationalSummary'),
+    versionLabel: t('cmsPwa.versionLabel'),
+    updateLabel: t('cmsPwa.updateLabel'),
+    refreshedLabel: t('cmsPwa.refreshedLabel'),
+    forceRefresh: t('cmsPwa.forceRefresh'),
+    rescue: t('cmsPwa.rescue'),
+    booking: t('cmsPwa.booking'),
+    order: t('cmsPwa.order'),
+    handoffWaitingOne: t('cmsPwa.handoffWaitingOne'),
+    handoffWaitingMany: t('cmsPwa.handoffWaitingMany'),
+    handingOff: t('cmsPwa.handingOff'),
+    handoffNewBookings: t('cmsPwa.handoffNewBookings'),
+    noNewBookingsToHandoff: t('cmsPwa.noNewBookingsToHandoff'),
+    rescueQueue: t('cmsPwa.rescueQueue'),
+    bookingQueue: t('cmsPwa.bookingQueue'),
+    orderQueue: t('cmsPwa.orderQueue'),
+    plannedTools: t('cmsPwa.plannedTools'),
+    refreshingQueue: t('cmsPwa.refreshingQueue'),
+    noItems: t('cmsPwa.noItems'),
+    pushDiagnostics: t('cmsPwa.pushDiagnostics'),
+    pushDiagnosticsBody: t('cmsPwa.pushDiagnosticsBody'),
+    close: t('cmsPwa.close'),
+    permission: t('cmsPwa.permission'),
+    serviceWorker: t('cmsPwa.serviceWorker'),
+    pushSupported: t('cmsPwa.pushSupported'),
+    localSubscription: t('cmsPwa.localSubscription'),
+    savedToBackend: t('cmsPwa.savedToBackend'),
+    ready: t('cmsPwa.ready'),
+    notReady: t('cmsPwa.notReady'),
+    yes: t('cmsPwa.yes'),
+    no: t('cmsPwa.no'),
+    enabling: t('cmsPwa.enabling'),
+    enableNotifications: t('cmsPwa.enableNotifications'),
+    rerunDiagnostics: t('cmsPwa.rerunDiagnostics'),
+  }), [t]);
+  const rescueSections = useMemo(() => buildRescueSections(t), [t]);
+  const toolSections = useMemo(() => buildToolSections(t), [t]);
   const route = resolveCmsPwaRoute(window.location.pathname);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [userEmail, setUserEmail] = useState('');
@@ -111,8 +161,8 @@ export function CmsPwaScreen() {
   const [activeTab, setActiveTab] = useState<CmsPwaTab>(route.kind === 'cms' ? route.tab : 'rescue');
   const [routeState, setRouteState] = useState(route);
   const [liveSections, setLiveSections] = useState<LiveSectionsState>({
-    booking: buildBookingSections([], language),
-    order: buildOrderSections([]),
+    booking: buildBookingSections([], language, t),
+    order: buildOrderSections([], t),
   });
   const [bookingRows, setBookingRows] = useState<BookingRow[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
@@ -157,7 +207,7 @@ export function CmsPwaScreen() {
     booking: liveSections.booking.reduce((sum, section) => sum + section.items.filter((item) => item.tone !== 'done').length, 0),
     order: liveSections.order.reduce((sum, section) => sum + section.items.filter((item) => item.tone !== 'done').length, 0),
     tools: 0,
-  }), [liveSections]);
+  }), [liveSections, rescueSections]);
 
   const activeBookingHandoffCount = useMemo(
     () => bookingRows.filter((booking) => (booking.status ?? '').toLowerCase() === BOOKING_STATUS_HANDOFF).length,
@@ -263,7 +313,7 @@ export function CmsPwaScreen() {
     if (activeTab === 'order') return liveSections.order;
     if (activeTab === 'tools') return [];
     return rescueSections;
-  }, [activeTab, liveSections]);
+  }, [activeTab, liveSections, rescueSections]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -430,8 +480,8 @@ export function CmsPwaScreen() {
         const bookingData = (bookingsQuery.data ?? []) as BookingRow[];
         setBookingRows(bookingData);
         setLiveSections({
-          booking: buildBookingSections(bookingData, language),
-          order: ordersQuery.error ? buildOrderSections([]) : buildOrderSections((ordersQuery.data ?? []) as OrderRow[]),
+          booking: buildBookingSections(bookingData, language, t),
+          order: ordersQuery.error ? buildOrderSections([], t) : buildOrderSections((ordersQuery.data ?? []) as OrderRow[], t),
         });
         setLastUpdatedAt(new Date().toISOString());
 
@@ -449,7 +499,7 @@ export function CmsPwaScreen() {
           loadInFlightRef.current = false;
         }
       }
-    }, [language]);
+    }, [language, t]);
 
   const forceRefreshLiveData = useCallback((cancelledRef?: { current: boolean }) => {
     loadRequestIdRef.current += 1;
@@ -732,14 +782,14 @@ export function CmsPwaScreen() {
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10">
           <div className="mb-8">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#FF6B35] text-lg font-black text-[#11141A]">MA</div>
-            <p className="mt-6 text-xs font-medium tracking-[0.04em] text-[#FF6B35]">PWA / CMS</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight">Mobile Ops</h1>
-            <p className="mt-3 text-sm leading-6 text-white/65">Separate admin entry for Rescue, Booking, Order, and notifications.</p>
+            <p className="mt-6 text-xs font-medium tracking-[0.04em] text-[#FF6B35]">{copy.loginEyebrow}</p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight">{copy.loginTitle}</h1>
+            <p className="mt-3 text-sm leading-6 text-white/65">{copy.loginDescription}</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4 rounded-2xl border border-white/10 bg-[#141922] p-6 shadow-2xl">
             <div className="space-y-2">
-              <label htmlFor="pwa-cms-email" className="text-sm text-white/75">Email</label>
+              <label htmlFor="pwa-cms-email" className="text-sm text-white/75">{copy.email}</label>
               <input
                 id="pwa-cms-email"
                 type="email"
@@ -752,7 +802,7 @@ export function CmsPwaScreen() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="pwa-cms-password" className="text-sm text-white/75">Password</label>
+              <label htmlFor="pwa-cms-password" className="text-sm text-white/75">{copy.password}</label>
               <input
                 id="pwa-cms-password"
                 type="password"
@@ -773,7 +823,7 @@ export function CmsPwaScreen() {
               disabled={submitting}
               className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#FF6B35] px-4 text-sm font-semibold text-[#11141A] transition hover:bg-[#ff845a] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? 'Signing in...' : 'Sign in to Mobile Ops'}
+              {submitting ? copy.signingIn : copy.signInMobileOps}
             </button>
           </form>
         </div>

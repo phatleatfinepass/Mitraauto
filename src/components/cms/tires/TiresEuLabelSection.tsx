@@ -1,4 +1,5 @@
 import { AlertCircle, RotateCcw } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TireRow } from './types';
 
 interface EuOverride {
@@ -14,7 +15,6 @@ interface TiresEuLabelSectionProps {
   getEuOverride: () => EuOverride | undefined;
   hasEuOverride: boolean;
   isDark: boolean;
-  language: string;
   onClearEuOverrides: () => void;
   onSetEuField: (field: string, value: any) => void;
   selectedTire: TireRow;
@@ -26,17 +26,17 @@ export function TiresEuLabelSection({
   getEuOverride,
   hasEuOverride,
   isDark,
-  language,
   onClearEuOverrides,
   onSetEuField,
   selectedTire,
 }: TiresEuLabelSectionProps) {
+  const { t } = useLanguage();
   const euOverride = getEuOverride();
 
   return (
     <div>
       <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {language === 'fi' ? 'EU-rengasmerkintä' : 'EU Tyre Label'}
+        {t('tiresEuLabel.title')}
       </h3>
 
       <div className={`flex gap-3 p-4 rounded-lg border mb-6 ${
@@ -44,20 +44,18 @@ export function TiresEuLabelSection({
       }`}>
         <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
         <div className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-900'}`}>
-          {language === 'fi'
-            ? 'Voit ohittaa toimittajan arvot. Tyhjä = käytä perusarvoa.'
-            : 'Override supplier values. Empty = use base value.'}
+          {t('tiresEuLabel.overrideHint')}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
           <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Polttoainetehokkuus' : 'Fuel Efficiency'}
+            {t('tiresEuLabel.fuelEfficiency')}
           </label>
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
             <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Perustaso:' : 'Base:'}
+              {t('tiresTyreLabel.base')}:
             </span>
             <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               {selectedTire.eu_fuel_class || '—'}
@@ -70,7 +68,7 @@ export function TiresEuLabelSection({
               isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
-            <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+            <option value="">{t('tiresTyreLabel.useBaseValueDashed')}</option>
             {euFuelWetOptions.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -79,11 +77,11 @@ export function TiresEuLabelSection({
 
         <div className="space-y-3">
           <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Märkäpito' : 'Wet Grip'}
+            {t('tiresEuLabel.wetGrip')}
           </label>
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
             <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Perustaso:' : 'Base:'}
+              {t('tiresTyreLabel.base')}:
             </span>
             <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               {selectedTire.eu_wet_grip_class || '—'}
@@ -96,7 +94,7 @@ export function TiresEuLabelSection({
               isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
-            <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+            <option value="">{t('tiresTyreLabel.useBaseValueDashed')}</option>
             {euFuelWetOptions.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -105,11 +103,11 @@ export function TiresEuLabelSection({
 
         <div className="space-y-3">
           <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Melutaso (dB)' : 'Noise Level (dB)'}
+            {t('tiresEuLabel.noiseLevelDb')}
           </label>
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
             <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Perustaso:' : 'Base:'}
+              {t('tiresTyreLabel.base')}:
             </span>
             <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               {selectedTire.eu_noise_db ? `${selectedTire.eu_noise_db} dB` : '—'}
@@ -122,7 +120,7 @@ export function TiresEuLabelSection({
             step="1"
             value={euOverride?.noise_db ?? ''}
             onChange={(e) => onSetEuField('noise_db', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-            placeholder={language === 'fi' ? 'Käytä perustasoa' : 'Use base value'}
+            placeholder={t('tiresTyreLabel.useBaseValue')}
             className={`w-full px-3 py-2 rounded-lg border ${
               isDark ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
             }`}
@@ -131,11 +129,11 @@ export function TiresEuLabelSection({
 
         <div className="space-y-3">
           <label className={`block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Meluluokka' : 'Noise Class'}
+            {t('tiresEuLabel.noiseClass')}
           </label>
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
             <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Perustaso:' : 'Base:'}
+              {t('tiresTyreLabel.base')}:
             </span>
             <span className={`font-mono font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               {selectedTire.eu_noise_class || '—'}
@@ -148,7 +146,7 @@ export function TiresEuLabelSection({
               isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
-            <option value="">{language === 'fi' ? '— Käytä perustasoa —' : '— Use base value —'}</option>
+            <option value="">{t('tiresTyreLabel.useBaseValueDashed')}</option>
             {euNoiseClassOptions.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -166,7 +164,7 @@ export function TiresEuLabelSection({
             }`}
           >
             <RotateCcw className="w-4 h-4" />
-            {language === 'fi' ? 'Tyhjennä EU-ohitukset' : 'Clear EU Overrides'}
+            {t('tiresEuLabel.clearOverrides')}
           </button>
         </div>
       )}

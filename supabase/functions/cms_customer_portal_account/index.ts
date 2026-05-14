@@ -19,7 +19,7 @@ const CUSTOMER_PERMISSIONS = {
   accounts: "none",
 };
 
-type SupabaseClient = ReturnType<typeof createClient>;
+type SupabaseClient = ReturnType<typeof createClient<any>>;
 
 function jsonResponse(body: unknown, status = 200) {
   return Response.json(body, { status, headers: corsHeaders });
@@ -72,9 +72,10 @@ function customerPortalUrl() {
   return `${publicSiteUrl()}/account`;
 }
 
-function forceRedirect(actionLink: string, redirectTo: string) {
-  const url = new URL(actionLink);
-  url.searchParams.set("redirect_to", redirectTo);
+function buildPortalPasswordSetupLink(redirectTo: string, tokenHash: string) {
+  const url = new URL(redirectTo);
+  url.searchParams.set("type", "recovery");
+  url.searchParams.set("token_hash", tokenHash);
   return url.toString();
 }
 
@@ -325,14 +326,13 @@ async function sendActivationLink(
   const { data: linkData, error: linkError } = await serviceClient.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: { redirectTo },
   });
 
-  if (linkError || !linkData?.properties?.action_link) {
+  if (linkError || !linkData?.properties?.hashed_token) {
     throw linkError ?? new Error("Password setup link could not be generated");
   }
 
-  const actionLink = forceRedirect(linkData.properties.action_link, redirectTo);
+  const actionLink = buildPortalPasswordSetupLink(redirectTo, linkData.properties.hashed_token);
   const subject = "Mitra Auto customer account setup";
   const text = [
     "Mitra Auto customer account",

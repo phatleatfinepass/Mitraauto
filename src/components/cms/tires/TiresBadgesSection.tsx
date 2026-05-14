@@ -1,3 +1,5 @@
+import { useLanguage } from '../../../i18n/LanguageContext';
+
 type TireBadgeKey =
   | 'ev_ready'
   | 'sound_absorber'
@@ -12,40 +14,40 @@ interface TiresBadgesSectionProps {
   clearFeatureOverrides: () => void;
   getEffectiveFeatureValue: (field: TireBadgeKey) => boolean;
   isDark: boolean;
-  language: string;
   setFeatureField: (field: TireBadgeKey, value: boolean) => void;
 }
 
-const TIRE_BADGES: Array<{ key: TireBadgeKey; labelFi: string; labelEn: string }> = [
-  { key: 'ev_ready', labelFi: 'EV', labelEn: 'EV' },
-  { key: 'sound_absorber', labelFi: 'Äänenvaimennus', labelEn: 'Sound absorber' },
-  { key: 'runflat', labelFi: 'RunFlat', labelEn: 'RunFlat' },
-  { key: 'xl', labelFi: 'XL', labelEn: 'XL' },
-  { key: 'studded', labelFi: 'Nastat', labelEn: 'Studded' },
-  { key: 'threepmsf', labelFi: '3PMSF', labelEn: '3PMSF' },
-  { key: 'winter_approved', labelFi: 'M+S', labelEn: 'M+S' },
-  { key: 'ice_approved', labelFi: 'Jää', labelEn: 'Ice approved' },
+const TIRE_BADGES: Array<{ key: TireBadgeKey; labelKey: string }> = [
+  { key: 'ev_ready', labelKey: 'tiresTyreLabel.badge.evReady' },
+  { key: 'sound_absorber', labelKey: 'tiresTyreLabel.badge.soundAbsorber' },
+  { key: 'runflat', labelKey: 'tiresTyreLabel.badge.runflat' },
+  { key: 'xl', labelKey: 'tiresTyreLabel.badge.xl' },
+  { key: 'studded', labelKey: 'tiresTyreLabel.badge.studded' },
+  { key: 'threepmsf', labelKey: 'tiresTyreLabel.badge.threepmsf' },
+  { key: 'winter_approved', labelKey: 'tiresTyreLabel.badge.winterApproved' },
+  { key: 'ice_approved', labelKey: 'tiresTyreLabel.badge.iceApproved' },
 ];
 
 export function TiresBadgesSection({
   clearFeatureOverrides,
   getEffectiveFeatureValue,
   isDark,
-  language,
   setFeatureField,
 }: TiresBadgesSectionProps) {
+  const { t } = useLanguage();
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {language === 'fi' ? 'Rengasmerkit (badges)' : 'Tire badges'}
+          {t('tiresBadges.title')}
         </h3>
         <button
           type="button"
           onClick={clearFeatureOverrides}
           className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-200 hover:text-white' : 'text-blue-700 hover:text-blue-900'}`}
         >
-          {language === 'fi' ? 'Palauta badge-ohitukset' : 'Reset badge overrides'}
+          {t('tiresTyreLabel.resetBadgeOverrides')}
         </button>
       </div>
 
@@ -59,16 +61,14 @@ export function TiresBadgesSection({
               className="w-4 h-4 rounded border-gray-300"
             />
             <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? feature.labelFi : feature.labelEn}
+              {t(feature.labelKey)}
             </span>
           </label>
         ))}
       </div>
 
       <p className="mt-2 text-xs text-gray-500">
-        {language === 'fi'
-          ? 'Nämä arvot tallennetaan CMS-ohituksina ja voidaan näyttää verkkokaupan korteissa.'
-          : 'These are saved as CMS overrides and can be shown on webshop cards.'}
+        {t('tiresBadges.description')}
       </p>
     </div>
   );

@@ -31,6 +31,11 @@ export type ProductSearchRow = {
   bolt_pattern: string | null;
   color: string | null;
   finish: string | null;
+  center_bore_mm?: number | null;
+  cb_mm?: number | null;
+  material?: string | null;
+  bolts_included?: boolean | null;
+  wheel_load_kg?: number | null;
   price: number | null;
   final_price_eur?: number | null;
   currency: string | null;
@@ -44,11 +49,15 @@ export type ProductSearchRow = {
   gallery?: string[] | null;
   best_image_alt: string | null;
   card_title: string | null;
+  title?: string | null;
   subtitle: string | null;
   short_description?: string | null;
   long_description?: string | null;
   tags: string[] | null;
+  generated_tags?: string[] | null;
   seo_slug: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
   eu_label_json?: any;
   eu_fuel?: string | null;
   eu_wet?: string | null;
@@ -58,6 +67,7 @@ export type ProductSearchRow = {
   derived_ean?: string | null;
   manufacture_year?: number | null;
   pricing_rules?: ProductPricingRules | null;
+  spec_overrides?: Record<string, unknown> | null;
   tyre_label_section?: TyreLabelSectionData;
 };
 
@@ -135,6 +145,19 @@ const WEBSHOP_TIRE_PUBLIC_SELECT = [
   PRODUCT_SEARCH_BASE_SELECT.replace(',final_is_hidden', ''),
   'sound_absorber',
   'gallery',
+  'manufacture_year',
+  'is_visible',
+  'publish_status',
+].join(',');
+
+const WEBSHOP_RIM_PUBLIC_SELECT = [
+  PRODUCT_SEARCH_BASE_SELECT.replace(',final_is_hidden', ''),
+  'gallery',
+  'center_bore_mm',
+  'cb_mm',
+  'material',
+  'bolts_included',
+  'wheel_load_kg',
   'manufacture_year',
   'is_visible',
   'publish_status',
@@ -884,14 +907,20 @@ async function fetchTireCatalogRpcByFitmentSizes(
     return query.range(offset, offset + limit - 1);
   };
 
-  const { data, error, count } = await buildQuery(true);
+  let { data, error, count } = await buildQuery(true);
+  if (error && isStatementTimeoutError(error)) {
+    const retry = await buildQuery(false);
+    data = retry.data;
+    error = retry.error;
+    count = null;
+  }
   if (error) throw error;
 
   const rows = ((data ?? []) as ProductSearchRow[])
     .map((row) => ({ ...row, pricing_rules: null, final_is_hidden: false }))
     .filter((row) => matchesTireFilters(row, filters));
 
-  return { items: rows, total: count ?? rows.length };
+  return { items: rows, total: count ?? (rows.length === limit ? offset + rows.length + 1 : offset + rows.length) };
 }
 
 async function fetchTireCatalogRpc(
@@ -1013,7 +1042,7 @@ async function fetchTireCatalogRpc(
   }
 
   if (listError) throw listError;
-  if (countError) throw countError;
+  if (countError && !isStatementTimeoutError(countError)) throw countError;
 
   let enrichedRows = ((rows ?? []) as ProductSearchRow[]).map((row) => ({
     ...row,
@@ -1054,7 +1083,206 @@ async function fetchTireCatalogRpc(
 
   return {
     items,
-    total: (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam) && (!includeRetreaded || ean) ? items.length : Number(countValue ?? items.length),
+    total:
+      countError && isStatementTimeoutError(countError)
+        ? (items.length === limit ? offset + items.length + 1 : offset + items.length)
+        : (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam) && (!includeRetreaded || ean)
+          ? items.length
+          : Number(countValue ?? items.length),
+  };
+}
+
+async function fetchRimCatalogRpc(
+  limit: number,
+  offset: number,
+  filters: Record<string, any>,
+): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const search = normalizeSearchTerm(filters.search) || null;
+  const brands =
+    Array.isArray(filters.brand) && filters.brand.length > 0
+      ? filters.brand
+          .map((brand: unknown) => String(brand ?? '').trim())
+          .filter((brand: string) => brand.length > 0)
+      : typeof filters.brand === 'string' && filters.brand !== 'all'
+        ? [filters.brand.trim()].filter(Boolean)
+        : null;
+  const diameter = filters.rimDiameter && filters.rimDiameter !== 'all' ? Number(filters.rimDiameter) : null;
+  const width = filters.rimWidth && filters.rimWidth !== 'all' ? Number(filters.rimWidth) : null;
+  const widths = Array.isArray(filters.rimWidths)
+    ? filters.rimWidths
+        .map((value: unknown) => Number(value))
+        .filter((value: number) => Number.isFinite(value))
+    : null;
+  const pcd = filters.pcd && filters.pcd !== 'all' ? String(filters.pcd) : null;
+  const etOffset = filters.etOffset !== '' && filters.etOffset !== null && filters.etOffset !== undefined
+    ? Number(filters.etOffset)
+    : null;
+  const centerBoreMin = filters.cb !== '' && filters.cb !== null && filters.cb !== undefined
+    ? Number(filters.cb)
+    : null;
+  const color = filters.color && filters.color !== 'all' ? String(filters.color) : null;
+  const material = filters.material && filters.material !== 'all' ? String(filters.material) : null;
+  const boltsIncluded =
+    typeof filters.boltsIncluded === 'boolean' ? Boolean(filters.boltsIncluded) : null;
+  const sortBy =
+    typeof filters.sortBy === 'string' && filters.sortBy.length > 0 ? filters.sortBy : 'price_asc';
+
+  const listArgs = {
+    p_search: search,
+    p_brands: brands,
+    p_diameter: Number.isFinite(diameter) ? diameter : null,
+    p_width: Number.isFinite(width) ? width : null,
+    p_widths: widths && widths.length > 0 ? widths : null,
+    p_pcd: pcd,
+    p_et_offset: Number.isFinite(etOffset) ? etOffset : null,
+    p_center_bore_min: Number.isFinite(centerBoreMin) ? centerBoreMin : null,
+    p_color: color,
+    p_material: material,
+    p_bolts_included: boltsIncluded,
+    p_in_stock: Boolean(filters.inStockOnly),
+    p_sort_by: sortBy,
+    p_limit: limit,
+    p_offset: offset,
+  };
+
+  const countArgs = {
+    p_search: listArgs.p_search,
+    p_brands: listArgs.p_brands,
+    p_diameter: listArgs.p_diameter,
+    p_width: listArgs.p_width,
+    p_widths: listArgs.p_widths,
+    p_pcd: listArgs.p_pcd,
+    p_et_offset: listArgs.p_et_offset,
+    p_center_bore_min: listArgs.p_center_bore_min,
+    p_color: listArgs.p_color,
+    p_material: listArgs.p_material,
+    p_bolts_included: listArgs.p_bolts_included,
+    p_in_stock: listArgs.p_in_stock,
+  };
+
+  const [{ data: rows, error: listError }, { data: countValue, error: countError }] = await Promise.all([
+    supabase.rpc('catalog_list_rims_v1', listArgs),
+    supabase.rpc('catalog_count_rims_v1', countArgs),
+  ]);
+
+  if (listError) throw listError;
+  if (countError && !isStatementTimeoutError(countError)) throw countError;
+
+  const itemRows = ((rows ?? []) as ProductSearchRow[]).map((row) => ({
+    ...row,
+    product_type: 'rim',
+    final_is_hidden: false,
+  }));
+
+  return {
+    items: itemRows,
+    total: countError && isStatementTimeoutError(countError)
+      ? (itemRows.length === limit ? offset + itemRows.length + 1 : offset + itemRows.length)
+      : Number(countValue ?? itemRows.length),
+  };
+}
+
+async function fetchRimCatalogPublishedFallback(
+  limit: number,
+  offset: number,
+  filters: Record<string, any>,
+): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const buildQuery = (useSafeOrder = false) => {
+    let query = supabase
+      .from('webshop_items')
+      .select(WEBSHOP_RIM_PUBLIC_SELECT)
+      .eq('product_type', 'rim')
+      .eq('is_visible', true)
+      .eq('publish_status', 'published');
+
+    const search = normalizeSearchTerm(filters.search);
+    if (search) {
+      query = query.or([
+        `brand.ilike.%${search}%`,
+        `brand_display_name.ilike.%${search}%`,
+        `model.ilike.%${search}%`,
+        `size_string.ilike.%${search}%`,
+        `card_title.ilike.%${search}%`,
+        `color.ilike.%${search}%`,
+        `ean.ilike.%${search}%`,
+        `derived_ean.ilike.%${search}%`,
+      ].join(','));
+    }
+
+    if (Array.isArray(filters.brand) && filters.brand.length > 0) {
+      query = query.in('brand_display_name', filters.brand);
+    } else if (filters.brand && filters.brand !== 'all') {
+      query = query.eq('brand_display_name', String(filters.brand));
+    }
+
+    if (filters.rimDiameter && filters.rimDiameter !== 'all') query = query.eq('rim_diameter_in', Number(filters.rimDiameter));
+    if (filters.rimWidth && filters.rimWidth !== 'all') query = query.eq('width_in', Number(filters.rimWidth));
+    if (Array.isArray(filters.rimWidths) && filters.rimWidths.length > 0) {
+      query = query.in('width_in', filters.rimWidths.map((value: unknown) => Number(value)).filter(Number.isFinite));
+    }
+    if (filters.pcd && filters.pcd !== 'all') query = query.eq('bolt_pattern', filters.pcd);
+    if (filters.etOffset !== '' && filters.etOffset !== null && filters.etOffset !== undefined) {
+      query = query.eq('et_offset_mm', Number(filters.etOffset));
+    }
+    if (filters.color && filters.color !== 'all') query = query.ilike('color', String(filters.color));
+    if (filters.material && filters.material !== 'all') query = query.ilike('material', String(filters.material));
+    if (typeof filters.boltsIncluded === 'boolean') query = query.eq('bolts_included', filters.boltsIncluded);
+    if (filters.inStockOnly) query = query.eq('in_stock', true);
+
+    if (useSafeOrder) {
+      query = query.order('variant_id', { ascending: true });
+    } else {
+      switch (filters.sortBy) {
+        case 'price_desc':
+          query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
+          break;
+        case 'brand_desc':
+          query = query.order('brand_display_name', { ascending: false }).order('brand', { ascending: false }).order('model', { ascending: false }).order('variant_id', { ascending: true });
+          break;
+        case 'brand_asc':
+          query = query.order('brand_display_name', { ascending: true }).order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
+          break;
+        case 'price_asc':
+        default:
+          query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
+          break;
+      }
+    }
+
+    return query.range(offset, offset + limit - 1);
+  };
+
+  const firstResult = await buildQuery(false);
+  let rows: ProductSearchRow[] = [];
+  let usedSafeOrderFallback = false;
+
+  if (firstResult.error && !isStatementTimeoutError(firstResult.error)) {
+    throw firstResult.error;
+  }
+
+  if (firstResult.error && isStatementTimeoutError(firstResult.error)) {
+    const safeOrderResult = await buildQuery(true);
+    if (safeOrderResult.error) throw safeOrderResult.error;
+    rows = (safeOrderResult.data ?? []) as ProductSearchRow[];
+    usedSafeOrderFallback = true;
+  } else {
+    rows = (firstResult.data ?? []) as ProductSearchRow[];
+  }
+
+  let items = rows.map((row) => ({
+    ...row,
+    product_type: 'rim' as const,
+    final_is_hidden: false,
+    pricing_rules: null,
+  })).filter((row) => matchesRimFilters(row, filters));
+
+  if (usedSafeOrderFallback) {
+    items = applySort(items, filters.sortBy);
+  }
+
+  return {
+    items,
+    total: items.length === limit ? offset + items.length + 1 : offset + items.length,
   };
 }
 
@@ -1148,7 +1376,16 @@ export async function fetchProductSearchRowByIdentifier(
 
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedIdentifier);
 
-  if (productType === 'tire' && !isAllSeasonFilter(filters.season)) {
+  if (productType === 'rim') {
+    const { data, error } = await supabase.rpc('catalog_get_rim_by_identifier_v1', {
+      p_identifier: trimmedIdentifier,
+    });
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    return rows[0] ? ({ ...(rows[0] as ProductSearchRow), product_type: 'rim', final_is_hidden: false }) : null;
+  }
+
+  if (productType === 'tire') {
     let query = supabase
       .from('webshop_items')
       .select(WEBSHOP_TIRE_PUBLIC_SELECT)
@@ -1234,6 +1471,37 @@ export async function fetchProductsSearch(
       }
 
       return await fetchTireCatalogRpc(limit, offset, filters);
+    }
+  }
+
+  if (productType === 'rim') {
+    try {
+      return await fetchRimCatalogRpc(limit, offset, filters);
+    } catch (error) {
+      if (isStatementTimeoutError(error)) {
+        console.warn('Rim catalog RPC timed out; falling back to published webshop_items.', error);
+        return await fetchRimCatalogPublishedFallback(limit, offset, filters);
+      }
+
+      if (!isRecoverableAuthError(error)) {
+        throw error;
+      }
+
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        // Ignore cleanup failures and retry once with anon state.
+      }
+
+      try {
+        return await fetchRimCatalogRpc(limit, offset, filters);
+      } catch (retryError) {
+        if (isStatementTimeoutError(retryError)) {
+          console.warn('Rim catalog RPC timed out after auth retry; falling back to published webshop_items.', retryError);
+          return await fetchRimCatalogPublishedFallback(limit, offset, filters);
+        }
+        throw retryError;
+      }
     }
   }
 

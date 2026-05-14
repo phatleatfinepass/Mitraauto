@@ -1,8 +1,8 @@
 import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import { buildProductImageFallback } from '../../utils/productImage';
 import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
 
@@ -11,6 +11,8 @@ interface RimCardProps {
     id: string;
     brand: string;
     model: string;
+    title?: string;
+    subtitle?: string;
     rim_width?: number;
     rim_diameter?: number;
     pcd?: string;
@@ -18,6 +20,8 @@ interface RimCardProps {
     cb?: number;
     color?: string;
     material?: string;
+    tags?: string[];
+    generated_tags?: string[];
     best_price_eur?: number;
     pricing_rules?: ProductPricingRules | null;
     best_image_url: string;
@@ -47,7 +51,7 @@ const PREVIEW_RIM_PRODUCT: NonNullable<RimCardProps['product']> = {
 };
 
 export function RimCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart, disableInitialAnimation = false }: RimCardProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const product = productProp ?? PREVIEW_RIM_PRODUCT;
@@ -75,25 +79,32 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
   const fitmentRows = [
     { label: 'PCD', value: product.pcd || '—' },
     { label: 'ET', value: product.et_offset != null ? String(product.et_offset) : '—' },
-    { label: language === 'fi' ? 'CB' : 'CB', value: product.cb != null ? `${product.cb} mm` : '—' },
+    { label: 'CB', value: product.cb != null ? `${product.cb} mm` : '—' },
     {
-      label: language === 'fi' ? 'Materiaali' : 'Material',
+      label: t('productDetail.material'),
       value: product.material
         ? product.material.toLowerCase() === 'alloy'
-          ? (language === 'fi' ? 'Kevytmetalli' : 'Alloy')
+          ? t('catalog.materialAlloy')
           : product.material.toLowerCase() === 'steel'
-            ? (language === 'fi' ? 'Teräs' : 'Steel')
+            ? t('catalog.materialSteel')
             : product.material
         : '—',
     },
   ];
 
   const metaChips = [
-    product.color ? { label: language === 'fi' ? `Väri ${product.color}` : `Color ${product.color}` } : null,
+    product.color ? { label: t('catalog.colorPrefix', { color: product.color }) } : null,
     product.in_stock
-      ? { label: language === 'fi' ? 'Varastossa' : 'In stock', accent: true }
-      : { label: language === 'fi' ? 'Tilapäisesti loppu' : 'Out of stock' },
+      ? { label: t('catalog.inStockLower'), accent: true }
+    : { label: t('catalog.outOfStockTemporary') },
   ].filter(Boolean) as Array<{ label: string; accent?: boolean }>;
+  const tagChips = (product.generated_tags?.length ? product.generated_tags : product.tags ?? [])
+    .map((tag) => String(tag ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  const displayChips = [...metaChips, ...tagChips.map((label) => ({ label }))].filter(
+    (chip, index, chips) => chips.findIndex((candidate) => candidate.label.toLowerCase() === chip.label.toLowerCase()) === index,
+  );
 
   const handleCardLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (!onClick) return;
@@ -150,20 +161,20 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
                 {product.brand}
               </p>
               <h3 className="mt-1 text-xl font-semibold tracking-tight">
-                {product.model}
+                {product.title || product.model}
               </h3>
               <p className={`mt-2 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                {sizeLabel}
+                {product.subtitle || sizeLabel}
               </p>
             </div>
 
             <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isDark ? 'bg-white/5 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
-              {language === 'fi' ? 'Vanne' : 'Rim'}
+              {t('catalog.rim')}
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {metaChips.map((chip) => (
+            {displayChips.map((chip) => (
               <span
                 key={chip.label}
                 className={`rounded-full px-2.5 py-1 text-xs ${
@@ -216,7 +227,7 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className={`text-xs uppercase tracking-[0.16em] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  {language === 'fi' ? 'Hinta / kpl' : 'Price / each'}
+                  {t('catalog.priceEach')}
                 </p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">
                   {(product.best_price_eur || 0).toFixed(2)} €
@@ -224,7 +235,7 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
               </div>
               <div className="text-right">
                 <p className={`text-xs uppercase tracking-[0.16em] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  {language === 'fi' ? 'Sarja 4 kpl' : 'Set of 4'}
+                  {t('catalog.setOf4')}
                 </p>
                 <p className={`mt-1 text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                   {fourPiecePrice.toFixed(2)} €
@@ -244,8 +255,8 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
           >
             <ShoppingCart className="h-4 w-4" />
             {product.in_stock
-              ? (language === 'fi' ? 'Lisää koriin' : 'Add to cart')
-              : (language === 'fi' ? 'Tilapäisesti loppu' : 'Out of stock')}
+              ? t('catalog.addToCart')
+              : t('catalog.outOfStockTemporary')}
           </button>
         </div>
       </article>

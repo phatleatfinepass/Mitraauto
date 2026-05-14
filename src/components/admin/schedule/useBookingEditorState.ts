@@ -59,7 +59,7 @@ export function useBookingEditorState({
     license_plate: '',
     booking_date: formatDateForSupabase(new Date()),
     booking_time: '',
-    booking_language: language === 'en' ? 'en' : 'fi',
+    booking_language: ({ fi: 'fi', en: 'en' } as const)[language as SupportedBookingLanguage] ?? 'fi',
     service_name: '',
     customer_name: '',
     customer_phone: '',
@@ -75,14 +75,8 @@ export function useBookingEditorState({
   const [editBookingCurrentServiceId, setEditBookingCurrentServiceId] = useState<Record<string, string>>({});
   const [editBookingServiceIds, setEditBookingServiceIds] = useState<Record<string, string[]>>({});
 
-  const bookingEmailWarning =
-    language === 'fi'
-      ? 'Varaus tallennettiin, mutta asiakkaan sähköpostia ei voitu lähettää.'
-      : 'The booking was saved, but the customer email could not be sent.';
-  const bookingUpdateEmailWarning =
-    language === 'fi'
-      ? 'Varaus päivitettiin, mutta asiakkaan sähköpostia ei voitu lähettää.'
-      : 'The booking was updated, but the customer email could not be sent.';
+  const bookingEmailWarning = t('bookingEmailWarning');
+  const bookingUpdateEmailWarning = t('bookingUpdateEmailWarning');
 
   const normalizeAdminBookingLanguage = useCallback((
     bookingLanguage?: string | null,

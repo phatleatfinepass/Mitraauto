@@ -117,6 +117,12 @@ function isStatementTimeoutError(error: any) {
   return error?.code === '57014' || String(error?.message ?? '').toLowerCase().includes('statement timeout');
 }
 
+function isRecoverableFetchError(error: any) {
+  const message = String(error?.message ?? error ?? '').toLowerCase();
+  const details = String(error?.details ?? '').toLowerCase();
+  return isStatementTimeoutError(error) || message.includes('failed to fetch') || details.includes('failed to fetch');
+}
+
 function readTiresCmsCacheStore(): TiresCmsCacheStore {
   if (typeof window === 'undefined') {
     return { queries: {} };
@@ -563,7 +569,7 @@ export function useTiresCmsList(pageSize = 25) {
       };
 
       try {
-        const { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
+        let { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
           p_search: trimmedSearch || null,
           p_missing_ean_only: showMissingEanOnly,
           p_exclude_non_passenger: hideNonPassenger,
@@ -577,7 +583,36 @@ export function useTiresCmsList(pageSize = 25) {
         });
 
         if (rpcError) {
-          throw rpcError;
+          if (!isStatementTimeoutError(rpcError)) {
+            throw rpcError;
+          }
+
+          let fallbackQuery = supabase
+            .from('webshop_items')
+            .select(
+              'variant_id,product_type,ean,derived_ean,supplier_code_best,supplier_external_id_best,brand,brand_display_name,model,size_string,season,studded,runflat,xl_reinforced,load_index,speed_rating,speed_index,ev_ready,sound_absorber,threepmsf,winter_approved,ice_approved,eu_wet,eu_noise,eu_label_json,final_price_eur,price,in_stock,hero_image_url,gallery,manufacture_year',
+            )
+            .eq('product_type', 'tire')
+            .eq('is_visible', true)
+            .eq('publish_status', 'published')
+            .order('variant_id', { ascending: true })
+            .range(offset, offset + pageSize - 1);
+
+          if (trimmedSearch) {
+            fallbackQuery = fallbackQuery.or([
+              `brand.ilike.%${trimmedSearch}%`,
+              `brand_display_name.ilike.%${trimmedSearch}%`,
+              `model.ilike.%${trimmedSearch}%`,
+              `size_string.ilike.%${trimmedSearch}%`,
+              `ean.ilike.%${trimmedSearch}%`,
+              `derived_ean.ilike.%${trimmedSearch}%`,
+            ].join(','));
+          }
+          if (supplierFilter !== 'all') fallbackQuery = fallbackQuery.eq('supplier_code_best', supplierFilter);
+
+          const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
+          if (fallbackError) throw fallbackError;
+          rpcRows = fallbackRows ?? [];
         }
 
         let resolvedTotalCount = 0;
@@ -705,7 +740,7 @@ export function useTiresCmsList(pageSize = 25) {
         return;
       } catch (rpcListError: any) {
         if (cachedPage && force) {
-          if (!isStatementTimeoutError(rpcListError)) {
+          if (!isRecoverableFetchError(rpcListError)) {
             console.warn('Background fetch tires refresh failed, keeping cached CMS page:', rpcListError);
           }
           setError(null);
@@ -714,7 +749,7 @@ export function useTiresCmsList(pageSize = 25) {
         throw rpcListError;
       }
     } catch (err: any) {
-      if (isStatementTimeoutError(err) && cachedPage) {
+      if (isRecoverableFetchError(err) && cachedPage) {
         setError(null);
       } else {
         console.error('Fetch tires error:', err);

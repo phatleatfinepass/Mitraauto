@@ -43,7 +43,7 @@ export function AdminScheduleSidebar({
           <div>
             <h3 className={`text-sm font-semibold ${titleClass}`}>{t('selectDate')}</h3>
             <p className={`mt-1 text-xs ${mutedTextClass}`}>
-              {language === 'fi' ? 'Valitse päivä ja tarkastele kapasiteettia reaaliajassa.' : 'Pick a day and review capacity in real time.'}
+              {t('sidebarDescription')}
             </p>
           </div>
           <Badge variant="secondary" className={theme === 'dark' ? 'bg-white/10 text-gray-200' : 'bg-gray-100 text-gray-700'}>
@@ -70,7 +70,7 @@ export function AdminScheduleSidebar({
 
       {onLogout && (
         <Button variant="outline" onClick={onLogout} className={outlineButtonClass}>
-          {language === 'fi' ? 'Kirjaudu ulos' : 'Logout'}
+          {t('logout')}
         </Button>
       )}
     </aside>

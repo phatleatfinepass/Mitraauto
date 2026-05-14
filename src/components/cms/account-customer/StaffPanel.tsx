@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, EyeOff, KeyRound, MailPlus, Plus, RefreshCcw, Save, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle, EyeOff, KeyRound, MailPlus, Plus, RefreshCcw, Save, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -10,7 +10,13 @@ import { buildDefaultStaffPermissions, buildStaffDraft } from './safe';
 import type { StaffAccountRow, StaffDraft, AccountStatus, CmsPermissionValue, StaffRole } from './types';
 import type { StaffMfaStatus } from './api';
 
-export function StaffPanel({ currentUserId }: { currentUserId: string | null }) {
+type StaffPanelProps = {
+  currentUserId: string | null;
+  canWriteAccounts: boolean;
+  canEditPermissions: boolean;
+};
+
+export function StaffPanel({ currentUserId, canWriteAccounts, canEditPermissions }: StaffPanelProps) {
   const [rows, setRows] = useState<StaffAccountRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<StaffDraft | null>(null);
@@ -28,6 +34,8 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
   const [showHidden, setShowHidden] = useState(true);
   const [setupLinkSending, setSetupLinkSending] = useState(false);
   const [setupLinkMessage, setSetupLinkMessage] = useState('');
+  const [saveMessage, setSaveMessage] = useState('');
+  const [saveStage, setSaveStage] = useState('');
   const [mfaStatus, setMfaStatus] = useState<StaffMfaStatus | null>(null);
   const [mfaStatusLoading, setMfaStatusLoading] = useState(false);
   const [mfaResetting, setMfaResetting] = useState(false);
@@ -85,6 +93,7 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
     if (loading) return;
     setLoading(true);
     setError(null);
+    setSaveMessage('');
 
     try {
       const nextRows = await listStaffAccounts();
@@ -108,7 +117,7 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
   };
 
   const addAccount = async () => {
-    if (saving) return;
+    if (saving || !canWriteAccounts) return;
     if (!newEmail.trim()) {
       setError('Email is required.');
       return;
@@ -134,7 +143,7 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
   };
 
   const sendSelectedSetupLink = async () => {
-    if (!selectedRow?.email || setupLinkSending) return;
+    if (!selectedRow?.email || setupLinkSending || !canWriteAccounts) return;
     setSetupLinkSending(true);
     setSetupLinkMessage('');
     setError(null);
@@ -164,7 +173,7 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
   };
 
   const resetSelectedMfa = async () => {
-    if (!selectedRow?.id || mfaResetting) return;
+    if (!selectedRow?.id || mfaResetting || !canWriteAccounts) return;
 
     const confirmed = window.confirm(`Reset 2FA for ${selectedRow.email || selectedRow.displayName || 'this account'}? They will need to set up 2FA again before CMS write access.`);
     if (!confirmed) return;
@@ -183,7 +192,11 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
   };
 
   const saveDraft = async () => {
-    if (!selectedRow || !draft || saving) return;
+    if (!selectedRow || !draft || saving || !canWriteAccounts) return;
+    if (!canEditPermissions && draft.accountStatus === 'deleted') {
+      setError('Only Super Admin can delete staff accounts.');
+      return;
+    }
     if (selectedRow.id === currentUserId && (draft.role !== 'super_admin' || draft.accountStatus !== 'active')) {
       setError('You cannot remove your own active super admin access.');
       return;
@@ -191,19 +204,46 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
 
     setSaving(true);
     setError(null);
+    setSaveMessage('');
+    setSaveStage('Saving...');
 
     try {
       await updateStaffAccount(selectedRow.id, draft);
-      await refreshRows(selectedRow.id);
+      setSaveStage('Verifying...');
+      const nextRows = await listStaffAccounts();
+      const savedRow = nextRows.find((row) => row.id === selectedRow.id);
+      setRows(nextRows);
+      setSelectedId(savedRow?.id ?? nextRows[0]?.id ?? null);
+      setLoaded(true);
+
+      if (!savedRow) {
+        setError('Staff account was saved but is no longer visible in the account list.');
+        return;
+      }
+
+      const savedPermissions = JSON.stringify(savedRow.permissions);
+      const requestedPermissions = JSON.stringify(draft.permissions);
+      if (
+        (canEditPermissions && savedRow.role !== draft.role) ||
+        savedRow.accountStatus !== draft.accountStatus ||
+        savedRow.hidden !== draft.hidden ||
+        (canEditPermissions && savedPermissions !== requestedPermissions)
+      ) {
+        setError('Save did not persist all staff account changes. Reload and try again.');
+        return;
+      }
+
+      setSaveMessage(canEditPermissions ? 'Staff account permissions saved.' : 'Staff account access saved.');
     } catch (err: any) {
       setError(err.message ?? 'Failed to save staff account.');
     } finally {
+      setSaveStage('');
       setSaving(false);
     }
   };
 
   const softDeleteSelected = async () => {
-    if (!selectedRow || saving) return;
+    if (!selectedRow || saving || !canWriteAccounts || !canEditPermissions) return;
     if (selectedRow.id === currentUserId) {
       setError('You cannot delete your own account.');
       return;
@@ -226,7 +266,7 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
   };
 
   const suspendSelected = async () => {
-    if (!selectedRow || !draft || saving) return;
+    if (!selectedRow || !draft || saving || !canWriteAccounts) return;
     if (selectedRow.id === currentUserId) {
       setError('You cannot suspend your own account.');
       return;
@@ -259,7 +299,7 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setCreating((value) => !value)}>
+          <Button variant="outline" onClick={() => setCreating((value) => !value)} disabled={!canWriteAccounts}>
             <Plus className="mr-2 h-4 w-4" />
             Add account
           </Button>
@@ -283,6 +323,12 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
         </div>
       ) : null}
 
+      {saveMessage ? (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-foreground">
+          {saveMessage}
+        </div>
+      ) : null}
+
       {creating ? (
         <div className="rounded-lg border bg-background p-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_minmax(180px,.8fr)_180px_140px] lg:items-end">
@@ -299,12 +345,13 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
               <select
                 value={newRole}
                 onChange={(event) => setNewRole(event.target.value as StaffRole)}
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                disabled={!canEditPermissions}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {STAFF_ROLES.map((role) => <option key={`new-${role}`} value={role}>{role}</option>)}
               </select>
             </div>
-            <Button onClick={addAccount} disabled={saving}>
+            <Button onClick={addAccount} disabled={saving || !canWriteAccounts}>
               {saving ? 'Saving...' : 'Add account'}
             </Button>
           </div>
@@ -388,7 +435,8 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
                           <select
                             value={draft.role}
                             onChange={(event) => setDraft((current) => current ? { ...current, role: event.target.value as StaffRole } : current)}
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                            disabled={!canEditPermissions}
+                            className="h-10 w-full rounded-md border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {STAFF_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
                           </select>
@@ -400,7 +448,9 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
                             onChange={(event) => setDraft((current) => current ? { ...current, accountStatus: event.target.value as AccountStatus } : current)}
                             className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                           >
-                            {ACCOUNT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                            {ACCOUNT_STATUSES
+                              .filter((status) => canEditPermissions || status !== 'deleted')
+                              .map((status) => <option key={status} value={status}>{status}</option>)}
                           </select>
                         </div>
                       </div>
@@ -419,106 +469,136 @@ export function StaffPanel({ currentUserId }: { currentUserId: string | null }) 
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 text-sm font-medium">
                         <KeyRound className="h-4 w-4 text-primary" />
-                        MFA status
+                        Account access
                       </div>
                       <Button type="button" size="sm" variant="ghost" onClick={refreshSelectedMfaStatus} disabled={mfaStatusLoading}>
                         <RefreshCcw className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid gap-2 text-sm sm:grid-cols-2 2xl:grid-cols-1">
-                      <div className="rounded-md border bg-muted/20 px-3 py-2">
-                        <span className="block text-xs text-muted-foreground">2FA status</span>
-                        <span className="font-medium">
-                          {mfaStatusLoading ? 'Checking...' : mfaStatus?.enabled ? 'Enabled' : 'Not set up'}
-                        </span>
-                      </div>
-                      <div className="rounded-md border bg-muted/20 px-3 py-2">
-                        <span className="block text-xs text-muted-foreground">TOTP factors</span>
-                        <span className="font-medium">
-                          {mfaStatus ? `${mfaStatus.verifiedTotpCount} verified, ${mfaStatus.pendingTotpCount} pending` : '-'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Badge variant={mfaStatus?.enabled ? 'default' : 'secondary'}>
-                        {mfaStatus?.enabled ? '2FA active' : '2FA setup required'}
-                      </Badge>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={resetSelectedMfa}
-                        disabled={!selectedRow.id || mfaResetting || selectedRow.accountStatus === 'deleted'}
-                      >
-                        {mfaResetting ? 'Resetting...' : 'Reset 2FA setup'}
-                      </Button>
-                    </div>
-                  </div>
 
-                  <div className="rounded-lg border p-3">
-                    <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                      <MailPlus className="h-4 w-4 text-primary" />
-                      Account access
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={selectedRow.accountStatus === 'active' ? 'default' : 'secondary'}>{selectedRow.accountStatus}</Badge>
-                      {selectedRow.hidden ? <Badge variant="outline">hidden</Badge> : null}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={sendSelectedSetupLink}
-                        disabled={!selectedRow.email || setupLinkSending || selectedRow.accountStatus === 'deleted'}
-                      >
-                        <MailPlus className="mr-2 h-4 w-4" />
-                        {setupLinkSending ? 'Sending...' : 'Send active link'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/20 px-3 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {selectedRow.accountStatus === 'active' ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">CMS account</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {selectedRow.accountStatus === 'active' ? 'Active and allowed to sign in' : `Status: ${selectedRow.accountStatus}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Badge variant={selectedRow.accountStatus === 'active' ? 'default' : 'secondary'}>{selectedRow.accountStatus}</Badge>
+                          {selectedRow.hidden ? <Badge variant="outline">hidden</Badge> : null}
+                        </div>
+                      </div>
 
-                <div className="space-y-4">
-                  <div className="overflow-hidden rounded-lg border">
-                    <div className="flex items-center gap-2 border-b px-3 py-2 text-sm font-medium sm:px-4">
-                      <ShieldCheck className="h-4 w-4 text-primary" />
-                      Permissions
-                    </div>
-                    <div className="grid grid-cols-[minmax(90px,1fr)_minmax(112px,140px)] border-b bg-muted/30 px-3 py-2 text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground sm:grid-cols-[minmax(120px,1fr)_150px] sm:px-4">
-                      <span>Module</span>
-                      <span>Access</span>
-                    </div>
-                    {CMS_MODULES.map((module) => (
-                      <div key={module.id} className="grid grid-cols-[minmax(90px,1fr)_minmax(112px,140px)] items-center gap-2 border-b px-3 py-2.5 last:border-b-0 sm:grid-cols-[minmax(120px,1fr)_150px] sm:gap-3 sm:px-4">
-                        <span className="text-sm font-medium">{module.label}</span>
-                        <select
-                          value={draft.permissions[module.id] ?? 'none'}
-                          onChange={(event) => setDraft((current) => current ? {
-                            ...current,
-                            permissions: {
-                              ...current.permissions,
-                              [module.id]: event.target.value as CmsPermissionValue,
-                            },
-                          } : current)}
-                          className="h-9 min-w-0 rounded-md border bg-background px-2 text-sm"
+                      <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/20 px-3 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {mfaStatus?.enabled ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">2FA</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {mfaStatusLoading
+                                ? 'Checking MFA status...'
+                                : mfaStatus
+                                  ? `${mfaStatus.verifiedTotpCount} verified, ${mfaStatus.pendingTotpCount} pending`
+                                  : 'Status not loaded'}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={resetSelectedMfa}
+                          disabled={!selectedRow.id || mfaResetting || selectedRow.accountStatus === 'deleted' || !canWriteAccounts}
                         >
-                          {PERMISSION_VALUES.map((value) => <option key={`${module.id}-${value}`} value={value}>{value}</option>)}
-                        </select>
+                          {mfaResetting ? 'Resetting...' : 'Reset'}
+                        </Button>
                       </div>
-                    ))}
+
+                      <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/20 px-3 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {selectedRow.email ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">Password setup</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {selectedRow.email ? selectedRow.email : 'Email is required before sending active link'}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={sendSelectedSetupLink}
+                          disabled={!selectedRow.email || setupLinkSending || selectedRow.accountStatus === 'deleted' || !canWriteAccounts}
+                        >
+                          <MailPlus className="mr-2 h-4 w-4" />
+                          {setupLinkSending ? 'Sending...' : 'Active link'}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                {canEditPermissions ? (
+                  <div className="space-y-4">
+                    <div className="overflow-hidden rounded-lg border">
+                      <div className="flex items-center gap-2 border-b px-3 py-2 text-sm font-medium sm:px-4">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                        Permissions
+                      </div>
+                      <div className="grid grid-cols-[minmax(90px,1fr)_minmax(112px,140px)] border-b bg-muted/30 px-3 py-2 text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground sm:grid-cols-[minmax(120px,1fr)_150px] sm:px-4">
+                        <span>Module</span>
+                        <span>Access</span>
+                      </div>
+                      {CMS_MODULES.map((module) => (
+                        <div key={module.id} className="grid grid-cols-[minmax(90px,1fr)_minmax(112px,140px)] items-center gap-2 border-b px-3 py-2.5 last:border-b-0 sm:grid-cols-[minmax(120px,1fr)_150px] sm:gap-3 sm:px-4">
+                          <span className="text-sm font-medium">{module.label}</span>
+                          <select
+                            value={draft.permissions[module.id] ?? 'none'}
+                            onChange={(event) => setDraft((current) => current ? {
+                              ...current,
+                              permissions: {
+                                ...current.permissions,
+                                [module.id]: event.target.value as CmsPermissionValue,
+                              },
+                            } : current)}
+                            className="h-9 min-w-0 rounded-md border bg-background px-2 text-sm"
+                          >
+                            {PERMISSION_VALUES.map((value) => <option key={`${module.id}-${value}`} value={value}>{value}</option>)}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Access scope is managed by Super Admin.</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          This account view can manage staff access tasks, but module access rules are not shown here.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2 border-t pt-4">
-                <Button onClick={saveDraft} disabled={saving}>
+                <Button onClick={saveDraft} disabled={saving || !canWriteAccounts}>
                   <Save className="mr-2 h-4 w-4" />
-                  {saving ? 'Saving...' : 'Save staff permissions'}
+                  {saving ? saveStage || 'Saving...' : canEditPermissions ? 'Save staff permissions' : 'Save staff access'}
                 </Button>
-                <Button variant="outline" onClick={suspendSelected} disabled={saving || selectedRow.id === currentUserId}>
+                <Button variant="outline" onClick={suspendSelected} disabled={saving || selectedRow.id === currentUserId || !canWriteAccounts}>
                   <EyeOff className="mr-2 h-4 w-4" />
                   Suspend
                 </Button>
-                <Button variant="destructive" onClick={softDeleteSelected} disabled={saving || selectedRow.id === currentUserId}>
+                <Button variant="destructive" onClick={softDeleteSelected} disabled={saving || selectedRow.id === currentUserId || !canWriteAccounts || !canEditPermissions}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete account
                 </Button>

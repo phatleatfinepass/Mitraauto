@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { translateForLanguage, useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import {
   ArrowLeft,
   Check,
@@ -115,6 +115,8 @@ export interface RimProduct {
   delivery_days?: string;
   delivery_days_min?: number;
   delivery_days_max?: number;
+  tags?: string[];
+  generated_tags?: string[];
   compatible_vehicles?: string[];
   warranty_years?: number;
   rating?: number;
@@ -202,17 +204,17 @@ function SpecList({
 
 function CompatibilityList({
   theme,
-  language,
+  emptyText,
   vehicles,
 }: {
   theme: string;
-  language: string;
+  emptyText: string;
   vehicles: string[];
 }) {
   if (vehicles.length === 0) {
     return (
       <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
-        {language === 'fi' ? 'Yhteensopivuustietoja ei ole saatavilla.' : 'Compatibility data is not available.'}
+        {emptyText}
       </p>
     );
   }
@@ -286,30 +288,29 @@ function TyreLabelBlock({
 }
 
 function TyreLabelIdentitySection({
-  language,
   product,
+  productText,
   theme,
 }: {
-  language: string;
   product: TireProduct;
+  productText: (key: string) => string;
   theme: string;
 }) {
   const data = product.tyre_label_section;
   if (!data) return null;
 
-  const t = (fi: string, en: string) => (language === 'fi' ? fi : en);
   const identityRows = [
-    { label: t('Trademark', 'Trademark'), value: data.identity.supplier_trademark },
-    { label: t('Commercial name', 'Commercial name'), value: data.identity.commercial_name },
-    { label: t('Tyre type ID', 'Tyre type ID'), value: data.identity.tyre_type_identifier },
-    { label: t('Tyre class', 'Tyre class'), value: data.identity.tyre_class },
-    { label: t('Size designation', 'Size designation'), value: data.identity.size_designation },
+    { label: productText('trademark'), value: data.identity.supplier_trademark },
+    { label: productText('commercialName'), value: data.identity.commercial_name },
+    { label: productText('tyreTypeId'), value: data.identity.tyre_type_identifier },
+    { label: productText('tyreClass'), value: data.identity.tyre_class },
+    { label: productText('sizeDesignation'), value: data.identity.size_designation },
     {
-      label: t('Load / speed', 'Load / speed'),
+      label: productText('loadSpeed'),
       value: [data.identity.load_index, data.identity.speed_symbol].filter(Boolean).join(' / ') || null,
     },
     {
-      label: t('Load version', 'Load version'),
+      label: productText('loadVersion'),
       value: data.identity.load_version,
     },
     { label: 'EAN', value: data.identity.ean },
@@ -317,18 +318,18 @@ function TyreLabelIdentitySection({
 
   const complianceRows = [
     { label: 'EPREL', value: data.eu_label.eprel_registration_number },
-    { label: t('Production start', 'Production start'), value: data.compliance.production_start },
-    { label: t('Production end', 'Production end'), value: data.compliance.production_end ?? t('No', 'No') },
-    { label: t('Market start', 'Market start'), value: data.compliance.market_start },
-    { label: t('Source', 'Source'), value: data.compliance.data_source },
+    { label: productText('productionStart'), value: data.compliance.production_start },
+    { label: productText('productionEnd'), value: data.compliance.production_end ?? productText('no') },
+    { label: productText('marketStart'), value: data.compliance.market_start },
+    { label: productText('source'), value: data.compliance.data_source },
   ].filter((row) => row.value && String(row.value).trim().length > 0);
 
   const merchandisingBadges = [
     product.runflat ? 'RunFlat' : null,
     data.badges.extra_load ? 'XL' : null,
     product.ev_ready ? 'EV' : null,
-    product.sound_absorber ? (language === 'fi' ? 'Äänenvaimennus' : 'Sound absorber') : null,
-    product.studded ? (language === 'fi' ? 'Nastat' : 'Studded') : null,
+    product.sound_absorber ? productText('soundAbsorber') : null,
+    product.studded ? productText('studdedShort') : null,
     data.badges.winter_approved ? 'M+S' : null,
   ].filter(Boolean) as string[];
 
@@ -336,12 +337,9 @@ function TyreLabelIdentitySection({
     <section className={`rounded-3xl border p-6 sm:p-7 ${theme === 'dark' ? 'border-white/10 bg-[#171B22]' : 'border-[#E2E8F0] bg-[#FCFCFD]'}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('Tyre Label & Product Identity', 'Tyre Label & Product Identity')}</h2>
+          <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('tyreLabelTitle')}</h2>
           <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
-            {t(
-              'EU-rengasmerkintä, EPREL-yhteys ja tuotteen tunnistetiedot yhdessä näkymässä.',
-              'EU tyre label, EPREL references, and exact product identity in one section.'
-            )}
+            {productText('tyreLabelSubtitle')}
           </p>
         </div>
 
@@ -357,7 +355,7 @@ function TyreLabelIdentitySection({
                 }`}
               >
                 <ExternalLink className="size-4" />
-                {t('EPREL QR', 'EPREL QR')}
+                {productText('eprelQr')}
               </a>
             )}
             {data.eu_label.eprel_sheet_url && (
@@ -370,7 +368,7 @@ function TyreLabelIdentitySection({
                 }`}
               >
                 <ExternalLink className="size-4" />
-                {t('EPREL fiche', 'EPREL fiche')}
+                {productText('eprelFiche')}
               </a>
             )}
           </div>
@@ -381,7 +379,7 @@ function TyreLabelIdentitySection({
         <div className="space-y-6">
           <div>
             <p className={`mb-3 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-              {t('Identity', 'Identity')}
+              {productText('identity')}
             </p>
             <SpecList theme={theme} rows={identityRows} />
           </div>
@@ -389,7 +387,7 @@ function TyreLabelIdentitySection({
           {merchandisingBadges.length > 0 && (
             <div>
               <p className={`mb-3 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                {t('Tyre badges', 'Tyre badges')}
+                {productText('tyreBadges')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {merchandisingBadges.map((badge) => (
@@ -411,7 +409,7 @@ function TyreLabelIdentitySection({
           {complianceRows.length > 0 && (
             <div>
               <p className={`mb-3 text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                {t('EPREL & Compliance', 'EPREL & Compliance')}
+                {productText('eprelCompliance')}
               </p>
               <SpecList theme={theme} rows={complianceRows} />
             </div>
@@ -420,14 +418,14 @@ function TyreLabelIdentitySection({
 
         <div className={`rounded-3xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-[#11141A]' : 'border-[#E2E8F0] bg-white'}`}>
           <div className="grid gap-4 md:grid-cols-2">
-            <TyreLabelBlock grade={data.eu_label.fuel_efficiency_class} theme={theme} title={t('Fuel efficiency', 'Fuel efficiency')} />
-            <TyreLabelBlock grade={data.eu_label.wet_grip_class} theme={theme} title={t('Wet grip', 'Wet grip')} />
+            <TyreLabelBlock grade={data.eu_label.fuel_efficiency_class} theme={theme} title={productText('fuelEfficiency')} />
+            <TyreLabelBlock grade={data.eu_label.wet_grip_class} theme={theme} title={productText('wetGrip')} />
           </div>
 
           <div className={`mt-4 rounded-2xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/[0.03]' : 'border-[#E2E8F0] bg-[#F8FAFC]'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#475569]'}`}>
-                {t('External rolling noise', 'External rolling noise')}
+                {productText('externalRollingNoise')}
               </p>
               <p className={`font-mono text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
                 {data.eu_label.external_noise_db ? `${data.eu_label.external_noise_db} dB` : '—'}
@@ -456,14 +454,14 @@ function TyreLabelIdentitySection({
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <DetailCard
               theme={theme}
-              label={t('Severe snow', 'Severe snow')}
+              label={productText('severeSnow')}
               value={data.eu_label.severe_snow ? '3PMSF' : '—'}
               accent={Boolean(data.eu_label.severe_snow)}
             />
             <DetailCard
               theme={theme}
-              label={t('Severe ice', 'Severe ice')}
-              value={data.eu_label.severe_ice ? (language === 'fi' ? 'Hyväksytty' : 'Approved') : '—'}
+              label={productText('severeIce')}
+              value={data.eu_label.severe_ice ? productText('approved') : '—'}
               accent={Boolean(data.eu_label.severe_ice)}
             />
           </div>
@@ -480,7 +478,7 @@ export function ProductDetailPage({
   onToggleFavorite,
   onShare,
 }: ProductDetailPageProps) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { theme } = useTheme();
   const stockLimit = product.in_stock && typeof product.stock_quantity === 'number' && product.stock_quantity > 0
     ? Math.floor(product.stock_quantity)
@@ -497,34 +495,34 @@ export function ProductDetailPage({
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [localeContent, setLocaleContent] = useState<ProductLocaleContent | null>(null);
 
-  const localizedTitle =
-    language === 'en'
-      ? localeContent?.title_en ?? null
-      : localeContent?.title_fi ?? null;
-  const localizedSubtitle =
-    language === 'en'
-      ? localeContent?.subtitle_en ?? null
-      : localeContent?.subtitle_fi ?? null;
-  const localizedShortDescription =
-    language === 'en'
-      ? localeContent?.short_description_en ?? null
-      : localeContent?.short_description_fi ?? null;
-  const localizedLongDescription =
-    language === 'en'
-      ? localeContent?.long_description_en ?? null
-      : localeContent?.long_description_fi ?? null;
-  const localizedSeoSlug =
-    language === 'en'
-      ? localeContent?.seo_slug_en ?? localeContent?.seo_slug_fi ?? null
-      : localeContent?.seo_slug_fi ?? localeContent?.seo_slug_en ?? null;
-  const localizedSeoTitle =
-    language === 'en'
-      ? localeContent?.seo_title_en ?? localeContent?.seo_title_fi ?? null
-      : localeContent?.seo_title_fi ?? localeContent?.seo_title_en ?? null;
-  const localizedSeoDescription =
-    language === 'en'
-      ? localeContent?.seo_description_en ?? localeContent?.seo_description_fi ?? null
-      : localeContent?.seo_description_fi ?? localeContent?.seo_description_en ?? null;
+  const localizedTitle = {
+    fi: localeContent?.title_fi ?? null,
+    en: localeContent?.title_en ?? null,
+  }[language];
+  const localizedSubtitle = {
+    fi: localeContent?.subtitle_fi ?? null,
+    en: localeContent?.subtitle_en ?? null,
+  }[language];
+  const localizedShortDescription = {
+    fi: localeContent?.short_description_fi ?? null,
+    en: localeContent?.short_description_en ?? null,
+  }[language];
+  const localizedLongDescription = {
+    fi: localeContent?.long_description_fi ?? null,
+    en: localeContent?.long_description_en ?? null,
+  }[language];
+  const localizedSeoSlug = {
+    fi: localeContent?.seo_slug_fi ?? localeContent?.seo_slug_en ?? null,
+    en: localeContent?.seo_slug_en ?? localeContent?.seo_slug_fi ?? null,
+  }[language];
+  const localizedSeoTitle = {
+    fi: localeContent?.seo_title_fi ?? localeContent?.seo_title_en ?? null,
+    en: localeContent?.seo_title_en ?? localeContent?.seo_title_fi ?? null,
+  }[language];
+  const localizedSeoDescription = {
+    fi: localeContent?.seo_description_fi ?? localeContent?.seo_description_en ?? null,
+    en: localeContent?.seo_description_en ?? localeContent?.seo_description_fi ?? null,
+  }[language];
 
   const displayName = String(localizedTitle ?? (product as any).title ?? product.model ?? '').trim();
   const displaySubtitle = String(localizedSubtitle ?? (product as any).subtitle ?? '').trim();
@@ -574,7 +572,7 @@ export function ProductDetailPage({
   }, []);
 
   useEffect(() => {
-    document.documentElement.lang = language === 'fi' ? 'fi' : 'en';
+    document.documentElement.lang = language;
 
     const title = String(localizedSeoTitle ?? displayName ?? '').trim();
     if (title) {
@@ -592,12 +590,9 @@ export function ProductDetailPage({
 
     const origin = window.location.origin;
     const seoSlug = String(localizedSeoSlug ?? (product as any).seo_slug ?? '').trim();
-    const currentPath = language === 'fi'
-      ? `/catalog/${product.type}/${seoSlug || product.id}`
-      : `/en/catalog/${product.type}/${seoSlug || product.id}`;
-    const alternatePath = language === 'fi'
-      ? `/en/catalog/${product.type}/${seoSlug || product.id}`
-      : `/catalog/${product.type}/${seoSlug || product.id}`;
+    const productPath = `/catalog/${product.type}/${seoSlug || product.id}`;
+    const currentPath = { fi: productPath, en: `/en${productPath}` }[language];
+    const alternatePath = { fi: `/en${productPath}`, en: productPath }[language];
 
     let canonicalTag = document.querySelector('link[rel="canonical"]');
     if (!canonicalTag) {
@@ -664,71 +659,13 @@ export function ProductDetailPage({
     window.history.back();
   };
 
-  const t = (key: string): string => {
-    const translations: Record<string, Record<string, string>> = {
-      perPcs: { fi: 'kpl', en: 'pcs' },
-      total: { fi: 'Yhteensä', en: 'Total' },
-      inStock: { fi: 'Varastossa', en: 'In Stock' },
-      outOfStock: { fi: 'Loppu varastosta', en: 'Out of Stock' },
-      delivery: { fi: 'Toimitus 1–3 päivää', en: 'Delivery 1–3 Days' },
-      fulfilledBy: { fi: 'Toimittaa Mitra Auto', en: 'Fulfilled by Mitra Auto' },
-      quantity: { fi: 'Määrä', en: 'Quantity' },
-      addToCart: { fi: 'Lisää ostoskoriin', en: 'Add to Cart' },
-      soldOut: { fi: 'Loppu', en: 'Sold Out' },
-      reviews: { fi: 'arvostelua', en: 'reviews' },
-      season: { fi: 'Kausi', en: 'Season' },
-      summer: { fi: 'Kesä', en: 'Summer' },
-      winter: { fi: 'Talvi', en: 'Winter' },
-      allSeason: { fi: 'Ympärivuotinen', en: 'All Season' },
-      studded: { fi: 'Nastarengas', en: 'Studded' },
-      loadIndex: { fi: 'Kantavuusindeksi', en: 'Load Index' },
-      speedIndex: { fi: 'Nopeusindeksi', en: 'Speed Index' },
-      evReady: { fi: 'EV-valmis', en: 'EV Ready' },
-      material: { fi: 'Materiaali', en: 'Material' },
-      finish: { fi: 'Viimeistely', en: 'Finish' },
-      weight: { fi: 'Paino', en: 'Weight' },
-      fuelEfficiency: { fi: 'Polttoainetalous', en: 'Fuel Efficiency' },
-      wetGrip: { fi: 'Märkäpito', en: 'Wet Grip' },
-      noise: { fi: 'Ulkoinen melu', en: 'External Noise' },
-      fitment: { fi: 'Sovitus ja tekniset tiedot', en: 'Fitment & Specifications' },
-      specifications: { fi: 'Tekniset tiedot', en: 'Specifications' },
-      width: { fi: 'Leveys', en: 'Width' },
-      diameter: { fi: 'Halkaisija', en: 'Diameter' },
-      offset: { fi: 'Offset', en: 'Offset' },
-      boltPattern: { fi: 'Pulttijako', en: 'Bolt Pattern' },
-      centerBore: { fi: 'Keskireikä', en: 'Center Bore' },
-      compatibleVehicles: { fi: 'Yhteensopivat ajoneuvot', en: 'Compatible Vehicles' },
-      description: { fi: 'Kuvaus', en: 'Description' },
-      noDescription: { fi: 'Ei kuvausta saatavilla.', en: 'No description available.' },
-      technicalData: { fi: 'Tekniset tiedot', en: 'Technical Data' },
-      servicePromise: { fi: 'Mitra Auto -edut', en: 'Mitra Auto Promise' },
-      euPerformance: { fi: 'EU-luokitus ja suorituskyky', en: 'EU Label & Performance' },
-      noCompatibility: { fi: 'Yhteensopivuustietoja ei ole saatavilla.', en: 'Compatibility data is not available.' },
-      customerFeedback: { fi: 'Asiakaspalaute', en: 'Customer Feedback' },
-      youMayLike: { fi: 'Saatat pitää myös näistä', en: 'You may also like' },
-      fastDelivery: { fi: 'Nopea toimitus', en: 'Fast Delivery' },
-      deliveryDesc: { fi: '1–3 päivää kautta Suomen', en: '1–3 Days across Finland' },
-      securePayments: { fi: 'Turvalliset maksut', en: 'Secure Payments' },
-      paymentsDesc: { fi: 'Paytrail / Visa / Mastercard', en: 'Paytrail / Visa / Mastercard' },
-      customerSupport: { fi: 'Asiakastuki', en: 'Customer Support' },
-      supportDesc: { fi: 'Tarvitsetko apua? Ota yhteyttä Mitra Autoon', en: 'Need help? Contact Mitra Auto' },
-      easyReturns: { fi: 'Helppo palautus', en: 'Easy Returns' },
-      returnsDesc: { fi: '30 päivän palautusoikeus', en: '30-day return policy' },
-      profile: { fi: 'Profiili', en: 'Profile' },
-      rimSize: { fi: 'Vanteen koko', en: 'Rim Size' },
-      construction: { fi: 'Rakenne', en: 'Construction' },
-      stockStatus: { fi: 'Saatavuus', en: 'Availability' },
-      deliveryTime: { fi: 'Toimitusaika', en: 'Delivery Time' },
-    };
-
-    return translations[key]?.[language] || key;
-  };
+  const productText = (key: string) => t(`productDetail.${key}`);
 
   const getSeasonLabel = (season: string) => {
     const labels: Record<string, string> = {
-      summer: t('summer'),
-      winter: t('winter'),
-      all_season: t('allSeason'),
+      summer: productText('summer'),
+      winter: productText('winter'),
+      all_season: productText('allSeason'),
     };
     return labels[season] || season;
   };
@@ -746,12 +683,13 @@ export function ProductDetailPage({
     if (!material) {
       return '';
     }
-    const labels: Record<string, Record<string, string>> = {
-      alloy: { fi: 'Alumiini', en: 'Aluminum' },
-      aluminum: { fi: 'Alumiini', en: 'Aluminum' },
-      steel: { fi: 'Teräs', en: 'Steel' },
+    const labelKeys: Record<string, string> = {
+      alloy: 'productDetail.materialAlloy',
+      aluminum: 'productDetail.materialAlloy',
+      steel: 'productDetail.materialSteel',
     };
-    return labels[material.toLowerCase()]?.[language] || material;
+    const labelKey = labelKeys[material.toLowerCase()];
+    return labelKey ? translateForLanguage(language, labelKey) : material;
   };
 
   const getEUGradeColor = (grade?: string) => {
@@ -785,48 +723,56 @@ export function ProductDetailPage({
     product.type === 'tire'
       ? [
           product.ev_ready ? 'EV Ready' : null,
-          product.sound_absorber ? (language === 'fi' ? 'Äänenvaimennus' : 'Sound absorber') : null,
+          product.sound_absorber ? productText('soundAbsorber') : null,
           product.runflat ? 'RunFlat' : null,
           product.extra_load ? 'XL' : null,
-          product.studded ? (language === 'fi' ? 'Nastat' : 'Studded') : null,
+          product.studded ? productText('studdedShort') : null,
           product.three_pmsf ? '3PMSF' : null,
         ].filter((value): value is string => Boolean(value))
       : [];
+  const rimFeatureBadges =
+    product.type === 'rim'
+      ? (product.generated_tags?.length ? product.generated_tags : product.tags ?? [])
+          .map((tag) => String(tag ?? '').trim())
+          .filter((tag, index, tags) => tag.length > 0 && tags.findIndex((candidate) => candidate.toLowerCase() === tag.toLowerCase()) === index)
+          .slice(0, 10)
+      : [];
+  const productFeatureBadges = product.type === 'tire' ? tireFeatureBadges : rimFeatureBadges;
 
   const overviewCards =
     product.type === 'tire'
       ? [
           {
-            label: t('season'),
+            label: productText('season'),
             value: getSeasonLabel(product.season),
             accent: true,
           },
           {
-            label: t('stockStatus'),
-            value: product.in_stock ? t('inStock') : t('outOfStock'),
+            label: productText('stockStatus'),
+            value: product.in_stock ? productText('inStock') : productText('outOfStock'),
           },
           {
-            label: t('deliveryTime'),
-            value: product.delivery_days || t('delivery'),
+            label: productText('deliveryTime'),
+            value: product.delivery_days || productText('delivery'),
           },
           {
-            label: t('speedIndex'),
+            label: productText('speedIndex'),
             value: [product.load_index, product.speed_rating].filter(Boolean).join(' '),
           },
         ]
       : [
           {
-            label: t('material'),
-            value: product.material ? getMaterialLabel(product.material) : language === 'fi' ? 'Ei ilmoitettu' : 'Not specified',
+            label: productText('material'),
+            value: product.material ? getMaterialLabel(product.material) : productText('notSpecified'),
             accent: true,
           },
           {
-            label: t('stockStatus'),
-            value: product.in_stock ? t('inStock') : t('outOfStock'),
+            label: productText('stockStatus'),
+            value: product.in_stock ? productText('inStock') : productText('outOfStock'),
           },
           {
-            label: t('deliveryTime'),
-            value: product.delivery_days || t('delivery'),
+            label: productText('deliveryTime'),
+            value: product.delivery_days || productText('delivery'),
           },
           {
             label: 'PCD / ET',
@@ -837,52 +783,52 @@ export function ProductDetailPage({
   const technicalRows =
     product.type === 'tire'
       ? [
-          { label: t('width'), value: product.tire_width !== undefined ? `${product.tire_width} mm` : null },
-          { label: t('profile'), value: product.aspect_ratio !== undefined ? String(product.aspect_ratio) : null },
-          { label: t('construction'), value: product.construction || null },
-          { label: t('rimSize'), value: product.rim_diameter !== undefined ? `${product.rim_diameter}"` : null },
-          { label: t('loadIndex'), value: product.load_index || null },
-          { label: t('speedIndex'), value: product.speed_rating || null },
-          { label: t('season'), value: getSeasonLabel(product.season) },
-          { label: language === 'fi' ? 'DOT-vuosi' : 'DOT year', value: product.manufacture_year ? String(product.manufacture_year) : null },
-          { label: t('studded'), value: product.studded ? (language === 'fi' ? 'Kyllä' : 'Yes') : 'No' },
-          { label: t('fuelEfficiency'), value: product.fuel_efficiency?.toUpperCase() || null },
-          { label: t('wetGrip'), value: product.wet_grip?.toUpperCase() || null },
-          { label: t('noise'), value: product.noise_level ? `${product.noise_level} dB` : null },
-          { label: t('weight'), value: product.weight ? `${product.weight} kg` : null },
+          { label: productText('width'), value: product.tire_width !== undefined ? `${product.tire_width} mm` : null },
+          { label: productText('profile'), value: product.aspect_ratio !== undefined ? String(product.aspect_ratio) : null },
+          { label: productText('construction'), value: product.construction || null },
+          { label: productText('rimSize'), value: product.rim_diameter !== undefined ? `${product.rim_diameter}"` : null },
+          { label: productText('loadIndex'), value: product.load_index || null },
+          { label: productText('speedIndex'), value: product.speed_rating || null },
+          { label: productText('season'), value: getSeasonLabel(product.season) },
+          { label: productText('dotYear'), value: product.manufacture_year ? String(product.manufacture_year) : null },
+          { label: productText('studded'), value: product.studded ? productText('yes') : productText('no') },
+          { label: productText('fuelEfficiency'), value: product.fuel_efficiency?.toUpperCase() || null },
+          { label: productText('wetGrip'), value: product.wet_grip?.toUpperCase() || null },
+          { label: productText('noise'), value: product.noise_level ? `${product.noise_level} dB` : null },
+          { label: productText('weight'), value: product.weight ? `${product.weight} kg` : null },
         ]
       : [
-          { label: t('width'), value: product.rim_width ? `${product.rim_width}J` : null },
-          { label: t('diameter'), value: product.rim_diameter ? `${product.rim_diameter}"` : null },
-          { label: `${t('offset')} (ET)`, value: product.et_offset !== undefined ? `ET${product.et_offset}` : null },
-          { label: `${t('boltPattern')} (PCD)`, value: product.pcd || null },
-          { label: `${t('centerBore')} (CB)`, value: product.cb ? `${product.cb} mm` : null },
-          { label: t('material'), value: product.material ? getMaterialLabel(product.material) : null },
-          { label: t('finish'), value: product.finish || null },
-          { label: t('weight'), value: product.weight ? `${product.weight} kg` : null },
-          { label: t('deliveryTime'), value: product.delivery_days || t('delivery') },
+          { label: productText('width'), value: product.rim_width ? `${product.rim_width}J` : null },
+          { label: productText('diameter'), value: product.rim_diameter ? `${product.rim_diameter}"` : null },
+          { label: `${productText('offset')} (ET)`, value: product.et_offset !== undefined ? `ET${product.et_offset}` : null },
+          { label: `${productText('boltPattern')} (PCD)`, value: product.pcd || null },
+          { label: `${productText('centerBore')} (CB)`, value: product.cb ? `${product.cb} mm` : null },
+          { label: productText('material'), value: product.material ? getMaterialLabel(product.material) : null },
+          { label: productText('finish'), value: product.finish || null },
+          { label: productText('weight'), value: product.weight ? `${product.weight} kg` : null },
+          { label: productText('deliveryTime'), value: product.delivery_days || productText('delivery') },
         ];
 
   const trustItems = [
     {
       icon: <Truck className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
-      title: t('fastDelivery'),
-      body: t('deliveryDesc'),
+      title: productText('fastDelivery'),
+      body: productText('deliveryDesc'),
     },
     {
       icon: <Lock className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
-      title: t('securePayments'),
-      body: t('paymentsDesc'),
+      title: productText('securePayments'),
+      body: productText('paymentsDesc'),
     },
     {
       icon: <MessageCircle className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
-      title: t('customerSupport'),
-      body: t('supportDesc'),
+      title: productText('customerSupport'),
+      body: productText('supportDesc'),
     },
     {
       icon: <RotateCcw className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
-      title: t('easyReturns'),
-      body: t('returnsDesc'),
+      title: productText('easyReturns'),
+      body: productText('returnsDesc'),
     },
   ];
 
@@ -897,7 +843,7 @@ export function ProductDetailPage({
             }`}
           >
             <ArrowLeft className="size-5" />
-            <span className="text-sm">{language === 'fi' ? 'Takaisin hakutuloksiin' : 'Back to search results'}</span>
+            <span className="text-sm">{productText('backToSearch')}</span>
           </button>
         </div>
       </div>
@@ -917,7 +863,7 @@ export function ProductDetailPage({
             }`}
           >
             <ArrowLeft className="size-5" />
-            <span className="hidden text-sm md:inline">{language === 'fi' ? 'Takaisin' : 'Back'}</span>
+            <span className="hidden text-sm md:inline">{productText('back')}</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -953,7 +899,7 @@ export function ProductDetailPage({
               }`}>
                 <div className="flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-4 py-2 text-white backdrop-blur-md">
                   <Search className="size-4" />
-                  <span className="text-sm">{language === 'fi' ? 'Avaa kuva' : 'Open image'}</span>
+                  <span className="text-sm">{productText('openImage')}</span>
                 </div>
               </div>
 
@@ -969,7 +915,7 @@ export function ProductDetailPage({
                         ? 'border-white/20 bg-white/15 text-white hover:bg-white/25'
                         : 'border-gray-200 bg-white/90 text-gray-900 hover:bg-white'
                     }`}
-                    aria-label={language === 'fi' ? 'Edellinen kuva' : 'Previous image'}
+                    aria-label={productText('previousImage')}
                   >
                     <ChevronLeft className="size-6" />
                   </button>
@@ -983,7 +929,7 @@ export function ProductDetailPage({
                         ? 'border-white/20 bg-white/15 text-white hover:bg-white/25'
                         : 'border-gray-200 bg-white/90 text-gray-900 hover:bg-white'
                     }`}
-                    aria-label={language === 'fi' ? 'Seuraava kuva' : 'Next image'}
+                    aria-label={productText('nextImage')}
                   >
                     <ChevronRight className="size-6" />
                   </button>
@@ -1069,7 +1015,7 @@ export function ProductDetailPage({
                       : 'border-blue-200 bg-blue-50 text-blue-700'
                   }`}>
                     {getSeasonIcon(product.season)}
-                    <span className="ml-1.5">{getSeasonLabel(product.season)} {language === 'fi' ? 'rengas' : 'tire'}</span>
+                    <span className="ml-1.5">{getSeasonLabel(product.season)} {productText('tire')}</span>
                   </Badge>
                 ) : (
                   <Badge className={`rounded-full px-3 py-1.5 ${
@@ -1078,11 +1024,11 @@ export function ProductDetailPage({
                       : 'border-[#E2E8F0] bg-white text-[#334155]'
                   }`}>
                     <Settings className="mr-1.5 size-4" />
-                    {product.material ? getMaterialLabel(product.material) : language === 'fi' ? 'Vanne' : 'Wheel'}
+                    {product.material ? getMaterialLabel(product.material) : productText('wheel')}
                   </Badge>
                 )}
 
-                {tireFeatureBadges.map((badge) => (
+                {productFeatureBadges.map((badge) => (
                   <Badge
                     key={badge}
                     className={`rounded-full px-3 py-1.5 ${
@@ -1107,50 +1053,50 @@ export function ProductDetailPage({
               <div className="space-y-4">
                 <div className="flex items-end gap-3">
                   <span className="text-4xl text-[#FF6B00]">€{displayUnitPrice.toFixed(2)}</span>
-                  <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {t('perPcs')}</span>
+                  <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {productText('perPcs')}</span>
                 </div>
 
                 <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
-                  {language === 'fi' ? 'Sis. ALV 25.5%' : 'Incl. VAT 25.5%'}
+                  {productText('vatIncluded')}
                 </p>
 
                 {hasTierDiscount && (
                   <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
-                    {language === 'fi' ? 'Perushinta' : 'Base price'}: €{(price * VAT_MULTIPLIER).toFixed(2)} / {t('perPcs')}
+                    {productText('basePrice')}: €{(price * VAT_MULTIPLIER).toFixed(2)} / {productText('perPcs')}
                   </p>
                 )}
 
                 {quantity > 1 && (
                   <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                    {t('total')}: <span className={theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}>€{totalPrice.toFixed(2)}</span>
+                    {productText('total')}: <span className={theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}>€{totalPrice.toFixed(2)}</span>
                   </p>
                 )}
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className={`rounded-2xl p-4 ${theme === 'dark' ? 'bg-white/5' : 'bg-[#F8FAFC]'}`}>
                     <p className={`text-xs uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                      {t('stockStatus')}
+                      {productText('stockStatus')}
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <Check className={`size-4 ${product.in_stock ? 'text-green-500' : 'text-red-500'}`} />
                       <span className={`text-sm ${product.in_stock ? 'text-green-600' : 'text-red-600'}`}>
-                        {product.in_stock ? t('inStock') : t('outOfStock')}
-                        {product.in_stock && product.stock_quantity ? ` (${product.stock_quantity} ${t('perPcs')})` : ''}
+                        {product.in_stock ? productText('inStock') : productText('outOfStock')}
+                        {product.in_stock && product.stock_quantity ? ` (${product.stock_quantity} ${productText('perPcs')})` : ''}
                       </span>
                     </div>
                   </div>
                   <div className={`rounded-2xl p-4 ${theme === 'dark' ? 'bg-white/5' : 'bg-[#F8FAFC]'}`}>
                     <p className={`text-xs uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                      {t('deliveryTime')}
+                      {productText('deliveryTime')}
                     </p>
                     <div className="mt-2 flex items-start gap-2">
                       <Truck className={`mt-0.5 size-4 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`} />
                       <div>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-[#0F172A]'}`}>
-                          {product.delivery_days || t('delivery')}
+                          {product.delivery_days || productText('delivery')}
                         </p>
                         <p className={`mt-0.5 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
-                          {t('fulfilledBy')}
+                          {productText('fulfilledBy')}
                         </p>
                       </div>
                     </div>
@@ -1158,7 +1104,7 @@ export function ProductDetailPage({
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
-                  <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}`}>{t('quantity')}</label>
+                  <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}`}>{productText('quantity')}</label>
                   <div className={`flex items-center gap-3 rounded-full px-3 py-2 ${
                     theme === 'dark' ? 'border border-white/10 bg-white/5' : 'border border-[#E2E8F0] bg-[#F1F5F9]'
                   }`}>
@@ -1186,7 +1132,7 @@ export function ProductDetailPage({
                   className="h-12 w-full bg-[#FF6B00] text-white hover:bg-[#FF6B00]/90 disabled:opacity-50"
                 >
                   <Package className="mr-2 size-5" />
-                  {product.in_stock ? t('addToCart') : t('soldOut')}
+                  {product.in_stock ? productText('addToCart') : productText('soldOut')}
                 </Button>
 
                 <div className="flex flex-wrap gap-2">
@@ -1222,12 +1168,12 @@ export function ProductDetailPage({
 
         <div className="mt-12 space-y-12">
           {product.type === 'tire' && product.tyre_label_section && (
-            <TyreLabelIdentitySection language={language} product={product} theme={theme} />
+            <TyreLabelIdentitySection product={product} productText={productText} theme={theme} />
           )}
 
           <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
             <div>
-              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('description')}</h2>
+              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('description')}</h2>
               <div className="mt-6 max-w-3xl">
                 {detailDescription ? (
                   <div className="space-y-4">
@@ -1242,12 +1188,12 @@ export function ProductDetailPage({
                       ))}
                   </div>
                 ) : (
-                  <p className={`text-base leading-7 ${theme === 'dark' ? 'text-gray-300' : 'text-[#475569]'}`}>{t('noDescription')}</p>
+                  <p className={`text-base leading-7 ${theme === 'dark' ? 'text-gray-300' : 'text-[#475569]'}`}>{productText('noDescription')}</p>
                 )}
 
-                {tireFeatureBadges.length > 0 && (
+                {productFeatureBadges.length > 0 && (
                   <div className="mt-6 flex flex-wrap gap-2">
-                    {tireFeatureBadges.map((badge) => (
+                    {productFeatureBadges.map((badge) => (
                       <Badge
                         key={`description-${badge}`}
                         className={`rounded-full px-3 py-1.5 ${
@@ -1265,7 +1211,7 @@ export function ProductDetailPage({
             </div>
 
             <div>
-              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('technicalData')}</h2>
+              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('technicalData')}</h2>
               <div className="mt-6">
                 <SpecList theme={theme} rows={technicalRows} />
               </div>
@@ -1274,22 +1220,20 @@ export function ProductDetailPage({
 
           {product.type === 'rim' && (
             <section>
-              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('fitment')}</h2>
+              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('fitment')}</h2>
               <div className={`mt-6 rounded-3xl border p-6 ${
                 theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-[#E2E8F0] bg-[#F8FAFC]'
               }`}>
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                   <div>
                     <p className={`text-sm uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                      {t('compatibleVehicles')}
+                      {productText('compatibleVehicles')}
                     </p>
                     <p className={`mt-3 text-sm leading-6 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                      {language === 'fi'
-                        ? 'Yhteensopivuustiedot ovat viitteellisiä. Tarkista aina ajoneuvosi tekniset tiedot ennen tilaamista.'
-                        : 'Compatibility information is indicative. Always verify your vehicle specifications before ordering.'}
+                      {productText('compatibilityDisclaimer')}
                     </p>
                   </div>
-                  <CompatibilityList theme={theme} language={language} vehicles={compatibilityVehicles} />
+                  <CompatibilityList theme={theme} emptyText={productText('noCompatibility')} vehicles={compatibilityVehicles} />
                 </div>
               </div>
             </section>
@@ -1297,14 +1241,14 @@ export function ProductDetailPage({
 
           {hasReviewData && (
             <section>
-              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('customerFeedback')}</h2>
+              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('customerFeedback')}</h2>
               <div className={`mt-6 rounded-3xl border p-6 sm:p-8 ${
                 theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-[#E2E8F0] bg-[#FFF7F2]'
               }`}>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="text-center md:text-left">
                     <p className={`text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                      {language === 'fi' ? 'Keskiarvo' : 'Average rating'}
+                      {productText('averageRating')}
                     </p>
                     <p className={`mt-3 text-6xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
                       {product.rating?.toFixed(1)}
@@ -1326,11 +1270,11 @@ export function ProductDetailPage({
                   </div>
                   <div className="text-center md:text-left">
                     <p className={`text-xs uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                      {language === 'fi' ? 'Arvostelut' : 'Reviews'}
+                      {productText('reviewsTitle')}
                     </p>
                     <p className={`mt-3 text-4xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{product.review_count}</p>
                     <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                      {product.review_count} {t('reviews')}
+                      {product.review_count} {productText('reviews')}
                     </p>
                   </div>
                 </div>
@@ -1339,7 +1283,7 @@ export function ProductDetailPage({
           )}
 
           <section>
-            <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('servicePromise')}</h2>
+            <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('servicePromise')}</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {trustItems.map((item) => (
                 <div
@@ -1358,7 +1302,7 @@ export function ProductDetailPage({
 
           {relatedProducts.length > 0 && (
             <section className="pb-16">
-              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{t('youMayLike')}</h2>
+              <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('youMayLike')}</h2>
               <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {relatedProducts.slice(0, 4).map((relatedProduct, index) => (
                   <div key={relatedProduct.id}>
@@ -1390,14 +1334,14 @@ export function ProductDetailPage({
             <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
               <div>
                 <p className="text-2xl text-[#FF6B00]">€{displayUnitPrice.toFixed(2)}</p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {t('perPcs')}</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {productText('perPcs')}</p>
               </div>
               <Button
                 onClick={() => onAddToCart?.(product, quantity)}
                 disabled={!product.in_stock}
                 className="h-11 bg-[#FF6B00] px-6 text-white hover:bg-[#FF6B00]/90"
               >
-                {product.in_stock ? t('addToCart') : t('soldOut')}
+                {product.in_stock ? productText('addToCart') : productText('soldOut')}
               </Button>
             </div>
           </motion.div>
@@ -1416,7 +1360,7 @@ export function ProductDetailPage({
             <button
               onClick={() => setIsImagePreviewOpen(false)}
               className="absolute right-4 top-4 z-10 rounded-full border border-white/20 bg-white/10 p-3 text-white backdrop-blur-md hover:bg-white/20"
-              aria-label={language === 'fi' ? 'Sulje' : 'Close'}
+              aria-label={productText('close')}
             >
               <X className="size-5" />
             </button>

@@ -58,7 +58,7 @@ function BookingServiceSelector({
           }}
         >
           <SelectTrigger className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}>
-            <SelectValue placeholder={language === 'fi' ? 'Valitse kategoria' : 'Select category'} />
+            <SelectValue placeholder={t('selectCategory')} />
           </SelectTrigger>
           <SelectContent>
             {categories.map((category) => (
@@ -96,7 +96,7 @@ function BookingServiceSelector({
             onSelectedCategoryChange('');
           }}
         >
-          {language === 'fi' ? 'Lisää' : 'Add'}
+          {t('add')}
         </Button>
       </div>
 
@@ -116,9 +116,9 @@ function BookingServiceSelector({
                     syncServiceName(nextServiceIds, bookingLanguage);
                   }}
                   className="rounded-full hover:bg-black/10"
-                  aria-label={language === 'fi' ? 'Poista palvelu' : 'Remove service'}
+                  aria-label={t('removeService')}
                 >
-                  <span className="sr-only">{language === 'fi' ? 'Poista palvelu' : 'Remove service'}</span>
+                  <span className="sr-only">{t('removeService')}</span>
                   ×
                 </button>
               </Badge>
@@ -127,7 +127,7 @@ function BookingServiceSelector({
         </div>
       ) : (
         <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          {language === 'fi' ? 'Lisätyt palvelut näkyvät täällä.' : 'Added services will appear here.'}
+          {t('addedServicesEmpty')}
         </p>
       )}
 
@@ -285,7 +285,7 @@ export function AdminBookingEditPanel({
 
           {(editCompletionMode || editCompletionMissingFields.length > 0) && (
             <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
-              {t('incompleteBookingWarning')}: {editCompletionMissingFields.join(', ') || (language === 'fi' ? 'asiakastiedot' : 'customer details')}
+              {t('incompleteBookingWarning')}: {editCompletionMissingFields.join(', ') || t('customerDetailsFallback')}
             </p>
           )}
         </div>
