@@ -142,81 +142,273 @@ Supabase will stop exposing new `public` tables to the Data API by default. Ever
 
 ## Phase 0: Freeze Product-Ready Field Contract
 
+Phase 0 defines the contract every later phase must preserve. The published layer and future read-model layer may contain extra fields, but product readiness is judged by the fields below.
+
+Field groups:
+
+- **Required for storefront publish**: if missing or blocked, the item must not be public-visible.
+- **Required for filters/search**: needed for expected storefront discovery. Missing values may keep the product visible only if the product type can still be safely sold and the missing value is not part of the active filter contract.
+- **Enrichment/merchandising**: improves cards/details but must not block sale unless explicitly listed in readiness rules.
+- **CMS-only overlay**: editorial or override data stored in `product_cms`; supplier truth remains in raw/selected layers.
+
 ### Tires
 
-- [ ] Define required public tire fields:
-  - [ ] `variant_id`
-  - [ ] `brand`
-  - [ ] `model`
-  - [ ] `size_string`
-  - [ ] `width_mm`
-  - [ ] `aspect_ratio`
-  - [ ] `diameter_in`
-  - [ ] `season`
-  - [ ] `load_index`
-  - [ ] `speed_rating`
-  - [ ] `ean` / `derived_ean`
-  - [ ] `final_price_eur`
-  - [ ] `stock_qty`
-  - [ ] `in_stock`
-  - [ ] `hero_image_url`
-  - [ ] `gallery`
-  - [ ] `eu_fuel`
-  - [ ] `eu_wet`
-  - [ ] `eu_noise`
-  - [ ] `eu_label_json`
-  - [ ] `threepmsf`
-  - [ ] `ice_approved`
-  - [ ] `ev_ready`
-  - [ ] `sound_absorber`
-  - [ ] `runflat`
-  - [ ] `xl_reinforced`
-  - [ ] `seo_slug`
-  - [ ] `seo_title`
-  - [ ] `seo_description`
-  - [ ] generated/storefront tags
+- [x] Define required public tire fields.
+
+Required for storefront publish:
+
+- [x] `variant_id`
+- [x] `product_type = 'tire'`
+- [x] `selected_supplier`
+- [x] `selected_external_id`
+- [x] `supplier_code_best`
+- [x] `brand`
+- [x] `model`
+- [x] `size_string`
+- [x] `width_mm`
+- [x] `aspect_ratio`
+- [x] `diameter_in`
+- [x] `season`
+- [x] `ean` or `derived_ean`
+- [x] `final_price_eur` or fallback `price`
+- [x] `currency`
+- [x] `in_stock`
+- [x] `stock_qty`
+- [x] `hero_image_url` or first valid `gallery` image
+- [x] `is_visible = true`
+- [x] `publish_status = 'published'`
+- [x] `publish_block_reason is null`
+
+Required for tire filters/search:
+
+- [x] `brand`
+- [x] `brand_display_name`
+- [x] `model`
+- [x] `size_string`
+- [x] `width_mm`
+- [x] `aspect_ratio`
+- [x] `diameter_in`
+- [x] `season`
+- [x] `runflat`
+- [x] `xl_reinforced`
+- [x] `studded`
+- [x] `ev_ready`
+- [x] `sound_absorber`
+- [x] `in_stock`
+- [x] `final_price_eur`
+- [x] `eu_wet`
+- [x] `eu_noise`
+
+Enrichment/merchandising fields:
+
+- [x] `load_index`
+- [x] `speed_rating` / `speed_index`
+- [x] `threepmsf`
+- [x] `winter_approved`
+- [x] `ice_approved`
+- [x] `eu_fuel`
+- [x] `eu_wet`
+- [x] `eu_noise`
+- [x] `eu_label_json`
+- [x] `eprel_registration_number`
+- [x] `eprel_qr_url`
+- [x] `eprel_sheet_url`
+- [x] `manufacture_year`
+- [x] `delivery_days_min`
+- [x] `delivery_days_max`
+- [x] `gallery`
+- [x] `generated_tags` / storefront tags where available
+
+SEO/content fields:
+
+- [x] `card_title`
+- [x] `card_subtitle`
+- [x] `short_description`
+- [x] `long_description`
+- [x] `seo_slug`
+- [x] `seo_title`
+- [x] `seo_description`
+
+CMS overlay fields allowed to override tire presentation:
+
+- [x] `product_cms.title`
+- [x] `product_cms.subtitle`
+- [x] `product_cms.short_description`
+- [x] `product_cms.long_description`
+- [x] `product_cms.hero_image_url`
+- [x] `product_cms.gallery`
+- [x] `product_cms.seo_slug`
+- [x] `product_cms.seo_title`
+- [x] `product_cms.seo_description`
+- [x] `product_cms.is_hidden`
+- [x] `product_cms.price_override_eur`
+- [x] `product_cms.promo_enabled`
+- [x] `product_cms.promo_price_eur`
+- [x] `product_cms.spec_overrides.identity`
+- [x] `product_cms.spec_overrides.features`
+- [x] `product_cms.spec_overrides.eu`
+- [x] `product_cms.spec_overrides.tyre_label_section`
+
+Tire product-ready blockers:
+
+- [x] missing active selected winner
+- [x] missing normalized brand/model/size
+- [x] missing EAN/derived EAN
+- [x] duplicate EAN with unresolved multi-spec conflict
+- [x] missing sellable price
+- [x] missing storefront image
+- [x] CMS hidden
+- [x] manual non-passenger/not-sellable classification
+- [x] no longer present in selected catalog
+- [x] publish job failure or stale unpublished CMS change
 
 ### Rims
 
-- [ ] Define required public rim fields:
-  - [ ] `variant_id`
-  - [ ] `brand`
-  - [ ] `model`
-  - [ ] `size_string`
-  - [ ] `width_in`
-  - [ ] `rim_diameter_in`
-  - [ ] `bolt_pattern`
-  - [ ] `et_offset_mm`
-  - [ ] `center_bore_mm`
-  - [ ] `cb_mm`
-  - [ ] `color`
-  - [ ] `finish`
-  - [ ] `material`
-  - [ ] `bolts_included`
-  - [ ] `wheel_load_kg`
-  - [ ] `winter_approved`
-  - [ ] `ean` / `derived_ean`
-  - [ ] `final_price_eur`
-  - [ ] `stock_qty`
-  - [ ] `in_stock`
-  - [ ] `hero_image_url`
-  - [ ] `gallery`
-  - [ ] `seo_slug`
-  - [ ] `seo_title`
-  - [ ] `seo_description`
-  - [ ] generated/storefront tags
+- [x] Define required public rim fields.
+
+Required for storefront publish:
+
+- [x] `variant_id`
+- [x] `product_type = 'rim'`
+- [x] `selected_supplier`
+- [x] `selected_external_id`
+- [x] `supplier_code_best`
+- [x] `brand`
+- [x] `model`
+- [x] `size_string`
+- [x] `width_in`
+- [x] `rim_diameter_in`
+- [x] `bolt_pattern`
+- [x] `et_offset_mm`
+- [x] `center_bore_mm` or `cb_mm`
+- [x] `ean` or `derived_ean`
+- [x] `final_price_eur` or fallback `price`
+- [x] `currency`
+- [x] `in_stock`
+- [x] `stock_qty`
+- [x] `hero_image_url` or first valid `gallery` image
+- [x] `is_visible = true`
+- [x] `publish_status = 'published'`
+- [x] `publish_block_reason is null`
+
+Required for rim filters/search:
+
+- [x] `brand`
+- [x] `brand_display_name`
+- [x] `model`
+- [x] `size_string`
+- [x] `width_in`
+- [x] `rim_diameter_in`
+- [x] normalized `bolt_pattern`
+- [x] `et_offset_mm`
+- [x] `center_bore_mm` / `cb_mm`
+- [x] `color`
+- [x] `material`
+- [x] `bolts_included`
+- [x] `in_stock`
+- [x] `final_price_eur`
+
+Enrichment/merchandising fields:
+
+- [x] `finish`
+- [x] `wheel_load_kg`
+- [x] `winter_approved`
+- [x] `delivery_days_min`
+- [x] `delivery_days_max`
+- [x] `gallery`
+- [x] `generated_tags`
+- [x] `tags`
+- [x] `supplier_image_url` / image source metadata where available
+
+SEO/content fields:
+
+- [x] `card_title`
+- [x] `card_subtitle`
+- [x] `short_description`
+- [x] `long_description`
+- [x] `seo_slug`
+- [x] `seo_title`
+- [x] `seo_description`
+
+CMS overlay fields allowed to override rim presentation:
+
+- [x] `product_cms.title`
+- [x] `product_cms.subtitle`
+- [x] `product_cms.short_description`
+- [x] `product_cms.long_description`
+- [x] `product_cms.hero_image_url`
+- [x] `product_cms.gallery`
+- [x] `product_cms.badges`
+- [x] `product_cms.seo_slug`
+- [x] `product_cms.seo_title`
+- [x] `product_cms.seo_description`
+- [x] `product_cms.is_hidden`
+- [x] `product_cms.price_override_eur`
+- [x] `product_cms.promo_enabled`
+- [x] `product_cms.promo_price_eur`
+- [x] `product_cms.stock_override`
+- [x] `product_cms.force_out_of_stock`
+- [x] `product_cms.spec_overrides.identity`
+- [x] `product_cms.spec_overrides.rim`
+- [x] `product_cms.spec_overrides.classification.manual_not_sellable`
+
+Rim product-ready blockers:
+
+- [x] missing active selected winner
+- [x] missing normalized brand/model/size
+- [x] missing width/diameter/PCD/ET/CB mounting specs
+- [x] missing EAN/derived EAN
+- [x] missing sellable price
+- [x] missing storefront image
+- [x] CMS hidden
+- [x] manual not-sellable classification
+- [x] force out of stock when stock is required for the storefront view
+- [x] no longer present in selected catalog
+- [x] publish job failure or stale unpublished CMS change
 
 ### Shared Readiness Rules
 
-- [ ] Public item must have active selected supplier.
-- [ ] Public item must have normalized identity.
-- [ ] Public item must have sellable price.
-- [ ] Public item must have image or approved CMS image override.
-- [ ] Public item must not be manually marked not sellable.
-- [ ] Public item must not be CMS hidden.
-- [ ] CMS must still show incomplete items for correction.
-- [ ] Storefront must exclude incomplete/blocked items.
-- [ ] Missing-data reasons must be explicit and queryable.
+- [x] Public item must have active selected supplier.
+- [x] Public item must have normalized identity.
+- [x] Public item must have sellable price.
+- [x] Public item must have image or approved CMS image override.
+- [x] Public item must not be manually marked not sellable.
+- [x] Public item must not be CMS hidden.
+- [x] CMS must still show incomplete items for correction.
+- [x] Storefront must exclude incomplete/blocked items.
+- [x] Missing-data reasons must be explicit and queryable.
+
+Shared readiness reason contract for future read models:
+
+- [x] `ready`
+- [x] `missing_selected_winner`
+- [x] `missing_identity`
+- [x] `missing_ean`
+- [x] `duplicate_ean_conflict`
+- [x] `missing_size`
+- [x] `missing_mounting_specs`
+- [x] `missing_price`
+- [x] `missing_stock`
+- [x] `missing_image`
+- [x] `cms_hidden`
+- [x] `manual_not_sellable`
+- [x] `force_out_of_stock`
+- [x] `not_in_selected_catalog`
+- [x] `unpublished_cms_changes`
+- [x] `sync_failed`
+
+Phase 0 acceptance criteria:
+
+- [x] Field contracts are defined for Tires.
+- [x] Field contracts are defined for Rims.
+- [x] CMS overlay fields are separated from supplier truth fields.
+- [x] Product-ready blockers are explicit for Tires.
+- [x] Product-ready blockers are explicit for Rims.
+- [x] Shared readiness reasons are named for future read-model tables and health counters.
+- [x] Implement the readiness reason contract in a Phase 0 migration for the published layer.
+- [x] Backfill readiness reasons for existing published tire rows in the Phase 0 migration.
+- [x] Backfill readiness reasons for existing published rim rows in the Phase 0 migration.
+- [ ] Reuse the same readiness functions in the future read-model migrations.
 
 ## Phase 1: CMS Catalog Shell
 
