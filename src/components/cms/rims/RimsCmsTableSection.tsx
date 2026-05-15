@@ -1,6 +1,7 @@
 import { AlertTriangle, Edit, Eye, EyeOff } from 'lucide-react';
 
 import { useLanguage } from '../../../i18n/LanguageContext';
+import { getRimReadinessState, getRimWarningKeys, type RimReadinessState, type RimWarningKey } from './rimReadiness';
 import type { RimRow } from './types';
 
 interface RimsCmsTableSectionProps {
@@ -9,6 +10,33 @@ interface RimsCmsTableSectionProps {
   formatSize: (rim: RimRow) => string;
   onToggleVisibility: (rim: RimRow) => void;
   onEdit: (rim: RimRow) => void;
+}
+
+const READINESS_LABEL_KEYS: Record<RimReadinessState, string> = {
+  ready: 'rimsCmsTable.ready',
+  missing_required: 'rimsCmsTable.missingRequired',
+  blocked: 'rimsCmsTable.blocked',
+  hidden: 'rimsCmsTable.hidden',
+  conflict: 'rimsCmsTable.supplierConflict',
+};
+
+const WARNING_LABEL_KEYS: Record<RimWarningKey, string> = {
+  mounting_specs: 'rimsCmsTable.warningMountingSpecs',
+  image: 'rimsCmsTable.warningImage',
+  price: 'rimsCmsTable.warningPrice',
+  stock: 'rimsCmsTable.warningStock',
+  pcd: 'rimsCmsTable.warningPcd',
+  et_cb: 'rimsCmsTable.warningEtCb',
+  ean: 'rimsCmsTable.warningEan',
+  material_finish: 'rimsCmsTable.warningMaterialFinish',
+};
+
+function readinessClass(state: RimReadinessState, isDark: boolean) {
+  if (state === 'ready') return isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700';
+  if (state === 'blocked') return isDark ? 'bg-red-500/15 text-red-300' : 'bg-red-50 text-red-700';
+  if (state === 'hidden') return isDark ? 'bg-slate-500/15 text-slate-300' : 'bg-slate-100 text-slate-700';
+  if (state === 'conflict') return isDark ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-50 text-violet-700';
+  return isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-50 text-amber-700';
 }
 
 export function RimsCmsTableSection({
@@ -35,7 +63,7 @@ export function RimsCmsTableSection({
                 t('rimsCmsTable.color'),
                 'EAN',
                 t('rimsCmsTable.price'),
-                t('rimsCmsTable.audit'),
+                t('rimsCmsTable.readiness'),
                 t('rimsCmsTable.visible'),
                 t('rimsCmsTable.actions'),
               ].map((header, index) => (
@@ -50,13 +78,8 @@ export function RimsCmsTableSection({
           </thead>
           <tbody className={isDark ? 'divide-y divide-white/10' : 'divide-y divide-gray-100'}>
             {rims.map((rim) => {
-              const warnings = [
-                rim.missing_supplier_price ? t('rimsCmsTable.warningPrice') : null,
-                rim.missing_supplier_image ? t('rimsCmsTable.warningImage') : null,
-                !rim.cms_data?.seo_slug || !rim.cms_data?.seo_title || !rim.cms_data?.seo_description
-                  ? 'SEO'
-                  : null,
-              ].filter(Boolean);
+              const readiness = getRimReadinessState(rim);
+              const warnings = getRimWarningKeys(rim);
 
               return (
                 <tr key={rim.variant_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
@@ -85,16 +108,29 @@ export function RimsCmsTableSection({
                     {rim.price_eur !== null && rim.price_eur !== undefined ? `€${Number(rim.price_eur).toFixed(2)}` : '-'}
                   </td>
                   <td className="px-4 py-3">
-                    {warnings.length > 0 ? (
-                      <div className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
-                        <AlertTriangle className="h-3 w-3" />
-                        {warnings.join(', ')}
-                      </div>
-                    ) : (
-                      <span className={`text-xs ${isDark ? 'text-green-300' : 'text-green-700'}`}>
-                        {t('rimsCmsTable.ok')}
+                    <div className="flex min-w-[180px] flex-col gap-2">
+                      <span className={`inline-flex w-fit items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${readinessClass(readiness, isDark)}`}>
+                        {readiness !== 'ready' && <AlertTriangle className="h-3 w-3" />}
+                        {t(READINESS_LABEL_KEYS[readiness])}
                       </span>
-                    )}
+                      {warnings.length > 0 && (
+                        <div className="flex max-w-[220px] flex-wrap gap-1">
+                          {warnings.slice(0, 4).map((warning) => (
+                            <span
+                              key={warning}
+                              className={`rounded px-1.5 py-0.5 text-[11px] ${isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-700'}`}
+                            >
+                              {t(WARNING_LABEL_KEYS[warning])}
+                            </span>
+                          ))}
+                          {warnings.length > 4 && (
+                            <span className={`rounded px-1.5 py-0.5 text-[11px] ${isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                              +{warnings.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <button

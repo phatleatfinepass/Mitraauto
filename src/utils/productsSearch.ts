@@ -11,6 +11,7 @@ export type ProductSearchRow = {
   model: string;
   size_string: string | null;
   season: string | null;
+  tire_segment?: string | null;
   studded: boolean | null;
   runflat: boolean | null;
   xl_reinforced: boolean | null;
@@ -63,6 +64,7 @@ export type ProductSearchRow = {
   eu_wet?: string | null;
   eu_noise?: number | null;
   final_is_hidden?: boolean | null;
+  product_ready?: boolean | null;
   ean?: string | null;
   derived_ean?: string | null;
   manufacture_year?: number | null;
@@ -143,11 +145,13 @@ const PRODUCT_SEARCH_BASE_SELECT = [
 
 const WEBSHOP_TIRE_PUBLIC_SELECT = [
   PRODUCT_SEARCH_BASE_SELECT.replace(',final_is_hidden', ''),
+  'tire_segment',
   'sound_absorber',
   'gallery',
   'manufacture_year',
   'is_visible',
   'publish_status',
+  'product_ready',
 ].join(',');
 
 const WEBSHOP_RIM_PUBLIC_SELECT = [
@@ -168,6 +172,9 @@ interface FetchOptions {
   offset?: number;
   filters?: Record<string, any>;
 }
+
+const PUBLIC_CATALOG_MAX_LIMIT = 100;
+const PUBLIC_CATALOG_MAX_OFFSET = 2400;
 
 type TireVariantLookupRow = {
   id: string;
@@ -241,6 +248,11 @@ function getSeasonFilterValues(value: unknown): string[] {
     return ['all_season', 'all season', 'all-season', 'allseason'];
   }
   return [normalized];
+}
+
+function getTireVehicleTypeFilter(filters: Record<string, any>): string | null {
+  const value = String(filters.vehicleType ?? filters.tireSegment ?? '').trim().toLowerCase();
+  return value && value !== 'all' ? value : null;
 }
 
 function isAllSeasonFilter(value: unknown): boolean {
@@ -346,6 +358,11 @@ function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>)
 
   const seasonFilterValues = getSeasonFilterValues(filters.season);
   if (seasonFilterValues.length > 0 && !seasonFilterValues.includes(normalizeSeasonValue(row.season))) {
+    return false;
+  }
+
+  const vehicleType = getTireVehicleTypeFilter(filters);
+  if (vehicleType && String(row.tire_segment ?? '').trim().toLowerCase() !== vehicleType) {
     return false;
   }
 
@@ -854,6 +871,7 @@ async function fetchTireCatalogRpcByFitmentSizes(
       .eq('product_type', 'tire')
       .eq('is_visible', true)
       .eq('publish_status', 'published')
+      .eq('product_ready', true)
       .or(sizeOrFilter);
 
     const normalizedSearch = normalizeSearchTerm(filters.search);
@@ -875,6 +893,10 @@ async function fetchTireCatalogRpcByFitmentSizes(
     const seasonFilterValues = getSeasonFilterValues(filters.season);
     if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
     if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
+
+    const vehicleType = getTireVehicleTypeFilter(filters);
+    if (vehicleType) query = query.eq('tire_segment', vehicleType);
+
     if (filters.ean) {
       const ean = String(filters.ean).replace(/\D/g, '');
       if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
@@ -952,6 +974,7 @@ async function fetchTireCatalogRpc(
   const sortBy =
     typeof filters.sortBy === 'string' && filters.sortBy.length > 0 ? filters.sortBy : 'brand_asc';
   const includeRetreaded = Boolean(filters.includeRetreaded);
+  const tireSegment = getTireVehicleTypeFilter(filters);
 
   const listArgs = {
     p_search: search,
@@ -968,6 +991,7 @@ async function fetchTireCatalogRpc(
     p_include_retreaded: includeRetreaded,
     p_ev_ready: Boolean(filters.electricCar),
     p_sound_absorber: Boolean(filters.soundAbsorber),
+    p_tire_segment: tireSegment,
     p_sort_by: sortBy,
     p_limit: limit,
     p_offset: offset,
@@ -988,6 +1012,7 @@ async function fetchTireCatalogRpc(
     p_include_retreaded: includeRetreaded,
     p_ev_ready: Boolean(filters.electricCar),
     p_sound_absorber: Boolean(filters.soundAbsorber),
+    p_tire_segment: tireSegment,
   };
 
   let [{ data: rows, error: listError }, { data: countValue, error: countError }] = await Promise.all([
@@ -1004,8 +1029,11 @@ async function fetchTireCatalogRpc(
   const shouldRetryWithoutEvSoundParams =
     (listError || countError) &&
     /p_ev_ready|p_sound_absorber/.test(String(listError?.message ?? countError?.message ?? '').toLowerCase());
+  const shouldRetryWithoutVehicleTypeParam =
+    (listError || countError) &&
+    String(listError?.message ?? countError?.message ?? '').toLowerCase().includes('p_tire_segment');
 
-  if (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam || shouldRetryWithoutEvSoundParams) {
+  if (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam || shouldRetryWithoutEvSoundParams || shouldRetryWithoutVehicleTypeParam) {
     const [{ data: retryRows, error: retryListError }, { data: retryCountValue, error: retryCountError }] = await Promise.all([
       supabase.rpc('catalog_list_tires_v1', {
       p_search: search,
@@ -1075,6 +1103,7 @@ async function fetchTireCatalogRpc(
 
   const items = enrichedRows
     .filter((row) => includeRetreaded || !isRetreadedTire(row))
+    .filter((row) => !tireSegment || String(row.tire_segment ?? '').trim().toLowerCase() === tireSegment)
     .filter((row) => {
       if (!ean) return true;
       const rowEan = String((row as any).ean ?? (row as any).derived_ean ?? '').replace(/\D/g, '');
@@ -1086,9 +1115,120 @@ async function fetchTireCatalogRpc(
     total:
       countError && isStatementTimeoutError(countError)
         ? (items.length === limit ? offset + items.length + 1 : offset + items.length)
-        : (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam) && (!includeRetreaded || ean)
+        : (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam || shouldRetryWithoutVehicleTypeParam) && (!includeRetreaded || ean || tireSegment)
           ? items.length
           : Number(countValue ?? items.length),
+  };
+}
+
+async function fetchTireCatalogPublishedFallback(
+  limit: number,
+  offset: number,
+  filters: Record<string, any>,
+): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const buildQuery = (useSafeOrder = false) => {
+    let query = supabase
+      .from('webshop_items')
+      .select(WEBSHOP_TIRE_PUBLIC_SELECT)
+      .eq('product_type', 'tire')
+      .eq('is_visible', true)
+      .eq('publish_status', 'published')
+      .eq('product_ready', true);
+
+    const search = normalizeSearchTerm(filters.search);
+    if (search) {
+      query = query.or([
+        `brand.ilike.%${search}%`,
+        `brand_display_name.ilike.%${search}%`,
+        `model.ilike.%${search}%`,
+        `size_string.ilike.%${search}%`,
+        `card_title.ilike.%${search}%`,
+        `ean.ilike.%${search}%`,
+        `derived_ean.ilike.%${search}%`,
+      ].join(','));
+    }
+
+    if (Array.isArray(filters.brand) && filters.brand.length > 0) {
+      query = query.in('brand', filters.brand.map((brand: unknown) => String(brand ?? '').trim()).filter(Boolean));
+    }
+    if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
+    if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
+    if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
+
+    const seasonFilterValues = getSeasonFilterValues(filters.season);
+    if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
+    if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
+
+    const vehicleType = getTireVehicleTypeFilter(filters);
+    if (vehicleType) query = query.eq('tire_segment', vehicleType);
+
+    if (filters.ean) {
+      const ean = String(filters.ean).replace(/\D/g, '');
+      if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
+    }
+    if (filters.runflat) query = query.eq('runflat', true);
+    if (filters.xl) query = query.eq('xl_reinforced', true);
+    if (filters.studded) query = query.eq('studded', true);
+    if (filters.electricCar) query = query.eq('ev_ready', true);
+    if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
+    if (filters.inStockOnly) query = query.eq('in_stock', true);
+
+    if (useSafeOrder) {
+      query = query.order('variant_id', { ascending: true });
+    } else {
+      switch (filters.sortBy) {
+        case 'price_desc':
+          query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
+          break;
+        case 'price_asc':
+          query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
+          break;
+        case 'wet_grip':
+          query = query.order('eu_wet', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+          break;
+        case 'noise':
+          query = query.order('eu_noise', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+          break;
+        default:
+          query = query.order('brand_display_name', { ascending: true }).order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
+          break;
+      }
+    }
+
+    return query.range(offset, offset + limit - 1);
+  };
+
+  const firstResult = await buildQuery(false);
+  let rows: ProductSearchRow[] = [];
+  let usedSafeOrderFallback = false;
+
+  if (firstResult.error && !isStatementTimeoutError(firstResult.error)) {
+    throw firstResult.error;
+  }
+
+  if (firstResult.error && isStatementTimeoutError(firstResult.error)) {
+    const safeOrderResult = await buildQuery(true);
+    if (safeOrderResult.error) throw safeOrderResult.error;
+    rows = (safeOrderResult.data ?? []) as ProductSearchRow[];
+    usedSafeOrderFallback = true;
+  } else {
+    rows = (firstResult.data ?? []) as ProductSearchRow[];
+  }
+
+  let items = rows.map((row) => ({
+    ...row,
+    product_type: 'tire' as const,
+    final_is_hidden: false,
+    pricing_rules: null,
+  })).filter((row) => matchesTireFilters(row, filters));
+
+  if (usedSafeOrderFallback) {
+    items = applySort(items, filters.sortBy);
+  }
+
+  return {
+    items,
+    total: items.length === limit ? offset + items.length + 1 : offset + items.length,
   };
 }
 
@@ -1193,7 +1333,8 @@ async function fetchRimCatalogPublishedFallback(
       .select(WEBSHOP_RIM_PUBLIC_SELECT)
       .eq('product_type', 'rim')
       .eq('is_visible', true)
-      .eq('publish_status', 'published');
+      .eq('publish_status', 'published')
+      .eq('product_ready', true);
 
     const search = normalizeSearchTerm(filters.search);
     if (search) {
@@ -1313,6 +1454,7 @@ async function fetchAllSeasonTireProducts(
       .eq('product_type', 'tire')
       .eq('is_visible', true)
       .eq('publish_status', 'published')
+      .eq('product_ready', true)
       .or(allSeasonSearch);
 
     if (filters.search) {
@@ -1331,6 +1473,10 @@ async function fetchAllSeasonTireProducts(
     if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
     if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
     if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
+
+    const vehicleType = getTireVehicleTypeFilter(filters);
+    if (vehicleType) query = query.eq('tire_segment', vehicleType);
+
     if (filters.ean) {
       const ean = String(filters.ean).replace(/\D/g, '');
       if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
@@ -1447,8 +1593,12 @@ export async function fetchProductsSearch(
     throw new Error(configError);
   }
 
-  const limit = options.limit ?? 24;
-  const offset = options.offset ?? 0;
+  const limit = Math.min(Math.max(options.limit ?? 24, 1), PUBLIC_CATALOG_MAX_LIMIT);
+  const requestedOffset = Math.max(options.offset ?? 0, 0);
+  if (requestedOffset > PUBLIC_CATALOG_MAX_OFFSET) {
+    return { items: [], total: PUBLIC_CATALOG_MAX_OFFSET };
+  }
+  const offset = requestedOffset;
   const filters = options.filters ?? {};
   const normalizedSearch = normalizeSearchTerm(filters.search);
 
@@ -1460,6 +1610,11 @@ export async function fetchProductsSearch(
     try {
       return await fetchTireCatalogRpc(limit, offset, filters);
     } catch (error) {
+      if (isStatementTimeoutError(error)) {
+        console.warn('Tire catalog RPC timed out; falling back to published product-ready webshop_items.', error);
+        return await fetchTireCatalogPublishedFallback(limit, offset, filters);
+      }
+
       if (!isRecoverableAuthError(error)) {
         throw error;
       }
@@ -1470,7 +1625,15 @@ export async function fetchProductsSearch(
         // Ignore cleanup failures and retry once with anon state.
       }
 
-      return await fetchTireCatalogRpc(limit, offset, filters);
+      try {
+        return await fetchTireCatalogRpc(limit, offset, filters);
+      } catch (retryError) {
+        if (isStatementTimeoutError(retryError)) {
+          console.warn('Tire catalog RPC timed out after auth retry; falling back to published product-ready webshop_items.', retryError);
+          return await fetchTireCatalogPublishedFallback(limit, offset, filters);
+        }
+        throw retryError;
+      }
     }
   }
 

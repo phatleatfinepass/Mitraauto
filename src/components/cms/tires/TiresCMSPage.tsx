@@ -346,6 +346,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   } | null>(null);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   const [supplierDraft, setSupplierDraft] = useState('all');
+  const [tireSegmentDraft, setTireSegmentDraft] = useState('all');
   const [showNonPassengerDraft, setShowNonPassengerDraft] = useState(false);
   const [missingMetadataFieldsDraft, setMissingMetadataFieldsDraft] = useState<string[]>([]);
   const [showMissingImagesOnlyDraft, setShowMissingImagesOnlyDraft] = useState(false);
@@ -387,6 +388,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     setShowMissingImagesOnly,
     setShowWithEprelOnly,
     setSupplierFilter,
+    setTireSegmentFilter,
     hideNonPassenger,
     missingMetadataFields,
     missingSeoFields,
@@ -394,6 +396,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     showWithEprelOnly,
     startItem,
     supplierFilter,
+    tireSegmentFilter,
     tires,
     totalCount,
     totalPages,
@@ -519,6 +522,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
   useEffect(() => {
     setSupplierDraft(supplierFilter);
+    setTireSegmentDraft(tireSegmentFilter);
     setShowNonPassengerDraft(!hideNonPassenger);
     setMissingMetadataFieldsDraft(missingMetadataFields);
     setShowMissingImagesOnlyDraft(showMissingImagesOnly);
@@ -526,6 +530,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     setMissingSeoFieldsDraft(missingSeoFields);
   }, [
     supplierFilter,
+    tireSegmentFilter,
     hideNonPassenger,
     missingMetadataFields,
     showMissingImagesOnly,
@@ -563,6 +568,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
           p_missing_ean_only: false,
           p_exclude_non_passenger: hideNonPassenger,
           p_supplier_code: bulkMarkupSupplier,
+          p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
           p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
           p_missing_image_only: showMissingImagesOnly,
           p_has_eprel_only: showWithEprelOnly,
@@ -597,6 +603,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     settingsDrawerOpen,
     showMissingImagesOnly,
     showWithEprelOnly,
+    tireSegmentFilter,
   ]);
 
   const toNumberOrNull = (value: any) => {
@@ -1718,6 +1725,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
       p_missing_ean_only: false,
       p_exclude_non_passenger: hideNonPassenger,
       p_supplier_code: supplierCode,
+      p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
       p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
       p_missing_image_only: showMissingImagesOnly,
       p_has_eprel_only: showWithEprelOnly,
@@ -1909,6 +1917,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     const nextHideNonPassenger = !showNonPassengerDraft;
     const hasChanges =
       supplierDraft !== supplierFilter ||
+      tireSegmentDraft !== tireSegmentFilter ||
       nextHideNonPassenger !== hideNonPassenger ||
       showMissingImagesOnlyDraft !== showMissingImagesOnly ||
       showWithEprelOnlyDraft !== showWithEprelOnly ||
@@ -1923,6 +1932,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     invalidateCache();
     setCurrentPage(1);
     setSupplierFilter(supplierDraft);
+    setTireSegmentFilter(tireSegmentDraft);
     setHideNonPassenger(nextHideNonPassenger);
     setMissingMetadataFields(missingMetadataFieldsDraft);
     setShowMissingImagesOnly(showMissingImagesOnlyDraft);
@@ -1945,6 +1955,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         missingSeoFieldsDraft={missingSeoFieldsDraft}
         supplierFilter={supplierFilter}
         supplierDraft={supplierDraft}
+        tireSegmentDraft={tireSegmentDraft}
         supplierOptions={SUPPLIER_OPTIONS}
         syncingCatalog={syncingCatalog}
         hasPendingCatalogSync={hasPendingCatalogSync}
@@ -1962,6 +1973,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         settingsDrawerOpen={settingsDrawerOpen}
         supplierFilterDirty={
           supplierDraft !== supplierFilter ||
+          tireSegmentDraft !== tireSegmentFilter ||
           (!showNonPassengerDraft) !== hideNonPassenger ||
           showMissingImagesOnlyDraft !== showMissingImagesOnly ||
           showWithEprelOnlyDraft !== showWithEprelOnly ||
@@ -1975,6 +1987,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         onShowWithEprelOnlyDraftChange={setShowWithEprelOnlyDraft}
         onMissingSeoFieldsDraftChange={setMissingSeoFieldsDraft}
         onSupplierDraftChange={setSupplierDraft}
+        onTireSegmentDraftChange={setTireSegmentDraft}
         onBulkMarkupSupplierChange={setBulkMarkupSupplier}
         onSettingsDrawerOpenChange={setSettingsDrawerOpen}
         onApplySupplierFilter={handleApplySupplierFilter}

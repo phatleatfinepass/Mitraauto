@@ -48,11 +48,13 @@ export function useRimsCmsMutations({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [catalogSyncMessage, setCatalogSyncMessage] = useState<string | null>(null);
+  const [catalogSyncProgress, setCatalogSyncProgress] = useState<{ processed: number; total: number } | null>(null);
   const [hasPendingCatalogSync, setHasPendingCatalogSync] = useState(false);
 
   const applyRimWebshopSync = async () => {
     setSyncing(true);
     setCatalogSyncMessage(null);
+    setCatalogSyncProgress(null);
 
     try {
       const { data: startData, error: startError } = await supabase.rpc('start_webshop_rim_items_sync_v1');
@@ -83,6 +85,10 @@ export function useRimsCmsMutations({
           (batchData as any)?.batch_processed ?? (batchData as any)?.processed_count ?? 0,
         );
         processed += batchProcessed;
+        setCatalogSyncProgress({
+          processed: Number((batchData as any)?.processed ?? processed),
+          total: Number((batchData as any)?.total ?? processed),
+        });
         if (batchProcessed === 0 || (batchData as any)?.has_more === false) break;
       }
 
@@ -91,14 +97,20 @@ export function useRimsCmsMutations({
       });
       if (finalizeError) throw finalizeError;
 
+      setCatalogSyncMessage(t('rimsMutations.refreshingSearchIndex'));
+      const { error: indexError } = await supabase.rpc('refresh_webshop_rim_search_index_v1');
+      if (indexError) throw indexError;
+
       setHasPendingCatalogSync(false);
       setCatalogSyncMessage(t('rimsMutations.catalogPublished', { processed }));
+      setCatalogSyncProgress(null);
       await refreshRims({ force: true });
     } catch (err: any) {
       console.error('Apply rim webshop sync error:', err);
       setCatalogSyncMessage(err.message ?? String(err));
     } finally {
       setSyncing(false);
+      setCatalogSyncProgress(null);
     }
   };
 
@@ -222,6 +234,7 @@ export function useRimsCmsMutations({
   return {
     applyRimWebshopSync,
     catalogSyncMessage,
+    catalogSyncProgress,
     handleResetCms,
     handleSave,
     handleToggleVisibility,

@@ -5,6 +5,7 @@ import type { RimRow } from './types';
 
 const RIMS_CMS_STATE_KEY = 'mitra.rims-cms.state.v1';
 const RIMS_CMS_CACHE_KEY = 'mitra.rims-cms.cache.v1';
+const CMS_COUNT_TIMEOUT_MS = 1200;
 
 type RimsCmsCacheStore = {
   queries: Record<string, {
@@ -12,6 +13,21 @@ type RimsCmsCacheStore = {
     pages: Record<string, RimRow[]>;
   }>;
 };
+
+async function resolveWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  promise.catch(() => undefined);
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 const RIMS_CMS_WEBSTORE_FALLBACK_SELECT = [
   'variant_id',
@@ -47,8 +63,14 @@ const RIMS_CMS_WEBSTORE_FALLBACK_SELECT = [
   'seo_title',
   'seo_description',
   'spec_overrides',
+  'is_visible',
+  'product_ready',
+  'readiness_reasons',
+  'primary_readiness_reason',
   'publish_status',
   'publish_block_reason',
+  'conflict_status',
+  'conflict_reason',
 ].join(',');
 
 function toNumberOrNull(value: any) {
@@ -117,6 +139,9 @@ function mapRow(row: any): RimRow {
   const specOverrides = cmsData?.spec_overrides ?? {};
   const identity = specOverrides.identity ?? {};
   const rim = specOverrides.rim ?? {};
+  const readinessReasons = Array.isArray(row.readiness_reasons)
+    ? row.readiness_reasons.filter((reason: any): reason is string => typeof reason === 'string' && reason.trim().length > 0)
+    : [];
   const finalPrice =
     cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
       ? cmsData.promo_price_eur
@@ -153,6 +178,14 @@ function mapRow(row: any): RimRow {
     supplier_image_url: row.supplier_image_url ?? null,
     missing_supplier_price: Boolean(row.missing_supplier_price) || finalPrice === null || finalPrice === undefined,
     missing_supplier_image: Boolean(row.missing_supplier_image),
+    is_visible: row.is_visible ?? null,
+    product_ready: row.product_ready ?? null,
+    readiness_reasons: readinessReasons,
+    primary_readiness_reason: row.primary_readiness_reason ?? readinessReasons[0] ?? null,
+    publish_status: row.publish_status ?? null,
+    publish_block_reason: row.publish_block_reason ?? null,
+    conflict_status: row.conflict_status ?? null,
+    conflict_reason: row.conflict_reason ?? null,
     cms_data: cmsData,
   } as RimRow;
 }
@@ -346,14 +379,16 @@ export function useRimsCmsList(pageSize = 100) {
         p_status: statusFilter,
       };
 
-      const [{ data: rows, error: rowsError }, { data: count, error: countError }] = await Promise.all([
+      const [{ data: rows, error: rowsError }, countResponse] = await Promise.all([
         supabase.rpc('cms_list_rims_admin_v1', {
           ...params,
           p_limit: pageSize,
           p_offset: offset,
         }),
-        supabase.rpc('cms_count_rims_admin_v1', params),
+        resolveWithTimeout(supabase.rpc('cms_count_rims_admin_v1', params), CMS_COUNT_TIMEOUT_MS),
       ]);
+      const count = countResponse?.data;
+      const countError = countResponse?.error;
 
       if (rowsError && isRecoverableFetchError(rowsError)) {
         try {
@@ -401,7 +436,7 @@ export function useRimsCmsList(pageSize = 100) {
 
       const mappedRows = (rows ?? []).map(mapRow);
       const resolvedTotalCount =
-        countError && isStatementTimeoutError(countError)
+        !countResponse || (countError && isStatementTimeoutError(countError))
           ? (mappedRows.length === pageSize ? offset + mappedRows.length + 1 : offset + mappedRows.length)
           : Number(count ?? 0);
 

@@ -6,6 +6,7 @@ import type { TireRow } from './types';
 const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v3';
 const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v3';
 const TIRES_CMS_SYNC_KEY = 'mitra.tires-cms.sync.v1';
+const CMS_COUNT_TIMEOUT_MS = 1200;
 
 type TiresCmsQueryCacheEntry = {
   totalCount: number;
@@ -43,6 +44,21 @@ type MissingSeoField =
   | 'seo_slug'
   | 'seo_title'
   | 'seo_description';
+
+async function resolveWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  promise.catch(() => undefined);
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 const EXCLUDED_TIRE_KEYWORDS = [
   'motorcycle',
@@ -94,6 +110,7 @@ function buildTiresCmsQueryKey(params: {
   showMissingEanOnly: boolean;
   hideNonPassenger: boolean;
   supplierFilter: string;
+  tireSegmentFilter: string;
   missingMetadataFields: string[];
   showMissingImagesOnly: boolean;
   showWithEprelOnly: boolean;
@@ -105,6 +122,7 @@ function buildTiresCmsQueryKey(params: {
     missing: params.showMissingEanOnly,
     hideNonPassenger: params.hideNonPassenger,
     supplier: params.supplierFilter,
+    tireSegment: params.tireSegmentFilter,
     missingMetadataFields: [...params.missingMetadataFields].sort(),
     missingImages: params.showMissingImagesOnly,
     withEprel: params.showWithEprelOnly,
@@ -214,6 +232,7 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly: false,
         hideNonPassenger: true,
         supplierFilter: 'all',
+        tireSegmentFilter: 'all',
         missingMetadataFields: [] as MissingMetadataField[],
         showMissingImagesOnly: false,
         showWithEprelOnly: false,
@@ -232,6 +251,7 @@ export function useTiresCmsList(pageSize = 25) {
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
+        tireSegmentFilter: typeof parsedState?.tireSegmentFilter === 'string' ? parsedState.tireSegmentFilter : 'all',
         missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
         showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
         showWithEprelOnly: Boolean(parsedState?.showWithEprelOnly),
@@ -254,6 +274,7 @@ export function useTiresCmsList(pageSize = 25) {
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
+        tireSegmentFilter: typeof parsedState?.tireSegmentFilter === 'string' ? parsedState.tireSegmentFilter : 'all',
         missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
         showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
         showWithEprelOnly: Boolean(parsedState?.showWithEprelOnly),
@@ -269,6 +290,7 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly: false,
         hideNonPassenger: true,
         supplierFilter: 'all',
+        tireSegmentFilter: 'all',
         missingMetadataFields: [] as MissingMetadataField[],
         showMissingImagesOnly: false,
         showWithEprelOnly: false,
@@ -286,6 +308,7 @@ export function useTiresCmsList(pageSize = 25) {
   const [showMissingEanOnly, setShowMissingEanOnly] = useState(initialState.showMissingEanOnly);
   const [hideNonPassenger, setHideNonPassenger] = useState(initialState.hideNonPassenger);
   const [supplierFilter, setSupplierFilter] = useState(initialState.supplierFilter);
+  const [tireSegmentFilter, setTireSegmentFilter] = useState(initialState.tireSegmentFilter);
   const [missingMetadataFields, setMissingMetadataFields] = useState<MissingMetadataField[]>(
     initialState.missingMetadataFields,
   );
@@ -305,6 +328,7 @@ export function useTiresCmsList(pageSize = 25) {
     showMissingEanOnly,
     hideNonPassenger,
     supplierFilter,
+    tireSegmentFilter,
     missingMetadataFields,
     showMissingImagesOnly,
     showWithEprelOnly,
@@ -358,6 +382,7 @@ export function useTiresCmsList(pageSize = 25) {
     showMissingEanOnly,
     hideNonPassenger,
     supplierFilter,
+    tireSegmentFilter,
     debouncedSearchTerm,
     missingMetadataFields,
     showMissingImagesOnly,
@@ -373,8 +398,9 @@ export function useTiresCmsList(pageSize = 25) {
         searchTerm,
         showMissingEanOnly,
         hideNonPassenger,
-        supplierFilter,
-        missingMetadataFields,
+    supplierFilter,
+    tireSegmentFilter,
+    missingMetadataFields,
         showMissingImagesOnly,
         showWithEprelOnly,
         missingSeoFields,
@@ -386,8 +412,9 @@ export function useTiresCmsList(pageSize = 25) {
     hideNonPassenger,
     searchTerm,
     showMissingEanOnly,
-    supplierFilter,
-    missingMetadataFields,
+        supplierFilter,
+        tireSegmentFilter,
+        missingMetadataFields,
     showMissingImagesOnly,
     showWithEprelOnly,
     missingSeoFields,
@@ -574,6 +601,7 @@ export function useTiresCmsList(pageSize = 25) {
           p_missing_ean_only: showMissingEanOnly,
           p_exclude_non_passenger: hideNonPassenger,
           p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+          p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
           p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
           p_missing_image_only: showMissingImagesOnly,
           p_has_eprel_only: showWithEprelOnly,
@@ -590,7 +618,7 @@ export function useTiresCmsList(pageSize = 25) {
           let fallbackQuery = supabase
             .from('webshop_items')
             .select(
-              'variant_id,product_type,ean,derived_ean,supplier_code_best,supplier_external_id_best,brand,brand_display_name,model,size_string,season,studded,runflat,xl_reinforced,load_index,speed_rating,speed_index,ev_ready,sound_absorber,threepmsf,winter_approved,ice_approved,eu_wet,eu_noise,eu_label_json,final_price_eur,price,in_stock,hero_image_url,gallery,manufacture_year',
+              'variant_id,product_type,ean,derived_ean,supplier_code_best,supplier_external_id_best,brand,brand_display_name,model,size_string,season,tire_segment,studded,runflat,xl_reinforced,load_index,speed_rating,speed_index,ev_ready,sound_absorber,threepmsf,winter_approved,ice_approved,eu_wet,eu_noise,eu_label_json,final_price_eur,price,in_stock,hero_image_url,gallery,manufacture_year',
             )
             .eq('product_type', 'tire')
             .eq('is_visible', true)
@@ -609,6 +637,7 @@ export function useTiresCmsList(pageSize = 25) {
             ].join(','));
           }
           if (supplierFilter !== 'all') fallbackQuery = fallbackQuery.eq('supplier_code_best', supplierFilter);
+          if (tireSegmentFilter !== 'all') fallbackQuery = fallbackQuery.eq('tire_segment', tireSegmentFilter);
 
           const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
           if (fallbackError) throw fallbackError;
@@ -616,18 +645,26 @@ export function useTiresCmsList(pageSize = 25) {
         }
 
         let resolvedTotalCount = 0;
-        const { data: rpcCount, error: rpcCountError } = await supabase.rpc('cms_count_tires_admin_v1', {
-          p_search: trimmedSearch || null,
-          p_missing_ean_only: showMissingEanOnly,
-          p_exclude_non_passenger: hideNonPassenger,
-          p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
-          p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
-          p_missing_image_only: showMissingImagesOnly,
-          p_has_eprel_only: showWithEprelOnly,
-          p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
-        });
+        const countResponse = await resolveWithTimeout(
+          supabase.rpc('cms_count_tires_admin_v1', {
+            p_search: trimmedSearch || null,
+            p_missing_ean_only: showMissingEanOnly,
+            p_exclude_non_passenger: hideNonPassenger,
+            p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+            p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
+            p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+            p_missing_image_only: showMissingImagesOnly,
+            p_has_eprel_only: showWithEprelOnly,
+            p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
+          }),
+          CMS_COUNT_TIMEOUT_MS,
+        );
+        const rpcCount = countResponse?.data;
+        const rpcCountError = countResponse?.error;
 
-        if (rpcCountError) {
+        if (!countResponse) {
+          resolvedTotalCount = offset + (Array.isArray(rpcRows) && rpcRows.length === pageSize ? rpcRows.length + 1 : (rpcRows?.length ?? 0));
+        } else if (rpcCountError) {
           if (isStatementTimeoutError(rpcCountError)) {
             resolvedTotalCount = offset + (Array.isArray(rpcRows) ? rpcRows.length : 0);
           } else {
@@ -652,7 +689,7 @@ export function useTiresCmsList(pageSize = 25) {
               .in('variant_id', variantIds),
             supabase
               .from('catalog_selected_items')
-              .select('id,manufacture_year')
+              .select('id,manufacture_year,tire_segment')
               .in('id', variantIds),
           ]);
 
@@ -665,7 +702,7 @@ export function useTiresCmsList(pageSize = 25) {
             console.warn('Failed to enrich CMS tire DOT years from catalog_selected_items:', selectedRowsError);
             const { data: webshopRows, error: webshopRowsError } = await supabase
               .from('webshop_items')
-              .select('variant_id,manufacture_year')
+              .select('variant_id,manufacture_year,tire_segment')
               .in('variant_id', variantIds);
             if (webshopRowsError) {
               console.warn('Failed to enrich CMS tire DOT years from webshop_items:', webshopRowsError);
@@ -690,6 +727,11 @@ export function useTiresCmsList(pageSize = 25) {
               selectedByVariantId.get(row.variant_id)?.manufacture_year
               ?? webshopByVariantId.get(row.variant_id)?.manufacture_year
               ?? row.manufacture_year
+              ?? null,
+            tire_segment:
+              selectedByVariantId.get(row.variant_id)?.tire_segment
+              ?? webshopByVariantId.get(row.variant_id)?.tire_segment
+              ?? row.tire_segment
               ?? null,
             cms_data: liveCmsByVariantId.has(row.variant_id)
               ? liveCmsByVariantId.get(row.variant_id)
@@ -770,6 +812,7 @@ export function useTiresCmsList(pageSize = 25) {
     queryKey,
     showMissingEanOnly,
     supplierFilter,
+    tireSegmentFilter,
     missingMetadataFields,
     showMissingImagesOnly,
     showWithEprelOnly,
@@ -1008,6 +1051,7 @@ export function useTiresCmsList(pageSize = 25) {
     setShowMissingImagesOnly,
     setShowWithEprelOnly,
     setSupplierFilter,
+    setTireSegmentFilter,
     hideNonPassenger,
     missingMetadataFields,
     missingSeoFields,
@@ -1015,6 +1059,7 @@ export function useTiresCmsList(pageSize = 25) {
     showMissingImagesOnly,
     showWithEprelOnly,
     startItem,
+    tireSegmentFilter,
     tires,
     totalCount,
     totalPages,

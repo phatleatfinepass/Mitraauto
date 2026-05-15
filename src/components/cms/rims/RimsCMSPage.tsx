@@ -1,4 +1,4 @@
-import { AlertCircle, RotateCcw, Save, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, RotateCcw, Save, X } from 'lucide-react';
 
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { useTheme } from '../../../theme/ThemeContext';
@@ -8,6 +8,7 @@ import { RimsCmsToolbar } from './RimsCmsToolbar';
 import { RimsContentSection } from './RimsContentSection';
 import { RimsImagesSection } from './RimsImagesSection';
 import { RimsPricingSection } from './RimsPricingSection';
+import { getRimWarningKeys, type RimWarningKey } from './rimReadiness';
 import { RimsSpecsSection } from './RimsSpecsSection';
 import { RimsVisibilitySection } from './RimsVisibilitySection';
 import { useRimsCmsEditor } from './useRimsCmsEditor';
@@ -18,6 +19,17 @@ import type { RimRow } from './types';
 
 const VAT_RATE = 0.255;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
+
+const WARNING_LABEL_KEYS: Record<RimWarningKey, string> = {
+  mounting_specs: 'rimsCmsTable.warningMountingSpecs',
+  image: 'rimsCmsTable.warningImage',
+  price: 'rimsCmsTable.warningPrice',
+  stock: 'rimsCmsTable.warningStock',
+  pcd: 'rimsCmsTable.warningPcd',
+  et_cb: 'rimsCmsTable.warningEtCb',
+  ean: 'rimsCmsTable.warningEan',
+  material_finish: 'rimsCmsTable.warningMaterialFinish',
+};
 
 function toPriceWithVat(priceWithoutVat: number | null | undefined) {
   if (priceWithoutVat === null || priceWithoutVat === undefined) return null;
@@ -62,6 +74,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
   const clampedPage = Math.min(list.currentPage, totalPages);
   const startItem = list.totalCount === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
   const endItem = Math.min(clampedPage * pageSize, list.totalCount);
+  const drawerWarnings = editor.selectedRim ? getRimWarningKeys(editor.selectedRim) : [];
   const paginationItems = (() => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
 
@@ -90,6 +103,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
         syncing={mutations.syncing}
         hasPendingCatalogSync={mutations.hasPendingCatalogSync}
         catalogSyncMessage={mutations.catalogSyncMessage}
+        catalogSyncProgress={mutations.catalogSyncProgress}
         onSearchTermChange={list.setSearchTerm}
         onSupplierFilterChange={list.setSupplierFilter}
         onShowMissingPriceOnlyChange={list.setShowMissingPriceOnly}
@@ -204,6 +218,29 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <h3 className={`mb-4 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {t('rimsCmsPage.warnings')}
+                </h3>
+                {drawerWarnings.length > 0 ? (
+                  <div className={`flex flex-wrap gap-2 rounded-lg p-4 ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+                    {drawerWarnings.map((warning) => (
+                      <span
+                        key={warning}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-white text-amber-800'}`}
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        {t(WARNING_LABEL_KEYS[warning])}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`rounded-lg p-4 text-sm ${isDark ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {t('rimsCmsPage.noWarnings')}
+                  </div>
+                )}
               </div>
 
               <RimsImagesSection

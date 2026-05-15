@@ -28,6 +28,7 @@ interface TireFiltersProps {
     aspectRatio: string;
     diameter: string;
     season: string;
+    vehicleType: string;
     brand: any[];
     runflat: boolean;
     xl: boolean;
@@ -47,6 +48,25 @@ type PlateCountryOption = {
   name: string;
   flagSrc: string;
 };
+
+type TireFilterOptionRow = {
+  option_group: string;
+  option_value: string;
+  label: string;
+  item_count: number;
+  sort_order: number;
+  metadata?: Record<string, unknown> | null;
+};
+
+const TIRE_FILTER_OPTIONS_CACHE_KEY = 'mitra.tire-filter-options.v1';
+const FALLBACK_WIDTH_OPTIONS = ['155', '165', '175', '185', '195', '205', '215', '225', '235', '245', '255', '265', '275', '285', '295', '305', '315', '325', '335', '345', '355'];
+const FALLBACK_ASPECT_OPTIONS = ['30', '35', '40', '45', '50', '55', '60', '65', '70', '75', '80', '85'];
+const FALLBACK_DIAMETER_OPTIONS = ['12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24'];
+const FALLBACK_VEHICLE_TYPE_OPTIONS: TireFilterOptionRow[] = [
+  { option_group: 'vehicle_type', option_value: 'passenger', label: 'Passenger car', item_count: 0, sort_order: 10 },
+  { option_group: 'vehicle_type', option_value: 'van_c', label: 'Van / C', item_count: 0, sort_order: 20 },
+  { option_group: 'vehicle_type', option_value: 'suv_4x4', label: 'SUV / 4x4', item_count: 0, sort_order: 30 },
+];
 
 const PLATE_COUNTRY_OPTIONS: PlateCountryOption[] = [
   { code: 'AT', name: 'Austria', flagSrc: COUNTRY_FLAG_DATA_URIS.AT },
@@ -110,6 +130,7 @@ export const DEFAULT_TIRE_FILTERS = {
   aspectRatio: 'all',
   diameter: 'all',
   season: 'all',
+  vehicleType: 'all',
   brand: [],
   runflat: false,
   xl: false,
@@ -130,6 +151,10 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   const [plateCountry, setPlateCountry] = useState<PlateCountryCode>('FI');
   const [filters, setFilters] = useState(DEFAULT_TIRE_FILTERS);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [widthOptions, setWidthOptions] = useState<string[]>(FALLBACK_WIDTH_OPTIONS);
+  const [aspectOptions, setAspectOptions] = useState<string[]>(FALLBACK_ASPECT_OPTIONS);
+  const [diameterOptions, setDiameterOptions] = useState<string[]>(FALLBACK_DIAMETER_OPTIONS);
+  const [vehicleTypeOptions, setVehicleTypeOptions] = useState<TireFilterOptionRow[]>(FALLBACK_VEHICLE_TYPE_OPTIONS);
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
   const [brandSearchTerm, setBrandSearchTerm] = useState('');
   const [vehicleLookupLoading, setVehicleLookupLoading] = useState(false);
@@ -146,23 +171,56 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   useEffect(() => {
     let active = true;
 
-    const loadBrands = async () => {
-      const { data, error } = await supabase.rpc('catalog_list_tire_brands_v1');
+    const applyFilterOptions = (rows: TireFilterOptionRow[]) => {
+      const getValues = (group: string) =>
+        rows
+          .filter((row) => row.option_group === group && row.option_value)
+          .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label))
+          .map((row) => row.option_value);
+
+      const nextBrands = getValues('brand');
+      const nextWidths = getValues('width');
+      const nextAspects = getValues('aspect_ratio');
+      const nextDiameters = getValues('diameter');
+      const nextVehicleTypes = rows
+        .filter((row) => row.option_group === 'vehicle_type' && row.option_value)
+        .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
+
+      if (nextBrands.length > 0) setBrandOptions(nextBrands);
+      if (nextWidths.length > 0) setWidthOptions(nextWidths);
+      if (nextAspects.length > 0) setAspectOptions(nextAspects);
+      if (nextDiameters.length > 0) setDiameterOptions(nextDiameters);
+      if (nextVehicleTypes.length > 0) setVehicleTypeOptions(nextVehicleTypes);
+    };
+
+    const loadFilterOptions = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = window.sessionStorage.getItem(TIRE_FILTER_OPTIONS_CACHE_KEY);
+          const cachedRows = cached ? JSON.parse(cached) : null;
+          if (Array.isArray(cachedRows)) {
+            applyFilterOptions(cachedRows as TireFilterOptionRow[]);
+          }
+        } catch {
+          // Ignore malformed cache; the live RPC below will repopulate it.
+        }
+      }
+
+      const { data, error } = await supabase.rpc('catalog_list_tire_filter_options_v1');
       if (!active) return;
       if (error) {
-        console.warn('Failed to load tire brands:', error);
+        console.warn('Failed to load tire filter options:', error);
         return;
       }
 
-      const brands = Array.isArray(data)
-        ? data
-            .map((row: any) => String(row?.brand ?? '').trim())
-            .filter((brand) => brand.length > 0)
-        : [];
-      setBrandOptions(brands);
+      const rows = Array.isArray(data) ? data as TireFilterOptionRow[] : [];
+      applyFilterOptions(rows);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(TIRE_FILTER_OPTIONS_CACHE_KEY, JSON.stringify(rows));
+      }
     };
 
-    void loadBrands();
+    void loadFilterOptions();
     return () => {
       active = false;
     };
@@ -256,10 +314,6 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
   const clearBrands = () => updateFilter('brand', []);
 
-  const widthOptions = ['155', '165', '175', '185', '195', '205', '215', '225', '235', '245', '255', '265', '275', '285', '295', '305', '315', '325', '335', '345', '355'];
-  const aspectOptions = ['30', '35', '40', '45', '50', '55', '60', '65', '70', '75', '80', '85'];
-  const diameterOptions = ['12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24'];
-
   const bgClass = theme === 'dark' ? 'bg-white/5' : 'bg-white';
   const borderClass = theme === 'dark' ? 'border-white/10' : 'border-gray-200';
   const textClass = theme === 'dark' ? 'text-white' : 'text-gray-900';
@@ -319,6 +373,75 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   );
   const advancedFiltersPanel = (
     <div className={`w-full max-w-[568px] space-y-4 rounded-xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-[#f9fafb]'}`}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <Label className={`${textClass} mb-2 block text-sm`}>
+            {t('catalog.filterByBrand')}
+          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setBrandDialogOpen(true)}
+            className={`w-full justify-between ${theme === 'dark' ? 'border-white/10 bg-[#0f1319] text-white hover:bg-white/10' : 'border-gray-200 bg-white text-gray-900 hover:bg-gray-50'}`}
+          >
+            <span className="truncate">
+              {selectedBrands.length === 0
+                ? t('catalog.chooseBrands')
+                : selectedBrands.length === 1
+                  ? selectedBrands[0]
+                  : t('catalog.brandsSelected', { count: selectedBrands.length })}
+            </span>
+            <span className={`${secondaryTextClass} text-xs`}>
+              {t('catalog.open')}
+            </span>
+          </Button>
+          {selectedBrands.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {selectedBrands.slice(0, 4).map((brand) => (
+                <span
+                  key={brand}
+                  className={`rounded-md px-2 py-1 text-xs ${theme === 'dark' ? 'bg-[#FF6B35]/15 text-[#FFD2C2]' : 'bg-[#FF6B35]/10 text-[#B9481E]'}`}
+                >
+                  {brand}
+                </span>
+              ))}
+              {selectedBrands.length > 4 && (
+                <span className={`rounded-md px-2 py-1 text-xs ${theme === 'dark' ? 'bg-white/10 text-white/80' : 'bg-gray-100 text-gray-700'}`}>
+                  +{selectedBrands.length - 4}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <Label className={`${textClass} mb-2 block text-sm`}>
+            {t('catalog.filterByVehicle')}
+          </Label>
+          <Select value={filters.vehicleType} onValueChange={(value) => updateFilter('vehicleType', value)}>
+            <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={`${selectBgClass} ${borderClass}`}>
+              <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>
+                {t('catalog.all')}
+              </SelectItem>
+              {vehicleTypeOptions.map((option) => (
+                <SelectItem key={option.option_value} value={option.option_value} className={`${textClass} hover:bg-white/10`}>
+                  {option.option_value === 'passenger'
+                    ? t('catalog.vehicleType.passenger')
+                    : option.option_value === 'van_c'
+                      ? t('catalog.vehicleType.vanC')
+                      : option.option_value === 'suv_4x4'
+                        ? t('catalog.vehicleType.suv4x4')
+                        : option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div>
           <Label className={`${textClass} mb-2 block text-sm`}>
@@ -455,46 +578,6 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
             {t('productDetail.soundAbsorber')}
           </Label>
         </div>
-      </div>
-
-      <div>
-        <Label className={`${textClass} mb-2 block text-sm`}>
-          {t('catalog.filterByBrand')}
-        </Label>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setBrandDialogOpen(true)}
-          className={`w-full justify-between ${theme === 'dark' ? 'border-white/10 bg-[#0f1319] text-white hover:bg-white/10' : 'border-gray-200 bg-white text-gray-900 hover:bg-gray-50'}`}
-        >
-          <span className="truncate">
-            {selectedBrands.length === 0
-              ? t('catalog.chooseBrands')
-              : selectedBrands.length === 1
-                ? selectedBrands[0]
-                : t('catalog.brandsSelected', { count: selectedBrands.length })}
-          </span>
-          <span className={`${secondaryTextClass} text-xs`}>
-            {t('catalog.open')}
-          </span>
-        </Button>
-        {selectedBrands.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {selectedBrands.slice(0, 4).map((brand) => (
-              <span
-                key={brand}
-                className={`rounded-md px-2 py-1 text-xs ${theme === 'dark' ? 'bg-[#FF6B35]/15 text-[#FFD2C2]' : 'bg-[#FF6B35]/10 text-[#B9481E]'}`}
-              >
-                {brand}
-              </span>
-            ))}
-            {selectedBrands.length > 4 && (
-              <span className={`rounded-md px-2 py-1 text-xs ${theme === 'dark' ? 'bg-white/10 text-white/80' : 'bg-gray-100 text-gray-700'}`}>
-                +{selectedBrands.length - 4}
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       <Button

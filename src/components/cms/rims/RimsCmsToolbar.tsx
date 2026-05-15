@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Filter, Search, SlidersHorizontal } from 'lucide-react';
 
 import { useLanguage } from '../../../i18n/LanguageContext';
@@ -23,6 +23,7 @@ interface RimsCmsToolbarProps {
   syncing: boolean;
   hasPendingCatalogSync: boolean;
   catalogSyncMessage: string | null;
+  catalogSyncProgress: { processed: number; total: number } | null;
   onSearchTermChange: (value: string) => void;
   onSupplierFilterChange: (value: string) => void;
   onShowMissingPriceOnlyChange: (value: boolean) => void;
@@ -46,6 +47,7 @@ export function RimsCmsToolbar({
   syncing,
   hasPendingCatalogSync,
   catalogSyncMessage,
+  catalogSyncProgress,
   onSearchTermChange,
   onSupplierFilterChange,
   onShowMissingPriceOnlyChange,
@@ -57,12 +59,55 @@ export function RimsCmsToolbar({
 }: RimsCmsToolbarProps) {
   const { t } = useLanguage();
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+  const [supplierDraft, setSupplierDraft] = useState(supplierFilter);
+  const [statusDraft, setStatusDraft] = useState(statusFilter);
+  const [missingPriceDraft, setMissingPriceDraft] = useState(showMissingPriceOnly);
+  const [missingImagesDraft, setMissingImagesDraft] = useState(showMissingImagesOnly);
+  const [missingSeoDraft, setMissingSeoDraft] = useState(showMissingSeoOnly);
+  const [missingSpecsDraft, setMissingSpecsDraft] = useState(showMissingSpecsOnly);
   const inputClass = `rounded-lg border px-3 py-2 text-sm ${
     isDark
       ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
   }`;
   const checkboxLabelClass = `flex items-center gap-2 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`;
+  const settingsDirty =
+    supplierDraft !== supplierFilter ||
+    statusDraft !== statusFilter ||
+    missingPriceDraft !== showMissingPriceOnly ||
+    missingImagesDraft !== showMissingImagesOnly ||
+    missingSeoDraft !== showMissingSeoOnly ||
+    missingSpecsDraft !== showMissingSpecsOnly;
+
+  useEffect(() => {
+    if (!settingsDrawerOpen) return;
+    setSupplierDraft(supplierFilter);
+    setStatusDraft(statusFilter);
+    setMissingPriceDraft(showMissingPriceOnly);
+    setMissingImagesDraft(showMissingImagesOnly);
+    setMissingSeoDraft(showMissingSeoOnly);
+    setMissingSpecsDraft(showMissingSpecsOnly);
+  }, [
+    settingsDrawerOpen,
+    showMissingImagesOnly,
+    showMissingPriceOnly,
+    showMissingSeoOnly,
+    showMissingSpecsOnly,
+    statusFilter,
+    supplierFilter,
+  ]);
+
+  const applySettings = () => {
+    if (settingsDirty) {
+      onSupplierFilterChange(supplierDraft);
+      onStatusFilterChange(statusDraft);
+      onShowMissingPriceOnlyChange(missingPriceDraft);
+      onShowMissingImagesOnlyChange(missingImagesDraft);
+      onShowMissingSeoOnlyChange(missingSeoDraft);
+      onShowMissingSpecsOnlyChange(missingSpecsDraft);
+    }
+    setSettingsDrawerOpen(false);
+  };
 
   return (
     <>
@@ -132,6 +177,25 @@ export function RimsCmsToolbar({
             {catalogSyncMessage}
           </p>
         )}
+
+        {catalogSyncProgress ? (
+          <div className="mt-3 space-y-2">
+            <div className={`h-2 overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+              <div
+                className="h-full rounded-full bg-blue-500 transition-[width] duration-200"
+                style={{
+                  width: `${catalogSyncProgress.total > 0 ? Math.min(100, (catalogSyncProgress.processed / catalogSyncProgress.total) * 100) : 0}%`,
+                }}
+              />
+            </div>
+            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {t('rimsCmsToolbar.syncingProgress', {
+                processed: catalogSyncProgress.processed,
+                total: catalogSyncProgress.total,
+              })}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <Sheet open={settingsDrawerOpen} onOpenChange={setSettingsDrawerOpen}>
@@ -155,7 +219,7 @@ export function RimsCmsToolbar({
                   <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {t('rimsCmsToolbar.showBySupplier')}
                   </label>
-                  <select value={supplierFilter} onChange={(event) => onSupplierFilterChange(event.target.value)} className={`${inputClass} w-full`}>
+                  <select value={supplierDraft} onChange={(event) => setSupplierDraft(event.target.value)} className={`${inputClass} w-full`}>
                     <option value="all">{t('rimsCmsToolbar.allSuppliers')}</option>
                     <option value="RD">RD</option>
                     <option value="VT">VT</option>
@@ -166,7 +230,7 @@ export function RimsCmsToolbar({
                   <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {t('rimsCmsToolbar.showByStatus')}
                   </label>
-                  <select value={statusFilter} onChange={(event) => onStatusFilterChange(event.target.value)} className={`${inputClass} w-full`}>
+                  <select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value)} className={`${inputClass} w-full`}>
                     <option value="all">{t('rimsCmsToolbar.allStatuses')}</option>
                     <option value="visible">{t('rimsCmsToolbar.visible')}</option>
                     <option value="hidden">{t('rimsCmsToolbar.hidden')}</option>
@@ -185,23 +249,38 @@ export function RimsCmsToolbar({
               </div>
               <div className="space-y-3">
                 <label className={checkboxLabelClass}>
-                  <input type="checkbox" checked={showMissingPriceOnly} onChange={(event) => onShowMissingPriceOnlyChange(event.target.checked)} />
+                  <input type="checkbox" checked={missingPriceDraft} onChange={(event) => setMissingPriceDraft(event.target.checked)} />
                   {t('rimsCmsToolbar.missingPrice')}
                 </label>
                 <label className={checkboxLabelClass}>
-                  <input type="checkbox" checked={showMissingImagesOnly} onChange={(event) => onShowMissingImagesOnlyChange(event.target.checked)} />
+                  <input type="checkbox" checked={missingImagesDraft} onChange={(event) => setMissingImagesDraft(event.target.checked)} />
                   {t('rimsCmsToolbar.missingImage')}
                 </label>
                 <label className={checkboxLabelClass}>
-                  <input type="checkbox" checked={showMissingSeoOnly} onChange={(event) => onShowMissingSeoOnlyChange(event.target.checked)} />
+                  <input type="checkbox" checked={missingSeoDraft} onChange={(event) => setMissingSeoDraft(event.target.checked)} />
                   {t('rimsCmsToolbar.missingSeo')}
                 </label>
                 <label className={checkboxLabelClass}>
-                  <input type="checkbox" checked={showMissingSpecsOnly} onChange={(event) => onShowMissingSpecsOnlyChange(event.target.checked)} />
+                  <input type="checkbox" checked={missingSpecsDraft} onChange={(event) => setMissingSpecsDraft(event.target.checked)} />
                   {t('rimsCmsToolbar.missingSpecs')}
                 </label>
               </div>
             </section>
+          </div>
+
+          <div className={`border-t px-4 py-4 ${isDark ? 'border-white/10 bg-[#10131A]' : 'border-gray-200 bg-white'}`}>
+            <button
+              type="button"
+              onClick={applySettings}
+              disabled={!settingsDirty}
+              className={`w-full rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                isDark
+                  ? 'bg-white text-[#10131A] hover:bg-gray-200 disabled:bg-white/10 disabled:text-gray-500'
+                  : 'bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400'
+              } disabled:cursor-not-allowed`}
+            >
+              {t('rimsCmsToolbar.applySettings')}
+            </button>
           </div>
         </SheetContent>
       </Sheet>

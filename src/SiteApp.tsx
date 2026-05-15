@@ -24,9 +24,7 @@ import { CmsGuard } from './components/cms/core/CmsGuard';
 import { CmsControlCenter, type CmsTab } from './components/cms/layout/CmsControlCenter';
 import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
 import { RescueCMSPage } from './components/cms/rescue/RescueCMSPage';
-import { TiresCMSPage } from './components/cms/tires/TiresCMSPage';
 import { TiresConflictResolvePage } from './components/cms/tires/TiresConflictResolvePage';
-import { RimsCMSPage } from './components/cms/rims/RimsCMSPage';
 import { OrdersCMSPage } from './components/cms/orders/OrdersCMSPage';
 import { InvoicesCMSPage } from './components/cms/invoices/InvoicesCMSPage';
 import { AccountCustomerCMSPage } from './components/cms/account-customer/AccountCustomerCMSPage';
@@ -348,7 +346,7 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'cms-invoices' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tire-conflicts' | 'cms-orders' | 'cms-invoices' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -604,9 +602,17 @@ function HomePage() {
       } else if (normalizedPath === '/cms/rescue-board') {
         transitionNavigationState('cms-rescue');
       } else if (normalizedPath === '/cms/tires' || normalizedPath === '/cms-tires') {
-        transitionNavigationState('cms-tires');
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(window.history.state, '', '/cms#catalog/tires');
+        }
+        transitionNavigationState('cms-beta', null, 'catalog');
       } else if (normalizedPath === '/cms/tires/conflicts') {
         transitionNavigationState('cms-tire-conflicts');
+      } else if (normalizedPath === '/cms/rims' || normalizedPath === '/cms-rims') {
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(window.history.state, '', '/cms#catalog/rims');
+        }
+        transitionNavigationState('cms-beta', null, 'catalog');
       } else if (
         normalizedPath === '/cms/orders' ||
         normalizedPath === '/cms-orders'
@@ -831,7 +837,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-tire-conflicts', 'cms-rims', 'cms-orders', 'cms-invoices', 'cms-beta'];
+      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tire-conflicts', 'cms-orders', 'cms-invoices', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         startTransition(() => {
           setCurrentPage('home');
@@ -1147,17 +1153,9 @@ function HomePage() {
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="rescue">
             <RescueCMSPage />
           </CmsGuard>
-        ) : currentPage === 'cms-tires' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
-            <TiresCMSPage />
-          </CmsGuard>
         ) : currentPage === 'cms-tire-conflicts' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
             <TiresConflictResolvePage />
-          </CmsGuard>
-        ) : currentPage === 'cms-rims' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_rims">
-            <RimsCMSPage />
           </CmsGuard>
         ) : currentPage === 'cms-orders' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="orders">

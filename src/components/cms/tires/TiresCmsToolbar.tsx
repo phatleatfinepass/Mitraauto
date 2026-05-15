@@ -51,6 +51,7 @@ interface TiresCmsToolbarProps {
   missingSeoFieldsDraft: string[];
   supplierFilter: string;
   supplierDraft: string;
+  tireSegmentDraft: string;
   supplierOptions: Array<{ code: string; label: string }>;
   syncingCatalog: boolean;
   hasPendingCatalogSync: boolean;
@@ -74,6 +75,7 @@ interface TiresCmsToolbarProps {
   onShowWithEprelOnlyDraftChange: (checked: boolean) => void;
   onMissingSeoFieldsDraftChange: (values: string[]) => void;
   onSupplierDraftChange: (value: string) => void;
+  onTireSegmentDraftChange: (value: string) => void;
   onBulkMarkupSupplierChange: (value: string) => void;
   onSettingsDrawerOpenChange: (open: boolean) => void;
   onApplySupplierFilter: () => void;
@@ -100,6 +102,7 @@ export function TiresCmsToolbar({
   missingSeoFieldsDraft,
   supplierFilter,
   supplierDraft,
+  tireSegmentDraft,
   supplierOptions,
   syncingCatalog,
   hasPendingCatalogSync,
@@ -123,6 +126,7 @@ export function TiresCmsToolbar({
   onShowWithEprelOnlyDraftChange,
   onMissingSeoFieldsDraftChange,
   onSupplierDraftChange,
+  onTireSegmentDraftChange,
   onBulkMarkupSupplierChange,
   onSettingsDrawerOpenChange,
   onApplySupplierFilter,
@@ -293,6 +297,28 @@ export function TiresCmsToolbar({
                         {option.label}
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {t('tiresCmsToolbar.showByVehicleType')}
+                  </label>
+                  <select
+                    value={tireSegmentDraft}
+                    onChange={(e) => onTireSegmentDraftChange(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                      isDark ? 'bg-[#1C1C1E] border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  >
+                    <option value="all">{t('tiresCmsToolbar.allVehicleTypes')}</option>
+                    <option value="passenger">{t('tiresCmsTable.segment.passenger')}</option>
+                    <option value="van_c">{t('tiresCmsTable.segment.vanC')}</option>
+                    <option value="suv_4x4">{t('tiresCmsTable.segment.suv4x4')}</option>
+                    <option value="excluded_heavy">{t('tiresCmsTable.segment.excludedHeavy')}</option>
+                    <option value="excluded_motorcycle">{t('tiresCmsTable.segment.excludedMotorcycle')}</option>
+                    <option value="excluded_agri_industrial">{t('tiresCmsTable.segment.excludedAgriIndustrial')}</option>
+                    <option value="other">{t('tiresCmsTable.segment.other')}</option>
                   </select>
                 </div>
 

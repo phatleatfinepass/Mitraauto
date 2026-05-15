@@ -55,6 +55,14 @@ export interface RimRow {
   supplier_image_url: string | null;
   missing_supplier_price: boolean;
   missing_supplier_image: boolean;
+  is_visible?: boolean | null;
+  product_ready?: boolean | null;
+  readiness_reasons?: string[] | null;
+  primary_readiness_reason?: string | null;
+  publish_status?: string | null;
+  publish_block_reason?: string | null;
+  conflict_status?: string | null;
+  conflict_reason?: string | null;
   cms_data?: ProductCMS | null;
 }
 

@@ -128,6 +128,57 @@ export function TiresCmsTableSection({
         return t('tiresCmsTable.review.none');
     }
   };
+  const getReadinessBadge = (tire: TireRow) => {
+    if (tire.cms_data?.is_hidden) {
+      return {
+        label: t('tiresCmsTable.hidden'),
+        className: isDark ? 'bg-gray-500/15 text-gray-300' : 'bg-gray-100 text-gray-700',
+      };
+    }
+    if (mustHideFromStore(tire)) {
+      return {
+        label: t('tiresCmsTable.match.blocked'),
+        className: isDark ? 'bg-red-500/15 text-red-200' : 'bg-red-50 text-red-700',
+      };
+    }
+    if (tire.ean_conflict_open || tire.has_duplicate_ean_conflict) {
+      return {
+        label: t('tiresCmsTable.conflict'),
+        className: isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700',
+      };
+    }
+    if (tire.has_mandatory_field_conflict) {
+      return {
+        label: t('tiresCmsTable.missingRequired'),
+        className: isDark ? 'bg-orange-500/15 text-orange-200' : 'bg-orange-50 text-orange-700',
+      };
+    }
+
+    return {
+      label: t('tiresCmsTable.ready'),
+      className: isDark ? 'bg-green-500/15 text-green-200' : 'bg-green-50 text-green-700',
+    };
+  };
+  const getSegmentLabel = (segment: string | null | undefined) => {
+    switch (segment) {
+      case 'passenger':
+        return t('tiresCmsTable.segment.passenger');
+      case 'van_c':
+        return t('tiresCmsTable.segment.vanC');
+      case 'suv_4x4':
+        return t('tiresCmsTable.segment.suv4x4');
+      case 'excluded_heavy':
+        return t('tiresCmsTable.segment.excludedHeavy');
+      case 'excluded_motorcycle':
+        return t('tiresCmsTable.segment.excludedMotorcycle');
+      case 'excluded_agri_industrial':
+        return t('tiresCmsTable.segment.excludedAgriIndustrial');
+      case 'other':
+        return t('tiresCmsTable.segment.other');
+      default:
+        return '—';
+    }
+  };
 
   if (loading) {
     return (
@@ -193,9 +244,11 @@ export function TiresCmsTableSection({
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.brand')}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.model')}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.size')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.segment')}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>EAN</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>EPREL</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.price')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.readiness')}</th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.visible')}</th>
                 <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresCmsTable.actions')}</th>
               </tr>
@@ -234,6 +287,11 @@ export function TiresCmsTableSection({
                   </td>
                   <td className={`${isDark ? 'text-gray-300' : 'text-gray-700'} px-4 py-3`}>{getEffectiveIdentity(tire).model}</td>
                   <td className={`${isDark ? 'text-gray-400' : 'text-gray-600'} px-4 py-3`}>{getEffectiveIdentity(tire).size_string || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${isDark ? 'bg-white/10 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+                      {getSegmentLabel(tire.tire_segment)}
+                    </span>
+                  </td>
                   <td className={`px-4 py-3 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{tire.derived_ean || '—'}</td>
                   <td className="px-4 py-3">
                     {(() => {
@@ -265,6 +323,16 @@ export function TiresCmsTableSection({
                         {t('tiresCmsTable.missingSupplierPrice')}
                       </p>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const badge = getReadinessBadge(tire);
+                      return (
+                        <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <button

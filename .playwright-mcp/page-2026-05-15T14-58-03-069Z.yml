@@ -1,0 +1,373 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic:
+      - generic: MA
+      - generic:
+        - paragraph: Mitra Auto
+        - paragraph: Loading garage services and booking tools.
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "Skip to main content" [ref=e4] [cursor=pointer]:
+        - /url: "#main-content"
+      - navigation [ref=e5]:
+        - generic [ref=e7]:
+          - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+            - /url: /
+            - img "Mitra Auto" [ref=e9]
+            - generic [ref=e10]: Mitra Auto
+          - generic [ref=e11]:
+            - link "Home" [ref=e12] [cursor=pointer]:
+              - /url: /
+            - link "Services" [ref=e13] [cursor=pointer]:
+              - /url: /services
+            - link "Catalog" [ref=e14] [cursor=pointer]:
+              - /url: /catalog
+            - link "Tire Hotel" [ref=e15] [cursor=pointer]:
+              - /url: /tire-hotel
+          - generic [ref=e16]:
+            - button "Toggle theme" [ref=e17]:
+              - img [ref=e18]
+            - button "Toggle language" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e24]: en
+            - button "Cart" [ref=e25]:
+              - img [ref=e26]
+              - generic [ref=e30]: "9"
+            - button "Login" [ref=e31]:
+              - img [ref=e32]
+      - main [ref=e35]:
+        - region "Mitra Auto - Professional Services" [ref=e36]:
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - heading "Mitra Auto - Professional Services" [level=1] [ref=e40]
+              - paragraph [ref=e41]: Full-service garage with tire, maintenance and repair services. Book your appointment online.
+              - generic [ref=e42]:
+                - button "Book a Service" [ref=e43]
+                - link "Browse Tyres" [ref=e44] [cursor=pointer]:
+                  - /url: /catalog
+                - button "Rescue 24/7" [ref=e45] [cursor=pointer]:
+                  - img [ref=e46]
+                  - text: Rescue 24/7
+              - generic [ref=e48]:
+                - generic [ref=e49]:
+                  - img [ref=e51]
+                  - generic [ref=e54]: Expertise
+                - generic [ref=e55]:
+                  - img [ref=e57]
+                  - generic [ref=e59]: Quality
+                - generic [ref=e60]:
+                  - img [ref=e62]
+                  - generic [ref=e64]: Reliability
+                - generic [ref=e65]:
+                  - img [ref=e67]
+                  - generic [ref=e69]: Speed
+            - img "Mitra Auto Waiting Area Interior" [ref=e73]
+        - region "Our Services" [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - heading "Our Services" [level=2] [ref=e77]
+              - paragraph [ref=e78]: Professional service for all drivers
+            - generic [ref=e79]:
+              - generic [ref=e80]:
+                - img [ref=e82]
+                - heading "Car Maintenance" [level=3] [ref=e84]
+                - paragraph [ref=e85]: Service and repairs
+                - link "Book" [ref=e86] [cursor=pointer]:
+                  - /url: /services
+                  - text: Book
+                  - img
+              - generic [ref=e87]:
+                - img [ref=e89]
+                - heading "Balancing" [level=3] [ref=e93]
+                - paragraph [ref=e94]: Wheel balancing
+                - link "Book" [ref=e95] [cursor=pointer]:
+                  - /url: /services
+                  - text: Book
+                  - img
+              - generic [ref=e96]:
+                - img [ref=e98]
+                - heading "Tire Hotel" [level=3] [ref=e101]
+                - paragraph [ref=e102]: Tire storage
+                - link "Book" [ref=e103] [cursor=pointer]:
+                  - /url: /services
+                  - text: Book
+                  - img
+              - generic [ref=e104]:
+                - img [ref=e106]
+                - heading "Inspection" [level=3] [ref=e110]
+                - paragraph [ref=e111]: Vehicle inspection
+                - link "Book" [ref=e112] [cursor=pointer]:
+                  - /url: /services
+                  - text: Book
+                  - img
+        - region "Tyre Catalog" [ref=e113]:
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - heading "Tyre Catalog" [level=2] [ref=e117]
+                - paragraph [ref=e118]: Find the perfect tyre for your vehicle
+              - link "View All" [ref=e119] [cursor=pointer]:
+                - /url: /catalog
+                - text: View All
+                - img
+            - generic [ref=e120]:
+              - generic [ref=e121]:
+                - generic [ref=e122]:
+                  - img "Dynamo STREET-H MH01 - 215/65 R17 99 T Summer" [ref=e123]
+                  - generic [ref=e124]: Summer
+                - heading "Dynamo STREET-H MH01" [level=3] [ref=e125]
+                - paragraph [ref=e126]: 215/65 R17 99 T
+                - generic [ref=e127]:
+                  - generic [ref=e128]: €39.91
+                  - button "Buy" [ref=e129]
+              - generic [ref=e130]:
+                - generic [ref=e131]:
+                  - img "Bridgestone Blizzak ICE - 235/45 R17 Winter" [ref=e132]
+                  - generic [ref=e133]: Winter
+                - heading "Bridgestone Blizzak ICE" [level=3] [ref=e134]
+                - paragraph [ref=e135]: 235/45 R17
+                - generic [ref=e136]:
+                  - generic [ref=e137]: €104.52
+                  - button "Buy" [ref=e138]
+              - generic [ref=e139]:
+                - generic [ref=e140]:
+                  - img "Nankang Econex NA-1 - 165/70 R12 77 T Summer" [ref=e141]
+                  - generic [ref=e142]: Summer
+                - heading "Nankang Econex NA-1" [level=3] [ref=e143]
+                - paragraph [ref=e144]: 165/70 R12 77 T
+                - generic [ref=e145]:
+                  - generic [ref=e146]: €52.16
+                  - button "Buy" [ref=e147]
+              - generic [ref=e148]:
+                - generic [ref=e149]:
+                  - img "Continental WinterContact TS 870 P - 215/40 R18 Winter" [ref=e150]
+                  - generic [ref=e151]: Winter
+                - heading "Continental WinterContact TS 870 P" [level=3] [ref=e152]
+                - paragraph [ref=e153]: 215/40 R18
+                - generic [ref=e154]:
+                  - generic [ref=e155]: €134.10
+                  - button "Buy" [ref=e156]
+        - region "Book Your Service Online" [ref=e157]:
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - heading "Book Your Service Online" [level=2] [ref=e161]
+              - paragraph [ref=e162]: Easy and fast booking anytime
+              - list [ref=e163]:
+                - listitem [ref=e164]:
+                  - img [ref=e166]
+                  - generic [ref=e169]: Quick online booking
+                - listitem [ref=e170]:
+                  - img [ref=e172]
+                  - generic [ref=e175]: Email confirmation
+                - listitem [ref=e176]:
+                  - img [ref=e178]
+                  - generic [ref=e181]: Flexible times
+              - generic [ref=e182]:
+                - img
+                - text: Book Now
+            - img "Professional mechanic working on vehicle service" [ref=e185]
+        - region "Tire Hotel – Hassle-free Storage" [ref=e186]:
+          - generic [ref=e188]:
+            - img "Professional tire storage warehouse" [ref=e191]
+            - generic [ref=e192]:
+              - heading "Tire Hotel – Hassle-free Storage" [level=2] [ref=e193]
+              - paragraph [ref=e194]: We store your tyres safely and professionally. No more hassle at home!
+              - list [ref=e195]:
+                - listitem [ref=e196]:
+                  - img [ref=e198]
+                  - generic [ref=e201]: Optimal storage conditions
+                - listitem [ref=e202]:
+                  - img [ref=e204]
+                  - generic [ref=e207]: Easy online booking
+                - listitem [ref=e208]:
+                  - img [ref=e210]
+                  - generic [ref=e213]: Competitive prices
+              - link "Learn more" [ref=e214] [cursor=pointer]:
+                - /url: /tire-hotel
+                - text: Learn more
+                - img
+        - region "Customer Reviews" [ref=e215]:
+          - generic [ref=e216]:
+            - generic [ref=e217]:
+              - heading "Customer Reviews" [level=2] [ref=e218]
+              - paragraph [ref=e219]: See what our customers say about our service
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - generic [ref=e222]:
+                  - generic [ref=e224]: MV
+                  - generic [ref=e225]:
+                    - generic [ref=e226]: Matti Virtanen
+                    - img "5 stars" [ref=e227]:
+                      - img [ref=e228]
+                      - img [ref=e230]
+                      - img [ref=e232]
+                      - img [ref=e234]
+                      - img [ref=e236]
+                - paragraph [ref=e238]: "\"Very fast and professional service. Highly recommended!\""
+              - generic [ref=e239]:
+                - generic [ref=e240]:
+                  - generic [ref=e242]: AK
+                  - generic [ref=e243]:
+                    - generic [ref=e244]: Anna Korhonen
+                    - img "5 stars" [ref=e245]:
+                      - img [ref=e246]
+                      - img [ref=e248]
+                      - img [ref=e250]
+                      - img [ref=e252]
+                      - img [ref=e254]
+                - paragraph [ref=e256]: "\"Tire hotel works perfectly. No need to store at home.\""
+              - generic [ref=e257]:
+                - generic [ref=e258]:
+                  - generic [ref=e260]: JN
+                  - generic [ref=e261]:
+                    - generic [ref=e262]: Jukka Nieminen
+                    - img "5 stars" [ref=e263]:
+                      - img [ref=e264]
+                      - img [ref=e266]
+                      - img [ref=e268]
+                      - img [ref=e270]
+                      - img [ref=e272]
+                - paragraph [ref=e274]: "\"Easy to book online and competitive prices.\""
+            - generic [ref=e277]:
+              - generic [ref=e280]:
+                - generic [ref=e281]:
+                  - generic [ref=e282]: "4.9"
+                  - generic [ref=e283]: /5
+                - img "4.9 out of 5 stars" [ref=e284]:
+                  - img [ref=e285]
+                  - img [ref=e287]
+                  - img [ref=e289]
+                  - img [ref=e291]
+                  - img [ref=e293]
+                - paragraph [ref=e295]: Customer Rating
+              - generic [ref=e298]:
+                - generic [ref=e299]:
+                  - generic [ref=e300]: "500"
+                  - generic [ref=e301]: +
+                - img "500+ happy customers" [ref=e302]:
+                  - img [ref=e303]
+                - paragraph [ref=e308]: Happy Customers
+        - region "Why choose Mitra Auto" [ref=e309]:
+          - generic [ref=e311]:
+            - generic [ref=e312]:
+              - img [ref=e314]
+              - heading "Expert Service" [level=3] [ref=e317]
+              - paragraph [ref=e318]: Certified technicians and modern equipment
+            - generic [ref=e319]:
+              - img [ref=e321]
+              - heading "Quality Products" [level=3] [ref=e323]
+              - paragraph [ref=e324]: Trusted brands and warranty
+            - generic [ref=e325]:
+              - img [ref=e327]
+              - heading "Fast Service" [level=3] [ref=e330]
+              - paragraph [ref=e331]: Efficient service and quick turnaround
+            - generic [ref=e332]:
+              - img [ref=e334]
+              - heading "Customer First" [level=3] [ref=e339]
+              - paragraph [ref=e340]: Over 500 satisfied customers
+        - region "Get in Touch" [ref=e341]:
+          - generic [ref=e342]:
+            - heading "Get in Touch" [level=2] [ref=e344]
+            - generic [ref=e345]:
+              - link "Map of our service center - Hankasuontie 5, 00390 Helsinki" [ref=e347] [cursor=pointer]:
+                - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                - img "Map showing location at Hankasuontie 5, Helsinki" [ref=e350]
+                - generic:
+                  - img
+              - generic [ref=e352]:
+                - heading "Contact Information" [level=3] [ref=e353]
+                - paragraph [ref=e354]: We're here to help — reach us anytime.
+                - generic [ref=e355]:
+                  - link "Address Hankasuontie 5, 00390 Helsinki" [ref=e356] [cursor=pointer]:
+                    - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                    - img [ref=e358]
+                    - generic [ref=e361]:
+                      - generic [ref=e362]: Address
+                      - generic [ref=e363]: Hankasuontie 5, 00390 Helsinki
+                  - link "Phone +358 40 7777 163" [ref=e364] [cursor=pointer]:
+                    - /url: tel:+358 40 7777 163
+                    - img [ref=e366]
+                    - generic [ref=e368]:
+                      - generic [ref=e369]: Phone
+                      - generic [ref=e370]: +358 40 7777 163
+                  - link "Email contact@mitra-auto.fi" [ref=e371] [cursor=pointer]:
+                    - /url: mailto:contact@mitra-auto.fi
+                    - img [ref=e373]
+                    - generic [ref=e376]:
+                      - generic [ref=e377]: Email
+                      - generic [ref=e378]: contact@mitra-auto.fi
+                  - generic [ref=e379]:
+                    - img [ref=e381]
+                    - generic [ref=e384]:
+                      - generic [ref=e385]: Opening Hours
+                      - generic [ref=e388]: Open now, closing at 18:00.
+                      - generic [ref=e389]: "Mon–Fri: 9:00–18:00 Sat: 10:00–17:00 Sun: Closed"
+                - generic [ref=e390]:
+                  - link "Get Directions" [ref=e391] [cursor=pointer]:
+                    - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                    - img
+                    - text: Get Directions
+                  - link "Contact Us" [ref=e392] [cursor=pointer]:
+                    - /url: mailto:contact@mitra-auto.fi
+                    - img
+                    - text: Contact Us
+      - contentinfo [ref=e393]:
+        - generic [ref=e394]:
+          - generic [ref=e396]:
+            - generic [ref=e397]:
+              - generic [ref=e398]:
+                - img "Mitra Auto" [ref=e399]
+                - generic [ref=e400]: Mitra Auto
+              - paragraph [ref=e401]: Full-service garage with tire, maintenance and repair services.
+            - generic [ref=e402]:
+              - heading "Shop" [level=3] [ref=e403]
+              - list [ref=e404]:
+                - listitem [ref=e405]:
+                  - link "Catalog" [ref=e406] [cursor=pointer]:
+                    - /url: /catalog
+            - generic [ref=e407]:
+              - heading "Services" [level=3] [ref=e408]
+              - list [ref=e409]:
+                - listitem [ref=e410]:
+                  - link "Car Service" [ref=e411] [cursor=pointer]:
+                    - /url: /services
+                - listitem [ref=e412]:
+                  - link "Tire Hotel" [ref=e413] [cursor=pointer]:
+                    - /url: /tire-hotel
+            - generic [ref=e414]:
+              - heading "Company" [level=3] [ref=e415]
+              - list [ref=e416]:
+                - listitem [ref=e417]:
+                  - link "About Us" [ref=e418] [cursor=pointer]:
+                    - /url: /about
+                - listitem [ref=e419]:
+                  - link "Contact" [ref=e420] [cursor=pointer]:
+                    - /url: /
+            - generic [ref=e421]:
+              - heading "Legal" [level=3] [ref=e422]
+              - list [ref=e423]:
+                - listitem [ref=e424]:
+                  - link "Privacy" [ref=e425] [cursor=pointer]:
+                    - /url: /legal/privacy
+                - listitem [ref=e426]:
+                  - link "Terms" [ref=e427] [cursor=pointer]:
+                    - /url: /legal/terms
+          - generic [ref=e429]:
+            - paragraph [ref=e430]: © Mitra Auto 2026
+            - generic [ref=e431]:
+              - link "Facebook" [ref=e432] [cursor=pointer]:
+                - /url: https://facebook.com
+                - img [ref=e433]
+              - link "Twitter" [ref=e435] [cursor=pointer]:
+                - /url: https://twitter.com
+                - img [ref=e436]
+              - link "Instagram" [ref=e438] [cursor=pointer]:
+                - /url: https://instagram.com
+                - img [ref=e439]
+              - link "LinkedIn" [ref=e442] [cursor=pointer]:
+                - /url: https://linkedin.com
+                - img [ref=e443]
+            - generic [ref=e447]:
+              - button "FI" [ref=e448]
+              - button "EN" [ref=e449]
+    - region "Notifications alt+T"

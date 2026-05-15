@@ -31,6 +31,15 @@ type RimPcdOption = {
   count?: number;
 };
 
+type RimFilterOptionsPayload = {
+  brands?: unknown[];
+  diameters?: unknown[];
+  widths?: unknown[];
+  pcds?: unknown[];
+};
+
+const RIM_FILTER_OPTIONS_CACHE_KEY = 'mitra.rim-filter-options.v1';
+
 export const DEFAULT_RIM_FILTERS = {
   rimDiameter: 'all',
   rimWidth: 'all',
@@ -63,15 +72,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
   useEffect(() => {
     let active = true;
 
-    const loadFilterOptions = async () => {
-      const { data, error } = await supabase.rpc('catalog_list_rim_filter_options_v1');
-      if (!active) return;
-      if (error) {
-        console.warn('Failed to load rim filter options:', error);
-        return;
-      }
-
-      const payload = data && typeof data === 'object' ? data as any : {};
+    const applyFilterOptions = (payload: RimFilterOptionsPayload) => {
       const brands = Array.isArray(payload.brands)
         ? payload.brands.map((brand: unknown) => String(brand ?? '').trim()).filter(Boolean)
         : [];
@@ -95,6 +96,33 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
       setDiameterOptions(diameters);
       setWidthOptions(widths);
       setPcdOptions(pcds);
+    };
+
+    const loadFilterOptions = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = window.sessionStorage.getItem(RIM_FILTER_OPTIONS_CACHE_KEY);
+          const cachedPayload = cached ? JSON.parse(cached) : null;
+          if (cachedPayload && typeof cachedPayload === 'object') {
+            applyFilterOptions(cachedPayload as RimFilterOptionsPayload);
+          }
+        } catch {
+          // Ignore malformed cache; the live RPC below will repopulate it.
+        }
+      }
+
+      const { data, error } = await supabase.rpc('catalog_list_rim_filter_options_v1');
+      if (!active) return;
+      if (error) {
+        console.warn('Failed to load rim filter options:', error);
+        return;
+      }
+
+      const payload = data && typeof data === 'object' ? data as RimFilterOptionsPayload : {};
+      applyFilterOptions(payload);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(RIM_FILTER_OPTIONS_CACHE_KEY, JSON.stringify(payload));
+      }
     };
 
     void loadFilterOptions();
