@@ -1,0 +1,187 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - link "Siirry pääsisältöön" [ref=e7] [cursor=pointer]:
+      - /url: "#main-content"
+    - navigation [ref=e8]:
+      - generic [ref=e10]:
+        - link "Mitra Auto Mitra Auto" [ref=e11] [cursor=pointer]:
+          - /url: /
+          - img "Mitra Auto" [ref=e12]
+          - generic [ref=e13]: Mitra Auto
+        - generic [ref=e14]:
+          - link "Etusivu" [ref=e15] [cursor=pointer]:
+            - /url: /
+          - link "Palvelut" [ref=e16] [cursor=pointer]:
+            - /url: /services
+          - link "Katalogi" [ref=e17] [cursor=pointer]:
+            - /url: /catalog
+          - link "Rengashotelli" [ref=e18] [cursor=pointer]:
+            - /url: /tire-hotel
+        - generic [ref=e19]:
+          - button "Vaihda teemaa" [ref=e20]:
+            - img [ref=e21]
+          - button "Vaihda kieltä" [ref=e23]:
+            - img [ref=e24]
+            - generic [ref=e27]: fi
+          - button "Ostoskori" [ref=e28]:
+            - img [ref=e29]
+            - generic [ref=e549]: "1"
+          - button [ref=e550]:
+            - img [ref=e551]
+    - main [ref=e37]:
+      - generic [ref=e554]:
+        - button "Takaisin ostoskoriin" [ref=e557]:
+          - img [ref=e558]
+          - generic [ref=e560]: Takaisin ostoskoriin
+        - generic [ref=e561]:
+          - heading "checkout.checkout" [level=1] [ref=e562]
+          - generic [ref=e563]:
+            - generic [ref=e565]:
+              - generic [ref=e566]:
+                - generic [ref=e567]:
+                  - img [ref=e568]
+                  - heading "Yhteystiedot" [level=2] [ref=e571]
+                - generic [ref=e572]:
+                  - generic [ref=e573]:
+                    - generic [ref=e574]:
+                      - text: Etunimi
+                      - generic [ref=e575]: "*"
+                    - textbox "Etunimi *" [ref=e576]: QA FI
+                  - generic [ref=e577]:
+                    - generic [ref=e578]:
+                      - text: Sukunimi
+                      - generic [ref=e579]: "*"
+                    - textbox "Sukunimi *" [ref=e580]: MaksuFail
+                  - generic [ref=e581]:
+                    - generic [ref=e582]:
+                      - text: Sähköposti
+                      - generic [ref=e583]: "*"
+                    - textbox "Sähköposti *" [ref=e584]: box.ryanle@gmail.com
+                  - generic [ref=e585]:
+                    - generic [ref=e586]:
+                      - text: Puhelinnumero
+                      - generic [ref=e587]: "*"
+                    - textbox "Puhelinnumero *" [ref=e588]:
+                      - /placeholder: "+358"
+                      - text: "+358401234567"
+              - generic [ref=e589]:
+                - generic [ref=e590]:
+                  - generic [ref=e591]:
+                    - img [ref=e592]
+                    - heading "Toimitustapa" [level=2] [ref=e597]
+                  - generic [ref=e598]:
+                    - button "Mitra Autolle" [ref=e599]:
+                      - img [ref=e600]
+                      - generic [ref=e603]: Mitra Autolle
+                    - button "Kotiinkuljetus" [ref=e604]:
+                      - img [ref=e605]
+                      - generic [ref=e609]: Kotiinkuljetus
+                - generic [ref=e611]:
+                  - generic [ref=e612]:
+                    - paragraph [ref=e613]: Mitra Auto, Helsinki
+                    - paragraph [ref=e614]: Tuotteet toimitetaan Mitra Autolle asennusta tai noutoa varten.
+                  - generic [ref=e615]: Ilmainen toimitus
+              - generic [ref=e616]:
+                - generic [ref=e617]:
+                  - img [ref=e618]
+                  - heading "Laskutusosoite" [level=2] [ref=e621]
+                - generic [ref=e622]:
+                  - checkbox "Sama kuin toimitusosoite" [checked] [ref=e623]:
+                    - generic:
+                      - img
+                  - checkbox [checked]
+                  - generic [ref=e624] [cursor=pointer]: Sama kuin toimitusosoite
+              - generic [ref=e625]:
+                - checkbox "Hyväksyn Käyttöehdot ja Tietosuojaselosteen *" [checked] [active] [ref=e626]:
+                  - generic:
+                    - img
+                - checkbox [checked]
+                - generic [ref=e627]:
+                  - text: Hyväksyn
+                  - link "Käyttöehdot ja Tietosuojaselosteen" [ref=e628] [cursor=pointer]:
+                    - /url: /legal
+                  - generic [ref=e629]: "*"
+            - generic [ref=e631]:
+              - heading "Tilausyhteenveto" [level=2] [ref=e632]
+              - generic [ref=e636]:
+                - paragraph [ref=e637]: Continental sContact
+                - paragraph [ref=e638]: 1 × €30.28
+                - paragraph [ref=e639]: €30.28
+              - generic [ref=e640]:
+                - generic [ref=e641]:
+                  - generic [ref=e642]: Välisumma
+                  - generic [ref=e643]: €30.28
+                - generic [ref=e644]:
+                  - generic [ref=e645]: Toimitus Mitra Autolle
+                  - generic [ref=e646]: Ilmainen toimitus
+                - generic [ref=e647]:
+                  - generic [ref=e648]: ALV 25.5%
+                  - generic [ref=e649]: €6.15
+              - generic [ref=e650]:
+                - generic [ref=e651]: Yhteensä
+                - generic [ref=e652]: €30.28
+              - button "Vahvista tilaus" [ref=e656]:
+                - img
+                - text: Vahvista tilaus
+              - paragraph [ref=e653]: Turvallinen maksu
+              - button "Peruuta tilaus" [ref=e655]
+    - contentinfo [ref=e205]:
+      - generic [ref=e206]:
+        - generic [ref=e208]:
+          - generic [ref=e209]:
+            - generic [ref=e210]:
+              - img "Mitra Auto" [ref=e211]
+              - generic [ref=e212]: Mitra Auto
+            - paragraph [ref=e213]: Täyden palvelun korjaamo, joka tarjoaa rengas-, huolto- ja korjauspalveluita.
+          - generic [ref=e214]:
+            - heading "Kauppa" [level=3] [ref=e215]
+            - list [ref=e216]:
+              - listitem [ref=e217]:
+                - link "Katalogi" [ref=e218] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=e219]:
+            - heading "Palvelut" [level=3] [ref=e220]
+            - list [ref=e221]:
+              - listitem [ref=e222]:
+                - link "Autonkorjaus" [ref=e223] [cursor=pointer]:
+                  - /url: /services
+              - listitem [ref=e224]:
+                - link "Rengashotelli" [ref=e225] [cursor=pointer]:
+                  - /url: /tire-hotel
+          - generic [ref=e226]:
+            - heading "Yritys" [level=3] [ref=e227]
+            - list [ref=e228]:
+              - listitem [ref=e229]:
+                - link "Tietoa meistä" [ref=e230] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e231]:
+                - link "Yhteystiedot" [ref=e232] [cursor=pointer]:
+                  - /url: /
+          - generic [ref=e233]:
+            - heading "Oikeudelliset" [level=3] [ref=e234]
+            - list [ref=e235]:
+              - listitem [ref=e236]:
+                - link "Tietosuoja" [ref=e237] [cursor=pointer]:
+                  - /url: /legal/privacy
+              - listitem [ref=e238]:
+                - link "Käyttöehdot" [ref=e239] [cursor=pointer]:
+                  - /url: /legal/terms
+        - generic [ref=e241]:
+          - paragraph [ref=e242]: © Mitra Auto 2026
+          - generic [ref=e243]:
+            - link "Facebook" [ref=e244] [cursor=pointer]:
+              - /url: https://facebook.com
+              - img [ref=e245]
+            - link "Twitter" [ref=e247] [cursor=pointer]:
+              - /url: https://twitter.com
+              - img [ref=e248]
+            - link "Instagram" [ref=e250] [cursor=pointer]:
+              - /url: https://instagram.com
+              - img [ref=e251]
+            - link "LinkedIn" [ref=e254] [cursor=pointer]:
+              - /url: https://linkedin.com
+              - img [ref=e255]
+          - generic [ref=e259]:
+            - button "FI" [ref=e260]
+            - button "EN" [ref=e261]
+  - region "Notifications alt+T"

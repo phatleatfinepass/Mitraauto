@@ -34,6 +34,19 @@ function readStoredLanguage(): Language | null {
   }
 }
 
+function readPathLanguage(): Language | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const path = window.location.pathname.toLowerCase();
+  if (path === '/en' || path.startsWith('/en/')) {
+    return 'en';
+  }
+
+  return null;
+}
+
 function persistLanguage(language: Language) {
   if (typeof window === 'undefined') {
     return;
@@ -48,6 +61,9 @@ function persistLanguage(language: Language) {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>(() => {
+    const pathLanguage = readPathLanguage();
+    if (pathLanguage) return pathLanguage;
+
     const stored = readStoredLanguage();
     if (stored) return stored;
 
@@ -66,6 +82,25 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     persistLanguage(language);
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const applyPathLanguage = () => {
+      const pathLanguage = readPathLanguage();
+      if (pathLanguage) {
+        setLanguage(pathLanguage);
+      }
+    };
+
+    applyPathLanguage();
+    window.addEventListener('popstate', applyPathLanguage);
+    return () => {
+      window.removeEventListener('popstate', applyPathLanguage);
+    };
+  }, []);
 
   const t = (key: string, params?: Record<string, string | number>): string => {
     return translateForLanguage(language, key, params);

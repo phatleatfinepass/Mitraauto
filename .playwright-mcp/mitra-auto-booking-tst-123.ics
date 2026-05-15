@@ -1,0 +1,34 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Mitra Auto//Booking//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:booking-TST-123-1778914800000@mitra-auto.fi
+DTSTAMP:20260515T151142Z
+DTSTART:20260516T070000Z
+DTEND:20260516T080000Z
+SUMMARY:Mitra Auto: Tire change – passenger car (TST-123)
+DESCRIPTION:Mitra Auto booking confirmation\n\nService: Tire change – pass
+ enger car\nLicense Plate: TST-123\nDate: 05/16/2026\nTime: 10:00\n\nCusto
+ mer: QA Test Mitra\nPhone: +358401234567\nEmail: box.ryanle@gmail.com\n\n
+ Booking notes: QA test booking from Codex on 2026-05-15. Please ignore.\n
+ \nLocation: Mitra Auto\, Hankasuontie 5\, 00390\, Helsinki\, Finland\nWor
+ kshop phone: +358407777163\nWorkshop email: contact@mitra-auto.fi\nMap: A
+ pple Maps - https://maps.apple/p/dab1zsmGKhRDMI\nPlease arrive a few minu
+ tes before your booked time.
+LOCATION:Mitra Auto\, Hankasuontie 5\, 00390\, Helsinki\, Finland
+GEO:60.247482;24.844299
+X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-TITLE=Mitra Auto:geo:60.247482,24.
+ 844299
+URL:https://maps.apple/p/dab1zsmGKhRDMI
+ORGANIZER;CN=Mitra Auto:mailto:contact@mitra-auto.fi
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Reminder: Mitra Auto: Tire change – passenger car (TST-123)
+TRIGGER:-PT2H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

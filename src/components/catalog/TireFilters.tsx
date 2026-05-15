@@ -19,7 +19,7 @@ import { COUNTRY_FLAG_DATA_URIS } from './countryFlagData';
 
 interface TireFiltersProps {
   onFilterChange: (filters: any) => void;
-  onSearch: () => void;
+  onSearch: (filtersOverride?: any) => void;
   onVehicleRecommendation?: (vehicle: VehicleTyreLookupResult, recommendation: TyreFitmentRecommendation) => void;
   onSearchModeChange?: (mode: 'license' | 'manual') => void;
   searchMode: 'license' | 'vehicle' | 'manual';
@@ -755,7 +755,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
                 {t('catalog.licensePlate')}
               </Button>
               <Button
-                onClick={onSearch}
+                onClick={() => onSearch(filters)}
                 className="h-[42px] min-w-[174px] rounded-lg bg-[#FF6B35] px-16 text-sm font-semibold text-white shadow-[0_0_10px_rgba(255,107,53,0.24)] hover:bg-[#E85F2F]"
               >
                 {t('catalog.search')}

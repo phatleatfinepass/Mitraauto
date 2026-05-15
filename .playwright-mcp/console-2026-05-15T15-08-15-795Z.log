@@ -1,0 +1,13 @@
+[     210ms] [LOG] [Hydrated] @ https://www.mitra-auto.fi/_runtimes/sites-runtime.b5d43be1b167dcff80e3c7c1feb0c2e9a82f827cf979d20de867bb9a6426d931.js:126
+[     242ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:38146
+[     243ms] [LOG] 📱 Emergency Modal State Changed: false @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:78050
+[     289ms] [LOG] Auth state changed: INITIAL_SESSION undefined @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:77925
+[    3478ms] [LOG] [Hydrated] @ https://www.mitra-auto.fi/_runtimes/sites-runtime.b5d43be1b167dcff80e3c7c1feb0c2e9a82f827cf979d20de867bb9a6426d931.js:126
+[    3496ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:38146
+[    3496ms] [LOG] 📱 Emergency Modal State Changed: false @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:78050
+[    3522ms] [LOG] Auth state changed: INITIAL_SESSION undefined @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:77925
+[  143298ms] [LOG] [BOOKING] Creating booking with data: {license_plate: TST-123, booking_date: 2026-05-16, booking_time: 10:00, booking_language: en, service_name: Tire change – passenger car} @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:42842
+[  143453ms] [LOG] [BOOKING] ✅ Booking created successfully: [Object] @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:42872
+[  143453ms] [LOG] [BOOKING] Booking ID: c512d6fc-b62c-4367-b6d8-ce22f5b5d1c1 @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:42872
+[  143453ms] [LOG] [BOOKING] Check CMS for date: 2026-05-16 time: 10:00 @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:42872
+[  149712ms] [LOG] [BOOKING] Booking confirmation email sent @ https://www.mitra-auto.fi/_components/v2/f71a27e6441256ef02cd3ca546bfb562e5b10fad.js:42909

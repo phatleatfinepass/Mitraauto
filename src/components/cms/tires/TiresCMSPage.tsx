@@ -366,11 +366,12 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   const [eprelSuggestionError, setEprelSuggestionError] = useState<string | null>(null);
   const [eprelSuggestionResult, setEprelSuggestionResult] = useState<TireEprelIdSuggestion | null>(null);
   const [eprelListStatuses, setEprelListStatuses] = useState<Record<string, EprelListVariantStatus>>({});
-  const [eprelListLoading, setEprelListLoading] = useState(false);
+  const [, setEprelListLoading] = useState(false);
   const [pendingConflictCount, setPendingConflictCount] = useState(0);
 
   const {
     currentPage,
+    cachedItemCount,
     endItem,
     error,
     fetchTires,
@@ -378,7 +379,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     loading,
     patchLocalCmsData,
     patchLocalIdentityData,
-    refreshing,
+    preloading,
     searchTerm,
     setCurrentPage,
     setHideNonPassenger,
@@ -1502,36 +1503,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   };
 
   const filteredTires = tires;
-  const eprelPilotSummary = filteredTires.reduce(
-    (acc, tire) => {
-      const status = eprelListStatuses[tire.variant_id];
-      if (!status) {
-        acc.not_checked += 1;
-        return acc;
-      }
-
-      if (status.match_status === 'matched') acc.matched += 1;
-      else if (status.match_status === 'no_match') acc.no_match += 1;
-      else if (status.match_status === 'multiple_matches') acc.multiple_matches += 1;
-      else acc.other += 1;
-
-      if (status.review_status === 'pending') acc.pending_review += 1;
-      else if (status.review_status === 'accepted') acc.accepted_review += 1;
-      else if (status.review_status === 'mixed' || status.review_status === 'audited') acc.mixed_review += 1;
-
-      return acc;
-    },
-    {
-      matched: 0,
-      no_match: 0,
-      multiple_matches: 0,
-      other: 0,
-      not_checked: 0,
-      pending_review: 0,
-      accepted_review: 0,
-      mixed_review: 0,
-    }
-  );
   const draftTyreLabelSection = selectedTire
     ? buildTyreLabelSectionData({
         existing: (editData.spec_overrides as any)?.tyre_label_section,
@@ -2015,22 +1986,17 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
           currentPage={currentPage}
           endItem={endItem}
           error={error}
-          eprelListLoading={eprelListLoading}
-          eprelListStatuses={eprelListStatuses}
-          eprelPilotSummary={eprelPilotSummary}
           filteredTires={filteredTires}
+          cachedItemCount={cachedItemCount}
           getEffectiveIdentity={getEffectiveIdentity}
-          getWarningTooltip={getWarningTooltip}
           handleEdit={handleEdit}
           handleToggleVisibility={handleToggleVisibility}
           hasMissingSupplierPrice={hasMissingSupplierPrice}
-          hideWarningTooltip={hideWarningTooltip}
           isDark={isDark}
           loading={loading}
-          refreshing={refreshing}
+          preloading={preloading}
           mustHideFromStore={mustHideFromStore}
           onPageChange={setCurrentPage}
-          showWarningTooltip={showWarningTooltip}
           startItem={startItem}
           totalCount={totalCount}
           totalPages={totalPages}

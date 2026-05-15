@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export interface TimeSlot {
   time: string;
@@ -23,6 +24,8 @@ export function TimeSlotGrid({
   disabled = false,
   loading = false,
 }: TimeSlotGridProps) {
+  const { t } = useLanguage();
+
   if (loading) {
     return (
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
@@ -40,13 +43,13 @@ export function TimeSlotGrid({
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Clock className="h-4 w-4" />
-        <span>Available time slots</span>
+        <span>{t('booking.step1.availableTimeSlots')}</span>
       </div>
       
       <div 
         className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"
         role="radiogroup"
-        aria-label="Available time slots"
+        aria-label={t('booking.step1.availableTimeSlots')}
       >
         {slots.map((slot) => {
           const isSelected = selectedSlot === slot.id;
@@ -85,7 +88,7 @@ export function TimeSlotGrid({
 
       {slots.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No available time slots for selected date
+          {t('booking.step1.noAvailableTimeSlots')}
         </p>
       )}
     </div>

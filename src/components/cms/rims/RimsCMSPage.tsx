@@ -2,7 +2,6 @@ import { AlertCircle, AlertTriangle, RotateCcw, Save, X } from 'lucide-react';
 
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { useTheme } from '../../../theme/ThemeContext';
-import { RimsCmsPagination } from './RimsCmsPagination';
 import { RimsCmsTableSection } from './RimsCmsTableSection';
 import { RimsCmsToolbar } from './RimsCmsToolbar';
 import { RimsContentSection } from './RimsContentSection';
@@ -115,57 +114,28 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
       />
 
       <div className="px-8 py-6">
-        {list.loading ? (
-          <div className="py-20 text-center">
-            <div className={`mx-auto h-12 w-12 animate-spin rounded-full border-b-2 ${isDark ? 'border-white' : 'border-gray-900'}`} />
-          </div>
-        ) : list.error ? (
+        {list.error && !list.loading ? (
           <div className={`rounded-lg p-4 ${isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
             <p>{list.error}</p>
           </div>
         ) : (
           <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                {t('rimsCmsPage.totalItems', { total: list.totalCount })}
-                {list.refreshing ? ` (${t('rimsCmsPage.refreshing')})` : ''}
-              </p>
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {t('rimsCmsPage.showingPage', {
-                  start: startItem,
-                  end: endItem,
-                  total: list.totalCount,
-                  page: clampedPage,
-                  pages: totalPages,
-                })}
-              </p>
-            </div>
-
             <RimsCmsTableSection
+              cachedItemCount={list.cachedItemCount}
+              currentPage={clampedPage}
+              endItem={endItem}
               isDark={isDark}
               rims={list.rims}
+              loading={list.loading}
+              paginationItems={paginationItems}
+              preloading={list.preloading}
+              startItem={startItem}
+              totalCount={list.totalCount}
+              totalPages={totalPages}
               formatSize={formatSize}
+              onPageChange={list.setCurrentPage}
               onToggleVisibility={mutations.handleToggleVisibility}
               onEdit={editor.openEditor}
-            />
-
-            {list.rims.length === 0 && (
-              <div className="py-20 text-center">
-                <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {t('rimsCmsPage.noRims')}
-                </p>
-              </div>
-            )}
-
-            <RimsCmsPagination
-              isDark={isDark}
-              currentPage={clampedPage}
-              totalPages={totalPages}
-              totalCount={list.totalCount}
-              startItem={startItem}
-              endItem={endItem}
-              paginationItems={paginationItems}
-              onPageChange={list.setCurrentPage}
             />
           </>
         )}

@@ -1,0 +1,518 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - link:
+              - /url: "#main-content"
+              - text: Skip to main content
+            - navigation:
+              - generic:
+                - generic:
+                  - link:
+                    - /url: /
+                    - img
+                    - generic: Mitra Auto
+                  - generic:
+                    - link:
+                      - /url: /
+                      - text: Home
+                    - link:
+                      - /url: /services
+                      - text: Services
+                    - link:
+                      - /url: /catalog
+                      - text: Catalog
+                    - link:
+                      - /url: /tire-hotel
+                      - text: Tire Hotel
+                  - generic:
+                    - button:
+                      - img
+                    - button:
+                      - img
+                      - generic: en
+                    - button:
+                      - img
+                      - generic: "5"
+                    - button:
+                      - img
+            - main:
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading [level=1]: Mitra Auto - Professional Services
+                      - paragraph: Full-service garage with tire, maintenance and repair services. Book your appointment online.
+                      - generic:
+                        - button: Book a Service
+                        - link:
+                          - /url: /catalog
+                          - text: Browse Tyres
+                        - button:
+                          - img
+                          - text: Rescue 24/7
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Expertise
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Quality
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Reliability
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Speed
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+              - region:
+                - generic:
+                  - generic:
+                    - heading [level=2]: Our Services
+                    - paragraph: Professional service for all drivers
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Car Maintenance
+                      - paragraph: Service and repairs
+                      - link:
+                        - /url: /services
+                        - text: Book
+                        - img
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Balancing
+                      - paragraph: Wheel balancing
+                      - link:
+                        - /url: /services
+                        - text: Book
+                        - img
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Tire Hotel
+                      - paragraph: Tire storage
+                      - link:
+                        - /url: /services
+                        - text: Book
+                        - img
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Inspection
+                      - paragraph: Vehicle inspection
+                      - link:
+                        - /url: /services
+                        - text: Book
+                        - img
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading [level=2]: Tyre Catalog
+                      - paragraph: Find the perfect tyre for your vehicle
+                    - link:
+                      - /url: /catalog
+                      - text: View All
+                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Summer
+                      - heading [level=3]: Dynamo STREET-H MH01
+                      - paragraph: 215/65 R17 99 T
+                      - generic:
+                        - generic: €39.91
+                        - button: Buy
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Winter
+                      - heading [level=3]: Bridgestone Blizzak ICE
+                      - paragraph: 235/45 R17
+                      - generic:
+                        - generic: €104.52
+                        - button: Buy
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Summer
+                      - heading [level=3]: Nankang Econex NA-1
+                      - paragraph: 165/70 R12 77 T
+                      - generic:
+                        - generic: €52.16
+                        - button: Buy
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Winter
+                      - heading [level=3]: Continental WinterContact TS 870 P
+                      - paragraph: 215/40 R18
+                      - generic:
+                        - generic: €134.10
+                        - button: Buy
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading [level=2]: Book Your Service Online
+                      - paragraph: Easy and fast booking anytime
+                      - list:
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Quick online booking
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Email confirmation
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Flexible times
+                      - generic:
+                        - img
+                        - text: Book Now
+                    - generic:
+                      - generic:
+                        - img
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                    - generic:
+                      - heading [level=2]: Tire Hotel – Hassle-free Storage
+                      - paragraph: We store your tyres safely and professionally. No more hassle at home!
+                      - list:
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Optimal storage conditions
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Easy online booking
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Competitive prices
+                      - link:
+                        - /url: /tire-hotel
+                        - text: Learn more
+                        - img
+              - region:
+                - generic:
+                  - generic:
+                    - heading [level=2]: Customer Reviews
+                    - paragraph: See what our customers say about our service
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: MV
+                        - generic:
+                          - generic: Matti Virtanen
+                          - img:
+                            - img
+                            - img
+                            - img
+                            - img
+                            - img
+                      - paragraph: "\"Very fast and professional service. Highly recommended!\""
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: AK
+                        - generic:
+                          - generic: Anna Korhonen
+                          - img:
+                            - img
+                            - img
+                            - img
+                            - img
+                            - img
+                      - paragraph: "\"Tire hotel works perfectly. No need to store at home.\""
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: JN
+                        - generic:
+                          - generic: Jukka Nieminen
+                          - img:
+                            - img
+                            - img
+                            - img
+                            - img
+                            - img
+                      - paragraph: "\"Easy to book online and competitive prices.\""
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "4.9"
+                              - generic: /5
+                            - img:
+                              - img
+                              - img
+                              - img
+                              - img
+                              - img
+                            - paragraph: Customer Rating
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "500"
+                              - generic: +
+                            - img:
+                              - img
+                            - paragraph: Happy Customers
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Expert Service
+                      - paragraph: Certified technicians and modern equipment
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Quality Products
+                      - paragraph: Trusted brands and warranty
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Fast Service
+                      - paragraph: Efficient service and quick turnaround
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Customer First
+                      - paragraph: Over 500 satisfied customers
+              - region:
+                - generic:
+                  - generic:
+                    - heading [level=2]: Get in Touch
+                  - generic:
+                    - generic:
+                      - link:
+                        - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                        - generic:
+                          - generic:
+                            - img
+                        - generic:
+                          - img
+                    - generic:
+                      - generic:
+                        - heading [level=3]: Contact Information
+                        - paragraph: We're here to help — reach us anytime.
+                        - generic:
+                          - link:
+                            - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Address
+                              - generic: Hankasuontie 5, 00390 Helsinki
+                          - link:
+                            - /url: tel:+358 40 7777 163
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Phone
+                              - generic: +358 40 7777 163
+                          - link:
+                            - /url: mailto:contact@mitra-auto.fi
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Email
+                              - generic: contact@mitra-auto.fi
+                          - generic:
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Opening Hours
+                              - generic:
+                                - generic: Closed. We open tomorrow at 09:00.
+                              - generic: "Mon–Fri: 9:00–18:00 Sat: 10:00–17:00 Sun: Closed"
+                        - generic:
+                          - link:
+                            - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                            - img
+                            - text: Get Directions
+                          - link:
+                            - /url: mailto:contact@mitra-auto.fi
+                            - img
+                            - text: Contact Us
+            - contentinfo:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Mitra Auto
+                      - paragraph: Full-service garage with tire, maintenance and repair services.
+                    - generic:
+                      - heading [level=3]: Shop
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /catalog
+                            - text: Catalog
+                    - generic:
+                      - heading [level=3]: Services
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /services
+                            - text: Car Service
+                        - listitem:
+                          - link:
+                            - /url: /tire-hotel
+                            - text: Tire Hotel
+                    - generic:
+                      - heading [level=3]: Company
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /about
+                            - text: About Us
+                        - listitem:
+                          - link:
+                            - /url: /
+                            - text: Contact
+                    - generic:
+                      - heading [level=3]: Legal
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /legal/privacy
+                            - text: Privacy
+                        - listitem:
+                          - link:
+                            - /url: /legal/terms
+                            - text: Terms
+                - generic:
+                  - generic:
+                    - paragraph: © Mitra Auto 2026
+                    - generic:
+                      - link:
+                        - /url: https://facebook.com
+                        - img
+                      - link:
+                        - /url: https://twitter.com
+                        - img
+                      - link:
+                        - /url: https://instagram.com
+                        - img
+                      - link:
+                        - /url: https://linkedin.com
+                        - img
+                    - generic:
+                      - button: FI
+                      - button: EN
+          - region "Notifications alt+T"
+  - dialog:
+    - generic:
+      - generic:
+        - heading [level=2]: Quick Booking
+        - generic: Step 2 of 3
+      - paragraph: Choose the service you need
+    - generic:
+      - progressbar
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - paragraph: Choose the service you need for your vehicle
+              - generic:
+                - generic:
+                  - generic:
+                    - text: Select category
+                    - combobox:
+                      - generic: TIRE SERVICES
+                      - img
+                  - generic:
+                    - text: Select service
+                    - combobox [expanded]:
+                      - generic: Choose a service
+                      - img
+                  - button [disabled]:
+                    - img
+                    - text: Add service
+                - generic:
+                  - heading [level=4]: Selected services
+                  - paragraph: Added services will appear here.
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=3]: Booking Summary
+                  - button:
+                    - img
+                    - text: Edit
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - paragraph: License Plate
+                      - paragraph: TST-123
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - paragraph: Date
+                      - paragraph: Sat, May 16, 2026
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - paragraph: Time
+                      - paragraph: 10:00
+        - generic:
+          - button: Back
+          - button [disabled]: Continue
+    - button:
+      - img
+      - generic: Close
+  - listbox [ref=e630]:
+    - option "Tire change – passenger car · €30.00" [active] [ref=e631]:
+      - generic [ref=e633]: Tire change – passenger car · €30.00
+    - option "Tire change – SUV · €35.00" [ref=e634]:
+      - generic [ref=e636]: Tire change – SUV · €35.00
+    - option "Tire change – Van · €45.00" [ref=e637]:
+      - generic [ref=e639]: Tire change – Van · €45.00
+    - option "Wheel balancing · €20.00" [ref=e640]:
+      - generic [ref=e642]: Wheel balancing · €20.00
+    - option "External tire repair · €25.00" [ref=e643]:
+      - generic [ref=e645]: External tire repair · €25.00
+    - option "Internal tire repair · €50.00" [ref=e646]:
+      - generic [ref=e648]: Internal tire repair · €50.00
+    - option "Tire work – passenger car up to 17\" · €80.00" [ref=e649]:
+      - generic [ref=e651]: Tire work – passenger car up to 17" · €80.00
+    - option "Tire work – passenger car 18\"–19\" · €90.00" [ref=e652]:
+      - generic [ref=e654]: Tire work – passenger car 18"–19" · €90.00
+    - option "Tire work – passenger car 20\"–21\" · €100.00" [ref=e655]:
+      - generic [ref=e657]: Tire work – passenger car 20"–21" · €100.00
+    - option "Tire hotel storage · €60.00" [ref=e658]:
+      - generic [ref=e660]: Tire hotel storage · €60.00

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Activity } from 'lucide-react';
 
 import { AdminSchedulePage } from '../../admin/AdminSchedulePage';
 import { AccountCustomerCMSPage } from '../account-customer/AccountCustomerCMSPage';
@@ -12,6 +13,7 @@ import { RimsCMSPage } from '../rims/RimsCMSPage';
 import { TiresCMSPage } from '../tires/TiresCMSPage';
 import { supabase } from '../../../utils/supabase/client';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../../ui/sheet';
 
 export type CmsTab = 'rescue' | 'schedule' | 'catalog' | 'orders' | 'invoices' | 'account-customer' | 'future';
 type CatalogCmsTab = 'tires-finalize' | 'rims-refactor';
@@ -41,6 +43,24 @@ type CatalogProductSummary = {
 };
 
 type CatalogHealthSummary = Record<CatalogProductType, CatalogProductSummary>;
+
+type CatalogHealthRpcRow = {
+  product_type: CatalogProductType;
+  total_items: number | null;
+  ready_items: number | null;
+  rd_raw_latest: string | null;
+  vt_raw_latest: string | null;
+  selected_latest: string | null;
+  webshop_latest: string | null;
+  running_jobs: number | null;
+  stuck_jobs: number | null;
+  latest_run_status: string | null;
+  latest_run_total_items: number | null;
+  latest_run_processed_items: number | null;
+  latest_run_error_message: string | null;
+  latest_run_started_at: string | null;
+  latest_run_finished_at: string | null;
+};
 
 const BOOKING_STATUS_HANDOFF = 'handoff';
 const CATALOG_TIRE_SYNC_BATCH_SIZE = 500;
@@ -282,6 +302,52 @@ async function fetchCatalogProductSummary(productType: CatalogProductType): Prom
   };
 }
 
+async function fetchCatalogHealthSummary(): Promise<CatalogHealthSummary> {
+  const [{ data, error }, tireLatency, rimLatency] = await Promise.all([
+    supabase.rpc('catalog_get_health_summary_v1'),
+    measureCatalogPublicRpcLatency('tire'),
+    measureCatalogPublicRpcLatency('rim'),
+  ]);
+
+  if (error) throw error;
+
+  const rows = Array.isArray(data) ? (data as CatalogHealthRpcRow[]) : [];
+  const summary = {} as CatalogHealthSummary;
+
+  for (const row of rows) {
+    if (row.product_type !== 'tire' && row.product_type !== 'rim') continue;
+    const total = Number(row.total_items ?? 0);
+    const ready = Number(row.ready_items ?? 0);
+
+    summary[row.product_type] = {
+      total,
+      ready,
+      notReady: Math.max(total - ready, 0),
+      rdRawLatest: row.rd_raw_latest ?? null,
+      vtRawLatest: row.vt_raw_latest ?? null,
+      selectedLatest: row.selected_latest ?? null,
+      webshopLatest: row.webshop_latest ?? null,
+      runningJobs: Number(row.running_jobs ?? 0),
+      stuckJobs: Number(row.stuck_jobs ?? 0),
+      publicRpcLatencyMs: row.product_type === 'tire' ? tireLatency : rimLatency,
+      latestRun: {
+        status: row.latest_run_status,
+        total_items: row.latest_run_total_items,
+        processed_items: row.latest_run_processed_items,
+        error_message: row.latest_run_error_message,
+        started_at: row.latest_run_started_at,
+        finished_at: row.latest_run_finished_at,
+      },
+    };
+  }
+
+  if (!summary.tire || !summary.rim) {
+    throw new Error('Catalog health summary returned incomplete data');
+  }
+
+  return summary;
+}
+
 function CatalogHealthPanel({
   activeTab,
   summary,
@@ -509,6 +575,7 @@ function CatalogCMSPage() {
   const [tireAction, setTireAction] = useState<'publish' | 'rebuild' | null>(null);
   const [rimAction, setRimAction] = useState<'publish' | 'rebuild' | null>(null);
   const [maintenanceAction, setMaintenanceAction] = useState<CatalogProductType | 'all' | null>(null);
+  const [catalogHealthOpen, setCatalogHealthOpen] = useState(false);
   const canReadModule = (module: string) => {
     if (access?.isSuperAdmin) return true;
     const permission = access?.permissions?.[module];
@@ -552,15 +619,7 @@ function CatalogCMSPage() {
     setCatalogHealthError(null);
 
     try {
-      const [tireSummary, rimSummary] = await Promise.all([
-        fetchCatalogProductSummary('tire'),
-        fetchCatalogProductSummary('rim'),
-      ]);
-
-      setCatalogHealth({
-        tire: tireSummary,
-        rim: rimSummary,
-      });
+      setCatalogHealth(await fetchCatalogHealthSummary());
     } catch (error) {
       console.error('❌ Fetch catalog health error:', error);
       setCatalogHealthError(error instanceof Error ? error.message : String(error));
@@ -740,42 +799,61 @@ function CatalogCMSPage() {
           </p>
         </div>
 
-        <div className="inline-flex rounded-lg border bg-muted/40 p-1">
-          {visibleCatalogTabs.map((tab) => {
-            const isActive = resolvedActiveTab === tab.id;
-            return (
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border bg-muted/40 p-1">
+            {visibleCatalogTabs.map((tab) => {
+              const isActive = resolvedActiveTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleCatalogTabChange(tab.id)}
+                  className={`min-h-9 min-w-[72px] rounded-md px-3 text-sm font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-background hover:text-foreground'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          <Sheet open={catalogHealthOpen} onOpenChange={setCatalogHealthOpen}>
+            <SheetTrigger asChild>
               <button
-                key={tab.id}
                 type="button"
-                onClick={() => handleCatalogTabChange(tab.id)}
-                className={`min-h-9 min-w-[72px] rounded-md px-3 text-sm font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-background hover:text-foreground'
-                }`}
+                aria-label={t('cmsControl.catalogHealthTitle')}
+                title={t('cmsControl.catalogHealthTitle')}
+                className="inline-flex size-10 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                {tab.label}
+                <Activity className="size-4" />
               </button>
-            );
-          })}
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-3xl">
+              <SheetHeader className="border-b px-6 py-5 text-left">
+                <SheetTitle>{t('cmsControl.catalogHealthTitle')}</SheetTitle>
+                <SheetDescription>{t('cmsControl.catalogHealthDescription')}</SheetDescription>
+              </SheetHeader>
+              <CatalogHealthPanel
+                activeTab={resolvedActiveTab}
+                summary={catalogHealth}
+                loading={catalogHealthLoading}
+                error={catalogHealthError}
+                tireAction={tireAction}
+                rimAction={rimAction}
+                maintenanceAction={maintenanceAction}
+                onApplyTirePublish={handleApplyTirePublish}
+                onApplyRimPublish={handleApplyRimPublish}
+                onRebuildSelectedTires={handleRebuildSelectedTires}
+                onRebuildSelectedRims={handleRebuildSelectedRims}
+                onCloseStaleRuns={handleCloseStaleRuns}
+                onRefresh={loadCatalogHealth}
+              />
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-
-      <CatalogHealthPanel
-        activeTab={resolvedActiveTab}
-        summary={catalogHealth}
-        loading={catalogHealthLoading}
-        error={catalogHealthError}
-        tireAction={tireAction}
-        rimAction={rimAction}
-        maintenanceAction={maintenanceAction}
-        onApplyTirePublish={handleApplyTirePublish}
-        onApplyRimPublish={handleApplyRimPublish}
-        onRebuildSelectedTires={handleRebuildSelectedTires}
-        onRebuildSelectedRims={handleRebuildSelectedRims}
-        onCloseStaleRuns={handleCloseStaleRuns}
-        onRefresh={loadCatalogHealth}
-      />
 
       <div className="bg-background">
         {resolvedActiveTab === 'tires-finalize' ? <TiresCMSPage embedded /> : <RimsCMSPage embedded />}

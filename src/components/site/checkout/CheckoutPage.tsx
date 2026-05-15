@@ -412,7 +412,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         <h1 className={`text-3xl sm:text-4xl mb-8 ${
           theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
         }`}>
-          {checkoutText('checkout')}
+          {checkoutText('title')}
         </h1>
 
         <div className="grid lg:grid-cols-3 gap-8">

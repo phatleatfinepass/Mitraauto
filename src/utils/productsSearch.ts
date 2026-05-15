@@ -322,6 +322,23 @@ function isElectricCarTire(row: ProductSearchRow): boolean {
 }
 
 function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>): boolean {
+  const selectedBrands = Array.isArray(filters.brand)
+    ? filters.brand
+        .map((brand: unknown) => String(brand ?? '').trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+  if (selectedBrands.length > 0) {
+    const rowBrands = [
+      row.brand,
+      row.brand_display_name,
+    ]
+      .map((brand) => String(brand ?? '').trim().toLowerCase())
+      .filter(Boolean);
+    if (!rowBrands.some((brand) => selectedBrands.includes(brand))) {
+      return false;
+    }
+  }
+
   const eanFilter = String(filters.ean ?? '').replace(/\D/g, '');
   if (eanFilter) {
     const rowEan = String((row as any).ean ?? (row as any).derived_ean ?? '').replace(/\D/g, '');
@@ -412,11 +429,16 @@ function matchesRimFilters(row: ProductSearchRow, filters: Record<string, any>):
 
 function applySort(rows: ProductSearchRow[], sortBy: string | undefined): ProductSearchRow[] {
   const list = [...rows];
+  const getEffectivePrice = (row: ProductSearchRow) => {
+    const finalPrice = parseFloatOrNull(row.final_price_eur);
+    return finalPrice ?? parseFloatOrNull(row.price) ?? 0;
+  };
+
   switch (sortBy) {
     case 'price_desc':
-      return list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+      return list.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a));
     case 'price_asc':
-      return list.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+      return list.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b));
     case 'wet_grip':
       return list.sort((a, b) => String(a.eu_wet ?? 'Z').localeCompare(String(b.eu_wet ?? 'Z')));
     case 'noise':

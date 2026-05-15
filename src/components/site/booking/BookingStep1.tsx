@@ -104,7 +104,7 @@ export function BookingStep1({
         console.error('[BOOKING] Failed to load availability:', err);
         if (!cancelled) {
           setTimeSlots([]);
-          setError('Unable to load available time slots. Please try again.');
+          setError(t('booking.error.loadAvailability'));
         }
       } finally {
         if (!cancelled) {
@@ -126,19 +126,19 @@ export function BookingStep1({
 
     // Validate license plate
     if (!licensePlate || licensePlate.length < 3) {
-      setPlateError('Please enter a valid license plate');
+      setPlateError(t('booking.error.invalidLicensePlate'));
       return;
     }
 
     // Validate date
     if (!date) {
-      setError('Please select a date');
+      setError(t('booking.error.selectDate'));
       return;
     }
 
     // Validate time slot
     if (!selectedTimeSlot) {
-      setError('Please select a time slot');
+      setError(t('booking.error.selectTimeSlot'));
       return;
     }
 
@@ -146,7 +146,7 @@ export function BookingStep1({
     try {
       onContinue();
     } catch (err) {
-      setError('Unable to verify availability. Please try again.');
+      setError(t('booking.error.verifyAvailability'));
     } finally {
       setLoading(false);
     }
@@ -182,7 +182,7 @@ export function BookingStep1({
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {date ? (
-                date.toLocaleDateString('fi-FI', {
+                date.toLocaleDateString(t('booking.step1.dateLocale'), {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',

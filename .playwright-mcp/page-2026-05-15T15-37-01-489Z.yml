@@ -1,0 +1,501 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - link:
+              - /url: "#main-content"
+              - text: Siirry pääsisältöön
+            - navigation:
+              - generic:
+                - generic:
+                  - link:
+                    - /url: /
+                    - img
+                    - generic: Mitra Auto
+                  - generic:
+                    - link:
+                      - /url: /
+                      - text: Etusivu
+                    - link:
+                      - /url: /services
+                      - text: Palvelut
+                    - link:
+                      - /url: /catalog
+                      - text: Katalogi
+                    - link:
+                      - /url: /tire-hotel
+                      - text: Rengashotelli
+                  - generic:
+                    - button:
+                      - img
+                    - button:
+                      - img
+                      - generic: fi
+                    - button:
+                      - img
+                    - button:
+                      - img
+            - main:
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading [level=1]: Mitra Auto - Ammattitaitoiset palvelut
+                      - paragraph: Täyden palvelun korjaamo rengas-, huolto- ja korjauspalveluilla. Varaa aikasi verkossa.
+                      - generic:
+                        - button: Varaa huolto
+                        - link:
+                          - /url: /catalog
+                          - text: Selaa renkaita
+                        - button:
+                          - img
+                          - text: Hätäapu 24/7
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Asiantuntemus
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Laatu
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Luotettavuus
+                        - generic:
+                          - generic:
+                            - img
+                          - generic: Nopeus
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+              - region:
+                - generic:
+                  - generic:
+                    - heading [level=2]: Palvelumme
+                    - paragraph: Ammattitaitoista palvelua kaikille autoilijoille
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Autohuolto
+                      - paragraph: Huolto ja korjaus
+                      - link:
+                        - /url: /services
+                        - text: Varaa
+                        - img
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Tasapainotus
+                      - paragraph: Renkaiden tasapainotus
+                      - link:
+                        - /url: /services
+                        - text: Varaa
+                        - img
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Rengashotelli
+                      - paragraph: Säilytys renkaille
+                      - link:
+                        - /url: /services
+                        - text: Varaa
+                        - img
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Tarkastus
+                      - paragraph: Auton tarkastus
+                      - link:
+                        - /url: /services
+                        - text: Varaa
+                        - img
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading [level=2]: Rengaskatalogi
+                      - paragraph: Löydä täydellinen rengas autoosi
+                    - link:
+                      - /url: /catalog
+                      - text: Näytä kaikki
+                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Kesä
+                      - heading [level=3]: Dynamo STREET-H MH01
+                      - paragraph: 215/65 R17 99 T
+                      - generic:
+                        - generic: €39.91
+                        - button: Osta
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Talvi
+                      - heading [level=3]: Bridgestone Blizzak ICE
+                      - paragraph: 235/45 R17
+                      - generic:
+                        - generic: €104.52
+                        - button: Osta
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Kesä
+                      - heading [level=3]: Nankang Econex NA-1
+                      - paragraph: 165/70 R12 77 T
+                      - generic:
+                        - generic: €52.16
+                        - button: Osta
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Talvi
+                      - heading [level=3]: Continental WinterContact TS 870 P
+                      - paragraph: 215/40 R18
+                      - generic:
+                        - generic: €134.10
+                        - button: Osta
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading [level=2]: Varaa huoltoaika verkossa
+                      - paragraph: Helppoa ja nopeaa varaamista milloin tahansa
+                      - list:
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Nopea varaus verkossa
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Vahvistus sähköpostilla
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Joustavat ajat
+                      - generic:
+                        - img
+                        - text: Varaa aika
+                    - generic:
+                      - generic:
+                        - img
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                    - generic:
+                      - heading [level=2]: Rengashotelli – Huoletonta säilytystä
+                      - paragraph: Säilytämme renkaasi turvallisesti ja ammattimaisesti. Ei enää vaivaa kotona!
+                      - list:
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Optimaaliset säilytysolosuhteet
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Helppo varaus verkossa
+                        - listitem:
+                          - generic:
+                            - img
+                          - generic: Kilpailukykyiset hinnat
+                      - link:
+                        - /url: /tire-hotel
+                        - text: Lue lisää
+                        - img
+              - region:
+                - generic:
+                  - generic:
+                    - heading [level=2]: Asiakkaidemme kokemuksia
+                    - paragraph: Katso mitä asiakkaamme sanovat palvelustamme
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: MV
+                        - generic:
+                          - generic: Matti Virtanen
+                          - img:
+                            - img
+                            - img
+                            - img
+                            - img
+                            - img
+                      - paragraph: "\"Erittäin nopea ja ammattitaitoinen palvelu. Suosittelen lämpimästi!\""
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: AK
+                        - generic:
+                          - generic: Anna Korhonen
+                          - img:
+                            - img
+                            - img
+                            - img
+                            - img
+                            - img
+                      - paragraph: "\"Rengashotelli toimii loistavasti. Ei tarvitse vaivata kotona.\""
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: JN
+                        - generic:
+                          - generic: Jukka Nieminen
+                          - img:
+                            - img
+                            - img
+                            - img
+                            - img
+                            - img
+                      - paragraph: "\"Helppo varata verkossa ja hinnat kilpailukykyiset.\""
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "4.9"
+                              - generic: /5
+                            - img:
+                              - img
+                              - img
+                              - img
+                              - img
+                              - img
+                            - paragraph: Asiakasarvostelut
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "500"
+                              - generic: +
+                            - img:
+                              - img
+                            - paragraph: Tyytyväistä asiakasta
+              - region:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Ammattilaisten palvelu
+                      - paragraph: Sertifioidut asentajat ja modernit työkalut
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Laatutuotteet
+                      - paragraph: Tunnetut tuotemerkit ja takuu
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Nopea huolto
+                      - paragraph: Tehokas palvelu ja nopea läpimenoaika
+                    - generic:
+                      - generic:
+                        - img
+                      - heading [level=3]: Asiakas edellä
+                      - paragraph: Yli 500 tyytyväistä asiakasta
+              - region:
+                - generic:
+                  - generic:
+                    - heading [level=2]: Ota yhteyttä
+                  - generic:
+                    - generic:
+                      - link:
+                        - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                        - generic:
+                          - generic:
+                            - img
+                        - generic:
+                          - img
+                    - generic:
+                      - generic:
+                        - heading [level=3]: Yhteystiedot
+                        - paragraph: Olemme täällä auttamassa — tavoita meidät koska tahansa.
+                        - generic:
+                          - link:
+                            - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Osoite
+                              - generic: Hankasuontie 5, 00390 Helsinki
+                          - link:
+                            - /url: tel:+358 40 7777 163
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Puhelin
+                              - generic: +358 40 7777 163
+                          - link:
+                            - /url: mailto:contact@mitra-auto.fi
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Sähköposti
+                              - generic: contact@mitra-auto.fi
+                          - generic:
+                            - generic:
+                              - img
+                            - generic:
+                              - generic: Aukioloajat
+                              - generic:
+                                - generic: Suljettu. Avaamme huomenna klo 09:00.
+                              - generic: "Ma–Pe: 9:00–18:00 La: 10:00–17:00 Su: Suljettu"
+                        - generic:
+                          - link:
+                            - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                            - img
+                            - text: Hae reittiohjeet
+                          - link:
+                            - /url: mailto:contact@mitra-auto.fi
+                            - img
+                            - text: Ota yhteyttä
+            - contentinfo:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - generic: Mitra Auto
+                      - paragraph: Täyden palvelun korjaamo, joka tarjoaa rengas-, huolto- ja korjauspalveluita.
+                    - generic:
+                      - heading [level=3]: Kauppa
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /catalog
+                            - text: Katalogi
+                    - generic:
+                      - heading [level=3]: Palvelut
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /services
+                            - text: Autonkorjaus
+                        - listitem:
+                          - link:
+                            - /url: /tire-hotel
+                            - text: Rengashotelli
+                    - generic:
+                      - heading [level=3]: Yritys
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /about
+                            - text: Tietoa meistä
+                        - listitem:
+                          - link:
+                            - /url: /
+                            - text: Yhteystiedot
+                    - generic:
+                      - heading [level=3]: Oikeudelliset
+                      - list:
+                        - listitem:
+                          - link:
+                            - /url: /legal/privacy
+                            - text: Tietosuoja
+                        - listitem:
+                          - link:
+                            - /url: /legal/terms
+                            - text: Käyttöehdot
+                - generic:
+                  - generic:
+                    - paragraph: © Mitra Auto 2026
+                    - generic:
+                      - link:
+                        - /url: https://facebook.com
+                        - img
+                      - link:
+                        - /url: https://twitter.com
+                        - img
+                      - link:
+                        - /url: https://instagram.com
+                        - img
+                      - link:
+                        - /url: https://linkedin.com
+                        - img
+                    - generic:
+                      - button: FI
+                      - button: EN
+          - region "Notifications alt+T"
+  - dialog "Pikavaraaja" [ref=e457]:
+    - generic [ref=e458]:
+      - generic [ref=e459]:
+        - heading "Pikavaraaja" [level=2] [ref=e460]
+        - generic [ref=e461]: Vaihe 1 / 3
+      - paragraph [ref=e462]: Valitse aika ja rekisterinumero
+    - progressbar [ref=e464]
+    - generic [ref=e467]:
+      - generic [ref=e468]:
+        - generic [ref=e470]:
+          - img [ref=e471]
+          - text: Rekisterinumero
+        - textbox "Rekisterinumero" [ref=e475]:
+          - /placeholder: ABC-123
+          - text: TST-123
+        - paragraph [ref=e476]: Esim. ABC-123
+      - generic [ref=e477]:
+        - generic [ref=e479]:
+          - img [ref=e480]
+          - text: Valitse päivä
+        - button "keskiviikkona 20. toukokuuta 2026" [active] [ref=e535]:
+          - img
+          - text: keskiviikkona 20. toukokuuta 2026
+      - generic [ref=e537]:
+        - generic [ref=e538]:
+          - img [ref=e539]
+          - generic [ref=e542]: Available time slots
+        - radiogroup "Available time slots" [ref=e543]:
+          - radio "09:00" [ref=e544]:
+            - generic [ref=e545]: 09:00
+          - radio "09:30" [ref=e546]:
+            - generic [ref=e547]: 09:30
+          - radio "10:00" [ref=e548]:
+            - generic [ref=e549]: 10:00
+          - radio "10:30" [ref=e550]:
+            - generic [ref=e551]: 10:30
+          - radio "11:00" [ref=e552]:
+            - generic [ref=e553]: 11:00
+          - radio "11:30" [ref=e554]:
+            - generic [ref=e555]: 11:30
+          - radio "12:00" [ref=e556]:
+            - generic [ref=e557]: 12:00
+          - radio "12:30" [ref=e558]:
+            - generic [ref=e559]: 12:30
+          - radio "13:00" [ref=e560]:
+            - generic [ref=e561]: 13:00
+          - radio "13:30" [ref=e562]:
+            - generic [ref=e563]: 13:30
+          - radio "14:00" [ref=e564]:
+            - generic [ref=e565]: 14:00
+          - radio "14:30" [ref=e566]:
+            - generic [ref=e567]: 14:30
+          - radio "15:00" [ref=e568]:
+            - generic [ref=e569]: 15:00
+          - radio "15:30" [ref=e570]:
+            - generic [ref=e571]: 15:30
+          - radio "16:00" [ref=e572]:
+            - generic [ref=e573]: 16:00
+          - radio "16:30" [ref=e574]:
+            - generic [ref=e575]: 16:30
+          - radio "17:00" [ref=e576]:
+            - generic [ref=e577]: 17:00
+          - radio "17:30" [ref=e578]:
+            - generic [ref=e579]: 17:30
+      - generic [ref=e484]:
+        - button "Peruuta" [ref=e485]
+        - button "Jatka" [disabled]
+    - button "Close" [ref=e486]:
+      - img
+      - generic [ref=e487]: Close

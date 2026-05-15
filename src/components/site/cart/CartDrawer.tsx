@@ -208,7 +208,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                             theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white border border-[#E2E8F0]'
                           }`}>
                             <button
+                              type="button"
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              aria-label={`${cartText('decreaseQuantity')}: ${item.product.brand} ${item.product.model}`}
                               className={`p-1 rounded transition-colors ${
                                 theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-gray-100'
                               }`}
@@ -221,8 +223,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                               {item.quantity}
                             </span>
                             <button
+                              type="button"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
                               disabled={Boolean(stockLimit && item.quantity >= stockLimit)}
+                              aria-label={`${cartText('increaseQuantity')}: ${item.product.brand} ${item.product.model}`}
                               className={`p-1 rounded transition-colors ${
                                 stockLimit && item.quantity >= stockLimit
                                   ? 'cursor-not-allowed opacity-30'
@@ -247,7 +251,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
 
                         {/* Remove Button - Subtle styling to reduce cart abandonment */}
                         <button
+                          type="button"
                           onClick={() => removeFromCart(item.id)}
+                          aria-label={`${cartText('removeItem')}: ${item.product.brand} ${item.product.model}`}
                           className={`flex items-center gap-1 text-xs mt-2 transition-colors opacity-50 hover:opacity-100 ${
                             theme === 'dark'
                               ? 'text-gray-500 hover:text-red-400'
@@ -306,6 +312,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
               {/* Subtle Clear Cart Link - Intentionally understated to reduce abandonment */}
               <div className="mt-3 text-center">
                 <button
+                  type="button"
                   onClick={() => setShowClearDialog(true)}
                   className={`text-xs transition-colors opacity-40 hover:opacity-60 ${
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
