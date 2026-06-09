@@ -239,6 +239,7 @@ export const adminTranslations = {
   'adminSchedule.add': { fi: 'Lisää', en: 'Add' },
   'adminSchedule.removeService': { fi: 'Poista palvelu', en: 'Remove service' },
   'adminSchedule.addedServicesEmpty': { fi: 'Lisätyt palvelut näkyvät täällä.', en: 'Added services will appear here.' },
+  'adminSchedule.vehicleSpecificQuote': { fi: 'autokohtainen tarjous', en: 'vehicle-specific quote' },
   'adminSchedule.customerDetailsFallback': { fi: 'asiakastiedot', en: 'customer details' },
   'adminSchedule.missingLicensePlate': { fi: 'rekisterinumero', en: 'license plate' },
   'adminSchedule.missingPhone': { fi: 'puhelinnumero', en: 'phone number' },

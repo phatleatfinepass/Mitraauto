@@ -4,7 +4,7 @@ import { supabase } from '../../../utils/supabase/client';
 import type { RimRow } from './types';
 
 const RIMS_CMS_STATE_KEY = 'mitra.rims-cms.state.v1';
-const RIMS_CMS_CACHE_KEY = 'mitra.rims-cms.cache.v1';
+const RIMS_CMS_CACHE_KEY = 'mitra.rims-cms.cache.v2';
 const CMS_COUNT_TIMEOUT_MS = 1200;
 const CMS_PRELOAD_PAGE_COUNT = 3;
 const CMS_PAGE_SETTLE_DELAY_MS = 1000;
@@ -618,6 +618,7 @@ export function useRimsCmsList(pageSize = 100) {
       setCachedItemCount(countCachedRows(prunedCacheStore, queryKey));
 
     } catch (err: any) {
+      if (!isCurrentRequest()) return;
       if (isRecoverableFetchError(err) && (rims.length > 0 || cachedPage)) {
         console.warn('Fetch rims CMS refresh failed, keeping current CMS page:', err);
         setError(null);
@@ -628,10 +629,12 @@ export function useRimsCmsList(pageSize = 100) {
     } finally {
       if (activeFetchKeyRef.current === requestKey) {
         activeFetchKeyRef.current = null;
-        if (shouldShowPreloading) setPreloading(false);
       }
-      setLoading(false);
-      setRefreshing(false);
+      if (isCurrentRequest()) {
+        if (shouldShowPreloading) setPreloading(false);
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [
     currentPage,
@@ -668,7 +671,7 @@ export function useRimsCmsList(pageSize = 100) {
     }, CMS_PAGE_SETTLE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [cachedPage, currentPage, fetchRims, queryKey]);
+  }, [currentPage, queryKey]);
 
   const patchLocalCmsData = useCallback((variantId: string, cmsPatch: Record<string, any> | null) => {
     setRims((prev) =>

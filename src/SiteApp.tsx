@@ -28,6 +28,7 @@ import { TiresConflictResolvePage } from './components/cms/tires/TiresConflictRe
 import { OrdersCMSPage } from './components/cms/orders/OrdersCMSPage';
 import { InvoicesCMSPage } from './components/cms/invoices/InvoicesCMSPage';
 import { AccountCustomerCMSPage } from './components/cms/account-customer/AccountCustomerCMSPage';
+import { TireStorageCMSPage } from './components/cms/tire-storage/TireStorageCMSPage';
 // Site pages
 import { ContactPage } from './components/site/pages/ContactPage';
 import { FAQPage } from './components/site/pages/FAQPage';
@@ -36,6 +37,12 @@ import { CarServicePage } from './components/site/pages/CarServicePage';
 import { TireChangePage } from './components/site/pages/TireChangePage';
 import { DiagnosticsPage } from './components/site/pages/DiagnosticsPage';
 import { CarWashPage } from './components/site/pages/CarWashPage';
+import { ServiceDetailPage } from './components/site/pages/ServiceDetailPage';
+import {
+  getServiceDetailPathForResolvedDetail,
+  resolveServiceDetailByPath,
+  type ResolvedServiceDetail,
+} from './i18n/dictionaries/serviceSeo';
 import { CustomerBookingManagePage } from './components/site/pages/CustomerBookingManagePage';
 import { CustomerAccountPage } from './components/site/pages/CustomerAccountPage';
 import { NotFoundPage } from './components/site/pages/NotFoundPage';
@@ -346,9 +353,10 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tire-conflicts' | 'cms-orders' | 'cms-invoices' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tire-conflicts' | 'cms-orders' | 'cms-invoices' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
+  const [selectedServiceDetail, setSelectedServiceDetail] = useState<ResolvedServiceDetail>({ kind: 'bespoke', pageId: 'car-service', language: 'en' });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const requestedProtectedPathRef = useRef<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(
@@ -470,6 +478,19 @@ function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (currentPage !== 'service-detail') return;
+
+    const nextPath = getServiceDetailPathForResolvedDetail(selectedServiceDetail, language);
+    if (normalizeAppPath(window.location.pathname) !== nextPath) {
+      window.history.replaceState(window.history.state ?? {}, '', nextPath);
+    }
+
+    setSelectedServiceDetail((current) => (
+      current.language === language ? current : { ...current, language }
+    ));
+  }, [currentPage, language, selectedServiceDetail]);
+
   // Hero carousel timer - desktop only
   useEffect(() => {
     if (isMobileViewport) {
@@ -488,6 +509,7 @@ function HomePage() {
       page: typeof currentPage,
       product: ProductDetail | null = null,
       nextCmsTab?: CmsTab,
+      nextServiceDetail?: ResolvedServiceDetail,
     ) => {
       startTransition(() => {
         setCurrentPage(page);
@@ -495,20 +517,26 @@ function HomePage() {
         if (nextCmsTab !== undefined) {
           setCmsTab(nextCmsTab);
         }
+        if (nextServiceDetail !== undefined) {
+          setSelectedServiceDetail(nextServiceDetail);
+        }
       });
     },
-    [setCurrentPage, setSelectedProduct, setCmsTab]
+    [setCurrentPage, setSelectedProduct, setCmsTab, setSelectedServiceDetail]
   );
   
   const updatePageFromPath = useCallback(
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
       const normalizedPath = normalizeAppPath(path);
+      const serviceDetail = resolveServiceDetailByPath(normalizedPath);
       const nextCmsTab =
         normalizedPath === '/cms' || normalizedPath === '/cms/rescue' || normalizedPath === '/cms/password-setup'
           ? resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined)
           : undefined;
 
-      if (normalizedPath === '/') {
+      if (serviceDetail) {
+        transitionNavigationState('service-detail', null, undefined, serviceDetail);
+      } else if (normalizedPath === '/') {
         transitionNavigationState('home');
       }
 
@@ -530,16 +558,8 @@ function HomePage() {
         transitionNavigationState('helsinki');
       } else if (normalizedPath === '/palvelut') {
         transitionNavigationState('services');
-      } else if (normalizedPath === '/palvelut/autohuolto' || normalizedPath === '/helsinki/autohuolto') {
-        transitionNavigationState('car-service');
-      } else if (normalizedPath === '/palvelut/renkaanvaihto' || normalizedPath === '/helsinki/renkaanvaihto') {
-        transitionNavigationState('tire-change');
       } else if (normalizedPath === '/palvelut/rengashotelli' || normalizedPath === '/helsinki/rengashotelli') {
         transitionNavigationState('tire-hotel');
-      } else if (normalizedPath === '/palvelut/vikadiagnostiikka') {
-        transitionNavigationState('diagnostics');
-      } else if (normalizedPath === '/palvelut/autopesu') {
-        transitionNavigationState('car-wash');
       } else if (normalizedPath === '/meista') {
         transitionNavigationState('about');
       }
@@ -555,16 +575,8 @@ function HomePage() {
         transitionNavigationState('helsinki');
       } else if (normalizedPath === '/en/services') {
         transitionNavigationState('services');
-      } else if (normalizedPath === '/en/services/car-service' || normalizedPath === '/en/helsinki/car-service') {
-        transitionNavigationState('car-service');
-      } else if (normalizedPath === '/en/services/tire-change' || normalizedPath === '/en/helsinki/tire-change') {
-        transitionNavigationState('tire-change');
       } else if (normalizedPath === '/en/services/tire-hotel' || normalizedPath === '/en/helsinki/tire-hotel') {
         transitionNavigationState('tire-hotel');
-      } else if (normalizedPath === '/en/services/diagnostics') {
-        transitionNavigationState('diagnostics');
-      } else if (normalizedPath === '/en/services/car-wash') {
-        transitionNavigationState('car-wash');
       } else if (normalizedPath === '/en/about') {
         transitionNavigationState('about');
       } else if (normalizedPath === '/booking/manage' || normalizedPath === '/en/booking/manage') {
@@ -624,6 +636,11 @@ function HomePage() {
       ) {
         transitionNavigationState('cms-invoices');
       } else if (
+        normalizedPath === '/cms/tire-storage' ||
+        normalizedPath === '/cms/tire-storage-preview'
+      ) {
+        transitionNavigationState('cms-tire-storage');
+      } else if (
         normalizedPath === '/cms/account-customer' ||
         normalizedPath === '/cms/customers' ||
         normalizedPath === '/cms/accounts'
@@ -675,6 +692,7 @@ function HomePage() {
       }
       
       updatePageFromPath(path, historyState);
+      window.dispatchEvent(new Event('mitra:navigation'));
       // Scroll to top when navigating to new page (unless skipScroll is true)
       if (!options?.skipScroll) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -837,7 +855,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tire-conflicts', 'cms-orders', 'cms-invoices', 'cms-beta'];
+      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tire-conflicts', 'cms-orders', 'cms-invoices', 'cms-tire-storage', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         startTransition(() => {
           setCurrentPage('home');
@@ -1060,6 +1078,17 @@ function HomePage() {
               setPreSelectedService(serviceId ?? '');
               setBookingModalOpen(true);
             }}
+            onNavigate={navigate}
+          />
+        ) : currentPage === 'service-detail' ? (
+          <ServiceDetailPage
+            pageId={selectedServiceDetail.kind === 'bespoke' ? selectedServiceDetail.pageId : null}
+            serviceId={selectedServiceDetail.kind === 'generated' ? selectedServiceDetail.serviceId : null}
+            onBookingClick={(serviceId) => {
+              setPreSelectedService(serviceId ?? '');
+              setBookingModalOpen(true);
+            }}
+            onNavigate={navigate}
           />
         ) : currentPage === 'tire-hotel' ? (
           <TireHotelPage
@@ -1164,6 +1193,10 @@ function HomePage() {
         ) : currentPage === 'cms-invoices' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="invoices">
             <InvoicesCMSPage documentScope="receipt" title="Receipt" />
+          </CmsGuard>
+        ) : currentPage === 'cms-tire-storage' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="tire_storage">
+            <TireStorageCMSPage />
           </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>

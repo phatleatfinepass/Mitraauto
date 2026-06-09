@@ -4,6 +4,9 @@ import { Skeleton } from '../../ui/skeleton';
 import { TiresCmsPagination } from './TiresCmsPagination';
 import type { TireRow } from './types';
 
+const TABLE_PAGE_ROW_COUNT = 25;
+const TABLE_COLUMN_COUNT = 9;
+
 interface TiresTableSectionProps {
   currentPage: number;
   endItem: number;
@@ -100,15 +103,23 @@ export function TiresCmsTableSection({
   const readinessIconClass = (className: string) => `inline-flex h-7 w-7 items-center justify-center rounded-full ${className}`;
 
   const renderSkeletonRows = () =>
-    Array.from({ length: 8 }).map((_, rowIndex) => (
-      <tr key={`skeleton-${rowIndex}`}>
-        {Array.from({ length: 9 }).map((__, cellIndex) => (
+    Array.from({ length: TABLE_PAGE_ROW_COUNT }).map((_, rowIndex) => (
+      <tr key={`skeleton-${rowIndex}`} className="h-14">
+        {Array.from({ length: TABLE_COLUMN_COUNT }).map((__, cellIndex) => (
           <td key={cellIndex} className="px-4 py-4">
             <Skeleton
               className={`h-4 ${skeletonLineClass} ${cellIndex === 1 ? 'w-28' : cellIndex === 6 ? 'w-7 rounded-full' : 'w-full'}`}
             />
           </td>
         ))}
+      </tr>
+    ));
+  const renderEmptyRows = () =>
+    Array.from({ length: Math.max(0, TABLE_PAGE_ROW_COUNT - filteredTires.length) }).map((_, rowIndex) => (
+      <tr key={`empty-${rowIndex}`} className="h-14" aria-hidden="true">
+        <td colSpan={TABLE_COLUMN_COUNT} className="px-4 py-3">
+          {'\u00a0'}
+        </td>
       </tr>
     ));
 
@@ -179,83 +190,88 @@ export function TiresCmsTableSection({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
-              {loading ? renderSkeletonRows() : filteredTires.map((tire) => (
-                <tr
-                  key={tire.variant_id}
-                  className={`${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${tire.ean_conflict_open ? (isDark ? 'bg-yellow-500/10' : 'bg-yellow-50') : ''}`}
-                >
-                  <td className={`${isDark ? 'text-white' : 'text-gray-900'} px-4 py-3 text-sm`}>
-                    <span className="block truncate">{getEffectiveIdentity(tire).brand}</span>
-                  </td>
-                  <td className={`${isDark ? 'text-gray-300' : 'text-gray-700'} truncate px-4 py-3 text-left text-sm`}>{getEffectiveIdentity(tire).model || '—'}</td>
-                  <td className={`${isDark ? 'text-gray-400' : 'text-gray-600'} truncate px-4 py-3 text-sm`}>{getEffectiveIdentity(tire).size_string || '—'}</td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex min-w-0 flex-wrap items-center justify-center gap-1">
-                      <span className={`inline-flex max-w-full rounded-full px-2 py-1 text-[11px] font-semibold ${isDark ? 'bg-white/10 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
-                        <span className="truncate">
-                          {getSegmentLabel(tire.tire_segment)}
-                        </span>
-                      </span>
-                      {tire.is_non_passenger && (
-                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>
-                          {tire.is_non_passenger_manual ? t('tiresCmsTable.nonPassengerManual') : t('tiresCmsTable.nonPassenger')}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className={`truncate px-4 py-3 font-mono text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{tire.derived_ean || '—'}</td>
-                  <td className={`${isDark ? 'text-white' : 'text-gray-900'} px-4 py-3 text-sm`}>
-                    {tire.final_price_eur !== null && tire.final_price_eur !== undefined ? `€${tire.final_price_eur.toFixed(2)}` : '—'}
-                    {hasMissingSupplierPrice(tire) && (
-                      <p className={`mt-1 text-xs ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                        {t('tiresCmsTable.missingSupplierPrice')}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {(() => {
-                      const badge = getReadinessBadge(tire);
-                      const isReady = badge.label === t('tiresCmsTable.ready');
-                      return (
-                        <span
-                          className={readinessIconClass(badge.className)}
-                          title={badge.label}
-                          aria-label={badge.label}
-                        >
-                          {isReady ? (
-                            <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
-                          ) : (
-                            <AlertTriangle className="h-4 w-4 shrink-0" />
+              {loading ? renderSkeletonRows() : (
+                <>
+                  {filteredTires.map((tire) => (
+                    <tr
+                      key={tire.variant_id}
+                      className={`h-14 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${tire.ean_conflict_open ? (isDark ? 'bg-yellow-500/10' : 'bg-yellow-50') : ''}`}
+                    >
+                      <td className={`${isDark ? 'text-white' : 'text-gray-900'} px-4 py-3 text-sm`}>
+                        <span className="block truncate">{getEffectiveIdentity(tire).brand}</span>
+                      </td>
+                      <td className={`${isDark ? 'text-gray-300' : 'text-gray-700'} truncate px-4 py-3 text-left text-sm`}>{getEffectiveIdentity(tire).model || '—'}</td>
+                      <td className={`${isDark ? 'text-gray-400' : 'text-gray-600'} truncate px-4 py-3 text-sm`}>{getEffectiveIdentity(tire).size_string || '—'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex min-w-0 flex-wrap items-center justify-center gap-1">
+                          <span className={`inline-flex max-w-full rounded-full px-2 py-1 text-[11px] font-semibold ${isDark ? 'bg-white/10 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+                            <span className="truncate">
+                              {getSegmentLabel(tire.tire_segment)}
+                            </span>
+                          </span>
+                          {tire.is_non_passenger && (
+                            <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>
+                              {tire.is_non_passenger_manual ? t('tiresCmsTable.nonPassengerManual') : t('tiresCmsTable.nonPassenger')}
+                            </span>
                           )}
-                        </span>
-                      );
-                    })()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleToggleVisibility(tire)}
-                      className={`rounded p-1 transition-colors ${
-                        (tire.cms_data?.is_hidden || mustHideFromStore(tire))
-                          ? (isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600')
-                          : (isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700')
-                      }`}
-                    >
-                      {(tire.cms_data?.is_hidden || mustHideFromStore(tire)) ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleEdit(tire)}
-                      className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                        isDark ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                      }`}
-                    >
-                      <Edit className="h-4 w-4" />
-                      {t('tiresCmsTable.edit')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                        </div>
+                      </td>
+                      <td className={`truncate px-4 py-3 font-mono text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{tire.derived_ean || '—'}</td>
+                      <td className={`${isDark ? 'text-white' : 'text-gray-900'} px-4 py-3 text-sm`}>
+                        {tire.final_price_eur !== null && tire.final_price_eur !== undefined ? `€${tire.final_price_eur.toFixed(2)}` : '—'}
+                        {hasMissingSupplierPrice(tire) && (
+                          <p className={`mt-1 text-xs ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                            {t('tiresCmsTable.missingSupplierPrice')}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {(() => {
+                          const badge = getReadinessBadge(tire);
+                          const isReady = badge.label === t('tiresCmsTable.ready');
+                          return (
+                            <span
+                              className={readinessIconClass(badge.className)}
+                              title={badge.label}
+                              aria-label={badge.label}
+                            >
+                              {isReady ? (
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4 shrink-0" />
+                              )}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleToggleVisibility(tire)}
+                          className={`rounded p-1 transition-colors ${
+                            (tire.cms_data?.is_hidden || mustHideFromStore(tire))
+                              ? (isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600')
+                              : (isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700')
+                          }`}
+                        >
+                          {(tire.cms_data?.is_hidden || mustHideFromStore(tire)) ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleEdit(tire)}
+                          className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                            isDark ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                          }`}
+                        >
+                          <Edit className="h-4 w-4" />
+                          {t('tiresCmsTable.edit')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {renderEmptyRows()}
+                </>
+              )}
             </tbody>
           </table>
         </div>

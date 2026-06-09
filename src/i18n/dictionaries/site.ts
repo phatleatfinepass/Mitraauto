@@ -38,6 +38,7 @@ export const siteTranslations = {
   'services.inspection.title': { fi: 'Tarkastus', en: 'Inspection' },
   'services.inspection.desc': { fi: 'Auton tarkastus', en: 'Vehicle inspection' },
   'services.cta': { fi: 'Varaa', en: 'Book' },
+  'services.details': { fi: 'Lisätiedot', en: 'Details' },
   
   // Services Page
   'servicesPage.title': { fi: 'Palvelumme', en: 'Our Services' },
@@ -54,6 +55,7 @@ export const siteTranslations = {
   'serviceCategory.tireServices': { fi: 'RENGASPALVELUT', en: 'TIRE SERVICES' },
   'serviceCategory.diagnosticsMaintenance': { fi: 'DIAGNOSTIIKKA & HUOLTOPALVELUT', en: 'DIAGNOSTICS & MAINTENANCE' },
   'serviceCategory.acService': { fi: 'ILMASTOINTIHUOLTO', en: 'AC SERVICE' },
+  'serviceCategory.dpfService': { fi: 'DPF- JA PÄÄSTÖJÄRJESTELMÄPALVELUT', en: 'DPF & EMISSIONS SERVICE' },
   
   // Car Wash Services
   'service.exteriorWash': { fi: 'Ulkopesu + kovavahaus', en: 'Exterior washing + hard waxing' },
@@ -108,6 +110,13 @@ export const siteTranslations = {
   'service.extraRefrigerant': { fi: 'Ylimenevä kylmäaine', en: 'Extra refrigerant' },
   'service.hybridSurcharge': { fi: 'Hybridiauto lisä', en: 'Hybrid surcharge' },
   'service.acDiagnostics': { fi: 'Ilmastoinnin vianetsintä / vuototarkastus', en: 'AC diagnostics / leak check' },
+  'service.dpfDiagnosis': { fi: 'DPF-diagnoosipaketti', en: 'DPF diagnosis package' },
+  'service.dpfForcedRegeneration': { fi: 'Pakkopoltto / pakotettu regenerointi', en: 'Forced DPF regeneration' },
+  'service.dpfCleaning2002To2008': { fi: 'DPF-pesu · vuosimallit 2002–2008', en: 'DPF cleaning · model years 2002–2008' },
+  'service.dpfCleaning2009To2013': { fi: 'DPF-pesu · vuosimallit 2009–2013', en: 'DPF cleaning · model years 2009–2013' },
+  'service.dpfCleaning2014Newer': { fi: 'DPF-pesu · vuosimalli 2014 ja uudemmat', en: 'DPF cleaning · model year 2014 and newer' },
+  'service.dpfRemovalInstallationEstimate': { fi: 'DPF irrotus ja asennus · autokohtainen arvio', en: 'DPF removal and installation · vehicle-specific estimate' },
+  'service.vehicleSpecificQuote': { fi: 'autokohtainen tarjous', en: 'vehicle-specific quote' },
   'vehicle.passengerCar': { fi: 'Henkilöauto', en: 'Passenger car' },
   'vehicle.suv': { fi: 'Maasturi', en: 'SUV' },
   'vehicle.van': { fi: 'Pakettiauto', en: 'Van' },

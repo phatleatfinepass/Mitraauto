@@ -953,6 +953,7 @@ export function useTiresCmsList(pageSize = 25) {
         throw rpcListError;
       }
     } catch (err: any) {
+      if (!isCurrentRequest()) return;
       if (isRecoverableFetchError(err) && cachedPage) {
         setError(null);
       } else {
@@ -962,10 +963,12 @@ export function useTiresCmsList(pageSize = 25) {
     } finally {
       if (activeFetchKeyRef.current === requestKey) {
         activeFetchKeyRef.current = null;
-        if (shouldShowPreloading) setPreloading(false);
       }
-      setLoading(false);
-      setRefreshing(false);
+      if (isCurrentRequest()) {
+        if (shouldShowPreloading) setPreloading(false);
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [
     currentPage,
@@ -1006,7 +1009,7 @@ export function useTiresCmsList(pageSize = 25) {
     }, CMS_PAGE_SETTLE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [cachedPage, currentPage, fetchTires, queryKey]);
+  }, [currentPage, queryKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

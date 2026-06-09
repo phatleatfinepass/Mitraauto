@@ -3,6 +3,7 @@ import {
   AlertCircle,
   CarFront,
   CheckCircle2,
+  Clock3,
   ExternalLink,
   Loader2,
   MapPin,
@@ -33,7 +34,7 @@ import { Label } from '../../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Textarea } from '../../ui/textarea';
 
-type RescueStatus = 'received' | 'processing' | 'on_the_way' | 'picking' | 'at_garage';
+type RescueStatus = 'received' | 'assigned' | 'resolved' | 'canceled';
 type RescueStatusFilter = 'all' | RescueStatus;
 
 type RescueRequestRow = {
@@ -65,14 +66,17 @@ type RescueEventRow = {
 };
 
 const REFRESH_INTERVAL_MS = 30_000;
-const STATUS_ORDER: RescueStatus[] = ['received', 'processing', 'on_the_way', 'picking', 'at_garage'];
+const STATUS_ORDER: RescueStatus[] = ['received', 'assigned', 'resolved', 'canceled'];
+const RESCUE_PROGRESS_ORDER: RescueStatus[] = ['received', 'assigned', 'resolved'];
 const STATUS_LABELS: Record<RescueStatus, string> = {
   received: 'Received',
-  processing: 'Processing',
-  on_the_way: 'On the way to pickup the car',
-  picking: 'Picking',
-  at_garage: 'At the garage',
+  assigned: 'Assigned',
+  resolved: 'Resolved',
+  canceled: 'Canceled',
 };
+
+const RESCUE_SKELETON_ROWS = 6;
+const PRESSABLE_CARD_CLASS = 'transition-[background-color,border-color,box-shadow,transform] duration-150 ease-out active:scale-[0.99]';
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return 'Unknown';
@@ -102,6 +106,30 @@ function formatRelative(value: string | null | undefined) {
 
   const diffDays = Math.round(diffHours / 24);
   return `${diffDays} d ago`;
+}
+
+function formatRefreshStamp(value: Date | null) {
+  if (!value) return 'Not refreshed yet';
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(value);
+}
+
+function getCaseAgeMinutes(value: string | null | undefined) {
+  if (!value) return 0;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 0;
+  return Math.max(0, Math.round((Date.now() - parsed.getTime()) / 60000));
+}
+
+function formatPriorityLabel(priority: number | null | undefined) {
+  const value = Number(priority ?? 0);
+  if (value >= 5) return 'Critical';
+  if (value >= 4) return 'High';
+  if (value >= 2) return 'Watch';
+  return 'Routine';
 }
 
 function formatSourceLabel(source: string | null | undefined) {
@@ -142,18 +170,77 @@ function normalizeStatus(value: string | null | undefined): RescueStatus {
 function getStatusTone(status: string | null | undefined) {
   switch (normalizeStatus(status)) {
     case 'received':
-      return 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300';
-    case 'processing':
-      return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
-    case 'on_the_way':
-      return 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300';
-    case 'picking':
-      return 'border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300';
-    case 'at_garage':
+      return 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300';
+    case 'assigned':
+      return 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300';
+    case 'resolved':
       return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+    case 'canceled':
+      return 'border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300';
     default:
       return 'border-border bg-muted text-foreground';
   }
+}
+
+function getPriorityTone(priority: number | null | undefined) {
+  const value = Number(priority ?? 0);
+  if (value >= 5) return 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300';
+  if (value >= 4) return 'border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300';
+  if (value >= 2) return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+  return 'border-border bg-muted text-muted-foreground';
+}
+
+function getStatusDotTone(status: string | null | undefined) {
+  switch (normalizeStatus(status)) {
+    case 'received':
+      return 'bg-red-500';
+    case 'assigned':
+      return 'bg-blue-500';
+    case 'resolved':
+      return 'bg-emerald-500';
+    case 'canceled':
+      return 'bg-zinc-500';
+    default:
+      return 'bg-muted-foreground';
+  }
+}
+
+function getQueuePriorityScore(request: RescueRequestRow) {
+  const statusWeight = normalizeStatus(request.status) === 'received'
+    ? 100
+    : normalizeStatus(request.status) === 'assigned'
+      ? 50
+      : 0;
+  return statusWeight + Number(request.priority ?? 0) * 10 + Math.max(0, 60 - Math.round((Date.now() - new Date(request.created_at).getTime()) / 60000));
+}
+
+function QueueSkeleton() {
+  return (
+    <div className="divide-y">
+      {Array.from({ length: RESCUE_SKELETON_ROWS }).map((_, index) => (
+        <div key={index} className="px-4 py-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.85fr)_140px] xl:items-center">
+            <div className="min-w-0 space-y-3">
+              <div className="h-4 w-44 animate-pulse rounded bg-muted" />
+              <div className="flex gap-2">
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+              </div>
+            </div>
+            <div className="min-w-0 space-y-3">
+              <div className="h-4 w-full max-w-[360px] animate-pulse rounded bg-muted" />
+              <div className="flex gap-2">
+                <div className="h-6 w-20 animate-pulse rounded-full bg-muted" />
+                <div className="h-6 w-24 animate-pulse rounded-full bg-muted" />
+              </div>
+            </div>
+            <div className="h-10 w-28 animate-pulse rounded-md bg-muted xl:ml-auto" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function EventMeta({ meta }: { meta: Record<string, unknown> | null }) {
@@ -174,17 +261,25 @@ function EventMeta({ meta }: { meta: Record<string, unknown> | null }) {
 }
 
 function WorkflowRail({ status }: { status: RescueStatus }) {
-  const currentIndex = STATUS_ORDER.indexOf(status);
+  if (status === 'canceled') {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+        This case is canceled. Keep notes complete, but do not move it through the normal rescue flow.
+      </div>
+    );
+  }
+
+  const currentIndex = RESCUE_PROGRESS_ORDER.indexOf(status);
 
   return (
-    <div className="grid gap-2 md:grid-cols-5">
-      {STATUS_ORDER.map((step, index) => {
+    <div className="grid gap-2 md:grid-cols-3">
+      {RESCUE_PROGRESS_ORDER.map((step, index) => {
         const complete = index < currentIndex;
         const current = index === currentIndex;
         return (
           <div
             key={step}
-            className={`rounded-lg border px-3 py-3 ${
+            className={`rounded-xl border px-3 py-3 transition-[background-color,border-color] duration-150 ease-out ${
               complete
                 ? 'border-border bg-muted/40'
                 : current
@@ -240,7 +335,7 @@ function SectionBlock({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border bg-card">
+    <section className="overflow-hidden rounded-xl border bg-card">
       <div className="border-b px-5 py-4">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
@@ -266,6 +361,7 @@ export function RescueCMSPage() {
   const [events, setEvents] = useState<RescueEventRow[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsAvailable, setEventsAvailable] = useState(true);
+  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   const [editor, setEditor] = useState({
     status: 'received',
     priority: '0',
@@ -295,6 +391,7 @@ export function RescueCMSPage() {
       setCurrentUserEmail(authData.user?.email ?? '');
       const nextRows = (data ?? []) as RescueRequestRow[];
       setRequests(nextRows);
+      setLastLoadedAt(new Date());
       setSelectedId((currentSelected) => {
         if (currentSelected && nextRows.some((row) => row.id === currentSelected)) return currentSelected;
         return null;
@@ -337,7 +434,7 @@ export function RescueCMSPage() {
         .toLowerCase();
 
       return haystack.includes(normalizedQuery);
-    });
+    }).sort((a, b) => getQueuePriorityScore(b) - getQueuePriorityScore(a));
   }, [requests, searchQuery, statusFilter]);
 
   const selectedRequest = useMemo(
@@ -401,10 +498,9 @@ export function RescueCMSPage() {
       (acc, status) => ({ ...acc, [status]: 0 }),
       {
         received: 0,
-        processing: 0,
-        on_the_way: 0,
-        picking: 0,
-        at_garage: 0,
+        assigned: 0,
+        resolved: 0,
+        canceled: 0,
       },
     );
 
@@ -413,6 +509,13 @@ export function RescueCMSPage() {
     });
 
     return counts;
+  }, [requests]);
+
+  const activeQueueCount = summary.received + summary.assigned;
+  const highestPriorityRequest = useMemo(() => {
+    return [...requests]
+      .filter((request) => normalizeStatus(request.status) === 'received' || normalizeStatus(request.status) === 'assigned')
+      .sort((a, b) => getQueuePriorityScore(b) - getQueuePriorityScore(a))[0] ?? null;
   }, [requests]);
 
   const logEvent = useCallback(async (requestId: number, eventType: string, meta: Record<string, unknown>) => {
@@ -447,7 +550,7 @@ export function RescueCMSPage() {
         status,
         priority: Number(editor.priority) || 0,
         internal_notes: notes.trim() || null,
-        assigned_to: editor.assignedTo.trim() || null,
+        assigned_to: selectedRequest.assigned_to ?? null,
       };
 
       const { data, error: updateError } = await supabase
@@ -490,8 +593,13 @@ export function RescueCMSPage() {
   }, [currentUserEmail, editor.assignedTo, editor.internalNotes, editor.priority, editor.status, loadEvents, logEvent, selectedRequest, t]);
 
   const selectedStatus = normalizeStatus(selectedRequest?.status);
-  const selectedStatusIndex = STATUS_ORDER.indexOf(selectedStatus);
-  const nextStatus = selectedStatusIndex < STATUS_ORDER.length - 1 ? STATUS_ORDER[selectedStatusIndex + 1] : null;
+  const selectedStatusIndex = RESCUE_PROGRESS_ORDER.indexOf(selectedStatus);
+  const nextStatus = selectedStatusIndex >= 0 && selectedStatusIndex < RESCUE_PROGRESS_ORDER.length - 1
+    ? RESCUE_PROGRESS_ORDER[selectedStatusIndex + 1]
+    : null;
+  const selectedCompletionText = selectedStatus === 'canceled'
+    ? 'This emergency case was canceled.'
+    : 'This emergency case has reached the garage. Later service management can continue from here.';
   const mapsHref = selectedRequest
     ? selectedRequest.lat !== null && selectedRequest.lng !== null
       ? `https://www.google.com/maps?q=${selectedRequest.lat},${selectedRequest.lng}`
@@ -501,33 +609,104 @@ export function RescueCMSPage() {
 
   return (
     <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="right">
-      <div className="space-y-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Rescue 24/7</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Dispatch board for emergency intake, pickup progress, and arrival at the garage.
-            </p>
+      <div className="space-y-5">
+        <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <div className="h-1 bg-red-500" />
+          <div className="p-5">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+              <div className="flex min-w-0 flex-col justify-between gap-5">
+                <div>
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-700 dark:text-red-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    Live dispatch
+                  </div>
+                  <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Rescue 24/7</h1>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    Triage emergency intake, assign response, call the customer, open pickup location, and close the case from one queue.
+                  </p>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Last refreshed {formatRefreshStamp(lastLoadedAt)}
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[1fr_0.85fr_0.85fr]">
+                  <div className="rounded-xl border bg-muted/20 px-4 py-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Active queue</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{activeQueueCount}</p>
+                  </div>
+                  <div className="rounded-xl border bg-muted/20 px-4 py-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Highest priority</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{highestPriorityRequest?.priority ?? '-'}</p>
+                  </div>
+                  <div className="rounded-xl border bg-muted/20 px-4 py-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Visible cases</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{filteredRequests.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-background p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Next case to watch</p>
+                {highestPriorityRequest ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-semibold text-foreground">
+                          {highestPriorityRequest.customer_name?.trim() || 'Unnamed customer'}
+                        </p>
+                        <p className="mt-1 font-mono text-sm text-muted-foreground">
+                          {highestPriorityRequest.license_plate?.trim() || 'Plate missing'}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${getPriorityTone(highestPriorityRequest.priority)}`}>
+                        {formatPriorityLabel(highestPriorityRequest.priority)}
+                      </span>
+                    </div>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{formatLocation(highestPriorityRequest)}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      Waiting {formatRelative(highestPriorityRequest.created_at)}
+                    </div>
+                    <Button
+                      type="button"
+                      className="h-11 w-full justify-center active:scale-[0.98]"
+                      onClick={() => {
+                        setSelectedId(highestPriorityRequest.id);
+                        setDrawerOpen(true);
+                      }}
+                    >
+                      Open priority case
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">No active rescue case needs attention.</p>
+                )}
+              </div>
+            </div>
           </div>
-          <Button variant="outline" onClick={() => void loadRequests('refresh')} disabled={refreshing}>
-            {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-            Refresh queue
-          </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.15fr_1fr_0.9fr_0.9fr]">
           {STATUS_ORDER.map((status) => (
-            <Card key={status} className="overflow-hidden">
-              <CardContent className="flex items-center justify-between p-5">
+            <button
+              key={status}
+              type="button"
+              aria-pressed={statusFilter === status}
+              onClick={() => setStatusFilter((current) => current === status ? 'all' : status)}
+              className={`rounded-2xl border bg-card p-4 text-left shadow-sm hover:-translate-y-0.5 hover:bg-muted/30 ${PRESSABLE_CARD_CLASS} ${
+                statusFilter === status ? 'ring-2 ring-primary/40' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">{STATUS_LABELS[status]}</p>
                   <p className="mt-2 text-3xl font-semibold text-foreground">{summary[status]}</p>
                 </div>
-                <div className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusTone(status)}`}>
-                  {status.replace(/_/g, ' ')}
-                </div>
-              </CardContent>
-            </Card>
+                <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusTone(status)}`}>
+                  {status}
+                </span>
+              </div>
+            </button>
           ))}
         </div>
 
@@ -545,31 +724,37 @@ export function RescueCMSPage() {
           </div>
         ) : null}
 
-        <Card className="overflow-hidden">
-          <CardHeader className="gap-4 border-b bg-muted/20">
+        <Card className="overflow-hidden rounded-2xl shadow-sm">
+          <CardHeader className="gap-4 border-b bg-muted/20 p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <CardTitle>Emergency queue</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Open a case in the drawer to dispatch the next action and update the rescue timeline.
+                  Sorted by urgency, priority, and age. Open a case to dispatch the next action.
                 </p>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {filteredRequests.length} case{filteredRequests.length === 1 ? '' : 's'} visible
+              <div className="flex items-center gap-2">
+                <div className="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
+                  {filteredRequests.length} visible
+                </div>
+                <Button variant="outline" onClick={() => void loadRequests('refresh')} disabled={refreshing} className="active:scale-[0.98]">
+                  {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                  Refresh
+                </Button>
               </div>
             </div>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr),220px]">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search name, plate, phone, or address"
-                  className="pl-9"
+                  className="h-11 pl-9"
                 />
               </div>
               <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as RescueStatusFilter)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -585,10 +770,7 @@ export function RescueCMSPage() {
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
-              <div className="flex items-center gap-2 px-6 py-10 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading rescue queue...
-              </div>
+              <QueueSkeleton />
             ) : filteredRequests.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground" />
@@ -601,6 +783,7 @@ export function RescueCMSPage() {
               <div className="divide-y">
                 {filteredRequests.map((request) => {
                   const active = request.id === selectedId && drawerOpen;
+                  const priorityTone = getPriorityTone(request.priority);
                   return (
                     <button
                       key={request.id}
@@ -609,42 +792,50 @@ export function RescueCMSPage() {
                         setSelectedId(request.id);
                         setDrawerOpen(true);
                       }}
-                      className={`w-full px-6 py-4 text-left transition ${
-                        active ? 'bg-primary/5' : 'hover:bg-muted/40'
+                      className={`w-full px-4 py-4 text-left transition-[background-color,box-shadow] duration-150 ease-out ${
+                        active ? 'bg-primary/5 shadow-[inset_3px_0_0_hsl(var(--primary))]' : 'hover:bg-muted/40'
                       }`}
                     >
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.85fr)_140px] xl:items-center">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${getStatusDotTone(request.status)}`} />
                             <span className="text-base font-semibold text-foreground">
                               {request.customer_name?.trim() || 'Unnamed customer'}
                             </span>
-                            <span className="rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                            <span className="rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground">
                               #{request.id}
                             </span>
+                            <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${priorityTone}`}>
+                              {formatPriorityLabel(request.priority)} P{request.priority}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            <p className="font-mono"><span className="font-sans font-medium text-foreground">Plate:</span> {request.license_plate?.trim() || 'Missing'}</p>
+                            <p><span className="font-medium text-foreground">Phone:</span> {request.phone}</p>
+                            <p><span className="font-medium text-foreground">Age:</span> {getCaseAgeMinutes(request.created_at)} min</p>
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{formatLocation(request)}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
                             <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusTone(request.status)}`}>
                               {STATUS_LABELS[normalizeStatus(request.status)]}
                             </span>
-                          </div>
-                          <div className="mt-2 grid gap-2 text-sm text-muted-foreground lg:grid-cols-2 2xl:grid-cols-4">
-                            <p><span className="font-medium text-foreground">Plate:</span> {request.license_plate?.trim() || 'Missing'}</p>
-                            <p><span className="font-medium text-foreground">Phone:</span> {request.phone}</p>
-                            <p className="truncate"><span className="font-medium text-foreground">Location:</span> {formatLocation(request)}</p>
-                            <p><span className="font-medium text-foreground">Created:</span> {formatRelative(request.created_at)}</p>
+                            <span className="rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                              {formatSourceLabel(request.source)}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center justify-between gap-3 xl:justify-end">
-                          <div className="text-sm text-muted-foreground">
-                            {formatSourceLabel(request.source)}
-                          </div>
                           <span
-                            className={`inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium ${
+                            className={`inline-flex h-10 items-center rounded-md border px-3 text-sm font-medium ${
                               active
                                 ? 'border-primary bg-primary text-primary-foreground'
                                 : 'border-border bg-background text-foreground'
                             }`}
                           >
-                            Open case
+                            Open
                           </span>
                         </div>
                       </div>
@@ -720,7 +911,7 @@ export function RescueCMSPage() {
                   </Button>
                 ) : (
                   <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
-                    Vehicle arrived at the garage
+                    {selectedCompletionText}
                   </div>
                 )}
               </div>
@@ -735,7 +926,7 @@ export function RescueCMSPage() {
                       <div className="text-sm text-muted-foreground">
                         {nextStatus
                           ? <>Next recommended step: <span className="font-medium text-foreground">{STATUS_LABELS[nextStatus]}</span></>
-                          : 'This emergency case has reached the garage. Later service management can continue from here.'}
+                          : selectedCompletionText}
                       </div>
                     </div>
                   </SectionBlock>
@@ -834,9 +1025,9 @@ export function RescueCMSPage() {
                     </div>
                   </SectionBlock>
 
-                  <SectionBlock title="Status actions" description="Use quick progression or set a specific stage manually.">
+                  <SectionBlock title="Status actions" description="Use quick progression or set a specific stage manually. Cancellation stays available but separate from normal progress.">
                     <div className="space-y-2">
-                      {STATUS_ORDER.map((status) => {
+                      {STATUS_ORDER.filter((status) => status !== 'canceled').map((status) => {
                         const active = status === selectedStatus;
                         return (
                           <Button
@@ -852,6 +1043,16 @@ export function RescueCMSPage() {
                           </Button>
                         );
                       })}
+                      <Button
+                        type="button"
+                        variant={selectedStatus === 'canceled' ? 'default' : 'outline'}
+                        disabled={saving || selectedStatus === 'canceled'}
+                        onClick={() => void persistRequest('canceled')}
+                        className="w-full justify-start border-red-500/30 text-red-700 hover:bg-red-500/10 dark:text-red-300"
+                      >
+                        {selectedStatus === 'canceled' ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <X className="mr-2 h-4 w-4" />}
+                        {STATUS_LABELS.canceled}
+                      </Button>
                     </div>
                   </SectionBlock>
 
@@ -886,13 +1087,16 @@ export function RescueCMSPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="rescue-assigned-to">Assigned to</Label>
+                        <Label htmlFor="rescue-assigned-to">Assigned user id</Label>
                         <Input
                           id="rescue-assigned-to"
-                          placeholder="Operator or driver"
+                          readOnly
+                          placeholder="Not assigned"
                           value={editor.assignedTo}
-                          onChange={(event) => setEditor((current) => ({ ...current, assignedTo: event.target.value }))}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Driver/operator names should stay in internal notes until the assignment model is refactored.
+                        </p>
                       </div>
                     </div>
                   </SectionBlock>

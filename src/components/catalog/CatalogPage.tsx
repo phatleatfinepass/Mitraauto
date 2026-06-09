@@ -79,7 +79,7 @@ interface CatalogPageProps {
   onProductSelect?: (product: CatalogProduct) => void;
 }
 
-const ITEMS_PER_PAGE = 24;
+const ITEMS_PER_PAGE = 25;
 const CATALOG_STATE_STORAGE_KEY = 'catalog_state';
 const CATALOG_SNAPSHOT_STORAGE_KEY = 'catalog_snapshot';
 const CATALOG_SCROLL_POSITION_STORAGE_KEY = 'catalog_scroll_position';
@@ -1159,12 +1159,15 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           <div className="flex items-center justify-center gap-4 py-6">
             <button
               onClick={() => {
+                const nextFilters = { ...DEFAULT_TIRE_FILTERS };
                 setMode('tires');
-                setFilters({ ...DEFAULT_TIRE_FILTERS });
-                setHasSearched(false);
+                setFilters(nextFilters);
+                setHasSearched(true);
                 setProducts([]);
+                setTotalCount(0);
                 setErrorMessage(null);
                 setCurrentPage(1);
+                void fetchProducts(1, nextFilters, 'tires');
               }}
               className={`
                 relative px-8 py-3 rounded-xl transition-all duration-300
@@ -1195,6 +1198,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 setFilters({ ...DEFAULT_RIM_FILTERS });
                 setHasSearched(false);
                 setProducts([]);
+                setTotalCount(0);
                 setErrorMessage(null);
                 setCurrentPage(1);
               }}
@@ -1255,7 +1259,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           )}
           content={loading ? (
             <div className={productGridClass}>
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
                 <div
                   key={i}
                   className={`h-[500px] rounded-xl animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`}
@@ -1563,7 +1567,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
         {/* Product Grid */}
         {hasSearched && loading ? (
           <div className={productGridClass}>
-            {Array.from({ length: 8 }).map((_, i) => (
+            {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
               <div
                 key={i}
                 className={`h-[500px] rounded-2xl backdrop-blur-sm animate-pulse ${

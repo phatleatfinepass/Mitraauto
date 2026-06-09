@@ -1137,77 +1137,18 @@ export function OrdersCMSPage() {
     setEanLookupMessage(null);
 
     try {
-      const searchSelect = 'variant_id, brand, model, size_string, price';
-      const isMissingColumn = (error: any, column: string) => {
-        const text = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
-        return text.includes('column') && text.includes(column.toLowerCase());
-      };
+      const { data, error } = await supabase
+        .from('webshop_items')
+        .select('variant_id, brand, model, size_string, price, final_price_eur')
+        .eq('publish_status', 'published')
+        .eq('is_visible', true)
+        .or(`ean.eq.${ean},derived_ean.eq.${ean}`)
+        .order('product_ready', { ascending: false })
+        .order('final_price_eur', { ascending: true, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
 
-      let data: any = null;
-
-      // 1) Direct lookup by `ean` when column exists.
-      {
-        const byEan = await supabase
-          .from('products_search')
-          .select(searchSelect)
-          .eq('ean', ean)
-          .limit(1)
-          .maybeSingle();
-
-        if (!byEan.error) {
-          data = byEan.data;
-        } else if (!isMissingColumn(byEan.error, 'ean')) {
-          throw byEan.error;
-        }
-      }
-
-      // 2) Fallback lookup by `derived_ean` when column exists.
-      if (!data) {
-        const byDerivedEan = await supabase
-          .from('products_search')
-          .select(searchSelect)
-          .eq('derived_ean', ean)
-          .limit(1)
-          .maybeSingle();
-
-        if (!byDerivedEan.error) {
-          data = byDerivedEan.data;
-        } else if (!isMissingColumn(byDerivedEan.error, 'derived_ean')) {
-          throw byDerivedEan.error;
-        }
-      }
-
-      // 3) CMS-style robust fallback: map EAN -> variant_id from catalog tables, then resolve via products_search.
-      if (!data) {
-        const [{ data: tireHits, error: tireError }, { data: rimHits, error: rimError }] = await Promise.all([
-          supabase.from('catalog_tire_variants').select('id').eq('ean', ean).limit(1),
-          supabase.from('catalog_rim_variants').select('id').eq('ean', ean).limit(1),
-        ]);
-
-        if (tireError) {
-          console.warn('EAN lookup tire fallback error:', tireError);
-        }
-        if (rimError) {
-          console.warn('EAN lookup rim fallback error:', rimError);
-        }
-
-        const variantIds = [
-          ...(tireHits ?? []).map((row: any) => row.id),
-          ...(rimHits ?? []).map((row: any) => row.id),
-        ].filter(Boolean);
-
-        if (variantIds.length > 0) {
-          const byVariant = await supabase
-            .from('products_search')
-            .select(searchSelect)
-            .in('variant_id', variantIds)
-            .limit(1)
-            .maybeSingle();
-
-          if (byVariant.error) throw byVariant.error;
-          data = byVariant.data;
-        }
-      }
+      if (error) throw error;
 
       if (!data) {
         setEanLookupMessage(t('ordersCms.eanNotFound'));
@@ -1216,7 +1157,7 @@ export function OrdersCMSPage() {
 
       const resolvedTitle = `${data.brand ?? ''} ${data.model ?? ''}`.trim();
       const titled = data.size_string ? `${resolvedTitle} ${data.size_string}`.trim() : resolvedTitle;
-      const resolvedPrice = data.price ?? null;
+      const resolvedPrice = data.final_price_eur ?? data.price ?? null;
       const resolvedVariantId = data.variant_id ?? null;
 
       let pricingRules: ProductPricingRules | null = null;

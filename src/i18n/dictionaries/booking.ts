@@ -70,6 +70,7 @@ export const bookingTranslations = {
   'booking.summary.date': { fi: 'Päivä', en: 'Date' },
   'booking.summary.time': { fi: 'Aika', en: 'Time' },
   'booking.summary.service': { fi: 'Palvelu', en: 'Service' },
+  'booking.serviceFallback': { fi: 'Palvelu', en: 'Service' },
   'booking.success.detailsTitle': { fi: 'Varauksen tiedot', en: 'Booking Details' },
   'booking.success.name': { fi: 'Nimi', en: 'Name' },
   'booking.success.phone': { fi: 'Puhelin', en: 'Phone' },

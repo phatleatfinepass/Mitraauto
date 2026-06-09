@@ -13,11 +13,11 @@ import { RimsCMSPage } from '../rims/RimsCMSPage';
 import { TiresCMSPage } from '../tires/TiresCMSPage';
 import { supabase } from '../../../utils/supabase/client';
 import { useLanguage } from '../../../i18n/LanguageContext';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../../ui/sheet';
 
 export type CmsTab = 'rescue' | 'schedule' | 'catalog' | 'orders' | 'invoices' | 'account-customer' | 'future';
 type CatalogCmsTab = 'tires-finalize' | 'rims-refactor';
 type CatalogProductType = 'tire' | 'rim';
+type CatalogMainView = 'items' | 'health';
 
 type CatalogSyncRun = {
   status: string | null;
@@ -43,6 +43,9 @@ type CatalogProductSummary = {
 };
 
 type CatalogHealthSummary = Record<CatalogProductType, CatalogProductSummary>;
+type CatalogConflictSummary = {
+  tirePendingConflicts: number;
+};
 
 type CatalogHealthRpcRow = {
   product_type: CatalogProductType;
@@ -63,7 +66,7 @@ type CatalogHealthRpcRow = {
 };
 
 const BOOKING_STATUS_HANDOFF = 'handoff';
-const CATALOG_TIRE_SYNC_BATCH_SIZE = 500;
+const CATALOG_TIRE_SYNC_BATCH_SIZE = 150;
 const CATALOG_RIM_SYNC_BATCH_SIZE = 150;
 const CATALOG_LOCALE_BY_LANGUAGE: Record<string, string> = {
   fi: 'fi-FI',
@@ -348,9 +351,24 @@ async function fetchCatalogHealthSummary(): Promise<CatalogHealthSummary> {
   return summary;
 }
 
+async function fetchCatalogConflictSummary(): Promise<CatalogConflictSummary> {
+  const { count, error } = await supabase
+    .from('catalog_selected_tire_conflict_queue')
+    .select('*', { count: 'exact', head: true })
+    .eq('review_status', 'pending');
+
+  if (error) throw error;
+
+  return {
+    tirePendingConflicts: count ?? 0,
+  };
+}
+
 function CatalogHealthPanel({
   activeTab,
+  productType,
   summary,
+  conflicts,
   loading,
   error,
   tireAction,
@@ -361,10 +379,14 @@ function CatalogHealthPanel({
   onRebuildSelectedTires,
   onRebuildSelectedRims,
   onCloseStaleRuns,
+  onOpenCatalogItems,
+  onReviewConflicts,
   onRefresh,
 }: {
   activeTab: CatalogCmsTab;
+  productType: CatalogProductType;
   summary: CatalogHealthSummary | null;
+  conflicts: CatalogConflictSummary | null;
   loading: boolean;
   error: string | null;
   tireAction: 'publish' | 'rebuild' | null;
@@ -375,21 +397,28 @@ function CatalogHealthPanel({
   onRebuildSelectedTires: () => void;
   onRebuildSelectedRims: () => void;
   onCloseStaleRuns: (productType: CatalogProductType) => void;
+  onOpenCatalogItems: () => void;
+  onReviewConflicts: () => void;
   onRefresh: () => void;
 }) {
   const { language, t } = useLanguage();
-  const products: Array<{ type: CatalogProductType; label: string; active: boolean }> = [
-    { type: 'tire', label: t('cmsControl.catalogTiresLabel'), active: activeTab === 'tires-finalize' },
-    { type: 'rim', label: t('cmsControl.catalogRimsLabel'), active: activeTab === 'rims-refactor' },
-  ];
+  const products: Array<{ type: CatalogProductType; label: string; active: boolean }> = [{
+    type: productType,
+    label: productType === 'tire' ? t('cmsControl.catalogTiresLabel') : t('cmsControl.catalogRimsLabel'),
+    active: productType === 'tire' ? activeTab === 'tires-finalize' : activeTab === 'rims-refactor',
+  }];
 
   return (
-    <section className="border-b bg-background px-6 py-4">
+    <section className="bg-background px-6 py-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 className="text-sm font-semibold text-foreground">{t('cmsControl.catalogHealthTitle')}</h3>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t('cmsControl.catalogHealthDescription')}</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+              {t('cmsControl.catalogHealthFor', {
+                product: productType === 'tire' ? t('cmsControl.catalogTiresLabel') : t('cmsControl.catalogRimsLabel'),
+              })}
+            </p>
           </div>
           <button
             type="button"
@@ -408,7 +437,26 @@ function CatalogHealthPanel({
           </div>
         ) : null}
 
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-4">
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogHealthRawTitle')}</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{t('cmsControl.catalogHealthRawBody')}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogHealthSelectedTitle')}</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{t('cmsControl.catalogHealthSelectedBody')}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogHealthConflictTitle')}</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{t('cmsControl.catalogHealthConflictBody')}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogHealthPublishTitle')}</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{t('cmsControl.catalogHealthPublishBody')}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
           {products.map((product) => {
             const item = summary?.[product.type] ?? null;
             const percent = item && item.total > 0 ? Math.round((item.ready / item.total) * 100) : 0;
@@ -416,6 +464,7 @@ function CatalogHealthPanel({
             const syncStatus = latestRun?.status ?? t('cmsControl.catalogSyncUnknown');
             const healthStatus = getCatalogHealthStatus(item);
             const productAction = product.type === 'tire' ? tireAction : rimAction;
+            const pendingConflictCount = product.type === 'tire' ? conflicts?.tirePendingConflicts ?? 0 : 0;
 
             return (
               <div
@@ -473,6 +522,37 @@ function CatalogHealthPanel({
                       <p className="mt-1 font-semibold text-foreground">{item ? formatCatalogNumber(item.notReady, language) : '-'}</p>
                     </div>
                   </div>
+                  {item && item.notReady > 0 ? (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p>
+                          {t('cmsControl.catalogHealthIssuesHint', {
+                            count: formatCatalogNumber(item.notReady, language),
+                          })}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {product.type === 'tire' && pendingConflictCount > 0 ? (
+                            <button
+                              type="button"
+                              onClick={onReviewConflicts}
+                              className="min-h-8 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-800 transition-colors hover:bg-amber-100"
+                            >
+                              {t('cmsControl.catalogReviewConflicts', {
+                                count: formatCatalogNumber(pendingConflictCount, language),
+                              })}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={onOpenCatalogItems}
+                            className="min-h-8 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-800 transition-colors hover:bg-amber-100"
+                          >
+                            {t('cmsControl.catalogOpenItems')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-4 border-t pt-3 text-xs">
@@ -514,31 +594,72 @@ function CatalogHealthPanel({
                       {t('cmsControl.catalogStuckJobs')}: {item ? formatCatalogNumber(item.stuckJobs, language) : '-'}
                     </p>
                   </div>
-                  <div className="mt-3 flex flex-col gap-2 border-t pt-3 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={product.type === 'tire' ? onRebuildSelectedTires : onRebuildSelectedRims}
-                      disabled={loading || productAction !== null}
-                      className="min-h-9 flex-1 rounded-md border bg-background px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {productAction === 'rebuild'
-                        ? t('cmsControl.catalogRebuildingSelected')
-                        : product.type === 'tire'
-                          ? t('cmsControl.catalogRebuildSelectedTires')
-                          : t('cmsControl.catalogRebuildSelectedRims')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={product.type === 'tire' ? onApplyTirePublish : onApplyRimPublish}
-                      disabled={loading || productAction !== null}
-                      className="min-h-9 flex-1 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {productAction === 'publish'
-                        ? t('cmsControl.catalogPublishing')
-                        : product.type === 'tire'
-                          ? t('cmsControl.catalogApplyTirePublish')
-                          : t('cmsControl.catalogApplyRimPublish')}
-                    </button>
+                  <div className="mt-4 grid gap-3 border-t pt-3 lg:grid-cols-4">
+                    <div className="rounded-lg border bg-background p-3">
+                      <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogStepPipeline')}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t('cmsControl.catalogRebuildHelp')}</p>
+                      <button
+                        type="button"
+                        onClick={product.type === 'tire' ? onRebuildSelectedTires : onRebuildSelectedRims}
+                        disabled={loading || productAction !== null}
+                        className="mt-3 min-h-9 w-full rounded-md border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {productAction === 'rebuild'
+                          ? t('cmsControl.catalogRefreshingPipeline')
+                          : product.type === 'tire'
+                            ? t('cmsControl.catalogRefreshTirePipeline')
+                            : t('cmsControl.catalogRefreshRimPipeline')}
+                      </button>
+                    </div>
+                    <div className="rounded-lg border bg-background p-3">
+                      <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogStepReview')}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {item
+                          ? t('cmsControl.catalogReviewHelpWithCount', { count: formatCatalogNumber(item.notReady, language) })
+                          : t('cmsControl.catalogReviewHelp')}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={onOpenCatalogItems}
+                        className="mt-3 min-h-9 w-full rounded-md border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                      >
+                        {product.type === 'tire' ? t('cmsControl.catalogOpenTireReview') : t('cmsControl.catalogOpenRimReview')}
+                      </button>
+                    </div>
+                    <div className="rounded-lg border bg-background p-3">
+                      <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogStepConflicts')}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {product.type === 'tire'
+                          ? t('cmsControl.catalogPendingConflicts', { count: formatCatalogNumber(pendingConflictCount, language) })
+                          : t('cmsControl.catalogRimConflictHelp')}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={product.type === 'tire' ? onReviewConflicts : onOpenCatalogItems}
+                        disabled={product.type === 'tire' && pendingConflictCount === 0}
+                        className="mt-3 min-h-9 w-full rounded-md border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {product.type === 'tire' && pendingConflictCount > 0
+                          ? t('cmsControl.catalogReviewConflicts', { count: formatCatalogNumber(pendingConflictCount, language) })
+                          : t('cmsControl.catalogNoPendingConflicts')}
+                      </button>
+                    </div>
+                    <div className="rounded-lg border bg-background p-3">
+                      <p className="text-sm font-semibold text-foreground">{t('cmsControl.catalogStepPublish')}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t('cmsControl.catalogPublishHelp')}</p>
+                      <button
+                        type="button"
+                        onClick={product.type === 'tire' ? onApplyTirePublish : onApplyRimPublish}
+                        disabled={loading || productAction !== null}
+                        className="mt-3 min-h-9 w-full rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {productAction === 'publish'
+                          ? t('cmsControl.catalogPublishing')
+                          : product.type === 'tire'
+                            ? t('cmsControl.catalogPublishTireCatalog')
+                            : t('cmsControl.catalogPublishRimCatalog')}
+                      </button>
+                    </div>
                   </div>
                   {item?.stuckJobs ? (
                     <div className="mt-3 flex flex-col gap-2 border-t pt-3 sm:flex-row">
@@ -570,12 +691,13 @@ function CatalogCMSPage() {
   const { t } = useLanguage();
   const access = useCmsAccess();
   const [catalogHealth, setCatalogHealth] = useState<CatalogHealthSummary | null>(null);
+  const [catalogConflicts, setCatalogConflicts] = useState<CatalogConflictSummary | null>(null);
   const [catalogHealthLoading, setCatalogHealthLoading] = useState(true);
   const [catalogHealthError, setCatalogHealthError] = useState<string | null>(null);
   const [tireAction, setTireAction] = useState<'publish' | 'rebuild' | null>(null);
   const [rimAction, setRimAction] = useState<'publish' | 'rebuild' | null>(null);
   const [maintenanceAction, setMaintenanceAction] = useState<CatalogProductType | 'all' | null>(null);
-  const [catalogHealthOpen, setCatalogHealthOpen] = useState(false);
+  const [mainView, setMainView] = useState<CatalogMainView>('items');
   const canReadModule = (module: string) => {
     if (access?.isSuperAdmin) return true;
     const permission = access?.permissions?.[module];
@@ -606,6 +728,13 @@ function CatalogCMSPage() {
     ? activeTab
     : visibleCatalogTabs[0]?.id;
   const activeCatalogTab = visibleCatalogTabs.find((tab) => tab.id === resolvedActiveTab);
+  const activeProductType: CatalogProductType = resolvedActiveTab === 'rims-refactor' ? 'rim' : 'tire';
+  const catalogHeaderTitle = mainView === 'health'
+    ? t('cmsControl.catalogHealthTitle')
+    : t('cmsControl.catalogTitle', { label: activeCatalogTab?.label ?? t('cmsControl.catalogFallbackLabel') });
+  const catalogHeaderDescription = mainView === 'health'
+    ? t('cmsControl.catalogHealthDescription')
+    : activeCatalogTab?.description ?? t('cmsControl.catalogFallbackDescription');
   const handleCatalogTabChange = (tab: CatalogCmsTab) => {
     setActiveTab(tab);
     if (typeof window === 'undefined') return;
@@ -614,12 +743,29 @@ function CatalogCMSPage() {
     const nextHash = tab === 'rims-refactor' ? '#catalog/rims' : '#catalog/tires';
     window.history.replaceState(window.history.state, '', `${normalizedPath}${nextHash}`);
   };
+  const handleOpenCatalogItems = useCallback(() => {
+    setMainView('items');
+  }, []);
+  const handleReviewConflicts = useCallback(() => {
+    if (activeProductType !== 'tire' || typeof window === 'undefined') {
+      setMainView('items');
+      return;
+    }
+
+    window.history.pushState({}, '', '/cms/tires/conflicts');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [activeProductType]);
   const loadCatalogHealth = useCallback(async () => {
     setCatalogHealthLoading(true);
     setCatalogHealthError(null);
 
     try {
-      setCatalogHealth(await fetchCatalogHealthSummary());
+      const [healthSummary, conflictSummary] = await Promise.all([
+        fetchCatalogHealthSummary(),
+        fetchCatalogConflictSummary(),
+      ]);
+      setCatalogHealth(healthSummary);
+      setCatalogConflicts(conflictSummary);
     } catch (error) {
       console.error('❌ Fetch catalog health error:', error);
       setCatalogHealthError(error instanceof Error ? error.message : String(error));
@@ -629,20 +775,23 @@ function CatalogCMSPage() {
   }, []);
 
   useEffect(() => {
+    if (mainView !== 'health') return;
     void loadCatalogHealth();
-  }, [loadCatalogHealth]);
+  }, [loadCatalogHealth, mainView]);
   const handleRebuildSelectedTires = useCallback(async () => {
     if (tireAction !== null) return;
     if (typeof window !== 'undefined' && !window.confirm(t('cmsControl.catalogConfirmRebuildTires'))) return;
 
     setTireAction('rebuild');
     try {
-      const { error } = await supabase.rpc('catalog_rebuild_selected_tires_admin_v1');
+      const { error } = await supabase.rpc('catalog_schedule_selected_rebuild_admin_v1', {
+        p_product_type: 'tire',
+      });
       if (error) throw error;
-      toast.success(t('cmsControl.catalogSelectedTiresRebuilt'));
+      toast.success(t('cmsControl.catalogSelectedTiresQueued'));
       await loadCatalogHealth();
     } catch (error) {
-      console.error('❌ Rebuild selected tires error:', error);
+      console.error('❌ Refresh tire pipeline error:', error);
       toast.error(error instanceof Error ? error.message : t('cmsControl.catalogOperationFailed'));
     } finally {
       setTireAction(null);
@@ -654,12 +803,14 @@ function CatalogCMSPage() {
 
     setRimAction('rebuild');
     try {
-      const { error } = await supabase.rpc('catalog_rebuild_selected_rims_admin_v1');
+      const { error } = await supabase.rpc('catalog_schedule_selected_rebuild_admin_v1', {
+        p_product_type: 'rim',
+      });
       if (error) throw error;
-      toast.success(t('cmsControl.catalogSelectedRimsRebuilt'));
+      toast.success(t('cmsControl.catalogSelectedRimsQueued'));
       await loadCatalogHealth();
     } catch (error) {
-      console.error('❌ Rebuild selected rims error:', error);
+      console.error('❌ Refresh rim pipeline error:', error);
       toast.error(error instanceof Error ? error.message : t('cmsControl.catalogOperationFailed'));
     } finally {
       setRimAction(null);
@@ -681,12 +832,20 @@ function CatalogCMSPage() {
       if (!runId) throw new Error(t('tiresCatalogSync.missingRunId'));
 
       let hasMore = Boolean((startData as any)?.has_more);
-      while (hasMore) {
+      let batchSize = CATALOG_TIRE_SYNC_BATCH_SIZE;
+      for (let guard = 0; guard < 2500 && hasMore; guard += 1) {
         const { data: batchData, error: batchError } = await supabase.rpc('refresh_webshop_tire_items_batch_v1', {
           p_run_id: runId,
-          p_batch_size: CATALOG_TIRE_SYNC_BATCH_SIZE,
+          p_batch_size: batchSize,
         });
-        if (batchError) throw batchError;
+        if (batchError) {
+          if ((batchError as any)?.code === '57014' && batchSize > 25) {
+            batchSize = Math.max(25, Math.floor(batchSize / 2));
+            guard -= 1;
+            continue;
+          }
+          throw batchError;
+        }
         hasMore = Boolean((batchData as any)?.has_more);
       }
 
@@ -698,7 +857,7 @@ function CatalogCMSPage() {
       toast.success(t('cmsControl.catalogTirePublishApplied'));
       await loadCatalogHealth();
     } catch (error) {
-      console.error('❌ Apply tire publish error:', error);
+      console.error('❌ Publish tire catalog error:', error);
       toast.error(error instanceof Error ? error.message : t('cmsControl.catalogOperationFailed'));
     } finally {
       setTireAction(null);
@@ -748,7 +907,7 @@ function CatalogCMSPage() {
       toast.success(t('cmsControl.catalogRimPublishApplied', { processed }));
       await loadCatalogHealth();
     } catch (error) {
-      console.error('❌ Apply rim publish error:', error);
+      console.error('❌ Publish rim catalog error:', error);
       toast.error(error instanceof Error ? error.message : t('cmsControl.catalogOperationFailed'));
     } finally {
       setRimAction(null);
@@ -792,10 +951,10 @@ function CatalogCMSPage() {
       <div className="flex flex-col gap-4 border-b bg-card px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">
-            {t('cmsControl.catalogTitle', { label: activeCatalogTab?.label ?? t('cmsControl.catalogFallbackLabel') })}
+            {catalogHeaderTitle}
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            {activeCatalogTab?.description ?? t('cmsControl.catalogFallbackDescription')}
+            {catalogHeaderDescription}
           </p>
         </div>
 
@@ -819,44 +978,49 @@ function CatalogCMSPage() {
               );
             })}
           </div>
-          <Sheet open={catalogHealthOpen} onOpenChange={setCatalogHealthOpen}>
-            <SheetTrigger asChild>
-              <button
-                type="button"
-                aria-label={t('cmsControl.catalogHealthTitle')}
-                title={t('cmsControl.catalogHealthTitle')}
-                className="inline-flex size-10 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Activity className="size-4" />
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-3xl">
-              <SheetHeader className="border-b px-6 py-5 text-left">
-                <SheetTitle>{t('cmsControl.catalogHealthTitle')}</SheetTitle>
-                <SheetDescription>{t('cmsControl.catalogHealthDescription')}</SheetDescription>
-              </SheetHeader>
-              <CatalogHealthPanel
-                activeTab={resolvedActiveTab}
-                summary={catalogHealth}
-                loading={catalogHealthLoading}
-                error={catalogHealthError}
-                tireAction={tireAction}
-                rimAction={rimAction}
-                maintenanceAction={maintenanceAction}
-                onApplyTirePublish={handleApplyTirePublish}
-                onApplyRimPublish={handleApplyRimPublish}
-                onRebuildSelectedTires={handleRebuildSelectedTires}
-                onRebuildSelectedRims={handleRebuildSelectedRims}
-                onCloseStaleRuns={handleCloseStaleRuns}
-                onRefresh={loadCatalogHealth}
-              />
-            </SheetContent>
-          </Sheet>
+          <button
+            type="button"
+            aria-label={t('cmsControl.catalogHealthTitle')}
+            title={t('cmsControl.catalogHealthTitle')}
+            aria-pressed={mainView === 'health'}
+            onClick={() => setMainView((current) => current === 'health' ? 'items' : 'health')}
+            className={`inline-flex size-10 items-center justify-center rounded-lg border transition-colors ${
+              mainView === 'health'
+                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <Activity className="size-4" />
+          </button>
         </div>
       </div>
 
       <div className="bg-background">
-        {resolvedActiveTab === 'tires-finalize' ? <TiresCMSPage embedded /> : <RimsCMSPage embedded />}
+        {mainView === 'health' ? (
+          <CatalogHealthPanel
+            activeTab={resolvedActiveTab}
+            productType={activeProductType}
+            summary={catalogHealth}
+            conflicts={catalogConflicts}
+            loading={catalogHealthLoading}
+            error={catalogHealthError}
+            tireAction={tireAction}
+            rimAction={rimAction}
+            maintenanceAction={maintenanceAction}
+            onApplyTirePublish={handleApplyTirePublish}
+            onApplyRimPublish={handleApplyRimPublish}
+            onRebuildSelectedTires={handleRebuildSelectedTires}
+            onRebuildSelectedRims={handleRebuildSelectedRims}
+            onCloseStaleRuns={handleCloseStaleRuns}
+            onOpenCatalogItems={handleOpenCatalogItems}
+            onReviewConflicts={handleReviewConflicts}
+            onRefresh={loadCatalogHealth}
+          />
+        ) : resolvedActiveTab === 'tires-finalize' ? (
+          <TiresCMSPage embedded />
+        ) : (
+          <RimsCMSPage embedded />
+        )}
       </div>
     </div>
   );

@@ -223,6 +223,7 @@ export function TiresCmsToolbar({
                 type="button"
                 onClick={onApplyCatalogSync}
                 disabled={syncingCatalog || !hasPendingCatalogSync}
+                title={t('tiresCmsToolbar.publishHint')}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isDark
                     ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-white/10 disabled:text-gray-500'

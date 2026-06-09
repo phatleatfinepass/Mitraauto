@@ -6,6 +6,7 @@ import { ArrowRight, Calendar, Award, Settings, CheckCircle2, Users } from 'luci
 import { ImageWithFallback } from '../../figma/ImageWithFallback';
 import { ContactSection } from '../sections/ContactSection';
 import { motion, AnimatePresence } from 'motion/react';
+import { getServiceDetailPathForServiceId } from '../../../i18n/dictionaries/serviceSeo';
 import carWashService from 'figma:asset/cac46ce90efaaa69a5d5eac00cb56658fc7c8afa.png';
 import carMaintenanceService from 'figma:asset/23fb0673ef5da715efe16a47361607b6c4536093.png';
 import tireService from 'figma:asset/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.png';
@@ -25,6 +26,7 @@ interface ServiceCategoryData {
 
 interface ServicesPageProps {
   onBookingClick: (serviceId: string | null) => void;
+  onNavigate: (path: string) => void;
 }
 
 // Service hero carousel items
@@ -43,7 +45,7 @@ const serviceHeroItems = [
   }
 ];
 
-export function ServicesPage({ onBookingClick }: ServicesPageProps) {
+export function ServicesPage({ onBookingClick, onNavigate }: ServicesPageProps) {
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string>('car-care');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -62,7 +64,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
   // Scroll detection to highlight active category based on alignment
   useEffect(() => {
     const handleScroll = () => {
-      const categoryIds = ['car-care', 'tire-services', 'diagnostics-maintenance', 'ac-service'];
+      const categoryIds = ['car-care', 'tire-services', 'diagnostics-maintenance', 'ac-service', 'dpf-service'];
       
       // Get all sidebar buttons and section headers
       const buttons = categoryIds.map(id => 
@@ -173,6 +175,18 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
         { id: 'ac-hybrid-extra-r1234yf', name: t('service.hybridSurcharge'), price: '+15.00 €' },
         { id: 'ac-service-electric', name: t('service.acServiceElectric'), price: '120.00 €', note: 'includes 100 g refrigerant, R1234yf' },
         { id: 'ac-diagnostics', name: t('service.acDiagnostics'), price: '80.00 € / h' },
+      ],
+    },
+    {
+      id: 'dpf-service',
+      title: t('serviceCategory.dpfService'),
+      services: [
+        { id: 'dpf-diagnosis', name: t('service.dpfDiagnosis'), price: '80.00 €' },
+        { id: 'dpf-forced-regeneration', name: t('service.dpfForcedRegeneration'), price: `${t('servicesPage.from')} 160.00 €` },
+        { id: 'dpf-cleaning-2002-2008', name: t('service.dpfCleaning2002To2008'), price: `${t('servicesPage.from')} 160.00 €` },
+        { id: 'dpf-cleaning-2009-2013', name: t('service.dpfCleaning2009To2013'), price: `${t('servicesPage.from')} 240.00 €` },
+        { id: 'dpf-cleaning-2014-newer', name: t('service.dpfCleaning2014Newer'), price: `${t('servicesPage.from')} 340.00 €` },
+        { id: 'dpf-removal-installation-estimate', name: t('service.dpfRemovalInstallationEstimate'), price: t('service.vehicleSpecificQuote') },
       ],
     },
   ];
@@ -304,6 +318,7 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
                           key={serviceIdx}
                           service={service}
                           onBookClick={(serviceId) => onBookingClick(serviceId)}
+                          onNavigate={onNavigate}
                         />
                       ))}
                     </div>
@@ -384,11 +399,13 @@ export function ServicesPage({ onBookingClick }: ServicesPageProps) {
 interface ServiceListItemProps {
   service: Service;
   onBookClick: (serviceId: string) => void;
+  onNavigate: (path: string) => void;
 }
 
-function ServiceListItem({ service, onBookClick }: ServiceListItemProps) {
-  const { t } = useLanguage();
+function ServiceListItem({ service, onBookClick, onNavigate }: ServiceListItemProps) {
+  const { t, language } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
+  const detailHref = getServiceDetailPathForServiceId(service.id, language);
 
   return (
     <div
@@ -413,10 +430,23 @@ function ServiceListItem({ service, onBookClick }: ServiceListItemProps) {
         </div>
 
         {/* Price and Book Button */}
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <div className="text-right">
             <div className="font-semibold text-lg text-foreground">{service.price}</div>
           </div>
+          {detailHref ? (
+            <a
+              href={detailHref}
+              className="hidden rounded-full border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onNavigate(detailHref);
+              }}
+            >
+              {t('services.details')}
+            </a>
+          ) : null}
           <Button
             size="sm"
             variant={isHovered ? 'default' : 'outline'}

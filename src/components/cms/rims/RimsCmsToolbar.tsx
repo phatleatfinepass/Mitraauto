@@ -160,6 +160,7 @@ export function RimsCmsToolbar({
                 type="button"
                 onClick={onApplySync}
                 disabled={syncing || !hasPendingCatalogSync}
+                title={t('rimsCmsToolbar.publishHint')}
                 className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isDark
                     ? 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-white/10 disabled:text-gray-500'

@@ -4,7 +4,7 @@ import { translateForLanguage, useLanguage } from '../../../i18n/LanguageContext
 import { supabase } from '../../../utils/supabase/client';
 import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw, Loader2, Wand2, ExternalLink } from 'lucide-react';
 import { TiresCmsToolbar } from './TiresCmsToolbar';
-import { TiresImagesSection } from './TiresImagesSection';
+import TiresImagesSection from './TiresImagesSection';
 import { TiresBundlePricingSection } from './TiresBundlePricingSection';
 import { TiresCmsTableSection } from './TiresCmsTableSection';
 import { TiresContentSection } from './TiresContentSection';

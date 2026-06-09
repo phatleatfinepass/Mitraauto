@@ -30,6 +30,101 @@ supplier raw feeds
 
 Tires are the functional blueprint, but tires still need final hardening. Rims must be refactored to match the tire CMS architecture and then receive the same read-model hardening.
 
+## Current Active Lifecycle
+
+This is the canonical lifecycle for new Tires/Rims work:
+
+```txt
+supplier_raw_rd_tires / supplier_raw_vt_tires
+supplier_raw_rd_rims / supplier_raw_vt_rims
+-> catalog_selected_items
+-> CMS Catalog overlay/editing
+-> webshop_items
+-> precomputed search/filter read models
+-> public catalog RPCs
+```
+
+Active CMS entry points:
+
+- [x] CMS shell: `src/components/cms/layout/CmsControlCenter.tsx`
+- [x] Tire CMS page: `src/components/cms/tires/TiresCMSPage.tsx`
+- [x] Rim CMS page: `src/components/cms/rims/RimsCMSPage.tsx`
+- [x] Tire CMS list RPCs: `cms_list_tires_admin_v1`, `cms_count_tires_admin_v1`
+- [x] Rim CMS list RPCs: `cms_list_rims_admin_v1`, `cms_count_rims_admin_v1`
+- [x] Tire storefront RPCs: `catalog_list_tires_v1`, `catalog_count_tires_v1`
+- [x] Rim storefront RPCs: `catalog_list_rims_v1`, `catalog_count_rims_v1`, `catalog_get_rim_by_identifier_v1`
+- [x] Published fallback layer: `webshop_items`
+
+Active scheduled sync path:
+
+- [x] Raw tires: `catalog_sync_raw_rd_tires`, `catalog_sync_raw_vt_tires`
+- [x] Raw rims: `catalog_sync_raw_rd_rims`, `catalog_sync_raw_vt_rims`
+- [x] Selected tires: `catalog_rebuild_selected_tires_v1`
+- [x] Selected rims: `catalog_rebuild_selected_rims_v1`
+- [x] Tire publish: `start_webshop_tire_items_sync_v1` -> `refresh_webshop_tire_items_batch_v1` -> `finalize_webshop_tire_items_sync_v1`
+- [x] Rim publish: `start_webshop_rim_items_sync_v1` -> `refresh_webshop_rim_items_batch_v1` -> `finalize_webshop_rim_items_sync_v1`
+
+## Removed Legacy Code
+
+Removed from the active frontend/local source during catalog cleanup:
+
+- [x] Old standalone `RimsCMSPageV2` page/version is not present.
+- [x] Old tire editor section files removed:
+  - [x] `src/components/cms/tires/TiresBadgesSection.tsx`
+  - [x] `src/components/cms/tires/TiresEuLabelSection.tsx`
+  - [x] `src/components/cms/tires/TiresIdentitySection.tsx`
+  - [x] `src/components/cms/tires/TiresSeoSection.tsx`
+- [x] Old local label helper files removed:
+  - [x] `src/lib/supabase/labels.ts`
+  - [x] `src/lib/types/labels.ts`
+- [x] Storefront fallback reads from `products_search` removed from `src/utils/productsSearch.ts`.
+- [x] Storefront fallback reads from `catalog_tire_variants` removed from `src/utils/productsSearch.ts`.
+- [x] CMS order EAN fallback reads from `products_search`, `catalog_tire_variants`, and `catalog_rim_variants` removed.
+- [x] CMS order EAN lookup now uses published `webshop_items`.
+- [x] Tire conflict back navigation now uses `/cms#catalog/tires`.
+
+## Kept Intentionally
+
+These are intentionally kept for compatibility, runtime safety, or later backend cleanup:
+
+- [x] Route/hash compatibility aliases:
+  - [x] `/cms/tires`
+  - [x] `/cms-tires`
+  - [x] `/cms/rims`
+  - [x] `/cms-rims`
+  - [x] `#catalog-tires`
+  - [x] `#catalog-rims`
+- [x] Current CMS page caches and bounded positive preloading for large tire/rim lists.
+- [x] Timeout-safe storefront fallbacks that read from the current published layer, `webshop_items`.
+- [x] Current selected/admin compatibility views that still have live dependencies.
+- [x] Legacy DB objects marked by `supabase/migrations/20260516012633_catalog_legacy_deprecation_comments.sql`.
+- [x] Deployed legacy/debug Edge Functions are kept until external/manual usage is ruled out.
+
+Do not drop these database objects yet:
+
+```txt
+supplier_products_raw
+products_search
+catalog_tire_variants
+catalog_rim_variants
+tires_variants
+rims_variants
+```
+
+They are cleanup candidates, but Phase 6 found live DB dependencies and Phase 5 found active deployed legacy/debug Edge Functions.
+
+## Do Not Reintroduce
+
+- [x] Do not use `supplier_products_raw` as the tire source of truth.
+- [x] Do not add storefront direct raw supplier reads.
+- [x] Do not add new storefront reads from `products_search`.
+- [x] Do not add new CMS order lookup reads from `products_search`, `catalog_tire_variants`, or `catalog_rim_variants`.
+- [x] Do not recreate duplicate Rims CMS page versions.
+- [x] Do not split Tires/Rims table ownership across duplicate table components.
+- [x] Do not add non-batched webshop publish paths for current Tires/Rims.
+- [x] Do not bypass `webshop_items`/public catalog RPCs for customer-facing catalog reads.
+- [x] Do not drop old backend objects until dependency reports show zero live references and one stable deployment cycle has passed.
+
 ## Current Snapshot After Folder/i18n Refactor
 
 Last local verification:

@@ -125,3 +125,5 @@ export function TiresImagesSection({
     </div>
   );
 }
+
+export default TiresImagesSection;

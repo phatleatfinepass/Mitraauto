@@ -6,6 +6,9 @@ import { RimsCmsPagination } from './RimsCmsPagination';
 import { getRimReadinessState, type RimReadinessState } from './rimReadiness';
 import type { RimRow } from './types';
 
+const TABLE_PAGE_ROW_COUNT = 25;
+const TABLE_COLUMN_COUNT = 11;
+
 interface RimsCmsTableSectionProps {
   cachedItemCount: number;
   currentPage: number;
@@ -76,15 +79,23 @@ export function RimsCmsTableSection({
   ];
 
   const renderSkeletonRows = () =>
-    Array.from({ length: 8 }).map((_, rowIndex) => (
-      <tr key={`skeleton-${rowIndex}`}>
-        {Array.from({ length: 11 }).map((__, cellIndex) => (
+    Array.from({ length: TABLE_PAGE_ROW_COUNT }).map((_, rowIndex) => (
+      <tr key={`skeleton-${rowIndex}`} className="h-14">
+        {Array.from({ length: TABLE_COLUMN_COUNT }).map((__, cellIndex) => (
           <td key={cellIndex} className="px-4 py-4">
             <Skeleton
               className={`h-4 ${skeletonLineClass} ${cellIndex === 8 ? 'w-7 rounded-full' : cellIndex === 2 ? 'w-28' : 'w-full'}`}
             />
           </td>
         ))}
+      </tr>
+    ));
+  const renderEmptyRows = () =>
+    Array.from({ length: Math.max(0, TABLE_PAGE_ROW_COUNT - rims.length) }).map((_, rowIndex) => (
+      <tr key={`empty-${rowIndex}`} className="h-14" aria-hidden="true">
+        <td colSpan={TABLE_COLUMN_COUNT} className="px-4 py-3">
+          {'\u00a0'}
+        </td>
       </tr>
     ));
 
@@ -154,78 +165,83 @@ export function RimsCmsTableSection({
               </tr>
             </thead>
             <tbody className={isDark ? 'divide-y divide-white/10' : 'divide-y divide-gray-100'}>
-              {loading ? renderSkeletonRows() : rims.map((rim) => {
-                const readiness = getRimReadinessState(rim);
+              {loading ? renderSkeletonRows() : (
+                <>
+                  {rims.map((rim) => {
+                    const readiness = getRimReadinessState(rim);
 
-                return (
-                  <tr key={rim.variant_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
-                    <td className={`truncate px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {rim.supplier_code_best || '-'}
-                    </td>
-                    <td className={`truncate px-4 py-3 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {rim.brand}
-                    </td>
-                    <td className={`truncate px-4 py-3 text-left text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {rim.model || '-'}
-                    </td>
-                    <td className={`truncate px-4 py-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {formatSize(rim)}
-                    </td>
-                    <td className={`truncate px-4 py-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {rim.bolt_pattern || '-'}
-                    </td>
-                    <td className={`truncate px-4 py-3 text-sm capitalize ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {rim.color || rim.finish || '-'}
-                    </td>
-                    <td className={`truncate px-4 py-3 font-mono text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                      {rim.ean || '-'}
-                    </td>
-                    <td className={`px-4 py-3 text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {rim.price_eur !== null && rim.price_eur !== undefined ? `€${Number(rim.price_eur).toFixed(2)}` : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={readinessIconClass(readinessClass(readiness, isDark))}
-                        title={t(READINESS_LABEL_KEYS[readiness])}
-                        aria-label={t(READINESS_LABEL_KEYS[readiness])}
-                      >
-                        {readiness === 'ready' ? (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 shrink-0" />
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => onToggleVisibility(rim)}
-                        className={`rounded p-1 transition-colors ${
-                          rim.cms_data?.is_hidden
-                            ? (isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600')
-                            : (isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700')
-                        }`}
-                      >
-                        {rim.cms_data?.is_hidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => onEdit(rim)}
-                        className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                          isDark
-                            ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        }`}
-                      >
-                        <Edit className="h-4 w-4" />
-                        {t('rimsCmsTable.edit')}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                    return (
+                      <tr key={rim.variant_id} className={`h-14 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+                        <td className={`truncate px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {rim.supplier_code_best || '-'}
+                        </td>
+                        <td className={`truncate px-4 py-3 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {rim.brand}
+                        </td>
+                        <td className={`truncate px-4 py-3 text-left text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {rim.model || '-'}
+                        </td>
+                        <td className={`truncate px-4 py-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {formatSize(rim)}
+                        </td>
+                        <td className={`truncate px-4 py-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {rim.bolt_pattern || '-'}
+                        </td>
+                        <td className={`truncate px-4 py-3 text-sm capitalize ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {rim.color || rim.finish || '-'}
+                        </td>
+                        <td className={`truncate px-4 py-3 font-mono text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                          {rim.ean || '-'}
+                        </td>
+                        <td className={`px-4 py-3 text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {rim.price_eur !== null && rim.price_eur !== undefined ? `€${Number(rim.price_eur).toFixed(2)}` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span
+                            className={readinessIconClass(readinessClass(readiness, isDark))}
+                            title={t(READINESS_LABEL_KEYS[readiness])}
+                            aria-label={t(READINESS_LABEL_KEYS[readiness])}
+                          >
+                            {readiness === 'ready' ? (
+                              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                            ) : (
+                              <AlertTriangle className="h-4 w-4 shrink-0" />
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => onToggleVisibility(rim)}
+                            className={`rounded p-1 transition-colors ${
+                              rim.cms_data?.is_hidden
+                                ? (isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600')
+                                : (isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700')
+                            }`}
+                          >
+                            {rim.cms_data?.is_hidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => onEdit(rim)}
+                            className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                              isDark
+                                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            }`}
+                          >
+                            <Edit className="h-4 w-4" />
+                            {t('rimsCmsTable.edit')}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {renderEmptyRows()}
+                </>
+              )}
             </tbody>
           </table>
         </div>

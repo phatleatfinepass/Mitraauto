@@ -298,18 +298,7 @@ export function useTiresCmsMutations({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const refreshAdminSnapshot = async () => {
-    const [adminRefresh, publicRefresh] = await Promise.all([
-      supabase.rpc('refresh_cms_tires_admin_mv'),
-      supabase.rpc('refresh_catalog_tires_public_mv'),
-    ]);
-
-    if (adminRefresh.error && adminRefresh.error.code !== '57014') {
-      console.warn('Refresh tires CMS snapshot error:', adminRefresh.error);
-    }
-
-    if (publicRefresh.error && publicRefresh.error.code !== '57014') {
-      console.warn('Refresh public tire catalog snapshot error:', publicRefresh.error);
-    }
+    // Legacy materialized views were retired; active tire CMS reads refresh through selected/webshop RPCs.
   };
 
   const handleSave = async () => {

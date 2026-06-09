@@ -45,6 +45,9 @@ function BookingServiceSelector({
 }: BookingServiceSelectorProps) {
   const categories = selectedLanguageServiceCategories(bookingLanguage);
   const selectedServices = categories.find((category) => category.id === selectedCategory)?.services || [];
+  const formatServicePrice = (price: number) => (
+    price > 0 ? `€${price.toFixed(2)}` : t('vehicleSpecificQuote')
+  );
 
   return (
     <div className="space-y-2 sm:col-span-2">
@@ -77,7 +80,7 @@ function BookingServiceSelector({
             {selectedServices.map((service) => (
               <SelectItem key={service.id} value={service.id}>
                 {service.name}
-                {'price' in service ? ` · €${service.price.toFixed(2)}` : ''}
+                {'price' in service ? ` · ${formatServicePrice(service.price)}` : ''}
               </SelectItem>
             ))}
           </SelectContent>

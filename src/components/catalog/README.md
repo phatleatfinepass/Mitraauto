@@ -84,7 +84,15 @@ EU tire label display component:
 
 ## Data Integration
 
-The catalog fetches data from Supabase view `products_search` with the following fields:
+The catalog fetches list data through public Supabase RPCs backed by the published catalog layer:
+
+- Tires: `catalog_list_tires_v1` and `catalog_count_tires_v1`
+- Rims: `catalog_list_rims_v1` and `catalog_count_rims_v1`
+- Published fallback: `webshop_items`
+
+Do not reintroduce storefront reads from raw supplier tables or the old `products_search` view.
+
+The active list/detail shape includes these fields:
 
 ### Common Fields
 - `id` - Product ID

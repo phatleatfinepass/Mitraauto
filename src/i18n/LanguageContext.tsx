@@ -44,6 +44,18 @@ function readPathLanguage(): Language | null {
     return 'en';
   }
 
+  if (
+    path === '/palvelut' ||
+    path.startsWith('/palvelut/') ||
+    path === '/yhteystiedot' ||
+    path === '/ukk' ||
+    path === '/meista' ||
+    path === '/helsinki' ||
+    path.startsWith('/helsinki/')
+  ) {
+    return 'fi';
+  }
+
   return null;
 }
 
@@ -97,8 +109,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
     applyPathLanguage();
     window.addEventListener('popstate', applyPathLanguage);
+    window.addEventListener('mitra:navigation', applyPathLanguage);
     return () => {
       window.removeEventListener('popstate', applyPathLanguage);
+      window.removeEventListener('mitra:navigation', applyPathLanguage);
     };
   }, []);
 

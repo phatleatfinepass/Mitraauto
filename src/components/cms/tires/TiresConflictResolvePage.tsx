@@ -359,7 +359,7 @@ export function TiresConflictResolvePage() {
         <div className="px-8 py-6">
           <button
             type="button"
-            onClick={() => navigateTo('/cms/tires')}
+            onClick={() => navigateTo('/cms#catalog/tires')}
             className={`mb-4 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
               isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
             }`}

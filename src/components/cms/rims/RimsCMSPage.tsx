@@ -51,7 +51,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const isDark = theme === 'dark';
-  const pageSize = 100;
+  const pageSize = 25;
 
   const list = useRimsCmsList(pageSize);
   const editor = useRimsCmsEditor();
