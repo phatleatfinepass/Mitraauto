@@ -406,9 +406,9 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   const loadPendingConflictCount = useCallback(async () => {
     try {
       const { count, error } = await supabase
-        .from('catalog_selected_tire_conflict_queue')
-        .select('selected_item_id', { count: 'exact', head: true })
-        .eq('review_status', 'pending');
+        .from('catalog_selected_tires_cms_admin_v1')
+        .select('variant_id', { count: 'exact', head: true })
+        .or('ean_conflict_open.eq.true,has_ean_multi_spec_conflict.eq.true,has_mandatory_conflict.eq.true');
       if (error) throw error;
       setPendingConflictCount(count ?? 0);
     } catch (error) {
@@ -1932,6 +1932,9 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
         catalogSyncProgress={catalogSyncProgress}
+        cachedItemCount={cachedItemCount}
+        totalCount={totalCount}
+        preloading={preloading}
         pendingConflictCount={pendingConflictCount}
         bulkMarkupAmount={bulkMarkupAmount}
         bulkMarkupPercent={bulkMarkupPercent}
@@ -1987,14 +1990,12 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
           endItem={endItem}
           error={error}
           filteredTires={filteredTires}
-          cachedItemCount={cachedItemCount}
           getEffectiveIdentity={getEffectiveIdentity}
           handleEdit={handleEdit}
           handleToggleVisibility={handleToggleVisibility}
           hasMissingSupplierPrice={hasMissingSupplierPrice}
           isDark={isDark}
           loading={loading}
-          preloading={preloading}
           mustHideFromStore={mustHideFromStore}
           onPageChange={setCurrentPage}
           startItem={startItem}

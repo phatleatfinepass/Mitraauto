@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { getSupabaseClient } from '../../../utils/supabase/client';
 import { formatDateForSupabase } from '../../../utils/date';
-import { buildScheduleTimeSlots } from '../../../utils/schedule';
+import { buildScheduleTimeSlots, generateScheduleSlots } from '../../../utils/schedule';
 
 interface BookingStep1Props {
   licensePlate: string;
@@ -23,6 +23,38 @@ interface BookingStep1Props {
   language: string;
   t: (key: string) => string;
   minimumDate?: Date;
+}
+
+function minutesSinceMidnight(date: Date) {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function isSameCalendarDate(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function startOfCalendarDate(date: Date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function hasFutureShopSlot(date: Date, now = new Date()) {
+  const slots = generateScheduleSlots(date);
+  if (slots.length === 0) return false;
+  if (!isSameCalendarDate(date, now)) return true;
+
+  const currentMinutes = minutesSinceMidnight(now);
+  return slots.some((slot) => timeToMinutes(slot) > currentMinutes);
 }
 
 export function BookingStep1({
@@ -45,7 +77,17 @@ export function BookingStep1({
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const firstSelectableDate = minimumDate && minimumDate > today ? minimumDate : today;
+  const firstSelectableDate = minimumDate && minimumDate > today ? startOfCalendarDate(minimumDate) : today;
+  const isDateDisabled = (candidate: Date) => (
+    startOfCalendarDate(candidate) < firstSelectableDate ||
+    !hasFutureShopSlot(candidate)
+  );
+
+  useEffect(() => {
+    if (date && isDateDisabled(date)) {
+      onDateChange(undefined);
+    }
+  }, [date, firstSelectableDate, onDateChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +103,7 @@ export function BookingStep1({
         const supabase = getSupabaseClient();
         const dateStr = formatDateForSupabase(date);
         const todayStr = formatDateForSupabase(new Date());
-        const currentHourStartMinutes = new Date().getHours() * 60;
+        const currentMinutes = minutesSinceMidnight(new Date());
 
         const [{ data: bookingsData, error: bookingsError }, { data: blockedData, error: blockedError }] = await Promise.all([
           supabase
@@ -85,14 +127,14 @@ export function BookingStep1({
         const slots = buildScheduleTimeSlots(date, bookingsData || [], blockedData || [], language).map((slot) => {
           const [hours, minutes] = slot.time.split(':').map(Number);
           const slotMinutes = hours * 60 + minutes;
-          const isPastHourForToday = dateStr === todayStr && slotMinutes < currentHourStartMinutes;
+          const isPastSlotForToday = dateStr === todayStr && slotMinutes <= currentMinutes;
 
           return {
             id: slot.time,
             time: slot.time,
             // Public booking should only respect admin blocks and same-day cutoff.
             // Existing bookings remain visible in CMS but do not close the slot.
-            available: !slot.isBlocked && !isPastHourForToday,
+            available: !slot.isBlocked && !isPastSlotForToday,
             unavailableReason: slot.isBlocked ? slot.blockReason : undefined,
           };
         });
@@ -203,7 +245,7 @@ export function BookingStep1({
               }}
               today={today}
               fromDate={firstSelectableDate}
-              disabled={{ before: firstSelectableDate }}
+              disabled={isDateDisabled}
               modifiers={{ sunday: { dayOfWeek: [0] } }}
               modifiersClassNames={{
                 sunday: 'text-muted-foreground opacity-60',

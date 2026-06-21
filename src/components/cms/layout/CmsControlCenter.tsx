@@ -353,9 +353,9 @@ async function fetchCatalogHealthSummary(): Promise<CatalogHealthSummary> {
 
 async function fetchCatalogConflictSummary(): Promise<CatalogConflictSummary> {
   const { count, error } = await supabase
-    .from('catalog_selected_tire_conflict_queue')
-    .select('*', { count: 'exact', head: true })
-    .eq('review_status', 'pending');
+    .from('catalog_selected_tires_cms_admin_v1')
+    .select('variant_id', { count: 'exact', head: true })
+    .or('ean_conflict_open.eq.true,has_ean_multi_spec_conflict.eq.true,has_mandatory_conflict.eq.true');
 
   if (error) throw error;
 
@@ -636,12 +636,13 @@ function CatalogHealthPanel({
                       <button
                         type="button"
                         onClick={product.type === 'tire' ? onReviewConflicts : onOpenCatalogItems}
-                        disabled={product.type === 'tire' && pendingConflictCount === 0}
-                        className="mt-3 min-h-9 w-full rounded-md border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        className="mt-3 min-h-9 w-full rounded-md border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
                       >
                         {product.type === 'tire' && pendingConflictCount > 0
                           ? t('cmsControl.catalogReviewConflicts', { count: formatCatalogNumber(pendingConflictCount, language) })
-                          : t('cmsControl.catalogNoPendingConflicts')}
+                          : product.type === 'tire'
+                            ? t('cmsControl.catalogOpenConflictHistory')
+                            : t('cmsControl.catalogNoPendingConflicts')}
                       </button>
                     </div>
                     <div className="rounded-lg border bg-background p-3">

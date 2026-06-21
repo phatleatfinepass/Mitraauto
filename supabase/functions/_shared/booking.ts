@@ -249,6 +249,23 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
+function emailButtonCell(href: string, label: string, variant: "primary" | "secondary") {
+  const isPrimary = variant === "primary";
+  const background = isPrimary ? "#FF6B35" : "#ffffff";
+  const color = isPrimary ? "#ffffff" : "#111827";
+  const border = isPrimary ? "1px solid #FF6B35" : "1px solid #d6dccf";
+
+  return [
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;display:inline-table;margin:0 10px 10px 0;">`,
+    `<tr>`,
+    `<td bgcolor="${background}" style="background-color:${background};border:${border};border-radius:10px;mso-padding-alt:12px 16px;">`,
+    `<a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 16px;border-radius:10px;color:${color};font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;background-color:${background};">${escapeHtml(label)}</a>`,
+    `</td>`,
+    `</tr>`,
+    `</table>`,
+  ].join("");
+}
+
 function normalizeLanguage(value?: string | null): SupportedLanguage {
   return value?.toLowerCase() === "en" ? "en" : "fi";
 }
@@ -341,8 +358,20 @@ function formatHumanTime(time: string) {
   return time.slice(0, 5);
 }
 
+function localizedBookingServiceName(serviceName: string | null | undefined, language: SupportedLanguage) {
+  const service = serviceName?.trim();
+  if (!service) return language === "fi" ? "Huolto" : "Service";
+
+  const normalized = service.toLowerCase();
+  if (normalized === "muu" || normalized === "other") {
+    return language === "fi" ? "Muu" : "Other";
+  }
+
+  return service;
+}
+
 function buildBookingTitle(booking: BookingRow) {
-  const service = booking.service_name?.trim() || "Service";
+  const service = localizedBookingServiceName(booking.service_name, normalizeLanguage(booking.booking_language));
   const plate = booking.license_plate?.trim();
   return plate ? `${garageName()}: ${service} (${plate})` : `${garageName()}: ${service}`;
 }
@@ -357,7 +386,7 @@ export function bookingResponse(booking: BookingRow) {
     bookingTime: booking.booking_time?.slice(0, 5),
     bookingEndTime: addMinutesToTime(booking.booking_time, SLOT_MINUTES),
     licensePlate: booking.license_plate,
-    serviceName: booking.service_name ?? "",
+    serviceName: localizedBookingServiceName(booking.service_name, normalizeLanguage(booking.booking_language)),
     customerName: booking.customer_name ?? "",
     customerPhone: booking.customer_phone ?? "",
     customerEmail: booking.customer_email ?? "",
@@ -510,7 +539,7 @@ function buildTextBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
   const language = normalizeLanguage(booking.booking_language);
   const dateLabel = formatHumanDate(booking.booking_date, language);
   const timeLabel = formatHumanTime(booking.booking_time);
-  const subjectService = booking.service_name?.trim() || (language === "fi" ? "Huolto" : "Service");
+  const subjectService = localizedBookingServiceName(booking.service_name, language);
   const newBookingUrl = `${baseSiteUrl()}${language === "en" ? "/en" : ""}/?booking=1`;
   const completionPending = getMissingCustomerFields(booking).length > 0;
   const actionLines = manageUrl
@@ -523,7 +552,7 @@ function buildTextBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
     const token = new URL(manageUrl).searchParams.get("token") ?? "";
     if (token) {
       actionLines.push(
-        `${language === "fi" ? "Nayta varaus" : "View booking"}: ${buildManageUrl(token, language, "view")}`,
+        `${language === "fi" ? "Näytä varaus" : "View booking"}: ${buildManageUrl(token, language, "view")}`,
         `${language === "fi" ? "Muokkaa varausta" : "Edit booking"}: ${buildManageUrl(token, language, completionPending ? "complete" : "edit")}`,
         `${language === "fi" ? "Peruuta varaus" : "Cancel booking"}: ${buildManageUrl(token, language, "cancel")}`,
       );
@@ -557,30 +586,37 @@ function buildHtmlBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
   const language = normalizeLanguage(booking.booking_language);
   const dateLabel = escapeHtml(formatHumanDate(booking.booking_date, language));
   const timeLabel = escapeHtml(formatHumanTime(booking.booking_time));
-  const serviceLabel = escapeHtml(booking.service_name?.trim() || (language === "fi" ? "Huolto" : "Service"));
+  const serviceLabel = escapeHtml(localizedBookingServiceName(booking.service_name, language));
   const customerLabel = escapeHtml(booking.customer_name?.trim() || "");
-  const noteLabel = booking.notes?.trim() ? `<p><strong>${language === "fi" ? "Lisatiedot" : "Notes"}:</strong> ${escapeHtml(booking.notes)}</p>` : "";
+  const noteLabel = booking.notes?.trim()
+    ? `<tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(language === "fi" ? "Lisätiedot" : "Notes")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:600;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(booking.notes)}</td></tr>`
+    : "";
   const cancellationLabel = booking.cancellation_note?.trim()
-    ? `<p><strong>${language === "fi" ? "Peruutuksen syy" : "Cancellation reason"}:</strong> ${escapeHtml(booking.cancellation_note)}</p>`
+    ? `<tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(language === "fi" ? "Peruutuksen syy" : "Cancellation reason")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:600;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(booking.cancellation_note)}</td></tr>`
     : "";
   const completionPending = getMissingCustomerFields(booking).length > 0;
+  const statusColor = type === "cancellation" ? "#b91c1c" : type === "update" || type === "message" ? "#c94f1e" : "#047857";
+  const statusBg = type === "cancellation" ? "#fee2e2" : type === "update" ? "#fff3ed" : type === "message" ? "#ffffff" : "#dcfce7";
+  const statusBorder = type === "message" || type === "update" ? "border:1px solid #FF6B35;" : "";
+  const statusLabel = type === "cancellation"
+    ? (language === "fi" ? "Peruttu" : "Cancelled")
+    : type === "update"
+      ? (language === "fi" ? "Päivitetty" : "Updated")
+      : type === "message"
+        ? (language === "fi" ? "Viesti" : "Message")
+        : (language === "fi" ? "Vahvistettu" : "Confirmed");
   let manageCta = "";
   if (type === "cancellation") {
     const newBookingUrl = `${baseSiteUrl()}${language === "en" ? "/en" : ""}/?booking=1`;
-    manageCta = `<div style="margin-top:24px;"><a href="${escapeHtml(newBookingUrl)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;">${escapeHtml(language === "fi" ? "Luo uusi varaus" : "Create new booking")}</a></div>`;
+    manageCta = `<div style="margin:24px 0 0;">${emailButtonCell(newBookingUrl, language === "fi" ? "Luo uusi varaus" : "Create new booking", "primary")}</div>`;
   } else if (manageUrl) {
     const token = new URL(manageUrl).searchParams.get("token") ?? "";
     const links = token
       ? [
           {
-            href: buildManageUrl(token, language, "view"),
-            label: language === "fi" ? "Hallitse varausta" : "Manage booking",
-            primary: true,
-          },
-          {
             href: buildManageUrl(token, language, completionPending ? "complete" : "edit"),
             label: completionPending ? (language === "fi" ? "Täydennä tiedot" : "Complete details") : (language === "fi" ? "Muokkaa varausta" : "Edit booking"),
-            primary: false,
+            primary: true,
           },
           {
             href: buildManageUrl(token, language, "cancel"),
@@ -596,10 +632,10 @@ function buildHtmlBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
           },
         ];
 
-    manageCta = `<div style="margin-top:24px;display:flex;flex-wrap:wrap;gap:12px;">${
+    manageCta = `<div style="margin:24px 0 0;">${
       links.map((link) =>
-        `<a href="${escapeHtml(link.href)}" style="${link.primary ? "background:#111827;color:#ffffff;" : "background:#ffffff;color:#111827;border:1px solid #d1d5db;"}padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;">${escapeHtml(link.label)}</a>`
-      ).join("")
+        emailButtonCell(link.href, link.label, link.primary ? "primary" : "secondary")
+      ).join("\n")
     }</div>`;
   }
 
@@ -607,7 +643,7 @@ function buildHtmlBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
   if (type === "confirmation") {
     intro = language === "fi" ? "Varauksesi on vahvistettu." : "Your booking is confirmed.";
   } else if (type === "update") {
-    intro = language === "fi" ? "Varauksesi tiedot on paivitetty." : "Your booking details have been updated.";
+    intro = language === "fi" ? "Varauksesi tiedot on päivitetty." : "Your booking details have been updated.";
   } else if (type === "cancellation") {
     intro = language === "fi" ? "Varauksesi on peruttu." : "Your booking has been cancelled.";
   } else {
@@ -615,14 +651,15 @@ function buildHtmlBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
   }
 
   return [
-    `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:620px;margin:0 auto;padding:24px;">`,
-    `<h1 style="font-size:24px;margin:0 0 16px;">${escapeHtml(garageName())}</h1>`,
-    `<p>${customerLabel ? `${language === "fi" ? "Hei" : "Hi"} ${customerLabel}, ` : ""}${intro}</p>`,
-    type === "message" ? "" : `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:20px 0;"><p><strong>${language === "fi" ? "Palvelu" : "Service"}:</strong> ${serviceLabel}</p><p><strong>${language === "fi" ? "Ajankohta" : "When"}:</strong> ${dateLabel} ${language === "fi" ? "klo" : "at"} ${timeLabel}</p><p><strong>${language === "fi" ? "Ajoneuvo" : "Vehicle"}:</strong> ${escapeHtml(booking.license_plate)}</p></div>`,
-    noteLabel,
-    cancellationLabel,
+    `<div style="margin:0;padding:28px;font-family:Arial,sans-serif;color:#111827;line-height:1.55;">`,
+    `<div style="max-width:640px;margin:0 auto;padding:0;">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 22px;"><tr><td style="font-size:22px;font-weight:800;color:#111827;">${escapeHtml(garageName())}</td><td align="right"><span style="display:inline-block;border-radius:999px;background-color:${statusBg};color:${statusColor};${statusBorder}font-size:12px;font-weight:800;padding:6px 10px;text-transform:uppercase;letter-spacing:.02em;">${escapeHtml(statusLabel)}</span></td></tr></table>`,
+    customerLabel ? `<p style="margin:0 0 6px;font-size:15px;color:#374151;">${escapeHtml(language === "fi" ? "Hei" : "Hi")} ${customerLabel},</p>` : "",
+    `<p style="margin:0 0 22px;font-size:18px;font-weight:700;color:#111827;">${intro}</p>`,
+    type === "message" ? "" : `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fffdf8" style="border:1px solid #dce2d4;border-radius:14px;background-color:#fffdf8;border-collapse:separate;margin:20px 0;"><tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:6px 18px;border-radius:14px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background-color:#fffdf8;"><tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;">${escapeHtml(language === "fi" ? "Palvelu" : "Service")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;">${serviceLabel}</td></tr><tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(language === "fi" ? "Ajankohta" : "When")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;border-top:1px solid #eef1ea;">${dateLabel} ${escapeHtml(language === "fi" ? "klo" : "at")} ${timeLabel}</td></tr><tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(language === "fi" ? "Ajoneuvo" : "Vehicle")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(booking.license_plate)}</td></tr>${noteLabel}${cancellationLabel}</table></td></tr></table>`,
     manageCta,
-    `<p style="margin-top:24px;font-size:14px;color:#6b7280;">${escapeHtml(garageAddress())}<br />${escapeHtml(WORKSHOP_PHONE)}<br />${escapeHtml(replyToEmail())}</p>`,
+    `<p style="margin:24px 0 0;padding-top:18px;border-top:1px solid #eef1ea;font-size:13px;color:#6b7280;">${escapeHtml(garageAddress())}<br />${escapeHtml(WORKSHOP_PHONE)}<br />${escapeHtml(replyToEmail())}</p>`,
+    `</div>`,
     `</div>`,
   ].join("");
 }
@@ -630,9 +667,9 @@ function buildHtmlBody(type: BookingMailType, booking: BookingRow, manageUrl?: s
 function buildSubject(type: BookingMailType, booking: BookingRow, explicitSubject?: string) {
   if (explicitSubject?.trim()) return explicitSubject.trim();
   const language = normalizeLanguage(booking.booking_language);
-  const service = booking.service_name?.trim() || (language === "fi" ? "huolto" : "service");
+  const service = localizedBookingServiceName(booking.service_name, language);
   if (type === "confirmation") return language === "fi" ? `Varausvahvistus: ${service}` : `Booking confirmation: ${service}`;
-  if (type === "update") return language === "fi" ? `Varauksesi paivitetty: ${service}` : `Booking updated: ${service}`;
+  if (type === "update") return language === "fi" ? `Varauksesi päivitetty: ${service}` : `Booking updated: ${service}`;
   if (type === "cancellation") return language === "fi" ? `Varauksesi peruttu: ${service}` : `Booking cancelled: ${service}`;
   return language === "fi" ? "Viesti varaukseesi liittyen" : "Message about your booking";
 }
@@ -641,7 +678,7 @@ function buildIcsContent(booking: BookingRow, method: "REQUEST" | "CANCEL") {
   const start = toLocalIcsDateTime(booking.booking_date, booking.booking_time);
   const end = toLocalIcsDateTime(booking.booking_date, addMinutesToTime(booking.booking_time, SLOT_MINUTES));
   const description = [
-    `${booking.service_name ?? "Service"}`,
+    localizedBookingServiceName(booking.service_name, normalizeLanguage(booking.booking_language)),
     `${booking.license_plate}`,
     booking.notes ?? "",
     booking.customer_name ? `Customer: ${booking.customer_name}` : "",

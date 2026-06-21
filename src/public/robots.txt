@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /cms
+Disallow: /cms/
+Disallow: /pwa
+Disallow: /pwa/
+Disallow: /account
+Disallow: /customer
+Disallow: /booking/manage
+Disallow: /checkout
+
+Sitemap: https://www.mitra-auto.fi/sitemap.xml

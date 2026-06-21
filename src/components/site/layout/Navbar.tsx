@@ -20,7 +20,7 @@ const INTERNAL_NAV_PATHS = new Set([
   '/tire-hotel',
   '/catalog',
   '/about',
-  '/admin/schedule',
+  '/account',
   '/cms',
 ]);
 
@@ -154,13 +154,16 @@ export function Navbar({
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
                     <a
+                      href="/account"
+                      onClick={(event) => handleLinkClick(event, '/account')}
+                    >
+                      {t('nav.account')}
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a
                       href="/cms"
-                      onClick={(e) => {
-                        if (onNavigate) {
-                          e.preventDefault();
-                          onNavigate('/cms');
-                        }
-                      }}
+                      onClick={(event) => handleLinkClick(event, '/cms')}
                     >
                       {t('nav.dashboard')}
                     </a>
@@ -255,14 +258,14 @@ export function Navbar({
                         {t('nav.dashboard')}
                       </a>
                       <a
-                        href="/orders"
+                        href="/account"
                         className="px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
                         onClick={(event) => {
-                          handleLinkClick(event, '/orders');
+                          handleLinkClick(event, '/account');
                           setMobileMenuOpen(false);
                         }}
                       >
-                        {t('nav.orders')}
+                        {t('nav.account')}
                       </a>
                       <Button variant="outline" onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="mt-2">
                         {t('nav.signout')}

@@ -12,14 +12,12 @@ interface TiresTableSectionProps {
   endItem: number;
   error: string | null;
   filteredTires: TireRow[];
-  cachedItemCount: number;
   getEffectiveIdentity: (tire: TireRow | null) => { brand: string; model: string; size_string: string };
   handleEdit: (tire: TireRow) => void;
   handleToggleVisibility: (tire: TireRow) => void;
   hasMissingSupplierPrice: (tire: TireRow | null) => boolean;
   isDark: boolean;
   loading: boolean;
-  preloading: boolean;
   mustHideFromStore: (tire: TireRow | null) => boolean;
   onPageChange: (page: number) => void;
   startItem: number;
@@ -32,14 +30,12 @@ export function TiresCmsTableSection({
   endItem,
   error,
   filteredTires,
-  cachedItemCount,
   getEffectiveIdentity,
   handleEdit,
   handleToggleVisibility,
   hasMissingSupplierPrice,
   isDark,
   loading,
-  preloading,
   mustHideFromStore,
   onPageChange,
   startItem,
@@ -99,7 +95,6 @@ export function TiresCmsTableSection({
     }
   };
   const skeletonLineClass = isDark ? 'bg-white/10' : 'bg-gray-200';
-  const indexingPercent = totalCount > 0 ? Math.min(100, Math.round((cachedItemCount / totalCount) * 100)) : 0;
   const readinessIconClass = (className: string) => `inline-flex h-7 w-7 items-center justify-center rounded-full ${className}`;
 
   const renderSkeletonRows = () =>
@@ -133,31 +128,11 @@ export function TiresCmsTableSection({
 
   return (
     <>
-      <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(160px,1fr)_minmax(220px,360px)_minmax(220px,1fr)] lg:items-center">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
           {t('tiresCmsTable.atLeastItems', { count: totalCount })}
         </p>
-        <div className="min-h-8">
-          {preloading ? (
-            <div className={`rounded-full border px-3 py-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="mb-1 flex items-center justify-between gap-3">
-                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {indexingPercent}%
-                </span>
-                <span className={`truncate text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {t('tiresCmsTable.preloading', { cached: cachedItemCount, total: totalCount })}
-                </span>
-              </div>
-              <div className={`h-1.5 overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
-                <div
-                  className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                  style={{ width: `${indexingPercent}%` }}
-                />
-              </div>
-            </div>
-          ) : null}
-        </div>
-        <p className={`text-sm lg:text-right ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
           {t('tiresCmsTable.showingPage', { start: startItem, end: endItem, page: currentPage })}
         </p>
       </div>

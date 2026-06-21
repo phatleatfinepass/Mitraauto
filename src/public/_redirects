@@ -1,2 +1,6 @@
 /cms / 200
 /cms/* / 200
+
+# Public single-page app fallback. Existing static assets still win before this
+# rewrite on hosts that support _redirects.
+/* /index.html 200

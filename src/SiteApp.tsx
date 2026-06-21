@@ -22,12 +22,7 @@ import { ProductDetailPage, type Product as ProductDetail, type TireProduct as D
 import { mapProductSearchRow, type CatalogProduct } from './components/catalog/CatalogPage';
 import { CmsGuard } from './components/cms/core/CmsGuard';
 import { CmsControlCenter, type CmsTab } from './components/cms/layout/CmsControlCenter';
-import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
-import { RescueCMSPage } from './components/cms/rescue/RescueCMSPage';
 import { TiresConflictResolvePage } from './components/cms/tires/TiresConflictResolvePage';
-import { OrdersCMSPage } from './components/cms/orders/OrdersCMSPage';
-import { InvoicesCMSPage } from './components/cms/invoices/InvoicesCMSPage';
-import { AccountCustomerCMSPage } from './components/cms/account-customer/AccountCustomerCMSPage';
 import { TireStorageCMSPage } from './components/cms/tire-storage/TireStorageCMSPage';
 // Site pages
 import { ContactPage } from './components/site/pages/ContactPage';
@@ -151,6 +146,60 @@ function normalizeAppPath(path: string): string {
   }
 
   return path;
+}
+
+function parseAppRoute(path: string): { pathname: string; hash: string } {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mitra-auto.local';
+
+  try {
+    const url = new URL(path, origin);
+    return {
+      pathname: normalizeAppPath(url.pathname),
+      hash: url.hash,
+    };
+  } catch {
+    const [pathname = '/', hash = ''] = path.split('#');
+    return {
+      pathname: normalizeAppPath(pathname),
+      hash: hash ? `#${hash}` : '',
+    };
+  }
+}
+
+function getCanonicalCmsRoute(pathname: string): string | null {
+  if (pathname === '/dashboard') {
+    return '/cms';
+  }
+
+  if (pathname === '/admin/schedule') {
+    return '/cms#schedule';
+  }
+
+  if (pathname === '/cms/rescue' || pathname === '/cms/rescue-board') {
+    return '/cms#rescue';
+  }
+
+  if (pathname === '/cms/tires' || pathname === '/cms-tires') {
+    return '/cms#catalog/tires';
+  }
+
+  if (pathname === '/cms/rims' || pathname === '/cms-rims') {
+    return '/cms#catalog/rims';
+  }
+
+  if (pathname === '/cms/orders' || pathname === '/cms-orders') {
+    return '/cms#orders';
+  }
+
+  if (pathname === '/cms/invoices' || pathname === '/cms-invoices') {
+    return '/cms#invoices';
+  }
+
+  if (pathname === '/cms/account-customer' || pathname === '/cms/customers' || pathname === '/cms/accounts') {
+    return '/cms#account-customer';
+  }
+
+  return null;
 }
 
 function parseCatalogDetailPath(path: string): { productType: 'tire' | 'rim'; identifier: string } | null {
@@ -353,7 +402,7 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tire-conflicts' | 'cms-orders' | 'cms-invoices' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms-beta' | 'cms-tire-conflicts' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [selectedServiceDetail, setSelectedServiceDetail] = useState<ResolvedServiceDetail>({ kind: 'bespoke', pageId: 'car-service', language: 'en' });
@@ -527,12 +576,15 @@ function HomePage() {
   
   const updatePageFromPath = useCallback(
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
-      const normalizedPath = normalizeAppPath(path);
+      const parsedRoute = parseAppRoute(path);
+      const normalizedPath = parsedRoute.pathname;
+      const effectiveHash = parsedRoute.hash || (typeof window !== 'undefined' ? window.location.hash : '');
       const serviceDetail = resolveServiceDetailByPath(normalizedPath);
       const nextCmsTab =
-        normalizedPath === '/cms' || normalizedPath === '/cms/rescue' || normalizedPath === '/cms/password-setup'
-          ? resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined)
+        normalizedPath === '/cms' || normalizedPath === '/cms/password-setup'
+          ? resolveCmsTabFromHash(effectiveHash)
           : undefined;
+      const canonicalCmsRoute = getCanonicalCmsRoute(normalizedPath);
 
       if (serviceDetail) {
         transitionNavigationState('service-detail', null, undefined, serviceDetail);
@@ -592,13 +644,11 @@ function HomePage() {
       }
       
       // Admin/CMS/Protected routes
-      else if (normalizedPath === '/dashboard') {
+      else if (canonicalCmsRoute) {
         if (typeof window !== 'undefined') {
-          window.history.replaceState(window.history.state, '', '/cms');
+          window.history.replaceState(window.history.state, '', canonicalCmsRoute);
         }
-        transitionNavigationState('cms-beta', null, nextCmsTab ?? 'rescue');
-      } else if (normalizedPath === '/admin/schedule') {
-        transitionNavigationState('admin-schedule');
+        transitionNavigationState('cms-beta', null, resolveCmsTabFromHash(parseAppRoute(canonicalCmsRoute).hash));
       } else if (
         normalizedPath === '/pwa/cms' ||
         normalizedPath === '/pwa/cms/rescue' ||
@@ -609,43 +659,15 @@ function HomePage() {
         transitionNavigationState('pwa-cms');
       } else if (normalizedPath === '/pwa' || normalizedPath.startsWith('/pwa/')) {
         transitionNavigationState('pwa-not-found');
-      } else if (normalizedPath === '/cms' || normalizedPath === '/cms/rescue' || normalizedPath === '/cms/password-setup') {
+      } else if (normalizedPath === '/cms' || normalizedPath === '/cms/password-setup') {
         transitionNavigationState('cms-beta', null, nextCmsTab);
-      } else if (normalizedPath === '/cms/rescue-board') {
-        transitionNavigationState('cms-rescue');
-      } else if (normalizedPath === '/cms/tires' || normalizedPath === '/cms-tires') {
-        if (typeof window !== 'undefined') {
-          window.history.replaceState(window.history.state, '', '/cms#catalog/tires');
-        }
-        transitionNavigationState('cms-beta', null, 'catalog');
       } else if (normalizedPath === '/cms/tires/conflicts') {
         transitionNavigationState('cms-tire-conflicts');
-      } else if (normalizedPath === '/cms/rims' || normalizedPath === '/cms-rims') {
-        if (typeof window !== 'undefined') {
-          window.history.replaceState(window.history.state, '', '/cms#catalog/rims');
-        }
-        transitionNavigationState('cms-beta', null, 'catalog');
-      } else if (
-        normalizedPath === '/cms/orders' ||
-        normalizedPath === '/cms-orders'
-      ) {
-        transitionNavigationState('cms-orders');
-      } else if (
-        normalizedPath === '/cms/invoices' ||
-        normalizedPath === '/cms-invoices'
-      ) {
-        transitionNavigationState('cms-invoices');
       } else if (
         normalizedPath === '/cms/tire-storage' ||
         normalizedPath === '/cms/tire-storage-preview'
       ) {
         transitionNavigationState('cms-tire-storage');
-      } else if (
-        normalizedPath === '/cms/account-customer' ||
-        normalizedPath === '/cms/customers' ||
-        normalizedPath === '/cms/accounts'
-      ) {
-        transitionNavigationState('cms-beta', null, 'account-customer');
       } 
       
       // Legal routes
@@ -690,9 +712,9 @@ function HomePage() {
       } else if (options?.state) {
         window.history.replaceState(historyState, '', path);
       }
-      
-      updatePageFromPath(path, historyState);
+
       window.dispatchEvent(new Event('mitra:navigation'));
+      updatePageFromPath(path, historyState);
       // Scroll to top when navigating to new page (unless skipScroll is true)
       if (!options?.skipScroll) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -756,7 +778,7 @@ function HomePage() {
 
   useEffect(() => {
     const handleNavigation = (event?: PopStateEvent) => {
-      const path = window.location.pathname;
+      const path = `${window.location.pathname}${window.location.search}${window.location.hash}`;
       const state = (event?.state as { selectedProduct?: ProductDetail | null }) ?? window.history.state;
       updatePageFromPath(path, state);
     };
@@ -814,21 +836,17 @@ function HomePage() {
     
     if (isAdmin) {
       const currentPath = normalizeAppPath(window.location.pathname);
+      const currentRoute = `${currentPath}${window.location.search}${window.location.hash}`;
       const targetPath = requestedProtectedPathRef.current ?? (
-        currentPath === '/cms' ||
-        currentPath === '/cms/password-setup' ||
-        currentPath === '/cms/orders' ||
-        currentPath === '/cms-orders' ||
-        currentPath === '/cms/invoices' ||
-        currentPath === '/cms-invoices' ||
-        currentPath === '/admin/schedule'
-          ? currentPath
+        currentPath.startsWith('/cms') || currentPath.startsWith('/admin') || currentPath.startsWith('/pwa')
+          ? currentRoute
           : '/cms'
       );
 
       requestedProtectedPathRef.current = null;
-      window.history.replaceState({}, '', targetPath);
-      updatePageFromPath(targetPath);
+      const canonicalTargetPath = getCanonicalCmsRoute(parseAppRoute(targetPath).pathname) ?? targetPath;
+      window.history.replaceState({}, '', canonicalTargetPath);
+      updatePageFromPath(canonicalTargetPath);
     }
   };
 
@@ -855,7 +873,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tire-conflicts', 'cms-orders', 'cms-invoices', 'cms-tire-storage', 'cms-beta'];
+      const cmsPages = ['cms-tire-conflicts', 'cms-tire-storage', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         startTransition(() => {
           setCurrentPage('home');
@@ -874,7 +892,7 @@ function HomePage() {
   const handleLoginNeeded = () => {
     const currentPath = normalizeAppPath(window.location.pathname);
     if (currentPath.startsWith('/cms') || currentPath.startsWith('/admin') || currentPath.startsWith('/pwa')) {
-      requestedProtectedPathRef.current = currentPath;
+      requestedProtectedPathRef.current = `${currentPath}${window.location.search}${window.location.hash}`;
     }
     setAuthView('login');
     setAuthModalOpen(true);
@@ -1084,6 +1102,7 @@ function HomePage() {
           <ServiceDetailPage
             pageId={selectedServiceDetail.kind === 'bespoke' ? selectedServiceDetail.pageId : null}
             serviceId={selectedServiceDetail.kind === 'generated' ? selectedServiceDetail.serviceId : null}
+            routeLanguage={selectedServiceDetail.language}
             onBookingClick={(serviceId) => {
               setPreSelectedService(serviceId ?? '');
               setBookingModalOpen(true);
@@ -1174,25 +1193,9 @@ function HomePage() {
             onLoginNeeded={handleLogin}
             onNavigateHome={() => navigate('/')}
           />
-        ) : currentPage === 'admin-schedule' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="schedule">
-            <AdminSchedulePage />
-          </CmsGuard>
-        ) : currentPage === 'cms-rescue' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="rescue">
-            <RescueCMSPage />
-          </CmsGuard>
         ) : currentPage === 'cms-tire-conflicts' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
             <TiresConflictResolvePage />
-          </CmsGuard>
-        ) : currentPage === 'cms-orders' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="orders">
-            <OrdersCMSPage />
-          </CmsGuard>
-        ) : currentPage === 'cms-invoices' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="invoices">
-            <InvoicesCMSPage documentScope="receipt" title="Receipt" />
           </CmsGuard>
         ) : currentPage === 'cms-tire-storage' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="tire_storage">

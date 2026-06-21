@@ -5,7 +5,12 @@ import { Button } from '../../ui/button';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Badge } from '../../ui/badge';
-import { getLocalizedServiceCategories, type SupportedBookingLanguage } from '../../../utils/serviceCatalog';
+import {
+  getLocalizedServiceCategories,
+  OTHER_SERVICE_CATEGORY_ID,
+  OTHER_SERVICE_ID,
+  type SupportedBookingLanguage,
+} from '../../../utils/serviceCatalog';
 
 interface BookingStep2Props {
   licensePlate: string;
@@ -94,6 +99,9 @@ export function BookingStep2({
   const handleRemoveService = (serviceId: string) => {
     if (!onServicesChange) return;
     onServicesChange(selectedServiceIds.filter(id => id !== serviceId));
+    if (serviceId === OTHER_SERVICE_ID) {
+      setSelectedCategory('');
+    }
     setError('');
   };
   
@@ -109,6 +117,8 @@ export function BookingStep2({
     const category = serviceCategories.find(c => c.id === selectedCategory);
     return category?.services || [];
   };
+
+  const isOtherCategorySelected = selectedCategory === OTHER_SERVICE_CATEGORY_ID;
 
   const formatServicePrice = (price: number) => {
     return price > 0 ? `€${price.toFixed(2)}` : t('service.vehicleSpecificQuote');
@@ -138,6 +148,11 @@ export function BookingStep2({
                     onValueChange={(value) => {
                       setSelectedCategory(value);
                       setCurrentServiceId('');
+                      if (value === OTHER_SERVICE_CATEGORY_ID) {
+                        onServicesChange?.([OTHER_SERVICE_ID]);
+                      } else if (selectedServiceIds.includes(OTHER_SERVICE_ID)) {
+                        onServicesChange?.([]);
+                      }
                       setError('');
                     }}
                   >
@@ -154,41 +169,54 @@ export function BookingStep2({
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t('booking.step2.selectService')}
-                  </label>
-                  <Select
-                    value={currentServiceId || undefined}
-                    onValueChange={(value) => {
-                      setCurrentServiceId(value);
-                      setError('');
-                    }}
-                    disabled={!selectedCategory}
-                  >
-                    <SelectTrigger aria-label={t('booking.step2.selectService')} disabled={!selectedCategory}>
-                      <SelectValue placeholder={t('booking.step2.chooseService')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getCategoryServices().map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name} · {formatServicePrice(service.price)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isOtherCategorySelected ? (
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      {t('booking.step2.selectService')}
+                    </label>
+                    <div className="flex h-10 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground">
+                      {t('booking.step2.otherNoServiceNeeded')}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        {t('booking.step2.selectService')}
+                      </label>
+                      <Select
+                        value={currentServiceId || undefined}
+                        onValueChange={(value) => {
+                          setCurrentServiceId(value);
+                          setError('');
+                        }}
+                        disabled={!selectedCategory}
+                      >
+                        <SelectTrigger aria-label={t('booking.step2.selectService')} disabled={!selectedCategory}>
+                          <SelectValue placeholder={t('booking.step2.chooseService')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getCategoryServices().map((service) => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.name} · {formatServicePrice(service.price)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <Button
-                  type="button"
-                  onClick={handleAddService}
-                  disabled={!currentServiceId}
-                  variant="secondary"
-                  className="mt-6 sm:mt-auto sm:self-end"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('booking.step2.addService')}
-                </Button>
+                    <Button
+                      type="button"
+                      onClick={handleAddService}
+                      disabled={!currentServiceId}
+                      variant="secondary"
+                      className="mt-6 sm:mt-auto sm:self-end"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {t('booking.step2.addService')}
+                    </Button>
+                  </>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -205,7 +233,9 @@ export function BookingStep2({
                           className="flex items-center gap-2 py-1 pr-2"
                         >
                           <span className="text-xs font-medium">{service.name}</span>
-                          <span className="text-[10px] text-muted-foreground">{formatServicePrice(service.price)}</span>
+                          {service.id !== OTHER_SERVICE_ID && (
+                            <span className="text-[10px] text-muted-foreground">{formatServicePrice(service.price)}</span>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleRemoveService(serviceId)}

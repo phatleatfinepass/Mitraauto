@@ -39,6 +39,42 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
+function emailButtonBlock(href: string, label: string, variant: "primary" | "secondary") {
+  const isPrimary = variant === "primary";
+  const background = isPrimary ? "#FF6B35" : "#ffffff";
+  const color = isPrimary ? "#ffffff" : "#111827";
+  const border = isPrimary ? "1px solid #FF6B35" : "1px solid #d6dccf";
+
+  return [
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;margin:0 0 10px;">`,
+    `<tr>`,
+    `<td bgcolor="${background}" style="background-color:${background};border:${border};border-radius:10px;mso-padding-alt:12px 16px;">`,
+    `<a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 16px;border-radius:10px;color:${color};font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;background-color:${background};">${escapeHtml(label)}</a>`,
+    `</td>`,
+    `</tr>`,
+    `</table>`,
+  ].join("");
+}
+
+function emailButtonCell(href: string, label: string, variant: "primary" | "secondary") {
+  const isPrimary = variant === "primary";
+  const background = isPrimary ? "#FF6B35" : "#ffffff";
+  const color = isPrimary ? "#ffffff" : "#111827";
+  const border = isPrimary ? "1px solid #FF6B35" : "1px solid #d6dccf";
+
+  return [
+    `<td style="padding:0 10px 10px 0;">`,
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">`,
+    `<tr>`,
+    `<td bgcolor="${background}" style="background-color:${background};border:${border};border-radius:10px;mso-padding-alt:12px 16px;">`,
+    `<a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 16px;border-radius:10px;color:${color};font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;background-color:${background};white-space:nowrap;">${escapeHtml(label)}</a>`,
+    `</td>`,
+    `</tr>`,
+    `</table>`,
+    `</td>`,
+  ].join("");
+}
+
 function randomToken(bytes = 24) {
   const buffer = crypto.getRandomValues(new Uint8Array(bytes));
   return Array.from(buffer).map((item) => item.toString(16).padStart(2, "0")).join("");
@@ -406,14 +442,14 @@ function buildItemsHtml(order: OrderRow, language: SupportedLanguage, cidByIndex
       const size = itemSize(item);
 
       return [
-        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:14px;margin:12px 0;background:#ffffff;border-collapse:separate;table-layout:fixed;">`,
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fffdf8" style="border:1px solid #e5e7eb;border-radius:14px;margin:12px 0;background-color:#fffdf8;border-collapse:separate;table-layout:fixed;">`,
         `<tr>`,
-        `<td width="88" valign="top" style="padding:12px;">`,
+        `<td width="88" valign="top" bgcolor="#fffdf8" style="background-color:#fffdf8;padding:12px;border-radius:14px 0 0 14px;">`,
         imageCid
-          ? `<img src="cid:${escapeHtml(imageCid)}" alt="${escapeHtml(title)}" width="72" height="72" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:10px;background:#f8fafc;border:1px solid #edf2f7;" />`
-          : `<div style="width:72px;height:72px;border-radius:10px;background:#f8fafc;border:1px solid #edf2f7;"></div>`,
+          ? `<img src="cid:${escapeHtml(imageCid)}" alt="${escapeHtml(title)}" width="72" height="72" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:10px;background:#ffffff;border:1px solid #edf2f7;" />`
+          : `<div style="width:72px;height:72px;border-radius:10px;background:#ffffff;border:1px solid #edf2f7;"></div>`,
         `</td>`,
-        `<td valign="top" style="padding:12px 12px 12px 0;word-break:break-word;">`,
+        `<td valign="top" bgcolor="#fffdf8" style="background-color:#fffdf8;padding:12px 12px 12px 0;word-break:break-word;border-radius:0 14px 14px 0;">`,
         `<div style="font-size:16px;font-weight:700;line-height:1.25;color:#111827;margin:0 0 5px;">${escapeHtml(title)}</div>`,
         size ? `<div style="font-size:13px;color:#64748b;line-height:1.35;margin:0 0 10px;">${escapeHtml(size)}</div>` : "",
         `<div style="font-size:13px;color:#475569;line-height:1.35;margin:0;">${qty} × ${unit} / ${escapeHtml(language === "fi" ? "kpl" : "pcs")} <span style="font-size:13px;font-weight:700;color:#ff6b00;text-transform:uppercase;white-space:nowrap;">${line}</span></div>`,
@@ -540,6 +576,11 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     ? (language === "fi" ? "Varaa asennus" : "Book install")
     : (language === "fi" ? "Palaa verkkokauppaan" : "Return to webshop");
   const receiptButtonLabel = language === "fi" ? "Lataa kuitti" : "Download receipt";
+  const statusColor = paid ? "#047857" : "#b45309";
+  const statusBg = paid ? "#dcfce7" : "#fef3c7";
+  const statusLabel = paid
+    ? (language === "fi" ? "Maksettu" : "Paid")
+    : (language === "fi" ? "Maksu odottaa" : "Payment pending");
   const text = [
     language === "fi" ? "Kiitos tilauksestasi Mitra Autolta." : "Thank you for your order from Mitra Auto.",
     statusLine,
@@ -558,32 +599,37 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     paid ? `${buttonLabel}: ${installUrl}` : `${buttonLabel}: ${retryUrl}`,
   ].filter(Boolean).join("\n");
   const html = [
-    `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:680px;margin:0 auto;padding:24px;background:#ffffff;">`,
-    `<h1 style="font-size:24px;margin:0 0 16px;">Mitra Auto</h1>`,
-    `<p style="font-size:16px;margin:0 0 8px;">${escapeHtml(language === "fi" ? "Kiitos tilauksestasi Mitra Autolta." : "Thank you for your order from Mitra Auto.")}</p>`,
-    `<p style="font-size:15px;color:${paid ? "#047857" : "#b45309"};margin:0 0 20px;">${escapeHtml(statusLine)}</p>`,
-    `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:20px 0;background:#f8fafc;">`,
-    `<p style="margin:0 0 8px;"><strong>${escapeHtml(language === "fi" ? "Tilausnumero" : "Order number")}:</strong> ${escapeHtml(order.id)}</p>`,
-    provider ? `<p style="margin:0 0 8px;"><strong>${escapeHtml(language === "fi" ? "Maksutapa" : "Payment provider")}:</strong> ${escapeHtml(provider)}</p>` : "",
-    order.paytrail_transaction_id ? `<p style="margin:0;"><strong>${escapeHtml(language === "fi" ? "Maksutapahtuma" : "Transaction")}:</strong> ${escapeHtml(order.paytrail_transaction_id)}</p>` : "",
-    `</div>`,
+    `<div style="margin:0;padding:28px;font-family:Arial,sans-serif;color:#111827;line-height:1.55;">`,
+    `<div style="max-width:680px;margin:0 auto;padding:0;">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 22px;"><tr><td style="font-size:22px;font-weight:800;color:#111827;">Mitra Auto</td><td align="right"><span style="display:inline-block;border-radius:999px;background:${statusBg};color:${statusColor};font-size:12px;font-weight:800;padding:6px 10px;text-transform:uppercase;letter-spacing:.02em;">${escapeHtml(statusLabel)}</span></td></tr></table>`,
+    `<p style="font-size:18px;font-weight:700;margin:0 0 8px;color:#111827;">${escapeHtml(language === "fi" ? "Kiitos tilauksestasi Mitra Autolta." : "Thank you for your order from Mitra Auto.")}</p>`,
+    `<p style="font-size:15px;color:#475569;margin:0 0 20px;">${escapeHtml(statusLine)}</p>`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fffdf8" style="border:1px solid #dce2d4;border-radius:14px;background-color:#fffdf8;border-collapse:separate;margin:20px 0;">`,
+    `<tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:6px 18px;border-radius:14px;">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background-color:#fffdf8;">`,
+    `<tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;">${escapeHtml(language === "fi" ? "Tilausnumero" : "Order number")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;">${escapeHtml(order.id)}</td></tr>`,
+    provider ? `<tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(language === "fi" ? "Maksutapa" : "Payment provider")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(provider)}</td></tr>` : "",
+    order.paytrail_transaction_id ? `<tr><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(language === "fi" ? "Maksutapahtuma" : "Transaction")}</td><td bgcolor="#fffdf8" style="background-color:#fffdf8;padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(order.paytrail_transaction_id)}</td></tr>` : "",
+    `</table>`,
+    `</td></tr>`,
+    `</table>`,
     buildItemsHtml(order, language, cidByIndex),
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;margin-top:22px;padding-top:16px;border-collapse:collapse;">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #dce2d4;margin-top:22px;padding-top:16px;border-collapse:collapse;">`,
     `<tr><td style="padding:4px 0;color:#475569;">${escapeHtml(language === "fi" ? "Välisumma" : "Subtotal")}</td><td align="right" style="padding:4px 0;color:#475569;font-weight:700;">${escapeHtml(subtotal)}</td></tr>`,
     `<tr><td style="padding:4px 0;color:#475569;">${escapeHtml(language === "fi" ? "Toimitus" : "Shipping")}</td><td align="right" style="padding:4px 0;color:#475569;font-weight:700;">${escapeHtml(shipping)}</td></tr>`,
     `<tr><td style="padding:4px 0 10px;color:#475569;">${escapeHtml(language === "fi" ? "ALV 25,5%" : "VAT 25.5%")}</td><td align="right" style="padding:4px 0 10px;color:#475569;font-weight:700;">${escapeHtml(vat)}</td></tr>`,
-    `<tr><td style="padding:8px 0 0;font-size:20px;color:#111827;font-weight:700;">${escapeHtml(language === "fi" ? "Yhteensä" : "Total")}</td><td align="right" style="padding:8px 0 0;font-size:20px;color:#ff6b00;font-weight:700;">${escapeHtml(total)}</td></tr>`,
+    `<tr><td style="padding:8px 0 0;font-size:20px;color:#111827;font-weight:800;">${escapeHtml(language === "fi" ? "Yhteensä" : "Total")}</td><td align="right" style="padding:8px 0 0;font-size:20px;color:#c94f1e;font-weight:800;">${escapeHtml(total)}</td></tr>`,
     `</table>`,
     paid ? `<p style="margin:18px 0 0;color:#475569;font-size:14px;">${escapeHtml(installAvailability)}</p>` : "",
-    `<div style="margin-top:22px;">`,
-    `<a href="${escapeHtml(paid ? installUrl : retryUrl)}" style="${paid ? "background:#ff6b00;color:#ffffff;" : "background:#111827;color:#ffffff;"}padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 8px 8px 0;">${escapeHtml(buttonLabel)}</a>`,
-    paid && invoiceReceipt ? `<a href="${escapeHtml(invoiceReceipt.url)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 0 8px 0;">${escapeHtml(receiptButtonLabel)}</a>` : "",
-    `</div>`,
+    paid && invoiceReceipt
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:22px 0 0;"><tr>${emailButtonCell(installUrl, buttonLabel, "primary")}${emailButtonCell(invoiceReceipt.url, receiptButtonLabel, "secondary")}</tr></table>`
+      : `<div style="margin-top:22px;">${emailButtonBlock(paid ? installUrl : retryUrl, buttonLabel, "primary")}</div>`,
     `<p style="margin-top:20px;color:#6b7280;font-size:14px;">${escapeHtml(
       paid
         ? (language === "fi" ? "Linkki avaa varauksen ja täyttää jo tiedossa olevat yhteystiedot. Valitse normaaliin tapaan päivä ja aika." : "The link opens booking with known contact details prefilled. Choose date and time as usual.")
         : (language === "fi" ? "Asennusvaraus avautuu vasta, kun maksu on vahvistettu." : "Installation booking is available only after payment is confirmed.")
     )}</p>`,
+    `</div>`,
     `</div>`,
   ].join("");
 

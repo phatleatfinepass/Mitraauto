@@ -198,6 +198,66 @@ function selectedSource(row: ConflictRow): Record<string, unknown> {
   };
 }
 
+function adminConflictReason(row: any) {
+  if (row.has_ean_multi_spec_conflict) return 'identity_mismatch';
+  if (row.has_mandatory_conflict) return 'missing_required_data';
+  if (row.ean_conflict_open) return 'open_conflict';
+  return 'conflict';
+}
+
+function mapAdminConflictRows(rows: any[], totalCount: number): ConflictRow[] {
+  return rows.map((row) => ({
+    selected_item_id: row.variant_id,
+    match_key: row.variant_id,
+    match_confidence: 'cms_review',
+    conflict_reason: adminConflictReason(row),
+    review_status: 'pending',
+    selected_supplier: row.supplier_code_best ?? '-',
+    selected_external_id: row.supplier_external_id_best ?? '-',
+    selected_raw_table: null,
+    selected_raw_id: null,
+    selected_reason: null,
+    ean: row.derived_ean ?? row.ean ?? null,
+    eprel_code:
+      row.eu_label_json?.eprel_registration_number ??
+      row.eu_label_json?.eprel_code ??
+      row.eu_label_json?.eprel_id ??
+      null,
+    brand: row.brand ?? null,
+    model: row.model ?? null,
+    supplier_title: row.supplier_title ?? null,
+    size_string: row.size_string ?? null,
+    season: row.season ?? null,
+    width_mm: numberValue(row.width_mm),
+    aspect_ratio: numberValue(row.aspect_ratio),
+    diameter_in: numberValue(row.diameter_in),
+    load_index: row.load_index == null ? null : String(row.load_index),
+    speed_rating: row.speed_rating ?? row.speed_index ?? null,
+    stock_qty: null,
+    in_stock: null,
+    wholesale_price_eur: null,
+    consumer_price_eur: null,
+    retail_price_eur: null,
+    recycling_fee_eur: null,
+    final_base_price_eur: numberValue(row.final_price_eur ?? row.price),
+    eu_fuel_class: row.eu_label_json?.fuel_class ?? null,
+    eu_wet_grip_class: row.eu_wet ?? row.eu_label_json?.wet_grip_class ?? null,
+    eu_noise_db: numberValue(row.eu_noise ?? row.eu_label_json?.noise_db),
+    eu_noise_class: row.eu_label_json?.noise_class ?? null,
+    supplier_image_id: null,
+    supplier_image_url: null,
+    supplier_metadata_json: row.cms_data ?? row.eu_label_json ?? null,
+    last_seen_at: null,
+    raw_supplier_price_ex_vat: null,
+    shipping_fee_ex_vat: null,
+    fair_cost_ex_vat: numberValue(row.final_price_eur ?? row.price),
+    fair_cost_reason: null,
+    alternative_offer_count: 0,
+    alternative_offers_json: [],
+    total_count: totalCount,
+  }));
+}
+
 function fieldValue(source: Record<string, unknown>, field: ComparisonField) {
   const value = source[field.key];
   if (field.format === 'price') return formatPrice(numberValue(value));
@@ -287,6 +347,30 @@ export function TiresConflictResolvePage() {
     setLoading(true);
     setError(null);
     try {
+      if (reviewStatusFilter === 'pending') {
+        let query = supabase
+          .from('catalog_selected_tires_cms_admin_v1')
+          .select(
+            'variant_id,derived_ean,ean,brand,model,size_string,season,width_mm,aspect_ratio,diameter_in,load_index,speed_rating,speed_index,eu_wet,eu_noise,eu_label_json,final_price_eur,price,supplier_code_best,supplier_external_id_best,ean_conflict_open,has_ean_multi_spec_conflict,has_mandatory_conflict,cms_data',
+            { count: 'exact' },
+          )
+          .or('ean_conflict_open.eq.true,has_ean_multi_spec_conflict.eq.true,has_mandatory_conflict.eq.true')
+          .order('brand', { ascending: true })
+          .order('model', { ascending: true })
+          .range(0, 99);
+
+        if (reasonFilter === 'identity_mismatch') {
+          query = query.eq('has_ean_multi_spec_conflict', true);
+        } else if (reasonFilter === 'missing_required_data') {
+          query = query.eq('has_mandatory_conflict', true);
+        }
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+        setRows(mapAdminConflictRows(data ?? [], count ?? 0));
+        return;
+      }
+
       const { data, error } = await supabase.rpc('catalog_list_selected_tire_conflicts_v1', {
         p_conflict_reason: reasonFilter === 'all' ? null : reasonFilter,
         p_review_status: reviewStatusFilter === 'all' ? null : reviewStatusFilter,

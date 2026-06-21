@@ -41,6 +41,7 @@ export const bookingTranslations = {
   'booking.step2.chooseCategory': { fi: 'Valitse kategoria', en: 'Choose category' },
   'booking.step2.selectService': { fi: 'Valitse palvelu', en: 'Select service' },
   'booking.step2.chooseService': { fi: 'Valitse palvelu', en: 'Choose a service' },
+  'booking.step2.otherNoServiceNeeded': { fi: 'Palvelua ei tarvitse valita. Kerro tarvittaessa lisätiedot seuraavassa vaiheessa.', en: 'No service selection is needed. Add details in the next step if needed.' },
   'booking.step2.addService': { fi: 'Lisää palvelu', en: 'Add service' },
   'booking.step2.selectedServices': { fi: 'Valitut palvelut', en: 'Selected services' },
   'booking.step2.emptySelection': { fi: 'Lisätyt palvelut näkyvät täällä.', en: 'Added services will appear here.' },

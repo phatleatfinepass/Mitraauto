@@ -45,6 +45,14 @@ const serviceHeroItems = [
   }
 ];
 
+function getRouteLanguage(fallback: 'fi' | 'en') {
+  if (typeof window === 'undefined') return fallback;
+  const path = window.location.pathname.toLowerCase();
+  if (path === '/palvelut' || path.startsWith('/palvelut/')) return 'fi';
+  if (path === '/en/services' || path.startsWith('/en/services/')) return 'en';
+  return fallback;
+}
+
 export function ServicesPage({ onBookingClick, onNavigate }: ServicesPageProps) {
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string>('car-care');
@@ -405,13 +413,28 @@ interface ServiceListItemProps {
 function ServiceListItem({ service, onBookClick, onNavigate }: ServiceListItemProps) {
   const { t, language } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
-  const detailHref = getServiceDetailPathForServiceId(service.id, language);
+  const detailHref = getServiceDetailPathForServiceId(service.id, getRouteLanguage(language));
+  const openServiceDetail = () => {
+    if (detailHref) {
+      onNavigate(detailHref);
+    }
+  };
 
   return (
     <div
       className="group px-6 py-5 hover:bg-secondary/50 dark:hover:bg-secondary/30 transition-all cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={openServiceDetail}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openServiceDetail();
+        }
+      }}
+      role={detailHref ? 'link' : undefined}
+      tabIndex={detailHref ? 0 : undefined}
+      aria-label={detailHref ? `${t('services.details')}: ${service.name}` : undefined}
     >
       <div className="flex items-start justify-between gap-4">
         {/* Service Name and Note */}

@@ -68,6 +68,25 @@ const FALLBACK_VEHICLE_TYPE_OPTIONS: TireFilterOptionRow[] = [
   { option_group: 'vehicle_type', option_value: 'suv_4x4', label: 'SUV / 4x4', item_count: 0, sort_order: 30 },
 ];
 
+function formatTireDimensionOption(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text || text === 'all') return text;
+
+  const numeric = Number(text.replace(',', '.'));
+  if (!Number.isFinite(numeric)) return text;
+
+  return Number.isInteger(numeric) ? String(numeric) : String(numeric);
+}
+
+function normalizeTireDimensionFilters<T extends Record<string, any>>(filters: T): T {
+  return {
+    ...filters,
+    width: formatTireDimensionOption(filters.width),
+    aspectRatio: formatTireDimensionOption(filters.aspectRatio),
+    diameter: formatTireDimensionOption(filters.diameter),
+  };
+}
+
 const PLATE_COUNTRY_OPTIONS: PlateCountryOption[] = [
   { code: 'AT', name: 'Austria', flagSrc: COUNTRY_FLAG_DATA_URIS.AT },
   { code: 'BE', name: 'Belgium', flagSrc: COUNTRY_FLAG_DATA_URIS.BE },
@@ -165,7 +184,7 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
 
   useEffect(() => {
     if (!externalFilters) return;
-    setFilters({ ...DEFAULT_TIRE_FILTERS, ...externalFilters });
+    setFilters(normalizeTireDimensionFilters({ ...DEFAULT_TIRE_FILTERS, ...externalFilters }));
   }, [externalFilters]);
 
   useEffect(() => {
@@ -179,9 +198,9 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
           .map((row) => row.option_value);
 
       const nextBrands = getValues('brand');
-      const nextWidths = getValues('width');
-      const nextAspects = getValues('aspect_ratio');
-      const nextDiameters = getValues('diameter');
+      const nextWidths = Array.from(new Set(getValues('width').map(formatTireDimensionOption).filter(Boolean)));
+      const nextAspects = Array.from(new Set(getValues('aspect_ratio').map(formatTireDimensionOption).filter(Boolean)));
+      const nextDiameters = Array.from(new Set(getValues('diameter').map(formatTireDimensionOption).filter(Boolean)));
       const nextVehicleTypes = rows
         .filter((row) => row.option_group === 'vehicle_type' && row.option_value)
         .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
@@ -290,7 +309,10 @@ export function TireFilters({ onFilterChange, onSearch, onVehicleRecommendation,
   };
 
   const updateFilter = (key: string, value: any) => {
-    const newFilters = { ...filters, [key]: value };
+    const nextValue = key === 'width' || key === 'aspectRatio' || key === 'diameter'
+      ? formatTireDimensionOption(value)
+      : value;
+    const newFilters = { ...filters, [key]: nextValue };
     if (key === 'width' || key === 'aspectRatio' || key === 'diameter') {
       delete (newFilters as any).fitmentSizes;
     }

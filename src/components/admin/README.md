@@ -98,7 +98,7 @@ interface BlockedSlot {
 ## Usage
 
 ### Accessing the Page
-Navigate to: `/admin/schedule`
+Navigate to: `/cms#schedule`
 
 ### Viewing Schedule
 1. Page loads with today's date selected
@@ -218,7 +218,7 @@ See `/ADMIN_SCHEDULE_SETUP.md` for:
 
 ## Known Limitations (v0.1)
 
-1. **No Authentication**: Anyone can access `/admin/schedule` currently
+1. **Authentication Required**: Schedule access is controlled through the CMS `schedule` permission module
 2. **No Audit Trail**: No tracking of who blocked/unblocked slots
 3. **Single Location**: Doesn't support multiple shop locations
 4. **No Conflict Detection**: Doesn't warn about double-bookings

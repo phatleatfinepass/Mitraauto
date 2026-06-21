@@ -1,0 +1,7 @@
+[  249746ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SHJZ5OAR.js?v=9e270a82:21608
+[  249788ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/site/modals/EmergencyTowModal.tsx:37
+[  249789ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1781201191824:641
+[  249863ms] [LOG] Auth state changed: INITIAL_SESSION undefined @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1781201191824:341
+[  268180ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/site/modals/EmergencyTowModal.tsx:37
+[  268180ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1781201191824:641
+[  268238ms] [LOG] Auth state changed: INITIAL_SESSION undefined @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1781201191824:341

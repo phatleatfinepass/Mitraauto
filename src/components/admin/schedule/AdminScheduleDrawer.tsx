@@ -30,7 +30,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../ui/sheet';
 import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
-import type { SupportedBookingLanguage } from '../../../utils/serviceCatalog';
+import {
+  OTHER_SERVICE_CATEGORY_ID,
+  OTHER_SERVICE_ID,
+  type SupportedBookingLanguage,
+} from '../../../utils/serviceCatalog';
 import type { ScheduleBooking, ScheduleTimeSlot } from '../../../utils/schedule';
 import { getSupabaseClient } from '../../../utils/supabase/client';
 import { AdminBookingEditPanel } from '../AdminBookingEditPanel';
@@ -126,6 +130,7 @@ function BookingServiceSelector({
 }: BookingServiceSelectorProps) {
   const categories = selectedLanguageServiceCategories(bookingLanguage);
   const selectedServices = categories.find((category) => category.id === selectedCategory)?.services || [];
+  const isOtherCategorySelected = selectedCategory === OTHER_SERVICE_CATEGORY_ID;
   const formatServicePrice = (price: number) => (
     price > 0 ? `€${price.toFixed(2)}` : t('vehicleSpecificQuote')
   );
@@ -139,6 +144,13 @@ function BookingServiceSelector({
           onValueChange={(value) => {
             onSelectedCategoryChange(value);
             onCurrentServiceIdChange('');
+            if (value === OTHER_SERVICE_CATEGORY_ID) {
+              onServiceIdsChange([OTHER_SERVICE_ID]);
+              syncServiceName([OTHER_SERVICE_ID], bookingLanguage);
+            } else if (serviceIds.includes(OTHER_SERVICE_ID)) {
+              onServiceIdsChange([]);
+              syncServiceName([], bookingLanguage);
+            }
           }}
         >
           <SelectTrigger className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}>
@@ -153,35 +165,45 @@ function BookingServiceSelector({
           </SelectContent>
         </Select>
 
-        <Select value={currentServiceId || undefined} onValueChange={onCurrentServiceIdChange} disabled={!selectedCategory}>
-          <SelectTrigger className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}>
-            <SelectValue placeholder={t('servicePlaceholder')} />
-          </SelectTrigger>
-          <SelectContent>
-            {selectedServices.map((service) => (
-              <SelectItem key={service.id} value={service.id}>
-                {service.name}
-                {'price' in service ? ` · ${formatServicePrice(service.price)}` : ''}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isOtherCategorySelected ? (
+          <div className={`flex h-10 items-center rounded-md border px-3 text-sm ${theme === 'dark' ? 'border-white/10 bg-[#11141A] text-gray-400' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+            {t('otherNoServiceNeeded')}
+          </div>
+        ) : (
+          <>
+            <Select value={currentServiceId || undefined} onValueChange={onCurrentServiceIdChange} disabled={!selectedCategory}>
+              <SelectTrigger className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}>
+                <SelectValue placeholder={t('servicePlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedServices.map((service) => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.name}
+                    {'price' in service ? ` · ${formatServicePrice(service.price)}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={!currentServiceId || serviceIds.includes(currentServiceId)}
-          onClick={() => {
-            if (!currentServiceId) return;
-            const nextServiceIds = [...serviceIds, currentServiceId];
-            onServiceIdsChange(nextServiceIds);
-            syncServiceName(nextServiceIds, bookingLanguage);
-            onCurrentServiceIdChange('');
-            onSelectedCategoryChange('');
-          }}
-        >
-          {t('add')}
-        </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!currentServiceId || serviceIds.includes(currentServiceId)}
+              onClick={() => {
+                if (!currentServiceId) return;
+                const nextServiceIds = serviceIds.includes(OTHER_SERVICE_ID)
+                  ? [currentServiceId]
+                  : [...serviceIds, currentServiceId];
+                onServiceIdsChange(nextServiceIds);
+                syncServiceName(nextServiceIds, bookingLanguage);
+                onCurrentServiceIdChange('');
+                onSelectedCategoryChange('');
+              }}
+            >
+              {t('add')}
+            </Button>
+          </>
+        )}
       </div>
 
       {serviceIds.length > 0 ? (
@@ -198,6 +220,9 @@ function BookingServiceSelector({
                     const nextServiceIds = serviceIds.filter((id) => id !== serviceId);
                     onServiceIdsChange(nextServiceIds);
                     syncServiceName(nextServiceIds, bookingLanguage);
+                    if (serviceId === OTHER_SERVICE_ID) {
+                      onSelectedCategoryChange('');
+                    }
                   }}
                   className="rounded-full hover:bg-black/10"
                   aria-label={t('removeService')}

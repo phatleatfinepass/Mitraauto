@@ -20,6 +20,9 @@ export interface ServiceCatalogEntry {
   price: number;
 }
 
+export const OTHER_SERVICE_CATEGORY_ID = 'other';
+export const OTHER_SERVICE_ID = 'other';
+
 const SERVICE_ALIASES: Record<string, string> = {
   'basic service': 'annual-maintenance',
   'large service': 'annual-maintenance',
@@ -32,6 +35,8 @@ const SERVICE_ALIASES: Record<string, string> = {
   'hiukkassuodattimen pesu': 'dpf-cleaning-2014-newer',
   'pakkopoltto': 'dpf-forced-regeneration',
   'pakotettu regenerointi': 'dpf-forced-regeneration',
+  'muu': OTHER_SERVICE_ID,
+  'other': OTHER_SERVICE_ID,
 };
 
 export function detectStoredServiceLanguage(
@@ -71,6 +76,7 @@ export const CATEGORY_NAMES: Record<string, { fi: string; en: string }> = {
   'diagnostics-maintenance': { fi: 'Diagnostiikka & huoltopalvelut', en: 'Diagnostics & Maintenance' },
   'ac-service': { fi: 'Ilmastointihuolto', en: 'AC Service' },
   'dpf-service': { fi: 'DPF- ja päästöjärjestelmäpalvelut', en: 'DPF & Emissions Service' },
+  [OTHER_SERVICE_CATEGORY_ID]: { fi: 'Muu', en: 'Other' },
 };
 
 export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
@@ -120,6 +126,7 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
   { id: 'dpf-cleaning-2009-2013', categoryId: 'dpf-service', name: { fi: 'DPF-pesu · vuosimallit 2009–2013', en: 'DPF cleaning · model years 2009–2013' }, price: 240 },
   { id: 'dpf-cleaning-2014-newer', categoryId: 'dpf-service', name: { fi: 'DPF-pesu · vuosimalli 2014 ja uudemmat', en: 'DPF cleaning · model year 2014 and newer' }, price: 340 },
   { id: 'dpf-removal-installation-estimate', categoryId: 'dpf-service', name: { fi: 'DPF irrotus ja asennus · autokohtainen arvio', en: 'DPF removal and installation · vehicle-specific estimate' }, price: 0 },
+  { id: OTHER_SERVICE_ID, categoryId: OTHER_SERVICE_CATEGORY_ID, name: { fi: 'Muu', en: 'Other' }, price: 0 },
 ];
 
 export function getLocalizedServiceCategories(language: SupportedBookingLanguage): LocalizedServiceCategory[] {

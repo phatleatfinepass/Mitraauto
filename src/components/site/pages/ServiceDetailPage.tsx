@@ -18,6 +18,7 @@ import tireService from 'figma:asset/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.pn
 type ServiceDetailPageProps = {
   pageId?: ServiceSeoPageId | null;
   serviceId?: string | null;
+  routeLanguage?: 'fi' | 'en';
   onBookingClick: (serviceId: string | null) => void;
   onNavigate: (path: string) => void;
 };
@@ -41,9 +42,9 @@ function getLocalizedPath(paths: string[], language: 'fi' | 'en') {
   return preferred ?? paths[0] ?? '/services';
 }
 
-export function ServiceDetailPage({ pageId, serviceId, onBookingClick, onNavigate }: ServiceDetailPageProps) {
+export function ServiceDetailPage({ pageId, serviceId, routeLanguage, onBookingClick, onNavigate }: ServiceDetailPageProps) {
   const { language } = useLanguage();
-  const effectiveLanguage = language;
+  const effectiveLanguage = routeLanguage ?? language;
   const page = pageId ? serviceSeoPageById[pageId] : serviceId ? buildGeneratedServiceSeoPage(serviceId) : null;
 
   if (!page) {

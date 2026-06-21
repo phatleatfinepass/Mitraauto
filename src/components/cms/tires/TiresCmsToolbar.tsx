@@ -57,6 +57,9 @@ interface TiresCmsToolbarProps {
   hasPendingCatalogSync: boolean;
   catalogSyncMessage: string | null;
   catalogSyncProgress: { processed: number; total: number } | null;
+  cachedItemCount: number;
+  totalCount: number;
+  preloading: boolean;
   pendingConflictCount: number;
   bulkMarkupAmount: string;
   bulkMarkupPercent: string;
@@ -108,6 +111,9 @@ export function TiresCmsToolbar({
   hasPendingCatalogSync,
   catalogSyncMessage,
   catalogSyncProgress,
+  cachedItemCount,
+  totalCount,
+  preloading,
   pendingConflictCount,
   bulkMarkupAmount,
   bulkMarkupPercent,
@@ -191,20 +197,24 @@ export function TiresCmsToolbar({
             </div>
 
             <div className="flex flex-wrap gap-3 items-center">
-              {pendingConflictCount > 0 && (
-                <button
-                  type="button"
-                  onClick={onResolveConflict}
-                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isDark
+              <button
+                type="button"
+                onClick={onResolveConflict}
+                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  pendingConflictCount > 0
+                    ? isDark
                       ? 'bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
                       : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                  }`}
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  {t('tiresCmsToolbar.resolveConflict', { count: pendingConflictCount })}
-                </button>
-              )}
+                    : isDark
+                      ? 'bg-white/10 text-white hover:bg-white/15'
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                }`}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                {pendingConflictCount > 0
+                  ? t('tiresCmsToolbar.resolveConflict', { count: pendingConflictCount })
+                  : t('tiresCmsToolbar.reviewConflicts')}
+              </button>
 
               <button
                 type="button"
@@ -259,6 +269,24 @@ export function TiresCmsToolbar({
                 processed: catalogSyncProgress.processed,
                 total: catalogSyncProgress.total,
               })}
+            </p>
+          </div>
+        ) : null}
+
+        {totalCount > 0 && cachedItemCount < totalCount ? (
+          <div className="mt-3 space-y-2">
+            <div className={`h-2 overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-[width] duration-200"
+                style={{
+                  width: `${Math.max(2, Math.min(100, (cachedItemCount / totalCount) * 100))}%`,
+                }}
+              />
+            </div>
+            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {preloading
+                ? t('tiresCmsToolbar.indexingProgress', { indexed: cachedItemCount, total: totalCount })
+                : t('tiresCmsToolbar.indexedProgress', { indexed: cachedItemCount, total: totalCount })}
             </p>
           </div>
         ) : null}

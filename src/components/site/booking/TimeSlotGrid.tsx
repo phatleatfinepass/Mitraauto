@@ -70,14 +70,22 @@ export function TimeSlotGrid({
                   isSelected
                     ? 'bg-primary text-primary-foreground shadow-md scale-105 ring-2 ring-primary/50'
                     : isDisabled
-                    ? 'bg-secondary/30 text-muted-foreground cursor-not-allowed opacity-50'
+                    ? 'relative overflow-hidden border border-border/70 bg-secondary/30 text-muted-foreground cursor-not-allowed opacity-80'
                     : 'bg-secondary hover:bg-secondary/80 hover:shadow-sm hover:scale-102 active:scale-98'
                 }
               `}
             >
-              <span className="font-medium">{slot.time}</span>
+              {isDisabled ? (
+                <>
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 h-px w-[145%] -translate-x-1/2 -translate-y-1/2 rotate-[-22deg] bg-muted-foreground/45" />
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 h-px w-[145%] -translate-x-1/2 -translate-y-1/2 rotate-[22deg] bg-muted-foreground/35" />
+                </>
+              ) : null}
+              <span className={`relative z-10 font-medium ${isDisabled ? 'line-through decoration-2 decoration-muted-foreground/70' : ''}`}>
+                {slot.time}
+              </span>
               {!slot.available && slot.unavailableReason ? (
-                <span className="mt-0.5 max-w-full truncate text-[10px] leading-3" title={slot.unavailableReason}>
+                <span className="relative z-10 mt-0.5 max-w-full truncate text-[10px] leading-3" title={slot.unavailableReason}>
                   {slot.unavailableReason}
                 </span>
               ) : null}

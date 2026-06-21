@@ -9,6 +9,7 @@ export const siteTranslations = {
   'nav.usedCars': { fi: 'Käytetyt autot', en: 'Used Cars' },
   'nav.login': { fi: 'Kirjaudu', en: 'Login' },
   'nav.signup': { fi: 'Rekisteröidy', en: 'Sign Up' },
+  'nav.account': { fi: 'Oma tili', en: 'Account' },
   'nav.dashboard': { fi: 'Hallintapaneeli', en: 'Dashboard' },
   'nav.orders': { fi: 'Tilaukset', en: 'Orders' },
   'nav.signout': { fi: 'Kirjaudu ulos', en: 'Sign Out' },

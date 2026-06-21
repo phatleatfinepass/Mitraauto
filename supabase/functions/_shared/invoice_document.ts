@@ -904,17 +904,22 @@ export async function sendInvoiceDocumentEmail(documentId: string) {
     "",
     "Mitra Auto",
   ].join("\n");
+  const buttonStyle = "padding:12px 16px;border-radius:10px;text-decoration:none;display:inline-block;font-size:14px;font-weight:700;line-height:1.2;";
   const paymentButtonHtml = payUrl ? `
-<a href="${escapeHtml(payUrl)}" style="background:#f97316;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 8px 8px 0;">${escapeHtml(language === "fi" ? "Maksa lasku" : "Pay invoice")}</a>` : "";
-  const html = `<div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6;max-width:640px;margin:0 auto;padding:24px;">
-<h1 style="font-size:22px;margin:0 0 12px;">Mitra Auto</h1>
-<p>${escapeHtml(language === "fi" ? "Kiitos asioinnista. Dokumentti on valmis." : "Thank you. Your document is ready.")}</p>
-<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;background:#f8fafc;margin:18px 0;">
-<p><strong>${escapeHtml(language === "fi" ? "Numero" : "Number")}:</strong> ${escapeHtml(document.document_number)}</p>
-<p><strong>${escapeHtml(language === "fi" ? "Yhteensä" : "Total")}:</strong> ${escapeHtml(money(document.total_cents))}</p>
+<p style="margin:0 0 10px;"><a href="${escapeHtml(payUrl)}" style="${buttonStyle}background:#FF6B35;color:#ffffff;">${escapeHtml(language === "fi" ? "Maksa lasku" : "Pay invoice")}</a></p>` : "";
+  const html = `<div style="margin:0;padding:28px;font-family:Arial,sans-serif;color:#111827;line-height:1.55;">
+<div style="max-width:640px;margin:0 auto;padding:0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 22px;"><tr><td style="font-size:22px;font-weight:800;color:#111827;">Mitra Auto</td><td align="right"><span style="display:inline-block;border-radius:999px;background:#dcfce7;color:#047857;font-size:12px;font-weight:800;padding:6px 10px;text-transform:uppercase;letter-spacing:.02em;">${escapeHtml(language === "fi" ? "Valmis" : "Ready")}</span></td></tr></table>
+<p style="font-size:18px;font-weight:700;margin:0 0 18px;color:#111827;">${escapeHtml(language === "fi" ? "Kiitos asioinnista. Dokumentti on valmis." : "Thank you. Your document is ready.")}</p>
+<div style="border:1px solid #dce2d4;border-radius:14px;background:#fffdf8;padding:6px 18px;margin:20px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+<tr><td style="padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;">${escapeHtml(language === "fi" ? "Numero" : "Number")}</td><td style="padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;">${escapeHtml(document.document_number)}</td></tr>
+<tr><td style="padding:10px 0;color:#6b7280;font-size:13px;width:34%;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(language === "fi" ? "Yhteensä" : "Total")}</td><td style="padding:10px 0;color:#111827;font-size:14px;font-weight:700;vertical-align:top;border-top:1px solid #eef1ea;">${escapeHtml(money(document.total_cents))}</td></tr>
+</table>
 </div>
 ${paymentButtonHtml}
-<a href="${escapeHtml(prepared.url)}" style="background:#111827;color:#ffffff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin:0 8px 8px 0;">${escapeHtml(language === "fi" ? "Lataa dokumentti" : "Download document")}</a>
+<p style="margin:0 0 10px;"><a href="${escapeHtml(prepared.url)}" style="${buttonStyle}background:#FF6B35;color:#ffffff;">${escapeHtml(language === "fi" ? "Lataa dokumentti" : "Download document")}</a></p>
+</div>
 </div>`;
 
   await sendBasicGmail({
