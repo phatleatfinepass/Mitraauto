@@ -70,7 +70,7 @@ export function ContactSection() {
           {/* Left Column - Map Placeholder */}
            <div className="order-1 w-full">
             <a
-              href={CONTACT_INFO.mapUrl}
+              href={businessProfile.mapSearchUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full relative aspect-square rounded-2xl bg-gray-100 overflow-hidden shadow-sm transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer group"
@@ -135,7 +135,7 @@ export function ContactSection() {
                     return (
                       <a
                         key={idx}
-                    href={detail.href}
+                        href={detail.href}
                         target={detail.icon === MapPin ? "_blank" : undefined}
                         rel={detail.icon === MapPin ? "noopener noreferrer" : undefined}
                         className="flex items-start gap-4 transition-all hover:bg-background rounded-lg p-3 -mx-3 cursor-pointer group"
