@@ -130,41 +130,23 @@ export function BookingSuccess({
     const workshopPhone = '+358407777163';
     const workshopEmail = 'contact@mitra-auto.fi';
     const preferredMap = detectPreferredMapLink();
-    const copy = language === 'fi'
-      ? {
-          confirmationTitle: 'Mitra Auto varausvahvistus',
-          service: 'Palvelu',
-          licensePlate: 'Rekisterinumero',
-          date: 'Päivä',
-          time: 'Aika',
-          customer: 'Asiakas',
-          phone: 'Puhelin',
-          email: 'Sähköposti',
-          bookingNotes: 'Varausmuistiinpanot',
-          location: 'Sijainti',
-          workshopPhone: 'Korjaamon puhelin',
-          workshopEmail: 'Korjaamon sähköposti',
-          map: 'Kartta',
-          arrivalNote: 'Saavu paikalle muutama minuutti ennen varattua aikaa.',
-          reminder: 'Muistutus',
-        }
-      : {
-          confirmationTitle: 'Mitra Auto booking confirmation',
-          service: 'Service',
-          licensePlate: 'License plate',
-          date: 'Date',
-          time: 'Time',
-          customer: 'Customer',
-          phone: 'Phone',
-          email: 'Email',
-          bookingNotes: 'Booking notes',
-          location: 'Location',
-          workshopPhone: 'Workshop phone',
-          workshopEmail: 'Workshop email',
-          map: 'Map',
-          arrivalNote: 'Please arrive a few minutes before your booked time.',
-          reminder: 'Reminder',
-        };
+    const copy = {
+      confirmationTitle: t('booking.calendar.confirmationTitle'),
+      service: t('booking.summary.service'),
+      licensePlate: t('booking.summary.licensePlate'),
+      date: t('booking.summary.date'),
+      time: t('booking.summary.time'),
+      customer: t('booking.calendar.customer'),
+      phone: t('booking.success.phone'),
+      email: t('booking.success.email'),
+      bookingNotes: t('booking.calendar.bookingNotes'),
+      location: t('booking.calendar.location'),
+      workshopPhone: t('booking.calendar.workshopPhone'),
+      workshopEmail: t('booking.calendar.workshopEmail'),
+      map: t('booking.calendar.map'),
+      arrivalNote: t('booking.calendar.arrivalNote'),
+      reminder: t('booking.calendar.reminder'),
+    };
     const description = [
       copy.confirmationTitle,
       '',

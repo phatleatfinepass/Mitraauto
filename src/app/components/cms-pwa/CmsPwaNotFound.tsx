@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrokenCar404 } from '../shared/BrokenCar404';
-import { useLanguage } from '../LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { publicSiteUrl, pwaPath } from '../../config/runtime';
 
 export function CmsPwaNotFound({ path }: { path: string }) {

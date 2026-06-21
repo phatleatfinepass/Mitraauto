@@ -30,7 +30,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../ui/sheet';
 import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
-import type { SupportedBookingLanguage } from '../../../utils/serviceCatalog';
+import {
+  OTHER_SERVICE_CATEGORY_ID,
+  OTHER_SERVICE_ID,
+  type SupportedBookingLanguage,
+} from '../../../utils/serviceCatalog';
 import type { ScheduleBooking, ScheduleTimeSlot } from '../../../utils/schedule';
 import { getSupabaseClient } from '../../../utils/supabase/client';
 import { AdminBookingEditPanel } from '../AdminBookingEditPanel';
@@ -126,6 +130,10 @@ function BookingServiceSelector({
 }: BookingServiceSelectorProps) {
   const categories = selectedLanguageServiceCategories(bookingLanguage);
   const selectedServices = categories.find((category) => category.id === selectedCategory)?.services || [];
+  const isOtherCategorySelected = selectedCategory === OTHER_SERVICE_CATEGORY_ID;
+  const formatServicePrice = (price: number) => (
+    price > 0 ? `€${price.toFixed(2)}` : t('vehicleSpecificQuote')
+  );
 
   return (
     <div className="space-y-2 sm:col-span-2">
@@ -136,10 +144,17 @@ function BookingServiceSelector({
           onValueChange={(value) => {
             onSelectedCategoryChange(value);
             onCurrentServiceIdChange('');
+            if (value === OTHER_SERVICE_CATEGORY_ID) {
+              onServiceIdsChange([OTHER_SERVICE_ID]);
+              syncServiceName([OTHER_SERVICE_ID], bookingLanguage);
+            } else if (serviceIds.includes(OTHER_SERVICE_ID)) {
+              onServiceIdsChange([]);
+              syncServiceName([], bookingLanguage);
+            }
           }}
         >
           <SelectTrigger className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}>
-            <SelectValue placeholder={language === 'fi' ? 'Valitse kategoria' : 'Select category'} />
+            <SelectValue placeholder={t('selectCategory')} />
           </SelectTrigger>
           <SelectContent>
             {categories.map((category) => (
@@ -150,35 +165,45 @@ function BookingServiceSelector({
           </SelectContent>
         </Select>
 
-        <Select value={currentServiceId || undefined} onValueChange={onCurrentServiceIdChange} disabled={!selectedCategory}>
-          <SelectTrigger className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}>
-            <SelectValue placeholder={t('servicePlaceholder')} />
-          </SelectTrigger>
-          <SelectContent>
-            {selectedServices.map((service) => (
-              <SelectItem key={service.id} value={service.id}>
-                {service.name}
-                {'price' in service ? ` · €${service.price.toFixed(2)}` : ''}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isOtherCategorySelected ? (
+          <div className={`flex h-10 items-center rounded-md border px-3 text-sm ${theme === 'dark' ? 'border-white/10 bg-[#11141A] text-gray-400' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+            {t('otherNoServiceNeeded')}
+          </div>
+        ) : (
+          <>
+            <Select value={currentServiceId || undefined} onValueChange={onCurrentServiceIdChange} disabled={!selectedCategory}>
+              <SelectTrigger className={theme === 'dark' ? 'border-white/10 bg-[#11141A] text-white' : ''}>
+                <SelectValue placeholder={t('servicePlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedServices.map((service) => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.name}
+                    {'price' in service ? ` · ${formatServicePrice(service.price)}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={!currentServiceId || serviceIds.includes(currentServiceId)}
-          onClick={() => {
-            if (!currentServiceId) return;
-            const nextServiceIds = [...serviceIds, currentServiceId];
-            onServiceIdsChange(nextServiceIds);
-            syncServiceName(nextServiceIds, bookingLanguage);
-            onCurrentServiceIdChange('');
-            onSelectedCategoryChange('');
-          }}
-        >
-          {language === 'fi' ? 'Lisää' : 'Add'}
-        </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!currentServiceId || serviceIds.includes(currentServiceId)}
+              onClick={() => {
+                if (!currentServiceId) return;
+                const nextServiceIds = serviceIds.includes(OTHER_SERVICE_ID)
+                  ? [currentServiceId]
+                  : [...serviceIds, currentServiceId];
+                onServiceIdsChange(nextServiceIds);
+                syncServiceName(nextServiceIds, bookingLanguage);
+                onCurrentServiceIdChange('');
+                onSelectedCategoryChange('');
+              }}
+            >
+              {t('add')}
+            </Button>
+          </>
+        )}
       </div>
 
       {serviceIds.length > 0 ? (
@@ -195,9 +220,12 @@ function BookingServiceSelector({
                     const nextServiceIds = serviceIds.filter((id) => id !== serviceId);
                     onServiceIdsChange(nextServiceIds);
                     syncServiceName(nextServiceIds, bookingLanguage);
+                    if (serviceId === OTHER_SERVICE_ID) {
+                      onSelectedCategoryChange('');
+                    }
                   }}
                   className="rounded-full hover:bg-black/10"
-                  aria-label={language === 'fi' ? 'Poista palvelu' : 'Remove service'}
+                  aria-label={t('removeService')}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -207,7 +235,7 @@ function BookingServiceSelector({
         </div>
       ) : (
         <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          {language === 'fi' ? 'Lisätyt palvelut näkyvät täällä.' : 'Added services will appear here.'}
+          {t('addedServicesEmpty')}
         </p>
       )}
 
@@ -263,7 +291,7 @@ function BookingDetails({
           <dd className="space-y-3">
             <div className="min-w-0">
               <p className={`text-[11px] font-medium uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                {language === 'fi' ? 'Nimi' : 'Name'}
+                {t('name')}
               </p>
               <p className={`mt-1 break-words text-base font-medium leading-7 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
                 {booking.customer_name || '—'}
@@ -314,14 +342,12 @@ function getBookingServiceItems(
     .filter(Boolean);
 }
 
-function getCollapsedServicePreview(serviceItems: string[], language: string) {
+function getCollapsedServicePreview(serviceItems: string[], t: (key: string) => string) {
   if (serviceItems.length === 0) return ['—'];
   if (serviceItems.length <= 2) return serviceItems;
 
   const remainingCount = serviceItems.length - 2;
-  const moreLabel = language === 'fi'
-    ? `${remainingCount} lisää`
-    : `${remainingCount} more`;
+  const moreLabel = `${remainingCount} ${t('moreCount')}`;
 
   return [
     serviceItems[0],
@@ -344,25 +370,25 @@ function normalizeBookingStatus(status?: string | null) {
 
 function getMissingCompletionFields(
   bookingLike: Partial<Pick<ScheduleBooking, 'license_plate' | 'customer_phone' | 'customer_email'>>,
-  language: string,
+  t: (key: string) => string,
 ) {
   const missingFields: string[] = [];
 
   if (!bookingLike.license_plate?.trim()) {
-    missingFields.push(language === 'fi' ? 'rekisterinumero' : 'license plate');
+    missingFields.push(t('missingLicensePlate'));
   }
   if (!bookingLike.customer_phone?.trim()) {
-    missingFields.push(language === 'fi' ? 'puhelinnumero' : 'phone number');
+    missingFields.push(t('missingPhone'));
   }
   if (!bookingLike.customer_email?.trim()) {
-    missingFields.push(language === 'fi' ? 'sähköposti' : 'email');
+    missingFields.push(t('missingEmail'));
   }
 
   return missingFields;
 }
 
-function isBookingAwaitingCustomerCompletion(booking: Partial<ScheduleBooking> | AdminBookingFormState, language: string) {
-  return normalizeBookingStatus(booking.status) === awaitingCustomerCompletionStatus || getMissingCompletionFields(booking, language).length > 0;
+function isBookingAwaitingCustomerCompletion(booking: Partial<ScheduleBooking> | AdminBookingFormState, t: (key: string) => string) {
+  return normalizeBookingStatus(booking.status) === awaitingCustomerCompletionStatus || getMissingCompletionFields(booking, t).length > 0;
 }
 
 function parseEuroToCents(value: string) {
@@ -428,8 +454,9 @@ export function AdminScheduleDrawer({
   t,
   theme,
 }: AdminScheduleDrawerProps) {
-  const createBookingCompletionMode = isBookingAwaitingCustomerCompletion(createBookingForm, language);
-  const createBookingMissingFields = getMissingCompletionFields(createBookingForm, language);
+  const dateLocale = { fi: 'fi-FI', en: 'en-US' }[language as 'fi' | 'en'] ?? 'en-US';
+  const createBookingCompletionMode = isBookingAwaitingCustomerCompletion(createBookingForm, t);
+  const createBookingMissingFields = getMissingCompletionFields(createBookingForm, t);
   const [receiptBooking, setReceiptBooking] = React.useState<ScheduleBooking | null>(null);
   const [receiptLines, setReceiptLines] = React.useState<BookingReceiptLine[]>([]);
   const [receiptNotes, setReceiptNotes] = React.useState('');
@@ -439,7 +466,7 @@ export function AdminScheduleDrawer({
     const serviceItems = getBookingServiceItems(booking.service_name, getBookingServiceNameForCms);
     setReceiptBooking(booking);
     setReceiptLines(
-      (serviceItems.length > 0 ? serviceItems : [language === 'fi' ? 'Palvelu' : 'Service']).map((service, index) => ({
+      (serviceItems.length > 0 ? serviceItems : [t('serviceName')]).map((service, index) => ({
         id: `${Date.now()}-${index}`,
         title: service,
         quantity: '1',
@@ -478,7 +505,7 @@ export function AdminScheduleDrawer({
   const sendReceipt = async () => {
     if (!receiptBooking) return;
     if (!receiptBooking.customer_email) {
-      toast.error(language === 'fi' ? 'Sähköposti puuttuu' : 'Missing customer email');
+      toast.error(t('receiptMissingEmail'));
       return;
     }
     const validLines = receiptLines
@@ -496,7 +523,7 @@ export function AdminScheduleDrawer({
       .filter((line) => line.title && line.line_total_cents >= 0);
 
     if (validLines.length === 0) {
-      toast.error(language === 'fi' ? 'Lisää vähintään yksi kuittirivi' : 'Add at least one receipt line');
+      toast.error(t('receiptLinesRequired'));
       return;
     }
 
@@ -513,10 +540,10 @@ export function AdminScheduleDrawer({
         },
       });
       if (error) throw error;
-      toast.success(language === 'fi' ? 'Kuitti lähetetty' : 'Receipt sent');
+      toast.success(t('receiptSent'));
       setReceiptBooking(null);
     } catch (error: any) {
-      toast.error(error?.message ?? (language === 'fi' ? 'Kuitin lähetys epäonnistui' : 'Failed to send receipt'));
+      toast.error(error?.message ?? t('receiptFailed'));
     } finally {
       setSendingReceipt(false);
     }
@@ -532,7 +559,7 @@ export function AdminScheduleDrawer({
         <SheetHeader className={theme === 'dark' ? 'border-b border-white/10' : 'border-b border-gray-200'}>
           <SheetTitle className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{t('slotDetails')}</SheetTitle>
           <SheetDescription className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-            {selectedDate.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+            {selectedDate.toLocaleDateString(dateLocale, {
               weekday: 'short',
               month: 'short',
               day: 'numeric',
@@ -653,7 +680,7 @@ export function AdminScheduleDrawer({
 
                     {(createBookingCompletionMode || createBookingMissingFields.length > 0) && (
                       <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
-                        {t('incompleteBookingWarning')}: {createBookingMissingFields.join(', ') || (language === 'fi' ? 'asiakastiedot' : 'customer details')}
+                        {t('incompleteBookingWarning')}: {createBookingMissingFields.join(', ') || t('customerDetailsFallback')}
                       </p>
                     )}
                   </div>
@@ -688,7 +715,7 @@ export function AdminScheduleDrawer({
 	                <div className="min-w-0">
 	                  <p className="text-xs text-gray-500">{t('slotSummary')}</p>
 	                  <p className={`mt-1 whitespace-nowrap text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedDate.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+                    {selectedDate.toLocaleDateString(dateLocale, {
                       weekday: 'short',
                       month: 'short',
                       day: 'numeric',
@@ -732,10 +759,10 @@ export function AdminScheduleDrawer({
 	                {selectedSlot.bookings.map((booking) => {
 	                  const isExpanded = isBookingExpanded(booking.id);
 	                  const editForm = editBookingForms[booking.id];
-	                  const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, language);
-	                  const bookingMissingFields = getMissingCompletionFields(booking, language);
+	                  const bookingCompletionMode = isBookingAwaitingCustomerCompletion(booking, t);
+	                  const bookingMissingFields = getMissingCompletionFields(booking, t);
 	                  const serviceItems = getBookingServiceItems(booking.service_name, getBookingServiceNameForCms);
-	                  const collapsedServicePreview = getCollapsedServicePreview(serviceItems, language);
+	                  const collapsedServicePreview = getCollapsedServicePreview(serviceItems, t);
 
                   return (
                     <Card
@@ -817,7 +844,7 @@ export function AdminScheduleDrawer({
                                 <Send className="mr-2 h-4 w-4 shrink-0" />
                                 {resendingBookingId === booking.id
                                   ? t('sending')
-                                  : (isBookingAwaitingCustomerCompletion(booking, language) ? t('requestCompletion') : t('resendConfirmation'))}
+                                  : (isBookingAwaitingCustomerCompletion(booking, t) ? t('requestCompletion') : t('resendConfirmation'))}
                               </Button>
                               <Button
                                 size="sm"
@@ -828,8 +855,8 @@ export function AdminScheduleDrawer({
                               >
                                 <Save className="mr-2 h-4 w-4 shrink-0" />
                                 {confirmingBookingId === booking.id
-                                  ? (language === 'fi' ? 'Vahvistetaan...' : 'Confirming...')
-                                  : (language === 'fi' ? 'Pakota vahvistus' : 'Force confirm')}
+                                  ? t('confirming')
+                                  : t('forceConfirm')}
                               </Button>
                               <Button
                                 size="sm"
@@ -859,7 +886,7 @@ export function AdminScheduleDrawer({
                                 className={`justify-start rounded-md ${theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}`}
                               >
                                 <FileText className="mr-2 h-4 w-4 shrink-0" />
-                                {language === 'fi' ? 'Lähetä kuitti' : 'Send receipt'}
+                                {t('sendReceipt')}
                               </Button>
                               <Button
                                 size="sm"
@@ -877,8 +904,8 @@ export function AdminScheduleDrawer({
 
                             {editingBookingId === booking.id && editForm && (
                               (() => {
-                                const editCompletionMode = isBookingAwaitingCustomerCompletion(editForm, language);
-                                const editCompletionMissingFields = getMissingCompletionFields(editForm, language);
+                                const editCompletionMode = isBookingAwaitingCustomerCompletion(editForm, t);
+                                const editCompletionMissingFields = getMissingCompletionFields(editForm, t);
 
                                 return (
                               <AdminBookingEditPanel
@@ -925,7 +952,7 @@ export function AdminScheduleDrawer({
     <Dialog open={Boolean(receiptBooking)} onOpenChange={(open) => !open && !sendingReceipt && setReceiptBooking(null)}>
       <DialogContent className={`max-h-[90vh] overflow-y-auto sm:max-w-3xl ${theme === 'dark' ? 'border-white/10 bg-[#16181D] text-white' : ''}`}>
         <DialogHeader>
-          <DialogTitle>{language === 'fi' ? 'Lähetä kuitti' : 'Send receipt'}</DialogTitle>
+          <DialogTitle>{t('sendReceipt')}</DialogTitle>
           <DialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
             {receiptBooking
               ? `${receiptBooking.license_plate || '—'} · ${receiptBooking.booking_date} ${receiptBooking.booking_time?.slice(0, 5)}`
@@ -937,15 +964,15 @@ export function AdminScheduleDrawer({
           <div className="space-y-4">
             <div className={`grid gap-3 rounded-md border p-3 sm:grid-cols-3 ${theme === 'dark' ? 'border-white/10 bg-[#11141A]' : 'border-gray-200 bg-gray-50'}`}>
               <div>
-                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{language === 'fi' ? 'Asiakas' : 'Customer'}</p>
+                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{t('customer')}</p>
                 <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{receiptBooking.customer_name || '—'}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{language === 'fi' ? 'Sähköposti' : 'Email'}</p>
+                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{t('email')}</p>
                 <p className={`mt-1 break-all text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{receiptBooking.customer_email || '—'}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{language === 'fi' ? 'Puhelin' : 'Phone'}</p>
+                <p className="text-xs uppercase tracking-[0.08em] text-gray-500">{t('phone')}</p>
                 <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>{receiptBooking.customer_phone || '—'}</p>
               </div>
             </div>
@@ -953,11 +980,11 @@ export function AdminScheduleDrawer({
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h4 className={`text-sm font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Kuittirivit' : 'Receipt lines'}
+                  {t('receiptLines')}
                 </h4>
                 <Button type="button" size="sm" variant="outline" onClick={addReceiptLine} className={theme === 'dark' ? 'border-white/10 text-white hover:bg-white/5' : ''}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  {language === 'fi' ? 'Lisää rivi' : 'Add line'}
+                  {t('addLine')}
                 </Button>
               </div>
 
@@ -970,7 +997,7 @@ export function AdminScheduleDrawer({
                     <Input
                       value={line.title}
                       onChange={(event) => updateReceiptLine(line.id, { title: event.target.value })}
-                      placeholder={language === 'fi' ? 'Palvelun nimi' : 'Service name'}
+                      placeholder={t('serviceNamePlaceholder')}
                       className={theme === 'dark' ? 'border-white/10 bg-[#15171C] text-white' : ''}
                     />
                     <Input
@@ -1006,7 +1033,7 @@ export function AdminScheduleDrawer({
 
             <div className="space-y-2">
               <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                {language === 'fi' ? 'Lisäviesti sähköpostiin' : 'Extra email note'}
+                {t('receiptEmailNote')}
               </label>
               <Textarea
                 value={receiptNotes}
@@ -1018,11 +1045,11 @@ export function AdminScheduleDrawer({
 
             <div className={`ml-auto w-full max-w-sm rounded-md border p-3 ${theme === 'dark' ? 'border-white/10 bg-[#11141A]' : 'border-gray-200 bg-gray-50'}`}>
               <div className="flex justify-between text-sm">
-                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{language === 'fi' ? 'ALV 25,5%' : 'VAT 25.5%'}</span>
+                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{t('vat25')}</span>
                 <span className={theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}>€{centsToEuro(receiptVatCents)}</span>
               </div>
               <div className="mt-2 flex justify-between text-lg font-semibold">
-                <span>{language === 'fi' ? 'Yhteensä' : 'Total'}</span>
+                <span>{t('total')}</span>
                 <span className="text-[#FF6B35]">€{centsToEuro(receiptTotalCents)}</span>
               </div>
             </div>
@@ -1035,7 +1062,7 @@ export function AdminScheduleDrawer({
           </Button>
           <Button onClick={sendReceipt} disabled={sendingReceipt || !receiptBooking?.customer_email} className="bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90">
             <Send className="mr-2 h-4 w-4" />
-            {sendingReceipt ? t('sending') : (language === 'fi' ? 'Lähetä kuitti' : 'Send receipt')}
+            {sendingReceipt ? t('sending') : t('sendReceipt')}
           </Button>
         </DialogFooter>
       </DialogContent>

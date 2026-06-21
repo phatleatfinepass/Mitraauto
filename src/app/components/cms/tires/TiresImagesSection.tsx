@@ -1,4 +1,5 @@
 import { GripVertical, Upload, X } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface TiresImagesSectionProps {
   draggedIndex: number | null;
@@ -9,7 +10,6 @@ interface TiresImagesSectionProps {
   handleImageUpload: (files: FileList | null) => void;
   handleRemoveImage: (index: number) => void;
   isDark: boolean;
-  language: string;
   uploadError: string | null;
   uploadingImages: boolean;
 }
@@ -23,14 +23,15 @@ export function TiresImagesSection({
   handleImageUpload,
   handleRemoveImage,
   isDark,
-  language,
   uploadError,
   uploadingImages,
 }: TiresImagesSectionProps) {
+  const { t } = useLanguage();
+
   return (
     <div>
       <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {language === 'fi' ? 'Kuvat' : 'Images'}
+        {t('tiresImages.title')}
       </h3>
 
       {editGallery.length < 10 && (
@@ -43,16 +44,14 @@ export function TiresImagesSection({
             <Upload className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
             <p className={`text-sm mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {uploadingImages
-                ? (language === 'fi' ? 'Ladataan...' : 'Uploading...')
-                : (language === 'fi' ? 'Klikkaa tai liitä kuvia' : 'Click or paste images')}
+                ? t('cms.imageUpload.uploading')
+                : t('tiresImages.clickOrPaste')}
             </p>
             <p className="text-xs text-gray-500">
-              PNG, JPG max 5MB ({editGallery.length}/10)
+              {t('tiresImages.fileHint', { current: editGallery.length })}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              {language === 'fi'
-                ? 'Kopioi kuva ja paina Cmd/Ctrl+V editorissa'
-                : 'Copy an image and press Cmd/Ctrl+V in the editor'}
+              {t('tiresImages.pasteHint')}
             </p>
           </div>
           <input
@@ -99,7 +98,7 @@ export function TiresImagesSection({
                 <button
                   type="button"
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 cursor-move"
-                  title="Drag to reorder"
+                  title={t('tiresImages.dragToReorder')}
                 >
                   <GripVertical className="w-5 h-5 text-white" />
                 </button>
@@ -108,7 +107,7 @@ export function TiresImagesSection({
                   type="button"
                   onClick={() => handleRemoveImage(index)}
                   className="p-2 rounded-lg bg-red-500/80 hover:bg-red-500 transition-colors"
-                  title="Remove"
+                  title={t('tiresImages.remove')}
                 >
                   <X className="w-5 h-5 text-white" />
                 </button>
@@ -126,3 +125,5 @@ export function TiresImagesSection({
     </div>
   );
 }
+
+export default TiresImagesSection;

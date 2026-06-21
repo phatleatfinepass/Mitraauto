@@ -32,6 +32,8 @@ export function BookingComposerRail({
   onDraftChange,
   onSend,
 }: BookingComposerRailProps) {
+  const dateLocale = { fi: 'fi-FI', en: 'en-US' }[language as 'fi' | 'en'] ?? 'en-US';
+
   return (
     <aside className={`flex min-h-0 min-w-0 flex-col border-t lg:border-l lg:border-t-0 ${theme === 'dark' ? 'border-white/10 bg-[#0F1117]' : 'border-gray-200 bg-[#F7F7F3]'}`}>
       <div className={`border-b px-5 py-4 ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
@@ -75,11 +77,9 @@ export function BookingComposerRail({
 
           <div className={`space-y-4 rounded-lg border p-4 ${theme === 'dark' ? 'border-white/10 bg-[#12151B]' : 'border-gray-200 bg-white'}`}>
             <div>
-              <p className="text-sm font-semibold">{language === 'fi' ? 'Varauskonteksti' : 'Booking context'}</p>
+              <p className="text-sm font-semibold">{t('bookingContext')}</p>
               <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? 'Viestit pysyvät sidottuna tähän varaukseen ja samaan ketjuun.'
-                  : 'Messages stay tied to this booking and the same thread.'}
+                {t('bookingContextDescription')}
               </p>
             </div>
 
@@ -91,29 +91,29 @@ export function BookingComposerRail({
             <div className="space-y-3 text-sm">
               <div>
                 <span className="block text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
-                  {language === 'fi' ? 'Palvelu' : 'Service'}
+                  {t('bookingContextService')}
                 </span>
                 <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{booking.service_name || '—'}</p>
               </div>
               <div>
                 <span className="block text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
-                  {language === 'fi' ? 'Ajankohta' : 'When'}
+                  {t('bookingContextWhen')}
                 </span>
                 <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{booking.booking_date} · {booking.booking_time}</p>
               </div>
               <div>
                 <span className="block text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
-                  {language === 'fi' ? 'Ketjun tila' : 'Thread status'}
+                  {t('bookingContextThreadStatus')}
                 </span>
                 <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{conversation?.thread?.status || 'active'}</p>
               </div>
               <div>
                 <span className="block text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
-                  {language === 'fi' ? 'Synkronoitu' : 'Last synced'}
+                  {t('bookingContextLastSynced')}
                 </span>
                 <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
                   {conversation?.thread?.lastSyncedAt
-                    ? new Date(conversation.thread.lastSyncedAt).toLocaleString(language === 'fi' ? 'fi-FI' : 'en-US')
+                    ? new Date(conversation.thread.lastSyncedAt).toLocaleString(dateLocale)
                     : '—'}
                 </p>
               </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Button } from '../ui/button';
 
 interface RimCatalogLayoutProps {
@@ -20,7 +21,6 @@ interface RimCatalogLayoutProps {
 }
 
 export function RimCatalogLayout({
-  language,
   theme,
   searchMode,
   onSearchModeChange,
@@ -37,6 +37,7 @@ export function RimCatalogLayout({
   onClearSearch,
 }: RimCatalogLayoutProps) {
   const isDark = theme === 'dark';
+  const { t } = useLanguage();
 
   return (
     <div className="container mx-auto max-w-7xl px-6 lg:px-8 py-10">
@@ -45,12 +46,10 @@ export function RimCatalogLayout({
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-2">
               <h1 className={`text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {language === 'fi' ? 'Vanteet' : 'Rims'}
+                {t('catalog.rimsTitle')}
               </h1>
               <p className={`max-w-2xl text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? 'Hae yhteensopivat vanteet ajoneuvon tai teknisten mittojen perusteella. Näytämme olennaiset tiedot kuten koon, PCD:n, ET:n ja keskiöreiän.'
-                  : 'Search compatible rims by vehicle or by exact fitment data. Focus on the measurements that matter: size, PCD, ET, and center bore.'}
+                {t('catalog.rimsSubtitle')}
               </p>
             </div>
 
@@ -65,7 +64,7 @@ export function RimCatalogLayout({
                     ? 'border-white/10 bg-transparent text-gray-200 hover:bg-white/5'
                     : ''}
               >
-                {language === 'fi' ? 'Ajoneuvolla' : 'By vehicle'}
+                {t('catalog.byVehicle')}
               </Button>
               <Button
                 type="button"
@@ -77,7 +76,7 @@ export function RimCatalogLayout({
                     ? 'border-white/10 bg-transparent text-gray-200 hover:bg-white/5'
                     : ''}
               >
-                {language === 'fi' ? 'Mitoilla' : 'By dimensions'}
+                {t('catalog.byDimensions')}
               </Button>
             </div>
           </div>
@@ -94,14 +93,10 @@ export function RimCatalogLayout({
               >
                 <div>
                   <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                    {language === 'fi'
-                      ? `${totalCount} vannetta löytyi`
-                      : `${totalCount} rims found`}
+                    {t('catalog.rimsFound', { count: totalCount })}
                   </p>
                   <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
-                    {language === 'fi'
-                      ? 'Rajaa tuloksia PCD:n, ET:n, värin ja koon perusteella.'
-                      : 'Refine the result set by PCD, ET, color, and wheel size.'}
+                    {t('catalog.rimRefineHint')}
                   </p>
                 </div>
 
@@ -111,7 +106,7 @@ export function RimCatalogLayout({
                   onClick={onClearSearch}
                   className={isDark ? 'border-white/10 text-gray-200 hover:bg-white/5' : ''}
                 >
-                  {language === 'fi' ? 'Tyhjennä haku' : 'Clear search'}
+                  {t('catalog.clearSearch')}
                 </Button>
               </div>
             )}

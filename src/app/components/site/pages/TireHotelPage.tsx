@@ -1,23 +1,17 @@
-import React, { useState } from 'react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
-import { Badge } from '../../ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../ui/accordion';
 import { ImageWithFallback } from '../../figma/ImageWithFallback';
 import { ContactSection } from '../sections/ContactSection';
 import { motion } from 'motion/react';
 import { 
   Calendar,
-  Cloud,
-  Thermometer,
   FileText,
   Lock,
   RefreshCw,
   Car,
   Warehouse,
-  CheckCircle2,
-  Sparkles,
   Package,
   ArrowRight,
   Check,
@@ -30,7 +24,7 @@ interface TireHotelPageProps {
 }
 
 export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
 
   const tireHotelServiceIds = {
     storage: 'tire-hotel-storage',
@@ -42,23 +36,23 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   const benefits = [
     {
       icon: Umbrella,
-      title: language === 'fi' ? 'Turvallinen säilytys' : 'Secure storage',
-      description: language === 'fi' ? 'Renkaat säilytetään suojassa UV-valolta ja vaihtelevilta sääolosuhteilta' : 'Tires kept away from UV light and harsh weather'
+      title: t('tireHotel.benefits.secureStorage.title'),
+      description: t('tireHotel.benefits.secureStorage.desc'),
     },
     {
       icon: FileText,
-      title: language === 'fi' ? 'Merkitty & seurattu' : 'Labeled & tracked',
-      description: language === 'fi' ? 'Jokainen rengassarja merkitään ja seurataan asiakaskohtaisesti' : 'Every tire set is labeled and tracked by customer'
+      title: t('tireHotel.benefits.tracked.title'),
+      description: t('tireHotel.benefits.tracked.desc'),
     },
     {
       icon: Lock,
-      title: language === 'fi' ? 'Suojattu & vakuutettu' : 'Protect & insured',
-      description: language === 'fi' ? 'Valvottu säilytystila kattavalla vakuutusturvalla' : 'Monitored storage with comprehensive insurance'
+      title: t('tireHotel.benefits.insured.title'),
+      description: t('tireHotel.benefits.insured.desc'),
     },
     {
       icon: RefreshCw,
-      title: language === 'fi' ? 'Kausivaihtoa saatavilla' : 'Seasonal swap available',
-      description: language === 'fi' ? 'Varaa vaihto ja asennus silloin kun sinulle sopii' : 'Book tire change and installation when it suits you'
+      title: t('tireHotel.benefits.seasonalSwap.title'),
+      description: t('tireHotel.benefits.seasonalSwap.desc'),
     }
   ];
 
@@ -66,18 +60,18 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   const steps = [
     {
       icon: Car,
-      title: language === 'fi' ? 'Aja korjaamolle' : 'Drive to the Garage',
-      description: language === 'fi' ? 'Aja autosi korjaamollemme' : 'Drive your car to our shop'
+      title: t('tireHotel.steps.drive.title'),
+      description: t('tireHotel.steps.drive.desc'),
     },
     {
       icon: Warehouse,
-      title: language === 'fi' ? 'Säilytämme turvallisesti' : 'We Store Securely',
-      description: language === 'fi' ? 'Renkaat säilytetään turvallisesti poissa sääolosuhteista' : 'Tires stored safe and secure away from weather condition'
+      title: t('tireHotel.steps.store.title'),
+      description: t('tireHotel.steps.store.desc'),
     },
     {
       icon: Calendar,
-      title: language === 'fi' ? 'Valmiina kun haluat' : 'Ready When You Are',
-      description: language === 'fi' ? 'Varaa asennus milloin tahansa sopivana ajankohtana' : 'Schedule installation any time that suits you'
+      title: t('tireHotel.steps.ready.title'),
+      description: t('tireHotel.steps.ready.desc'),
     }
   ];
 
@@ -85,46 +79,46 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   const pricingPlans = [
     {
       id: tireHotelServiceIds.storage,
-      name: language === 'fi' ? 'Säilytys' : 'Storage',
+      name: t('tireHotel.plans.storage.name'),
       price: '60',
-      period: language === 'fi' ? 'kausi' : 'season',
-      description: language === 'fi' ? 'Perussäilytys kaudeksi' : 'Basic storage for the season',
-      priceNote: language === 'fi' ? 'Pelkkä säilytys' : 'Storage only',
+      period: t('tireHotel.plans.storage.period'),
+      description: t('tireHotel.plans.storage.desc'),
+      priceNote: t('tireHotel.plans.storage.note'),
       features: [
-        language === 'fi' ? 'Turvallinen säilytys' : 'Safe storage',
-        language === 'fi' ? 'Kulutuspinnan tarkastus' : 'Tread inspection',
-        language === 'fi' ? 'Ilmainen muistutus' : 'Free reminder',
-        language === 'fi' ? 'Vakuutusturva' : 'Insurance coverage'
+        t('tireHotel.plans.storage.feature1'),
+        t('tireHotel.plans.storage.feature2'),
+        t('tireHotel.plans.storage.feature3'),
+        t('tireHotel.plans.storage.feature4'),
       ],
       highlighted: false
     },
     {
       id: tireHotelServiceIds.seasonalSwap,
-      name: language === 'fi' ? 'Kausivaihtopaketti' : 'Seasonal Swap',
+      name: t('tireHotel.plans.swap.name'),
       price: '35',
-      period: language === 'fi' ? 'vaihto' : 'swap',
-      description: language === 'fi' ? 'Ammattimainen rengasvaihto' : 'Professional tire change',
-      priceNote: language === 'fi' ? '* Normaaleille renkaille alkaen 35 €' : '* Normal tires from €35',
+      period: t('tireHotel.plans.swap.period'),
+      description: t('tireHotel.plans.swap.desc'),
+      priceNote: t('tireHotel.plans.swap.note'),
       features: [
-        language === 'fi' ? 'Renkaiden asennus' : 'Tire mounting',
-        language === 'fi' ? 'Teknikko tarkastus' : 'Technician inspection',
-        language === 'fi' ? 'Paineen säätö' : 'Pressure adjustment',
-        language === 'fi' ? 'Visuaalinen tarkastus' : 'Visual inspection'
+        t('tireHotel.plans.swap.feature1'),
+        t('tireHotel.plans.swap.feature2'),
+        t('tireHotel.plans.swap.feature3'),
+        t('tireHotel.plans.swap.feature4'),
       ],
       highlighted: false
     },
     {
       id: tireHotelServiceIds.hotelPackage,
-      name: language === 'fi' ? 'Hotellipaketti' : 'Hotel Package',
+      name: t('tireHotel.plans.package.name'),
       price: '90',
-      period: language === 'fi' ? 'kausi' : 'season',
-      description: language === 'fi' ? 'Yhdistelmähinta: säilytys + kausivaihtopaketti' : 'Combo price: storage + seasonal swap',
-      priceNote: language === 'fi' ? 'Sisältää säilytyksen ja vaihdon' : 'Includes both storage and swap',
+      period: t('tireHotel.plans.package.period'),
+      description: t('tireHotel.plans.package.desc'),
+      priceNote: t('tireHotel.plans.package.note'),
       features: [
-        language === 'fi' ? 'Kaikki säilytysedut' : 'All storage benefits',
-        language === 'fi' ? 'Kausivaihtopaketti sisältyy' : 'Seasonal swap included',
-        language === 'fi' ? 'Säästä €5 vs. erikseen' : 'Save €5 vs separate',
-        language === 'fi' ? 'Ensisijainen varaus' : 'Priority booking'
+        t('tireHotel.plans.package.feature1'),
+        t('tireHotel.plans.package.feature2'),
+        t('tireHotel.plans.package.feature3'),
+        t('tireHotel.plans.package.feature4'),
       ],
       highlighted: true
     }
@@ -133,34 +127,24 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
   // FAQ items
   const faqItems = [
     {
-      question: language === 'fi' ? 'Kuinka kauan voin säilyttää renkaita?' : 'How long can I store my tires?',
-      answer: language === 'fi' 
-        ? 'Renkaat voidaan säilyttää koko kauden ajan (yleensä 6 kuukautta). Tarjoamme myös pitkäaikaisempia säilytysvaihtoehtoja tarvittaessa.'
-        : 'Tires can be stored for the entire season (typically 6 months). We also offer longer-term storage options if needed.'
+      question: t('tireHotel.faq.storage.question'),
+      answer: t('tireHotel.faq.storage.answer'),
     },
     {
-      question: language === 'fi' ? 'Voinko säilyttää myös vanteet?' : 'Can I store rims too?',
-      answer: language === 'fi'
-        ? 'Kyllä! Säilytämme sekä renkaat että vanteet. Suosittelemme vanteilla varustettujen renkaiden säilyttämistä pystyasennossa niiden kunnon säilyttämiseksi.'
-        : 'Yes! We store both tires and rims. We recommend storing tires with rims in an upright position to maintain their condition.'
+      question: t('tireHotel.faq.rims.question'),
+      answer: t('tireHotel.faq.rims.answer'),
     },
     {
-      question: language === 'fi' ? 'Onko säilytys vakuutettu?' : 'Is the storage insured?',
-      answer: language === 'fi'
-        ? 'Kyllä, kaikki säilytettävät renkaat ovat vakuutettuja varkauksia ja vahinkoja vastaan. Kattava vakuutus sisältyy kaikkiin paketteihin.'
-        : 'Yes, all stored tires are insured against theft and damage. Comprehensive coverage is included in all packages.'
+      question: t('tireHotel.faq.insurance.question'),
+      answer: t('tireHotel.faq.insurance.answer'),
     },
     {
-      question: language === 'fi' ? 'Miten haen renkaat takaisin?' : 'How do I retrieve my tires?',
-      answer: language === 'fi'
-        ? 'Varaa aika online tai soita meille. Premium-asiakkaat saavat ilmaisen toimituksen. Voimme myös asentaa renkaat suoraan autoon kun haet ne.'
-        : 'Book a time online or call us. Premium customers get free delivery. We can also install the tires directly on your car when you pick them up.'
+      question: t('tireHotel.faq.retrieve.question'),
+      answer: t('tireHotel.faq.retrieve.answer'),
     },
     {
-      question: language === 'fi' ? 'Mitä tapahtuu, jos renkaat vaurioituvat säilytyksen aikana?' : 'What happens if tires get damaged during storage?',
-      answer: language === 'fi'
-        ? 'Jos renkaat vaurioituvat säilytyksen aikana, vakuutuksemme kattaa korvauskustannukset täysin. Tarkastamme myös kaikki renkaat ennen säilytystä ja palautusta.'
-        : 'If tires are damaged during storage, our insurance covers replacement costs in full. We also inspect all tires before storage and upon return.'
+      question: t('tireHotel.faq.damage.question'),
+      answer: t('tireHotel.faq.damage.answer'),
     }
   ];
 
@@ -188,9 +172,9 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
               {/* Floating badge */}
               <div className="absolute -bottom-6 -right-6 bg-accent text-white p-6 rounded-2xl shadow-xl">
                 <div className="text-center">
-                  <div className="text-3xl font-bold">500+</div>
+                  <div className="text-3xl font-bold">Helsinki</div>
                   <div className="text-sm opacity-90">
-                    {language === 'fi' ? 'Tyytyväistä asiakasta' : 'Happy Customers'}
+                    {t('tireHotel.title')}
                   </div>
                 </div>
               </div>
@@ -204,13 +188,11 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-4xl md:text-5xl tracking-tight mb-6">
-                {language === 'fi' ? 'Mikä on rengashotelli?' : 'What Is a Tire Hotel?'}
+                {t('tireHotel.whatIsTitle')}
               </h2>
               
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                {language === 'fi'
-                  ? 'Rengashotellimme on ilmastoitu säilytyspalvelu, jossa renkaasi pysyvät suojattuina, seurattuna ja valmiina seuraavaa kautta varten. Ammattilaiset huolehtivat, että renkaasi säilyvät optimaalisessa kunnossa ympäri vuoden.'
-                  : 'Our Tire Hotel is a climate-controlled storage service where your tires stay protected, tracked, and ready for the next season. Professionals ensure your tires remain in optimal condition year-round.'}
+                {t('tireHotel.whatIsBody')}
               </p>
 
               {/* CTA Buttons */}
@@ -221,7 +203,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
                   className="bg-accent hover:bg-accent/90 text-white rounded-full h-14 px-10 gap-2 shadow-lg shadow-accent/30 hover:shadow-accent/50 transition-all"
                 >
                   <Calendar className="h-5 w-5" />
-                  {language === 'fi' ? 'Varaa säilytys' : 'Book Storage'}
+                  {t('tireHotel.bookStorage')}
                 </Button>
                 
                 <Button
@@ -232,7 +214,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
                     document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
-                  {language === 'fi' ? 'Lue lisää' : 'Learn More'}
+                  {t('tireHotel.learnMore')}
                 </Button>
               </div>
 
@@ -262,12 +244,10 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
         <div className="container mx-auto max-w-7xl px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl tracking-tight mb-4">
-              {language === 'fi' ? 'Miten se toimii' : 'How It Works'}
+              {t('tireHotel.howItWorksTitle')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {language === 'fi'
-                ? 'Yksinkertainen kolmivaiheinen prosessi renkaiden turvalliseen säilytykseen'
-                : 'Simple three-step process for secure tire storage'}
+              {t('tireHotel.howItWorksSubtitle')}
             </p>
           </div>
 
@@ -309,12 +289,10 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
         <div className="container mx-auto max-w-7xl px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl tracking-tight mb-4">
-              {language === 'fi' ? 'Säilytyspaketit' : 'Storage Plans'}
+              {t('tireHotel.storagePlansTitle')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {language === 'fi'
-                ? 'Valitse tarpeisiisi sopiva paketti. Kaikki hinnat sisältävät ALV:n.'
-                : 'Choose the plan that fits your needs. All prices include VAT.'}
+              {t('tireHotel.storagePlansSubtitle')}
             </p>
           </div>
 
@@ -336,7 +314,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
                   {/* Most Popular Badge */}
                   {plan.highlighted && (
                     <div className="absolute top-0 right-0 bg-accent text-white text-xs font-semibold px-4 py-1 rounded-bl-lg">
-                      {language === 'fi' ? 'Suosituin' : 'Most Popular'}
+                      {t('tireHotel.mostPopular')}
                     </div>
                   )}
 
@@ -367,7 +345,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
                           : 'bg-foreground hover:bg-foreground/90 text-background'
                       }`}
                     >
-                      {language === 'fi' ? 'Varaa nyt' : 'Book Now'}
+                      {t('tireHotel.bookNow')}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
 
@@ -393,12 +371,10 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
         <div className="container mx-auto max-w-4xl px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl tracking-tight mb-4">
-              {language === 'fi' ? 'Usein kysytyt kysymykset' : 'Frequently Asked Questions'}
+              {t('tireHotel.faqTitle')}
             </h2>
             <p className="text-lg text-muted-foreground">
-              {language === 'fi'
-                ? 'Vastauksia yleisimpiin kysymyksiin rengashotellista'
-                : 'Answers to common questions about our Tire Hotel'}
+              {t('tireHotel.faqSubtitle')}
             </p>
           </div>
 
@@ -418,7 +394,7 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
       </section>
 
       {/* Trust Signals Section */}
-      <section className="py-16 lg:py-20 bg-secondary/30" aria-label="Why choose our Tire Hotel">
+      <section className="py-16 lg:py-20 bg-secondary/30" aria-label={t('tireHotel.trustAria')}>
         <div className="container mx-auto max-w-7xl px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Secure Storage */}

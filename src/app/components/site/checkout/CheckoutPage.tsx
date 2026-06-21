@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useCart } from '../cart/CartContext';
-import { useTheme } from '../../ThemeContext';
-import { useLanguage } from '../../LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
@@ -158,7 +158,7 @@ interface CheckoutPageProps {
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }) => {
   const { items, totalPrice, clearCart } = useCart();
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
 
   const [formData, setFormData] = useState<CheckoutFormData>(() => loadCheckoutDraft());
 
@@ -168,92 +168,32 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     saveCheckoutDraft(formData);
   }, [formData]);
 
-  const t = (key: string) => {
-    const translations: Record<string, { fi: string; en: string }> = {
-      checkout: { fi: 'Kassa', en: 'Checkout' },
-      backToCart: { fi: 'Takaisin ostoskoriin', en: 'Back to Cart' },
-      orderSummary: { fi: 'Tilausyhteenveto', en: 'Order Summary' },
-      contactInfo: { fi: 'Yhteystiedot', en: 'Contact Information' },
-      shippingAddress: { fi: 'Toimitusosoite', en: 'Shipping Address' },
-      billingAddress: { fi: 'Laskutusosoite', en: 'Billing Address' },
-      paymentMethod: { fi: 'Maksutapa', en: 'Payment Method' },
-      firstName: { fi: 'Etunimi', en: 'First Name' },
-      lastName: { fi: 'Sukunimi', en: 'Last Name' },
-      email: { fi: 'Sähköposti', en: 'Email' },
-      phone: { fi: 'Puhelinnumero', en: 'Phone Number' },
-      address: { fi: 'Osoite', en: 'Address' },
-      city: { fi: 'Kaupunki', en: 'City' },
-      postalCode: { fi: 'Postinumero', en: 'Postal Code' },
-      country: { fi: 'Maa', en: 'Country' },
-      sameAsShipping: { fi: 'Sama kuin toimitusosoite', en: 'Same as shipping address' },
-      orderNotes: { fi: 'Tilaushuomautukset (valinnainen)', en: 'Order Notes (optional)' },
-      subtotal: { fi: 'Välisumma', en: 'Subtotal' },
-      shipping: { fi: 'Toimitus', en: 'Shipping' },
-      vat: { fi: 'ALV 25.5%', en: 'VAT 25.5%' },
-      total: { fi: 'Yhteensä', en: 'Total' },
-      placeOrder: { fi: 'Vahvista tilaus', en: 'Place Order' },
-      processing: { fi: 'Käsitellään...', en: 'Processing...' },
-      acceptTerms: { fi: 'Hyväksyn käyttöehdot ja tietosuojakäytännön', en: 'I accept the terms and conditions and privacy policy' },
-      required: { fi: 'pakollinen', en: 'required' },
-      items: { fi: 'tuotetta', en: 'items' },
-      perPcs: { fi: 'kpl', en: 'pcs' },
-      freeShipping: { fi: 'Ilmainen toimitus', en: 'Free Shipping' },
-      shipToGarage: { fi: 'Toimitus korjaamolle', en: 'Ship to garage' },
-      shipToAddress: { fi: 'Toimitus kotiin', en: 'Ship to address' },
-      deliveryMethod: { fi: 'Toimitustapa', en: 'Delivery method' },
-      garageDeliveryOption: { fi: 'Mitra Autolle', en: 'Mitra Auto' },
-      homeDeliveryOption: { fi: 'Kotiinkuljetus', en: 'Home delivery' },
-      deliveryToGarage: { fi: 'Toimitus Mitra Autolle', en: 'Delivery to Mitra Auto' },
-      homeDelivery: { fi: 'Kotiinkuljetus', en: 'Home delivery' },
-      garageShippingDescription: { fi: 'Tuotteet toimitetaan Mitra Autolle asennusta tai noutoa varten.', en: 'Products ship to Mitra Auto for fitting or pickup.' },
-      homeShippingDescription: { fi: 'Toimitus asiakkaan osoitteeseen Suomessa.', en: 'Delivery to the customer address in Finland.' },
-      garageAddress: { fi: 'Mitra Auto, Helsinki', en: 'Mitra Auto, Helsinki' },
-      secureCheckout: { fi: 'Turvallinen maksu', en: 'Secure Checkout' },
-      cancelOrder: { fi: 'Peruuta tilaus', en: 'Cancel order' },
-    };
-    return translations[key]?.[language] || key;
-  };
+  const checkoutText = (key: string) => t(`checkout.${key}`);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // STRICT VALIDATION - Check cart is not empty
     if (!items || items.length === 0) {
-      toast.error(
-        language === 'fi'
-          ? 'Ostoskori on tyhjä'
-          : 'Cart is empty'
-      );
+      toast.error(checkoutText('error.emptyCart'));
       return;
     }
 
     // Validate terms acceptance
     if (!formData.acceptTerms) {
-      toast.error(
-        language === 'fi' 
-          ? 'Sinun on hyväksyttävä käyttöehdot jatkaaksesi' 
-          : 'You must accept the terms and conditions to continue'
-      );
+      toast.error(checkoutText('error.acceptTerms'));
       return;
     }
 
     // Validate required fields - Contact Information
     if (!formData.firstName || !formData.lastName) {
-      toast.error(
-        language === 'fi'
-          ? 'Täytä etu- ja sukunimi'
-          : 'Please fill in first and last name'
-      );
+      toast.error(checkoutText('error.nameRequired'));
       return;
     }
 
     // Validate email contains @
     if (!formData.email || !formData.email.includes('@')) {
-      toast.error(
-        language === 'fi'
-          ? 'Anna kelvollinen sähköpostiosoite'
-          : 'Please enter a valid email address'
-      );
+      toast.error(checkoutText('error.invalidEmail'));
       return;
     }
 
@@ -261,48 +201,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
     const normalizedPhone = normalizeFinnishPhone(formData.phone);
 
     if (!hasFinnishPhoneValue(normalizedPhone)) {
-      toast.error(
-        language === 'fi'
-          ? 'Anna puhelinnumero'
-          : 'Please enter phone number'
-      );
+      toast.error(checkoutText('error.phoneRequired'));
       return;
     }
 
     if (formData.shippingMethod === 'home') {
       if (!formData.shippingAddress) {
-        toast.error(
-          language === 'fi'
-            ? 'Anna toimitusosoite'
-            : 'Please enter shipping address'
-        );
+        toast.error(checkoutText('error.shippingAddressRequired'));
         return;
       }
 
       if (!formData.shippingCity) {
-        toast.error(
-          language === 'fi'
-            ? 'Anna kaupunki'
-            : 'Please enter city'
-        );
+        toast.error(checkoutText('error.cityRequired'));
         return;
       }
 
       if (!formData.shippingPostalCode) {
-        toast.error(
-          language === 'fi'
-            ? 'Anna postinumero'
-            : 'Please enter postal code'
-        );
+        toast.error(checkoutText('error.postalCodeRequired'));
         return;
       }
 
       if (!formData.shippingCountry) {
-        toast.error(
-          language === 'fi'
-            ? 'Anna maa'
-            : 'Please enter country'
-        );
+        toast.error(checkoutText('error.countryRequired'));
         return;
       }
     }
@@ -322,10 +242,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
           .map((value) => Number(value))
           .find((value) => Number.isFinite(value) && value > 0);
         if (stockLimit && item.quantity > stockLimit) {
+          const productLabel = `${item.product.brand || ''} ${item.product.model || item.product.name || ''}`.trim();
           throw new Error(
-            language === 'fi'
-              ? `${item.product.brand || ''} ${item.product.model || item.product.name || ''}: varastossa on vain ${Math.floor(stockLimit)} kpl.`
-              : `${item.product.brand || ''} ${item.product.model || item.product.name || ''}: only ${Math.floor(stockLimit)} pcs available.`
+            `${productLabel}: ${checkoutText('error.onlyStockAvailable')} ${Math.floor(stockLimit)} ${checkoutText('error.availableSuffix')}`
           );
         }
 
@@ -421,11 +340,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         console.error('Payment creation error:', error);
         setIsProcessing(false);
         saveCheckoutDraft(formData);
-        toast.error(
-          language === 'fi'
-            ? 'Maksun aloitus epäonnistui. Yritä uudelleen.'
-            : 'We couldn\'t start the payment. Please try again.'
-        );
+        toast.error(checkoutText('error.paymentStartFailed'));
         return;
       }
 
@@ -434,11 +349,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         console.error('Backend error:', data);
         setIsProcessing(false);
         saveCheckoutDraft(formData);
-        toast.error(
-          language === 'fi'
-            ? `Virhe: ${data.message || 'Maksun aloitus epäonnistui'}`
-            : `Error: ${data.message || 'Payment creation failed'}`
-        );
+        toast.error(`Error: ${data.message || checkoutText('error.paymentCreationFailed')}`);
         return;
       }
 
@@ -447,11 +358,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         console.error('Invalid payment response - no redirect_url:', data);
         setIsProcessing(false);
         saveCheckoutDraft(formData);
-        toast.error(
-          language === 'fi'
-            ? 'Virheellinen vastaus palvelimelta'
-            : 'Invalid response from server'
-        );
+        toast.error(checkoutText('error.invalidServerResponse'));
         return;
       }
 
@@ -466,13 +373,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       saveCheckoutDraft(formData);
 
       const message = error instanceof Error ? error.message : '';
-      toast.error(
-        message || (
-          language === 'fi'
-            ? 'Maksun aloitus epäonnistui. Yritä uudelleen.'
-            : 'We couldn\'t start the payment. Please try again.'
-        )
-      );
+      toast.error(message || checkoutText('error.paymentStartFailed'));
     }
   };
 
@@ -502,7 +403,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
             }`}
           >
             <ArrowLeft className="size-5" />
-            <span className="text-sm">{t('backToCart')}</span>
+            <span className="text-sm">{checkoutText('backToCart')}</span>
           </button>
         </div>
       </div>
@@ -511,7 +412,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         <h1 className={`text-3xl sm:text-4xl mb-8 ${
           theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
         }`}>
-          {t('checkout')}
+          {checkoutText('title')}
         </h1>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -527,14 +428,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 <div className="flex items-center gap-2 mb-4">
                   <User className={`size-5 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`} />
                   <h2 className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
-                    {t('contactInfo')}
+                    {checkoutText('contactInfo')}
                   </h2>
                 </div>
                 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="given-name" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                      {t('firstName')} <span className="text-red-500">*</span>
+                      {checkoutText('firstName')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="given-name"
@@ -553,7 +454,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   
                   <div>
                     <Label htmlFor="family-name" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                      {t('lastName')} <span className="text-red-500">*</span>
+                      {checkoutText('lastName')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="family-name"
@@ -572,7 +473,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   
                   <div>
                     <Label htmlFor="email" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                      {t('email')} <span className="text-red-500">*</span>
+                      {checkoutText('email')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="email"
@@ -593,7 +494,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   
                   <div>
                     <Label htmlFor="tel" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                      {t('phone')} <span className="text-red-500">*</span>
+                      {checkoutText('phone')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="tel"
@@ -624,7 +525,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   <div className="flex items-center gap-2">
 	                    <Truck className={`size-5 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`} />
 	                    <h2 className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
-	                      {t('deliveryMethod')}
+	                      {checkoutText('deliveryMethod')}
 	                    </h2>
 	                  </div>
 
@@ -632,8 +533,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-[#E2E8F0] bg-[#F8FAFC]'
                   }`}>
 	                    {([
-                      { value: 'garage', label: t('garageDeliveryOption'), icon: Warehouse },
-                      { value: 'home', label: t('homeDeliveryOption'), icon: Mailbox },
+                      { value: 'garage', label: checkoutText('garageDeliveryOption'), icon: Warehouse },
+                      { value: 'home', label: checkoutText('homeDeliveryOption'), icon: Mailbox },
 	                    ] as const).map((option) => {
                       const Icon = option.icon;
                       const active = formData.shippingMethod === option.value;
@@ -665,14 +566,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className={`text-sm font-medium ${theme === 'dark' ? 'text-green-200' : 'text-green-800'}`}>
-                          {t('garageAddress')}
+                          {checkoutText('garageAddress')}
                         </p>
                         <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#475569]'}`}>
-                          {t('garageShippingDescription')}
+                          {checkoutText('garageShippingDescription')}
                         </p>
                       </div>
                       <span className="whitespace-nowrap rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white">
-                        {t('freeShipping')}
+                        {checkoutText('freeShipping')}
                       </span>
                     </div>
                   </div>
@@ -680,7 +581,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="shipping-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                        {t('address')} <span className="text-red-500">*</span>
+                        {checkoutText('address')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="shipping-address-line1"
@@ -700,7 +601,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="shipping-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                          {t('city')} <span className="text-red-500">*</span>
+                          {checkoutText('city')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           id="shipping-address-level2"
@@ -719,7 +620,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       
                       <div>
                         <Label htmlFor="shipping-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                          {t('postalCode')} <span className="text-red-500">*</span>
+                          {checkoutText('postalCode')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           id="shipping-postal-code"
@@ -738,7 +639,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       </div>
                     </div>
                     <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                      {t('homeShippingDescription')} €{HOME_DELIVERY_FEE_EUR.toFixed(2)}
+                      {checkoutText('homeShippingDescription')} €{HOME_DELIVERY_FEE_EUR.toFixed(2)}
                     </p>
                   </div>
                 )}
@@ -751,7 +652,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 <div className="flex items-center gap-2 mb-4">
                   <Building className={`size-5 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`} />
                   <h2 className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
-                    {t('billingAddress')}
+                    {checkoutText('billingAddress')}
                   </h2>
                 </div>
                 
@@ -765,7 +666,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     htmlFor="sameAsShipping" 
                     className={`cursor-pointer ${theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}`}
                   >
-                    {t('sameAsShipping')}
+                    {checkoutText('sameAsShipping')}
                   </Label>
                 </div>
 
@@ -773,7 +674,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="billing-address-line1" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                        {t('address')} <span className="text-red-500">*</span>
+                        {checkoutText('address')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="billing-address-line1"
@@ -793,7 +694,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="billing-address-level2" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                          {t('city')} <span className="text-red-500">*</span>
+                          {checkoutText('city')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           id="billing-address-level2"
@@ -812,7 +713,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                       
                       <div>
                         <Label htmlFor="billing-postal-code" className={theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}>
-                          {t('postalCode')} <span className="text-red-500">*</span>
+                          {checkoutText('postalCode')} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           id="billing-postal-code"
@@ -845,7 +746,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                   htmlFor="acceptTerms" 
                   className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-[#0F172A]'}`}
                 >
-                  {language === 'fi' ? 'Hyväksyn ' : 'I accept the '} 
+                  {checkoutText('acceptTermsPrefix')}
                   <a 
                     href="/legal" 
                     target="_blank"
@@ -853,7 +754,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     className={`underline hover:no-underline ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {language === 'fi' ? 'Käyttöehdot ja Tietosuojaselosteen' : 'Terms & Conditions and Privacy Policy'}
+                    {checkoutText('acceptTermsLink')}
                   </a>
                   {' '}<span className="text-red-500">*</span>
                 </Label>
@@ -867,7 +768,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 style={{ boxShadow: '0 2px 12px rgba(255, 107, 0, 0.25)' }}
               >
                 <Lock className="size-5 mr-2" />
-                {isProcessing ? t('processing') : t('placeOrder')}
+                {isProcessing ? checkoutText('processing') : checkoutText('placeOrder')}
               </Button>
 
               {/* Subtle Cancel Link - Mobile */}
@@ -880,7 +781,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                   }`}
                 >
-                  {t('cancelOrder')}
+                  {checkoutText('cancelOrder')}
                 </button>
               </div>
             </form>
@@ -892,7 +793,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
               theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-[#E2E8F0]'
             }`}>
               <h2 className={`text-lg mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
-                {t('orderSummary')}
+                {checkoutText('orderSummary')}
               </h2>
 
               <div className="space-y-3 mb-4">
@@ -941,7 +842,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
               <div className="space-y-2 my-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className={theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}>
-                    {t('subtotal')}
+                    {checkoutText('subtotal')}
                   </span>
                   <span className={theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}>
                     €{subtotalWithVat.toFixed(2)}
@@ -949,17 +850,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className={theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}>
-                    {formData.shippingMethod === 'home' ? t('homeDelivery') : t('deliveryToGarage')}
+                    {formData.shippingMethod === 'home' ? checkoutText('homeDelivery') : checkoutText('deliveryToGarage')}
                   </span>
                   <span className={`${
                     shippingCost === 0 ? 'text-green-600' : theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
                   }`}>
-                    {shippingCost === 0 ? t('freeShipping') : `€${shippingCost.toFixed(2)}`}
+                    {shippingCost === 0 ? checkoutText('freeShipping') : `€${shippingCost.toFixed(2)}`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className={theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}>
-                    {t('vat')}
+                    {checkoutText('vat')}
                   </span>
                   <span className={theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}>
                     €{vatAmount.toFixed(2)}
@@ -971,7 +872,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
 
               <div className="flex items-center justify-between mt-4 mb-6">
                 <span className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
-                  {t('total')}
+                  {checkoutText('total')}
                 </span>
                 <span className="text-2xl text-[#FF6B00]">
                   €{finalTotal.toFixed(2)}
@@ -987,13 +888,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                 style={{ boxShadow: '0 2px 12px rgba(255, 107, 0, 0.25)' }}
               >
                 <Lock className="size-5 mr-2" />
-                {isProcessing ? t('processing') : t('placeOrder')}
+                {isProcessing ? checkoutText('processing') : checkoutText('placeOrder')}
               </Button>
 
               <p className={`text-xs text-center mt-4 ${
                 theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'
               }`}>
-                {t('secureCheckout')}
+                {checkoutText('secureCheckout')}
               </p>
 
               {/* Subtle Cancel Link - Desktop */}
@@ -1006,7 +907,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                   }`}
                 >
-                  {t('cancelOrder')}
+                  {checkoutText('cancelOrder')}
                 </button>
               </div>
             </div>

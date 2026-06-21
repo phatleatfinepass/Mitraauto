@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabaseConfigError, supabase } from '../../../utils/supabase/client';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
@@ -178,7 +178,7 @@ function canOpenRequiredModule(access: CmsAccess | null, requiredModule: CmsGuar
 }
 
 export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [userEmail, setUserEmail] = useState<string>('');
   const [loginEmail, setLoginEmail] = useState('');
@@ -449,7 +449,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
     if (resetSending) return;
     const email = (loginEmail || userEmail).trim();
     if (!email) {
-      setLoginError(language === 'fi' ? 'Lisää sähköposti ensin.' : 'Enter your email first.');
+      setLoginError(t('cmsGuard.enterEmailFirst'));
       return;
     }
 
@@ -459,12 +459,10 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
 
     try {
       await requestCmsAccountRecovery(email);
-      setResetMessage(language === 'fi'
-        ? 'Salasanan vaihtolinkki on lähetetty sähköpostiisi.'
-        : 'Password reset link sent to your email.');
+      setResetMessage(t('cmsGuard.passwordResetSent'));
     } catch (error) {
       console.error('CMS password reset request failed:', error);
-      setLoginError(language === 'fi' ? 'Salasanan vaihtolinkin lähetys epäonnistui.' : 'Failed to send password reset link.');
+      setLoginError(t('cmsGuard.passwordResetFailed'));
     } finally {
       setResetSending(false);
     }
@@ -511,12 +509,12 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
     setResetMessage('');
 
     if (recoveryPassword.length < 8) {
-      setLoginError(language === 'fi' ? 'Salasanan täytyy olla vähintään 8 merkkiä.' : 'Password must be at least 8 characters.');
+      setLoginError(t('cmsGuard.passwordTooShort'));
       return;
     }
 
     if (recoveryPassword !== recoveryConfirm) {
-      setLoginError(language === 'fi' ? 'Salasanat eivät täsmää.' : 'Passwords do not match.');
+      setLoginError(t('cmsGuard.passwordMismatch'));
       return;
     }
 
@@ -525,18 +523,14 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
     try {
       const hasSetupSession = await ensurePasswordSetupSession();
       if (!hasSetupSession) {
-        setLoginError(language === 'fi'
-          ? 'Salasanan asetusistunto puuttuu. Avaa uusin sähköpostilinkki samassa selaimessa ja yritä uudelleen.'
-          : 'Password setup session is missing. Open the newest email link in this same browser and try again.');
+        setLoginError(t('cmsGuard.passwordSetupSessionMissing'));
         return;
       }
 
       const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
       if (error) {
         const message = /session/i.test(error.message)
-          ? (language === 'fi'
-              ? 'Salasanan asetusistunto puuttuu. Avaa uusin sähköpostilinkki samassa selaimessa ja yritä uudelleen.'
-              : 'Password setup session is missing. Open the newest email link in this same browser and try again.')
+          ? t('cmsGuard.passwordSetupSessionMissing')
           : error.message;
         setLoginError(message);
         return;
@@ -546,14 +540,14 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
       if (typeof window !== 'undefined') {
         window.sessionStorage.removeItem(CMS_PASSWORD_SETUP_PARAMS_KEY);
       }
-      setResetMessage(language === 'fi' ? 'Salasana vaihdettu.' : 'Password changed.');
+      setResetMessage(t('cmsGuard.passwordChanged'));
       if (typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/cms/password-setup') {
         window.history.replaceState(window.history.state, '', '/cms');
       }
       void verifyAccess('inline-login');
     } catch (error) {
       console.error('CMS password update failed:', error);
-      setLoginError(language === 'fi' ? 'Salasanan vaihto epäonnistui.' : 'Failed to change password.');
+      setLoginError(t('cmsGuard.passwordChangeFailed'));
     } finally {
       setRecoverySaving(false);
     }
@@ -565,12 +559,12 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
 
     const code = mfaCode.trim().replace(/\s/g, '');
     if (!mfaFactorId) {
-      setMfaError(language === 'fi' ? 'MFA-laite puuttuu. Kirjaudu uudelleen.' : 'MFA factor missing. Sign in again.');
+      setMfaError(t('cmsGuard.mfaFactorMissing'));
       return;
     }
 
     if (!/^\d{6}$/.test(code)) {
-      setMfaError(language === 'fi' ? 'Anna 6-numeroinen vahvistuskoodi.' : 'Enter the 6-digit verification code.');
+      setMfaError(t('cmsGuard.mfaCodeInvalid'));
       return;
     }
 
@@ -592,7 +586,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
       await settleVerifiedMfaSession();
     } catch (error) {
       console.error('CMS MFA verification failed:', error);
-      setMfaError(language === 'fi' ? 'MFA-vahvistus epäonnistui.' : 'MFA verification failed.');
+      setMfaError(t('cmsGuard.mfaVerificationFailed'));
     } finally {
       setMfaSaving(false);
     }
@@ -626,18 +620,14 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
 
           <h1 className="text-2xl font-bold text-white mb-3 text-center">
             {isEnrollment
-              ? (language === 'fi' ? 'Ota 2FA käyttöön' : 'Set up 2FA')
-              : (language === 'fi' ? 'Vahvista 2FA' : 'Verify 2FA')}
+              ? t('cmsGuard.setUp2fa')
+              : t('cmsGuard.verify2fa')}
           </h1>
 
           <p className="text-gray-400 mb-6 text-center">
             {isEnrollment
-              ? (language === 'fi'
-                  ? 'CMS vaatii nyt vahvistussovelluksen ennen hallintapaneelin avaamista.'
-                  : 'The CMS now requires an authenticator app before opening the admin panel.')
-              : (language === 'fi'
-                  ? 'Anna vahvistussovelluksen koodi jatkaaksesi CMS-hallintaan.'
-                  : 'Enter the code from your authenticator app to continue to the CMS.')}
+              ? t('cmsGuard.setUp2faDescription')
+              : t('cmsGuard.verify2faDescription')}
           </p>
 
           {isEnrollment ? (
@@ -650,7 +640,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
               {mfaSecret ? (
                 <div className="rounded-xl border border-gray-700 bg-[#0D1016] px-4 py-3">
                   <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">
-                    {language === 'fi' ? 'Manuaalinen avain' : 'Manual key'}
+                    {t('cmsGuard.manualKey')}
                   </p>
                   <p className="break-all font-mono text-sm text-gray-200">{mfaSecret}</p>
                 </div>
@@ -668,7 +658,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
             <form onSubmit={handleVerifyMfa} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="cms-mfa-code" className="text-gray-300">
-                {language === 'fi' ? '6-numeroinen koodi' : '6-digit code'}
+                {t('cmsGuard.sixDigitCode')}
               </Label>
               <Input
                 id="cms-mfa-code"
@@ -691,10 +681,10 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
               className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
             >
               {mfaSaving
-                ? (language === 'fi' ? 'Vahvistetaan...' : 'Verifying...')
+                ? t('cmsGuard.verifying')
                 : isEnrollment
-                ? (language === 'fi' ? 'Ota 2FA käyttöön' : 'Enable 2FA')
-                : (language === 'fi' ? 'Vahvista ja jatka' : 'Verify and continue')}
+                ? t('cmsGuard.enable2fa')
+                : t('cmsGuard.verifyAndContinue')}
             </Button>
             </form>
           ) : null}
@@ -705,7 +695,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
             disabled={mfaSaving}
             className="mt-4 w-full text-sm text-gray-400 hover:text-white transition-colors"
           >
-            {language === 'fi' ? 'Kirjaudu ulos' : 'Sign out'}
+            {t('cmsGuard.signOut')}
           </button>
         </div>
       </div>
@@ -717,12 +707,10 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
       if (!recoveryState.active) return false;
 
       if (recoveryState.expired) {
-        setRecoveryLinkError(language === 'fi'
-          ? 'Salasanalinkki on vanhentunut tai käytetty. Lähetä uusi linkki.'
-          : 'This password setup link is expired or has already been used. Send a new link.');
+        setRecoveryLinkError(t('cmsGuard.recoveryLinkExpired'));
       } else if (recoveryState.message) {
-        setRecoveryLinkError(language === 'fi' && recoveryState.message.startsWith('Open the newest')
-          ? 'Avaa uusin salasanan asetuslinkki sähköpostista. Tämä sivu toimii vain voimassa olevalla linkillä.'
+        setRecoveryLinkError(recoveryState.message.startsWith('Open the newest')
+          ? t('cmsGuard.openNewestSetupLink')
           : recoveryState.message);
       } else {
         setRecoveryLinkError('');
@@ -779,7 +767,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
       window.removeEventListener('popstate', handleRecoveryUrlChange);
       subscription.unsubscribe();
     };
-  }, [language, verifyAccess]);
+  }, [t, verifyAccess]);
 
   const handleInlineLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -801,7 +789,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
       });
 
       if (error) {
-        setLoginError(error.message || (language === 'fi' ? 'Kirjautuminen epäonnistui' : 'Login failed'));
+        setLoginError(error.message || t('cmsGuard.loginFailed'));
         return;
       }
 
@@ -815,7 +803,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
       }
     } catch (error) {
       console.error('CMS inline login error:', error);
-      setLoginError(language === 'fi' ? 'Kirjautuminen epäonnistui' : 'Login failed');
+      setLoginError(t('cmsGuard.loginFailed'));
     } finally {
       setLoggingIn(false);
     }
@@ -830,7 +818,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
           </div>
 
           <h1 className="text-2xl font-bold text-white mb-3 text-center">
-            {language === 'fi' ? 'Vaihda salasana' : 'Change password'}
+            {t('cmsGuard.changePassword')}
           </h1>
 
           {recoveryLinkError ? (
@@ -842,7 +830,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
           <form onSubmit={handleUpdateRecoveredPassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="cms-new-password" className="text-gray-300">
-                {language === 'fi' ? 'Uusi salasana' : 'New password'}
+                {t('cmsGuard.newPassword')}
               </Label>
               <Input
                 id="cms-new-password"
@@ -860,7 +848,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
 
             <div className="space-y-2">
               <Label htmlFor="cms-confirm-password" className="text-gray-300">
-                {language === 'fi' ? 'Vahvista salasana' : 'Confirm password'}
+                {t('cmsGuard.confirmPassword')}
               </Label>
               <Input
                 id="cms-confirm-password"
@@ -894,8 +882,8 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
               className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
             >
               {recoverySaving
-                ? (language === 'fi' ? 'Tallennetaan...' : 'Saving...')
-                : (language === 'fi' ? 'Tallenna uusi salasana' : 'Save new password')}
+                ? t('cmsGuard.saving')
+                : t('cmsGuard.saveNewPassword')}
             </Button>
           </form>
         </div>
@@ -910,7 +898,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35]" />
           <p className="text-sm text-gray-400">
-            {language === 'fi' ? 'Tarkistetaan käyttöoikeuksia...' : 'Checking permissions...'}
+            {t('cmsGuard.checkingPermissions')}
           </p>
         </div>
       </div>
@@ -931,23 +919,19 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
           </div>
           
           <h1 className="text-2xl font-bold text-white mb-3 text-center">
-            {language === 'fi' ? 'Kirjautuminen vaaditaan' : 'Login Required'}
+            {t('cmsGuard.loginRequired')}
           </h1>
           
           <p className="text-gray-400 mb-6 text-center">
             {authState === 'verifying'
-              ? (language === 'fi'
-                  ? 'Vahvistetaan käyttöoikeuksiasi...'
-                  : 'Verifying your access...')
-              : (language === 'fi'
-                  ? 'Sinun täytyy kirjautua sisään päästäksesi CMS-hallintapaneeliin.'
-                  : 'You need to log in to access the CMS admin panel.')}
+              ? t('cmsGuard.verifyingAccess')
+              : t('cmsGuard.loginRequiredDescription')}
           </p>
 
           <form onSubmit={handleInlineLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="cms-login-email" className="text-gray-300">
-                {language === 'fi' ? 'Sähköposti' : 'Email'}
+                {t('cmsGuard.email')}
               </Label>
               <Input
                 id="cms-login-email"
@@ -966,7 +950,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
 
             <div className="space-y-2">
               <Label htmlFor="cms-login-password" className="text-gray-300">
-                {language === 'fi' ? 'Salasana' : 'Password'}
+                {t('cmsGuard.password')}
               </Label>
               <Input
                 id="cms-login-password"
@@ -1001,10 +985,10 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
               className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
             >
               {authState === 'verifying'
-                ? (language === 'fi' ? 'Vahvistetaan...' : 'Verifying...')
+                ? t('cmsGuard.verifying')
                 : loggingIn
-                ? (language === 'fi' ? 'Kirjaudutaan...' : 'Signing in...')
-                : (language === 'fi' ? 'Kirjaudu sisään' : 'Log In')}
+                ? t('cmsGuard.signingIn')
+                : t('cmsGuard.logIn')}
             </Button>
           </form>
 
@@ -1014,7 +998,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
             disabled={authState === 'verifying'}
             className="mt-4 w-full text-sm text-gray-400 hover:text-white transition-colors"
           >
-            {language === 'fi' ? 'Avaa tavallinen kirjautumisikkuna' : 'Open standard login modal'}
+            {t('cmsGuard.openStandardLogin')}
           </button>
           <button
             type="button"
@@ -1023,8 +1007,8 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
             className="mt-3 w-full text-sm text-gray-400 hover:text-white transition-colors"
           >
             {resetSending
-              ? (language === 'fi' ? 'Lähetetään...' : 'Sending...')
-              : (language === 'fi' ? 'Vaihda salasana sähköpostilla' : 'Change password by email')}
+              ? t('cmsGuard.sending')
+              : t('cmsGuard.changePasswordByEmail')}
           </button>
         </div>
       </div>
@@ -1041,18 +1025,16 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
           </div>
           
           <h1 className="text-2xl font-bold text-white mb-3">
-            {language === 'fi' ? 'Ei käyttöoikeutta' : 'Access Denied'}
+            {t('cmsGuard.accessDenied')}
           </h1>
           
           <p className="text-gray-400 mb-2">
-            {language === 'fi' 
-              ? 'Sinulla ei ole oikeutta käyttää CMS-hallintapaneelia.'
-              : 'You do not have permission to access the CMS admin panel.'}
+            {t('cmsGuard.accessDeniedDescription')}
           </p>
           
           {userEmail && (
             <p className="text-sm text-gray-500 mb-6">
-              {language === 'fi' ? 'Kirjautuneena:' : 'Logged in as:'} {userEmail}
+              {t('cmsGuard.loggedInAs')} {userEmail}
             </p>
           )}
           
@@ -1061,7 +1043,7 @@ export function CmsGuard({ children, onNeedLogin, requiredModule }: CmsGuardProp
             variant="outline"
             className="w-full border-gray-700 text-gray-300 hover:bg-gray-800"
           >
-            {language === 'fi' ? 'Kirjaudu ulos' : 'Sign out'}
+            {t('cmsGuard.signOut')}
           </Button>
         </div>
       </div>

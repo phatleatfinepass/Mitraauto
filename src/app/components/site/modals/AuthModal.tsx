@@ -4,7 +4,7 @@ import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Checkbox } from '../../ui/checkbox';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { getSupabaseClient, getSupabaseConfigError } from '../../../utils/supabase/client';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -547,7 +547,7 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 />
                 <label htmlFor="terms" className="text-sm text-muted-foreground">
                   {t('auth.signup.terms')}{' '}
-                  <a href="/legal/terms" className="text-primary hover:underline">
+                  <a href="/terms" className="text-primary hover:underline">
                     {t('auth.signup.termsLink')}
                   </a>
                 </label>

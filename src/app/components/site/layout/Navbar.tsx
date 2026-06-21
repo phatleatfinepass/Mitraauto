@@ -10,17 +10,25 @@ import {
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
 import { Badge } from '../../ui/badge';
-import { useLanguage } from '../../LanguageContext';
-import { useTheme } from '../../ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
 import logo from 'figma:asset/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png';
 
 const INTERNAL_NAV_PATHS = new Set([
   '/',
+  '/en',
   '/services',
+  '/en/services',
+  '/palvelut',
   '/tire-hotel',
+  '/en/services/tire-hotel',
+  '/palvelut/rengashotelli',
   '/catalog',
+  '/en/catalog',
   '/about',
-  '/admin/schedule',
+  '/en/about',
+  '/meista',
+  '/account',
   '/cms',
 ]);
 
@@ -48,7 +56,7 @@ export function Navbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const toggleLanguage = () => {
-    setLanguage(language === 'fi' ? 'en' : 'fi');
+    setLanguage({ fi: 'en', en: 'fi' }[language]);
   };
 
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -63,11 +71,16 @@ export function Navbar({
     return false;
   };
   
+  const homeHref = language === 'en' ? '/en' : '/';
+  const servicesHref = language === 'en' ? '/en/services' : '/palvelut';
+  const catalogHref = language === 'en' ? '/en/catalog' : '/catalog';
+  const tireHotelHref = language === 'en' ? '/en/services/tire-hotel' : '/palvelut/rengashotelli';
+
   const navLinks = [
-    { key: 'nav.home', href: '/' },
-    { key: 'nav.services', href: '/services' },
-    { key: 'nav.catalog', href: '/catalog' },
-    { key: 'nav.tireHotel', href: '/tire-hotel' },
+    { key: 'nav.home', href: homeHref },
+    { key: 'nav.services', href: servicesHref },
+    { key: 'nav.catalog', href: catalogHref },
+    { key: 'nav.tireHotel', href: tireHotelHref },
     // Temporarily hidden - Used Cars
     // { key: 'nav.usedCars', href: '/used-cars' },
   ];
@@ -78,9 +91,9 @@ export function Navbar({
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <a
-            href="/"
+            href={homeHref}
             className="flex items-center gap-2 transition-opacity hover:opacity-60"
-            onClick={(event) => handleLinkClick(event, '/')}
+            onClick={(event) => handleLinkClick(event, homeHref)}
           >
             <img
               src={logo}
@@ -154,13 +167,16 @@ export function Navbar({
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
                     <a
+                      href="/account"
+                      onClick={(event) => handleLinkClick(event, '/account')}
+                    >
+                      {t('nav.account')}
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a
                       href="/cms"
-                      onClick={(e) => {
-                        if (onNavigate) {
-                          e.preventDefault();
-                          onNavigate('/cms');
-                        }
-                      }}
+                      onClick={(event) => handleLinkClick(event, '/cms')}
                     >
                       {t('nav.dashboard')}
                     </a>
@@ -255,14 +271,14 @@ export function Navbar({
                         {t('nav.dashboard')}
                       </a>
                       <a
-                        href="/orders"
+                        href="/account"
                         className="px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
                         onClick={(event) => {
-                          handleLinkClick(event, '/orders');
+                          handleLinkClick(event, '/account');
                           setMobileMenuOpen(false);
                         }}
                       >
-                        {t('nav.orders')}
+                        {t('nav.account')}
                       </a>
                       <Button variant="outline" onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="mt-2">
                         {t('nav.signout')}
@@ -292,7 +308,7 @@ export function Navbar({
                     >
                       <span className="flex items-center gap-3">
                         <Globe className="h-5 w-5" />
-                        <span>{language === 'fi' ? t('ui.language.switchToEn') : t('ui.language.switchToFi')}</span>
+                        <span>{t({ fi: 'ui.language.switchToEn', en: 'ui.language.switchToFi' }[language])}</span>
                       </span>
                       <span className="text-xs font-semibold uppercase text-muted-foreground">{language}</span>
                     </button>

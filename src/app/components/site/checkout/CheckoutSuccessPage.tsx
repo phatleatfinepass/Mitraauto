@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTheme } from '../../ThemeContext';
-import { useLanguage } from '../../LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useCart } from '../cart/CartContext';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
@@ -76,7 +76,8 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   onNavigateToOrders,
 }) => {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const dateLocale = { fi: 'fi-FI', en: 'en-US' }[language];
   const { clearCart } = useCart();
   const [checkoutInfo, setCheckoutInfo] = useState<CheckoutInfo | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
@@ -85,32 +86,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
   const hasClearedCartRef = useRef(false);
   const hasFinalizedRef = useRef(false);
 
-  const translations: Record<string, { fi: string; en: string }> = {
-    loading: { fi: 'Ladataan...', en: 'Loading...' },
-    paymentSuccessful: { fi: 'Kiitos tilauksestasi!', en: 'Order confirmed' },
-    thankYouMessage: {
-      fi: 'Maksusi vastaanotettiin onnistuneesti.',
-      en: 'Your payment was received successfully.',
-    },
-    orderId: { fi: 'Tilausnumero', en: 'Order Number' },
-    provider: { fi: 'Maksupalvelu', en: 'Payment Provider' },
-    total: { fi: 'Yhteensä', en: 'Total' },
-    transactionId: { fi: 'Maksutapahtuman tunnus', en: 'Transaction ID' },
-    paymentStatus: { fi: 'Maksun tila', en: 'Payment Status' },
-    orderDate: { fi: 'Tilauspäivä', en: 'Order Date' },
-    paid: { fi: 'Maksettu', en: 'Paid' },
-    backToHome: { fi: 'Takaisin etusivulle', en: 'Back to home' },
-    unverifiedTitle: {
-      fi: 'Emme voineet vahvistaa tilaustasi',
-      en: 'We could not verify your order',
-    },
-    unverifiedMessage: {
-      fi: 'Tilauksen tietoja ei löytynyt Paytrailin palauttamista parametreista. Otathan yhteyttä asiakaspalveluun.',
-      en: 'We could not read the necessary Paytrail parameters. Please contact support.',
-    },
-  };
-
-  const t = (key: string) => translations[key]?.[language] || key;
+  const checkoutSuccessText = (key: string) => t(`checkoutSuccess.${key}`);
 
   useEffect(() => {
     const info = parseCheckoutParams(window.location.search);
@@ -216,7 +192,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35] mx-auto mb-4" />
           <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-            {t('loading')}
+            {checkoutSuccessText('loading')}
           </p>
         </div>
       </div>
@@ -237,16 +213,16 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
           <h1 className={`text-2xl font-semibold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            {t('unverifiedTitle')}
+            {checkoutSuccessText('unverifiedTitle')}
           </h1>
           <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
-            {t('unverifiedMessage')}
+            {checkoutSuccessText('unverifiedMessage')}
           </p>
           <Button
             onClick={onNavigateHome}
             className="mt-6 bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
           >
-            {t('backToHome')}
+            {checkoutSuccessText('backToHome')}
           </Button>
         </Card>
       </div>
@@ -277,10 +253,10 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
             <h1 className={`text-3xl font-semibold mb-3 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              {t('paymentSuccessful')}
+              {checkoutSuccessText('paymentSuccessful')}
             </h1>
             <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
-              {t('thankYouMessage')}
+              {checkoutSuccessText('thankYouMessage')}
             </p>
           </div>
 
@@ -289,14 +265,14 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6B35] mx-auto mb-2" />
               <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                {t('loading')}
+                {checkoutSuccessText('loading')}
               </p>
             </div>
           ) : finalizingPayment ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6B35] mx-auto mb-2" />
               <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                {language === 'fi' ? 'Vahvistetaan maksua...' : 'Finalizing payment...'}
+                {checkoutSuccessText('finalizingPayment')}
               </p>
             </div>
           ) : (
@@ -307,7 +283,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <span className={`flex items-center gap-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                   <Package className="w-4 h-4" />
-                  {t('orderId')}
+                  {checkoutSuccessText('orderId')}
                 </span>
                 <span className={`font-mono text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {checkoutInfo.orderId}
@@ -322,7 +298,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className={`flex items-center gap-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                       <CreditCard className="w-4 h-4" />
-                      {t('transactionId')}
+                      {checkoutSuccessText('transactionId')}
                     </span>
                     <span className={`font-mono text-xs break-all ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                       {checkoutInfo.transactionId}
@@ -335,10 +311,10 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
               {/* Payment Status */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                  {t('paymentStatus')}
+                  {checkoutSuccessText('paymentStatus')}
                 </span>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-700 w-fit">
-                  {t('paid')}
+                  {checkoutSuccessText('paid')}
                 </span>
               </div>
 
@@ -347,7 +323,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
               {/* Provider */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                  {t('provider')}
+                  {checkoutSuccessText('provider')}
                 </span>
                 <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
                   {checkoutInfo.provider ? capitalizeFirstLetter(checkoutInfo.provider) : 'Paytrail'}
@@ -362,10 +338,10 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className={`flex items-center gap-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                       <Calendar className="w-4 h-4" />
-                      {t('orderDate')}
+                      {checkoutSuccessText('orderDate')}
                     </span>
                     <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                      {new Date(order.created_at).toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+                      {new Date(order.created_at).toLocaleDateString(dateLocale, {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
@@ -381,7 +357,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
               {/* Total */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2">
                 <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {t('total')}
+                  {checkoutSuccessText('total')}
                 </span>
                 <span className="text-2xl font-semibold text-[#FF6B35]">
                   €{checkoutInfo.totalEuros}
@@ -396,7 +372,7 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
               onClick={onNavigateHome}
               className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12"
             >
-              {t('backToHome')}
+              {checkoutSuccessText('backToHome')}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>

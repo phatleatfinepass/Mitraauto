@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Check, GitMerge, RefreshCw } from 'lucide-react';
-import { useLanguage } from '../../LanguageContext';
-import { useTheme } from '../../ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
 import { supabase } from '../../../utils/supabase/client';
 
 type ConflictRow = {
@@ -66,6 +66,8 @@ type ComparisonColumn = {
   mergeLabel?: string;
   onMerge?: () => void;
 };
+
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
 
 const CONFLICT_REASONS = [
   { value: 'identity_mismatch', label: 'Identity mismatch' },
@@ -196,6 +198,66 @@ function selectedSource(row: ConflictRow): Record<string, unknown> {
   };
 }
 
+function adminConflictReason(row: any) {
+  if (row.has_ean_multi_spec_conflict) return 'identity_mismatch';
+  if (row.has_mandatory_conflict) return 'missing_required_data';
+  if (row.ean_conflict_open) return 'open_conflict';
+  return 'conflict';
+}
+
+function mapAdminConflictRows(rows: any[], totalCount: number): ConflictRow[] {
+  return rows.map((row) => ({
+    selected_item_id: row.variant_id,
+    match_key: row.variant_id,
+    match_confidence: 'cms_review',
+    conflict_reason: adminConflictReason(row),
+    review_status: 'pending',
+    selected_supplier: row.supplier_code_best ?? '-',
+    selected_external_id: row.supplier_external_id_best ?? '-',
+    selected_raw_table: null,
+    selected_raw_id: null,
+    selected_reason: null,
+    ean: row.derived_ean ?? row.ean ?? null,
+    eprel_code:
+      row.eu_label_json?.eprel_registration_number ??
+      row.eu_label_json?.eprel_code ??
+      row.eu_label_json?.eprel_id ??
+      null,
+    brand: row.brand ?? null,
+    model: row.model ?? null,
+    supplier_title: row.supplier_title ?? null,
+    size_string: row.size_string ?? null,
+    season: row.season ?? null,
+    width_mm: numberValue(row.width_mm),
+    aspect_ratio: numberValue(row.aspect_ratio),
+    diameter_in: numberValue(row.diameter_in),
+    load_index: row.load_index == null ? null : String(row.load_index),
+    speed_rating: row.speed_rating ?? row.speed_index ?? null,
+    stock_qty: null,
+    in_stock: null,
+    wholesale_price_eur: null,
+    consumer_price_eur: null,
+    retail_price_eur: null,
+    recycling_fee_eur: null,
+    final_base_price_eur: numberValue(row.final_price_eur ?? row.price),
+    eu_fuel_class: row.eu_label_json?.fuel_class ?? null,
+    eu_wet_grip_class: row.eu_wet ?? row.eu_label_json?.wet_grip_class ?? null,
+    eu_noise_db: numberValue(row.eu_noise ?? row.eu_label_json?.noise_db),
+    eu_noise_class: row.eu_label_json?.noise_class ?? null,
+    supplier_image_id: null,
+    supplier_image_url: null,
+    supplier_metadata_json: row.cms_data ?? row.eu_label_json ?? null,
+    last_seen_at: null,
+    raw_supplier_price_ex_vat: null,
+    shipping_fee_ex_vat: null,
+    fair_cost_ex_vat: numberValue(row.final_price_eur ?? row.price),
+    fair_cost_reason: null,
+    alternative_offer_count: 0,
+    alternative_offers_json: [],
+    total_count: totalCount,
+  }));
+}
+
 function fieldValue(source: Record<string, unknown>, field: ComparisonField) {
   const value = source[field.key];
   if (field.format === 'price') return formatPrice(numberValue(value));
@@ -205,14 +267,14 @@ function fieldValue(source: Record<string, unknown>, field: ComparisonField) {
   return textValue(value);
 }
 
-function ComparisonMatrix({ isDark, columns }: { isDark: boolean; columns: ComparisonColumn[] }) {
+function ComparisonMatrix({ isDark, columns, t }: { isDark: boolean; columns: ComparisonColumn[]; t: TranslateFn }) {
   return (
     <div className={`overflow-x-auto rounded-lg border ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
       <table className="w-full min-w-[1200px] border-collapse text-left text-sm">
         <thead>
           <tr className={isDark ? 'bg-white/[0.04]' : 'bg-gray-50'}>
             <th className={`w-52 border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] ${isDark ? 'border-white/10 text-gray-400' : 'border-gray-200 text-gray-500'}`}>
-              Field
+              {t('tiresConflict.field')}
             </th>
             {columns.map((column) => (
               <th
@@ -235,7 +297,7 @@ function ComparisonMatrix({ isDark, columns }: { isDark: boolean; columns: Compa
                       }`}
                     >
                       <GitMerge className="h-3.5 w-3.5" />
-                      {column.mergeLabel ?? 'Merge metadata'}
+                      {column.mergeLabel ?? t('tiresConflict.mergeMetadata')}
                     </button>
                   )}
                 </div>
@@ -270,7 +332,7 @@ function ComparisonMatrix({ isDark, columns }: { isDark: boolean; columns: Compa
 }
 
 export function TiresConflictResolvePage() {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [rows, setRows] = useState<ConflictRow[]>([]);
@@ -285,6 +347,30 @@ export function TiresConflictResolvePage() {
     setLoading(true);
     setError(null);
     try {
+      if (reviewStatusFilter === 'pending') {
+        let query = supabase
+          .from('catalog_selected_tires_cms_admin_v1')
+          .select(
+            'variant_id,derived_ean,ean,brand,model,size_string,season,width_mm,aspect_ratio,diameter_in,load_index,speed_rating,speed_index,eu_wet,eu_noise,eu_label_json,final_price_eur,price,supplier_code_best,supplier_external_id_best,ean_conflict_open,has_ean_multi_spec_conflict,has_mandatory_conflict,cms_data',
+            { count: 'exact' },
+          )
+          .or('ean_conflict_open.eq.true,has_ean_multi_spec_conflict.eq.true,has_mandatory_conflict.eq.true')
+          .order('brand', { ascending: true })
+          .order('model', { ascending: true })
+          .range(0, 99);
+
+        if (reasonFilter === 'identity_mismatch') {
+          query = query.eq('has_ean_multi_spec_conflict', true);
+        } else if (reasonFilter === 'missing_required_data') {
+          query = query.eq('has_mandatory_conflict', true);
+        }
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+        setRows(mapAdminConflictRows(data ?? [], count ?? 0));
+        return;
+      }
+
       const { data, error } = await supabase.rpc('catalog_list_selected_tire_conflicts_v1', {
         p_conflict_reason: reasonFilter === 'all' ? null : reasonFilter,
         p_review_status: reviewStatusFilter === 'all' ? null : reviewStatusFilter,
@@ -351,36 +437,27 @@ export function TiresConflictResolvePage() {
     }
   };
 
-  const pageTitle = language === 'fi' ? 'Rengaskonfliktit' : 'Tire conflicts';
-  const helperText = useMemo(
-    () =>
-      language === 'fi'
-        ? 'Tarkista uuden selected catalog -kerroksen konfliktit ennen kuin data wiretetään webshoppiin.'
-        : 'Review conflicts from the new selected catalog layer before wiring data into the webshop.',
-    [language],
-  );
-
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10] text-white' : 'bg-gray-50 text-gray-900'}`}>
       <div className={`border-b ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
         <div className="px-8 py-6">
           <button
             type="button"
-            onClick={() => navigateTo('/cms/tires')}
+            onClick={() => navigateTo('/cms#catalog/tires')}
             className={`mb-4 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
               isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
             }`}
           >
             <ArrowLeft className="h-4 w-4" />
-            {language === 'fi' ? 'Takaisin Tire CMS:ään' : 'Back to Tire CMS'}
+            {t('tiresConflict.back')}
           </button>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-6 w-6 text-amber-500" />
-                <h1 className="text-3xl font-semibold">{pageTitle}</h1>
+                <h1 className="text-3xl font-semibold">{t('tiresConflict.title')}</h1>
               </div>
-              <p className={`mt-2 max-w-3xl text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{helperText}</p>
+              <p className={`mt-2 max-w-3xl text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('tiresConflict.helper')}</p>
             </div>
             <button
               type="button"
@@ -391,7 +468,7 @@ export function TiresConflictResolvePage() {
               }`}
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              {language === 'fi' ? 'Päivitä' : 'Refresh'}
+              {t('tiresConflict.refresh')}
             </button>
           </div>
         </div>
@@ -401,7 +478,7 @@ export function TiresConflictResolvePage() {
         <div className={`mb-5 rounded-lg border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="text-sm">
-              <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{language === 'fi' ? 'Näytetään' : 'Showing'} </span>
+              <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('tiresConflict.showing')} </span>
               <span className="font-semibold">{rows.length}</span>
               <span className={isDark ? 'text-gray-400' : 'text-gray-600'}> / {totalCount}</span>
             </div>
@@ -411,7 +488,7 @@ export function TiresConflictResolvePage() {
                 onChange={(event) => setReasonFilter(event.target.value)}
                 className={`rounded-lg border px-3 py-2 text-sm ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
               >
-                <option value="all">{language === 'fi' ? 'Kaikki syyt' : 'All reasons'}</option>
+                <option value="all">{t('tiresConflict.allReasons')}</option>
                 {CONFLICT_REASONS.map((reason) => (
                   <option key={reason.value} value={reason.value}>{reason.label}</option>
                 ))}
@@ -421,10 +498,10 @@ export function TiresConflictResolvePage() {
                 onChange={(event) => setReviewStatusFilter(event.target.value)}
                 className={`rounded-lg border px-3 py-2 text-sm ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
               >
-                <option value="pending">Pending</option>
-                <option value="accepted">Accepted</option>
-                <option value="needs_supplier_check">Needs supplier check</option>
-                <option value="all">All statuses</option>
+                <option value="pending">{t('tiresConflict.pending')}</option>
+                <option value="accepted">{t('tiresConflict.accepted')}</option>
+                <option value="needs_supplier_check">{t('tiresConflict.needsSupplierCheck')}</option>
+                <option value="all">{t('tiresConflict.allStatuses')}</option>
               </select>
             </div>
           </div>
@@ -434,11 +511,11 @@ export function TiresConflictResolvePage() {
         <div className="space-y-4">
           {loading && rows.length === 0 ? (
             <div className={`rounded-lg border p-8 text-center ${isDark ? 'border-white/10 bg-white/5 text-gray-300' : 'border-gray-200 bg-white text-gray-600'}`}>
-              {language === 'fi' ? 'Ladataan konflikteja...' : 'Loading conflicts...'}
+              {t('tiresConflict.loading')}
             </div>
           ) : rows.length === 0 ? (
             <div className={`rounded-lg border p-8 text-center ${isDark ? 'border-white/10 bg-white/5 text-gray-300' : 'border-gray-200 bg-white text-gray-600'}`}>
-              {language === 'fi' ? 'Ei konflikteja tällä suodatuksella.' : 'No conflicts for this filter.'}
+              {t('tiresConflict.empty')}
             </div>
           ) : (
             rows.map((row) => (
@@ -446,7 +523,7 @@ export function TiresConflictResolvePage() {
                 <div className="flex flex-col gap-3 border-b border-current/10 p-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
-                      Item need resolve
+                      {t('tiresConflict.itemNeedsResolve')}
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-semibold">{row.brand} {row.model}</span>
@@ -471,7 +548,7 @@ export function TiresConflictResolvePage() {
                       }`}
                     >
                       <Check className="h-4 w-4" />
-                      Accept selected
+                      {t('tiresConflict.acceptSelected')}
                     </button>
                     <button
                       type="button"
@@ -481,7 +558,7 @@ export function TiresConflictResolvePage() {
                         isDark ? 'bg-white/10 text-white hover:bg-white/15 disabled:text-gray-500' : 'bg-gray-100 text-gray-800 hover:bg-gray-200 disabled:text-gray-400'
                       }`}
                     >
-                      Keep review
+                      {t('tiresConflict.keepReview')}
                     </button>
                   </div>
                 </div>
@@ -490,28 +567,29 @@ export function TiresConflictResolvePage() {
                   {row.alternative_offers_json?.length ? (
                     <ComparisonMatrix
                       isDark={isDark}
+                      t={t}
                       columns={[
                         {
                           key: `${row.selected_item_id}-selected`,
-                          title: 'Selected item',
+                          title: t('tiresConflict.selectedItem'),
                           subtitle: `${row.selected_supplier} #${row.selected_external_id}`,
                           tone: 'selected',
                           source: selectedSource(row),
                         },
                         ...row.alternative_offers_json.map((offer, index) => ({
                           key: `${row.selected_item_id}-candidate-${index}`,
-                          title: `Candidate ${index + 1}`,
+                          title: t('tiresConflict.candidate', { number: index + 1 }),
                           subtitle: `${textValue(offer.supplier)} #${textValue(offer.external_id)}`,
                           tone: 'candidate' as const,
                           source: offer,
-                          mergeLabel: savingId === `${row.selected_item_id}:merge:${index}` ? 'Saving...' : 'Merge metadata',
+                          mergeLabel: savingId === `${row.selected_item_id}:merge:${index}` ? t('tiresConflict.saving') : t('tiresConflict.mergeMetadata'),
                           onMerge: () => void mergeMetadata(row, offer, index),
                         })),
                       ]}
                     />
                   ) : (
                     <div className={`rounded-lg border p-4 text-sm ${isDark ? 'border-white/10 bg-white/[0.04] text-gray-400' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
-                      No candidate offers for this item.
+                      {t('tiresConflict.noCandidates')}
                     </div>
                   )}
                 </div>

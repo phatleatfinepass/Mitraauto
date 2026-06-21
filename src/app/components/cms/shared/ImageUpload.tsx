@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useTheme } from '../../ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
 import { Upload, X, GripVertical } from 'lucide-react';
 import { supabase } from '../../../utils/supabase/client';
 
@@ -12,6 +13,7 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ images, maxImages = 10, onImagesChange, productType, variantId }: ImageUploadProps) {
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -31,11 +33,11 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
         
         // Validate file
         if (!file.type.startsWith('image/')) {
-          throw new Error(`${file.name} is not an image`);
+          throw new Error(t('cms.imageUpload.notImage', { name: file.name }));
         }
 
         if (file.size > 5 * 1024 * 1024) {
-          throw new Error(`${file.name} exceeds 5MB limit`);
+          throw new Error(t('cms.imageUpload.tooLarge', { name: file.name }));
         }
 
         // Generate unique filename
@@ -69,7 +71,7 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
 
     } catch (error: any) {
       console.error('Upload error:', error);
-      setUploadError(error.message || 'Failed to upload images');
+      setUploadError(error.message || t('cms.imageUpload.failed'));
     } finally {
       setUploading(false);
     }
@@ -131,10 +133,10 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
           }`}>
             <Upload className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
             <p className={`text-sm mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {uploading ? 'Uploading...' : 'Click to upload images'}
+              {uploading ? t('cms.imageUpload.uploading') : t('cms.imageUpload.clickToUpload')}
             </p>
             <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-              PNG, JPG up to 5MB ({images.length}/{maxImages} images)
+              {t('cms.imageUpload.fileHint', { current: images.length, max: maxImages })}
             </p>
           </div>
           <input
@@ -188,7 +190,7 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
                 <button
                   type="button"
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 cursor-move"
-                  title="Drag to reorder"
+                  title={t('cms.imageUpload.dragToReorder')}
                 >
                   <GripVertical className="w-5 h-5 text-white" />
                 </button>
@@ -198,7 +200,7 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
                   type="button"
                   onClick={() => handleRemove(index)}
                   className="p-2 rounded-lg bg-red-500/80 hover:bg-red-500 transition-colors"
-                  title="Remove image"
+                  title={t('cms.imageUpload.removeImage')}
                 >
                   <X className="w-5 h-5 text-white" />
                 </button>
@@ -210,7 +212,7 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
                   ? 'bg-blue-500 text-white' 
                   : 'bg-black/50 text-white'
               }`}>
-                {index === 0 ? 'Hero' : `#${index + 1}`}
+                {index === 0 ? t('cms.imageUpload.hero') : `#${index + 1}`}
               </div>
             </div>
           ))}
@@ -219,7 +221,7 @@ export function ImageUpload({ images, maxImages = 10, onImagesChange, productTyp
 
       {images.length === 0 && (
         <p className={`text-sm text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-          No images uploaded yet
+          {t('cms.imageUpload.noImages')}
         </p>
       )}
     </div>

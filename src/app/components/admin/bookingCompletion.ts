@@ -1,4 +1,6 @@
 import type { ScheduleBooking } from '../../utils/schedule';
+import { translateForLanguage } from '../../i18n/LanguageContext';
+import type { Language } from '../../i18n/types';
 import type { AdminBookingFormState } from './schedule/AdminSchedule.types';
 
 export const awaitingCustomerCompletionStatus = 'awaiting_customer_completion';
@@ -12,15 +14,17 @@ export function getMissingCompletionFields(
   language: string,
 ) {
   const missingFields: string[] = [];
+  const bookingLanguage = normalizeCompletionLanguage(language);
+  const completionText = (key: string) => translateForLanguage(bookingLanguage, `adminSchedule.${key}`);
 
   if (!bookingLike.license_plate?.trim()) {
-    missingFields.push(language === 'fi' ? 'rekisterinumero' : 'license plate');
+    missingFields.push(completionText('missingLicensePlate'));
   }
   if (!bookingLike.customer_phone?.trim()) {
-    missingFields.push(language === 'fi' ? 'puhelinnumero' : 'phone number');
+    missingFields.push(completionText('missingPhone'));
   }
   if (!bookingLike.customer_email?.trim()) {
-    missingFields.push(language === 'fi' ? 'sähköposti' : 'email');
+    missingFields.push(completionText('missingEmail'));
   }
 
   return missingFields;
@@ -38,18 +42,27 @@ export function buildCustomerCompletionDraft(
   booking: Pick<ScheduleBooking, 'booking_date' | 'booking_time' | 'customer_name' | 'customer_phone' | 'customer_email' | 'license_plate'>,
   language: string,
 ) {
+  const bookingLanguage = normalizeCompletionLanguage(language);
+  const completionText = (key: string) => translateForLanguage(bookingLanguage, `adminSchedule.${key}`);
   const missingFields = getMissingCompletionFields(booking, language);
   const bookingLabel = `${booking.booking_date} ${booking.booking_time}`.trim();
   const missingList = missingFields.length > 0
-    ? missingFields.join(language === 'fi' ? ', ' : ', ')
-    : (language === 'fi' ? 'asiakastiedot' : 'customer details');
+    ? missingFields.join(', ')
+    : completionText('customerDetailsFallback');
+  const greeting = translateForLanguage(bookingLanguage, 'adminSchedule.completionDraftGreeting', {
+    customerName: booking.customer_name || '',
+  }).trim();
 
   return {
-    subject: language === 'fi'
-      ? 'Täydennä varauksen tiedot'
-      : 'Complete your booking details',
-    message: language === 'fi'
-      ? `Hei ${booking.customer_name || ''}`.trim() + `\n\nVarauksesi (${bookingLabel}) on valmis asiakkaan täydennystä varten.\nPuuttuvat tiedot: ${missingList}.\n\nVoit vastata tähän viestiin ja täydentää puuttuvat tiedot.`
-      : `Hi ${booking.customer_name || ''}`.trim() + `\n\nYour booking (${bookingLabel}) is ready for completion.\nMissing details: ${missingList}.\n\nPlease reply to this message and send the missing information.`,
+    subject: completionText('completionDraftSubject'),
+    message: translateForLanguage(bookingLanguage, 'adminSchedule.completionDraftMessage', {
+      greeting,
+      bookingLabel,
+      missingList,
+    }),
   };
+}
+
+function normalizeCompletionLanguage(language: string): Language {
+  return ({ fi: 'fi', en: 'en' } as const)[language as Language] ?? 'en';
 }

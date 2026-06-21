@@ -1,5 +1,8 @@
 export type BundlePricingMode = 'none' | 'percent_off' | 'fixed_total';
 
+export const PRODUCT_VAT_RATE = 0.255;
+export const PRODUCT_VAT_MULTIPLIER = 1 + PRODUCT_VAT_RATE;
+
 export interface ProductPricingTier {
   mode?: BundlePricingMode | null;
   percent_off?: number | null;

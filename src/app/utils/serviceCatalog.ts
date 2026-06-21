@@ -10,7 +10,7 @@ export interface LocalizedServiceCategory {
   }[];
 }
 
-interface ServiceCatalogEntry {
+export interface ServiceCatalogEntry {
   id: string;
   categoryId: string;
   name: {
@@ -20,6 +20,9 @@ interface ServiceCatalogEntry {
   price: number;
 }
 
+export const OTHER_SERVICE_CATEGORY_ID = 'other';
+export const OTHER_SERVICE_ID = 'other';
+
 const SERVICE_ALIASES: Record<string, string> = {
   'basic service': 'annual-maintenance',
   'large service': 'annual-maintenance',
@@ -27,6 +30,13 @@ const SERVICE_ALIASES: Record<string, string> = {
   'tire hotel': 'tire-hotel-storage',
   'scheduled maintenance': 'annual-maintenance',
   'määräaikaishuolto': 'annual-maintenance',
+  'dpf pesu': 'dpf-cleaning-2014-newer',
+  'dpf-pesu': 'dpf-cleaning-2014-newer',
+  'hiukkassuodattimen pesu': 'dpf-cleaning-2014-newer',
+  'pakkopoltto': 'dpf-forced-regeneration',
+  'pakotettu regenerointi': 'dpf-forced-regeneration',
+  'muu': OTHER_SERVICE_ID,
+  'other': OTHER_SERVICE_ID,
 };
 
 export function detectStoredServiceLanguage(
@@ -60,14 +70,16 @@ export function detectStoredServiceLanguage(
   return enMatches > fiMatches ? 'en' : 'fi';
 }
 
-const CATEGORY_NAMES: Record<string, { fi: string; en: string }> = {
+export const CATEGORY_NAMES: Record<string, { fi: string; en: string }> = {
   'car-care': { fi: 'Autonhoitopalvelut', en: 'Car Care' },
   'tire-services': { fi: 'Rengaspalvelut', en: 'Tire Services' },
   'diagnostics-maintenance': { fi: 'Diagnostiikka & huoltopalvelut', en: 'Diagnostics & Maintenance' },
   'ac-service': { fi: 'Ilmastointihuolto', en: 'AC Service' },
+  'dpf-service': { fi: 'DPF- ja päästöjärjestelmäpalvelut', en: 'DPF & Emissions Service' },
+  [OTHER_SERVICE_CATEGORY_ID]: { fi: 'Muu', en: 'Other' },
 };
 
-const SERVICE_CATALOG: ServiceCatalogEntry[] = [
+export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
   { id: 'basic-hand-wash-car', categoryId: 'car-care', name: { fi: 'Perus käsipesu · Henkilöauto', en: 'Basic hand wash · Passenger car' }, price: 25 },
   { id: 'basic-hand-wash-suv', categoryId: 'car-care', name: { fi: 'Perus käsipesu · Maasturi', en: 'Basic hand wash · SUV' }, price: 30 },
   { id: 'quick-wax-car', categoryId: 'car-care', name: { fi: 'Käsinpesu + pikavaha · Henkilöauto', en: 'Hand wash + quick wax · Passenger car' }, price: 30 },
@@ -108,6 +120,13 @@ const SERVICE_CATALOG: ServiceCatalogEntry[] = [
   { id: 'ac-hybrid-extra-r1234yf', categoryId: 'ac-service', name: { fi: 'Hybridiauto lisä', en: 'Hybrid surcharge' }, price: 15 },
   { id: 'ac-service-electric', categoryId: 'ac-service', name: { fi: 'Ilmastointihuolto (sähköauto)', en: 'AC service (electric vehicle)' }, price: 120 },
   { id: 'ac-diagnostics', categoryId: 'ac-service', name: { fi: 'Ilmastoinnin vianetsintä / vuototarkastus', en: 'AC diagnostics / leak check' }, price: 80 },
+  { id: 'dpf-diagnosis', categoryId: 'dpf-service', name: { fi: 'DPF-diagnoosipaketti', en: 'DPF diagnosis package' }, price: 80 },
+  { id: 'dpf-forced-regeneration', categoryId: 'dpf-service', name: { fi: 'Pakkopoltto / pakotettu regenerointi', en: 'Forced DPF regeneration' }, price: 160 },
+  { id: 'dpf-cleaning-2002-2008', categoryId: 'dpf-service', name: { fi: 'DPF-pesu · vuosimallit 2002–2008', en: 'DPF cleaning · model years 2002–2008' }, price: 160 },
+  { id: 'dpf-cleaning-2009-2013', categoryId: 'dpf-service', name: { fi: 'DPF-pesu · vuosimallit 2009–2013', en: 'DPF cleaning · model years 2009–2013' }, price: 240 },
+  { id: 'dpf-cleaning-2014-newer', categoryId: 'dpf-service', name: { fi: 'DPF-pesu · vuosimalli 2014 ja uudemmat', en: 'DPF cleaning · model year 2014 and newer' }, price: 340 },
+  { id: 'dpf-removal-installation-estimate', categoryId: 'dpf-service', name: { fi: 'DPF irrotus ja asennus · autokohtainen arvio', en: 'DPF removal and installation · vehicle-specific estimate' }, price: 0 },
+  { id: OTHER_SERVICE_ID, categoryId: OTHER_SERVICE_CATEGORY_ID, name: { fi: 'Muu', en: 'Other' }, price: 0 },
 ];
 
 export function getLocalizedServiceCategories(language: SupportedBookingLanguage): LocalizedServiceCategory[] {
@@ -127,6 +146,10 @@ export function getLocalizedServiceCategories(language: SupportedBookingLanguage
 export function getLocalizedServiceNameById(serviceId: string, language: SupportedBookingLanguage): string | null {
   const service = SERVICE_CATALOG.find((entry) => entry.id === serviceId);
   return service ? service.name[language] : null;
+}
+
+export function getServiceCatalogEntryById(serviceId: string): ServiceCatalogEntry | null {
+  return SERVICE_CATALOG.find((entry) => entry.id === serviceId) ?? null;
 }
 
 function normalizeServiceName(value: string): string {

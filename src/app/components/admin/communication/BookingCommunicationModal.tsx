@@ -52,12 +52,10 @@ export function BookingCommunicationModal({
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <DialogTitle className="text-xl font-semibold">
-                    {language === 'fi' ? 'Viestintäkeskus' : 'Communication hub'}
+                    {t('communicationHub')}
                   </DialogTitle>
                   <DialogDescription className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {language === 'fi'
-                      ? 'Keskustele asiakkaan kanssa samassa varausketjussa.'
-                      : 'Manage the customer conversation in one booking thread.'}
+                    {t('communicationHubDescription')}
                   </DialogDescription>
                 </div>
 
@@ -89,9 +87,7 @@ export function BookingCommunicationModal({
         ) : (
           <div className="px-6 py-8">
             <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-              {language === 'fi'
-                ? 'Valitse ensin varaus avataksesi viestintäkeskuksen.'
-                : 'Select a booking first to open the communication hub.'}
+              {t('selectBookingForCommunication')}
             </p>
           </div>
         )}

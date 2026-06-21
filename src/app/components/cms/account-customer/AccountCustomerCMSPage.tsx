@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Settings, ShieldCheck, UserCog, Users, X } from 'lucide-react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
@@ -11,7 +11,7 @@ import { changeCmsAccountPassword, requestCmsAccountRecovery } from './api';
 import type { AccountCustomerView } from './types';
 
 export function AccountCustomerCMSPage() {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const access = useCmsAccess();
   const canManageAccounts = Boolean(access?.canManageAccounts || access?.isSuperAdmin);
   const canManageCustomers = Boolean(access?.canManageCustomers || canManageAccounts);
@@ -40,10 +40,10 @@ export function AccountCustomerCMSPage() {
 
     try {
       await requestCmsAccountRecovery(access.email);
-      setResetMessage(language === 'fi' ? 'Salasanan vaihtolinkki lähetetty.' : 'Password reset link sent.');
+      setResetMessage(t('cmsGuard.passwordResetSent'));
     } catch (error) {
       console.error('CMS password reset request failed:', error);
-      setResetMessage(language === 'fi' ? 'Salasanan vaihtolinkin lähetys epäonnistui.' : 'Failed to send password reset link.');
+      setResetMessage(t('cmsGuard.passwordResetFailed'));
     } finally {
       setResetSending(false);
     }
@@ -55,12 +55,12 @@ export function AccountCustomerCMSPage() {
     setResetMessage('');
 
     if (newPassword.length < 8) {
-      setResetMessage(language === 'fi' ? 'Salasanan täytyy olla vähintään 8 merkkiä.' : 'Password must be at least 8 characters.');
+      setResetMessage(t('cmsGuard.passwordTooShort'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setResetMessage(language === 'fi' ? 'Salasanat eivät täsmää.' : 'Passwords do not match.');
+      setResetMessage(t('cmsGuard.passwordMismatch'));
       return;
     }
 
@@ -71,10 +71,10 @@ export function AccountCustomerCMSPage() {
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordForm(false);
-      setResetMessage(language === 'fi' ? 'Salasana vaihdettu.' : 'Password changed.');
+      setResetMessage(t('cmsGuard.passwordChanged'));
     } catch (error) {
       console.error('CMS direct password update failed:', error);
-      setResetMessage(language === 'fi' ? 'Salasanan vaihto epäonnistui.' : 'Failed to change password.');
+      setResetMessage(t('cmsGuard.passwordChangeFailed'));
     } finally {
       setPasswordSaving(false);
     }
@@ -84,7 +84,7 @@ export function AccountCustomerCMSPage() {
     return (
       <div className="p-6">
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-          {language === 'fi' ? 'Ei asiakasoikeuksia.' : 'No customer permissions.'}
+          {t('accountCustomer.noCustomerPermissions')}
         </div>
       </div>
     );
@@ -95,7 +95,7 @@ export function AccountCustomerCMSPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h2 className="mt-1 text-2xl font-semibold text-foreground">
-            {canManageAccounts ? 'Account' : 'Customer'}
+            {canManageAccounts ? t('accountCustomer.account') : t('accountCustomer.customer')}
           </h2>
         </div>
 
@@ -110,7 +110,7 @@ export function AccountCustomerCMSPage() {
             }`}
           >
             <Users className="h-4 w-4" />
-            Customer
+            {t('accountCustomer.customer')}
           </button>
           {canManageAccounts ? (
             <button
@@ -123,7 +123,7 @@ export function AccountCustomerCMSPage() {
               }`}
             >
               <UserCog className="h-4 w-4" />
-              Staff
+              {t('accountCustomer.staff')}
             </button>
           ) : null}
           <Button
@@ -131,8 +131,8 @@ export function AccountCustomerCMSPage() {
             size="icon"
             variant={showAccountSettings ? 'default' : 'outline'}
             onClick={() => setShowAccountSettings((current) => !current)}
-            aria-label="Account settings"
-            title="Account settings"
+            aria-label={t('accountCustomer.accountSettings')}
+            title={t('accountCustomer.accountSettings')}
             className="h-10 w-10"
           >
             <Settings className="h-4 w-4" />
@@ -147,25 +147,25 @@ export function AccountCustomerCMSPage() {
               <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Signed in as {access?.email || 'CMS user'}
+                  {t('accountCustomer.signedInAs')} {access?.email || t('accountCustomer.cmsUser')}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Role: {access?.role ?? 'unknown'}
+                  {t('accountCustomer.role')}: {access?.role ?? t('accountCustomer.unknown')}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => setShowPasswordForm((current) => !current)}>
-                Change password
+                {t('cmsGuard.changePassword')}
               </Button>
               <Button size="sm" variant="ghost" onClick={sendPasswordReset} disabled={resetSending || !access?.email}>
-                {resetSending ? 'Sending...' : 'Email reset link'}
+                {resetSending ? t('accountCustomer.sending') : t('accountCustomer.emailResetLink')}
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
                 onClick={() => setShowAccountSettings(false)}
-                aria-label="Close account settings"
+                aria-label={t('accountCustomer.closeAccountSettings')}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -174,7 +174,7 @@ export function AccountCustomerCMSPage() {
           {showPasswordForm ? (
             <form onSubmit={updateOwnPassword} className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
               <div className="space-y-2">
-                <Label>New password</Label>
+                <Label>{t('cmsGuard.newPassword')}</Label>
                 <Input
                   type="password"
                   autoComplete="new-password"
@@ -183,7 +183,7 @@ export function AccountCustomerCMSPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Confirm password</Label>
+                <Label>{t('cmsGuard.confirmPassword')}</Label>
                 <Input
                   type="password"
                   autoComplete="new-password"
@@ -192,7 +192,7 @@ export function AccountCustomerCMSPage() {
                 />
               </div>
               <Button type="submit" disabled={passwordSaving}>
-                {passwordSaving ? 'Saving...' : 'Save password'}
+                {passwordSaving ? t('accountCustomer.saving') : t('accountCustomer.savePassword')}
               </Button>
             </form>
           ) : null}

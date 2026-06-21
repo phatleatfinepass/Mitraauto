@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { supabase } from '../../../utils/supabase/client';
 import { getPricingRulesFromSpecOverrides, isFixedBundleTotalCompatible } from '../../../utils/pricing';
 import type { ProductCMS, RimRow } from './types';
@@ -28,7 +29,6 @@ function isStatementTimeoutError(error: any) {
 }
 
 export function useRimsCmsMutations({
-  language,
   selectedRim,
   editData,
   patchLocalCmsData,
@@ -36,7 +36,6 @@ export function useRimsCmsMutations({
   refreshRims,
   setError,
 }: {
-  language: string;
   selectedRim: RimRow | null;
   editData: Partial<ProductCMS>;
   patchLocalCmsData: (variantId: string, cmsPatch: Record<string, any> | null) => void;
@@ -44,15 +43,18 @@ export function useRimsCmsMutations({
   refreshRims: (options?: { force?: boolean }) => Promise<void>;
   setError: (message: string | null) => void;
 }) {
+  const { t } = useLanguage();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [catalogSyncMessage, setCatalogSyncMessage] = useState<string | null>(null);
+  const [catalogSyncProgress, setCatalogSyncProgress] = useState<{ processed: number; total: number } | null>(null);
   const [hasPendingCatalogSync, setHasPendingCatalogSync] = useState(false);
 
   const applyRimWebshopSync = async () => {
     setSyncing(true);
     setCatalogSyncMessage(null);
+    setCatalogSyncProgress(null);
 
     try {
       const { data: startData, error: startError } = await supabase.rpc('start_webshop_rim_items_sync_v1');
@@ -60,7 +62,7 @@ export function useRimsCmsMutations({
 
       const runId = (startData as any)?.run_id ?? startData;
       if (!runId || typeof runId !== 'string') {
-        throw new Error('Rim webshop sync did not return a run id.');
+        throw new Error(t('rimsMutations.webshopSyncMissingRunId'));
       }
 
       let processed = 0;
@@ -83,6 +85,10 @@ export function useRimsCmsMutations({
           (batchData as any)?.batch_processed ?? (batchData as any)?.processed_count ?? 0,
         );
         processed += batchProcessed;
+        setCatalogSyncProgress({
+          processed: Number((batchData as any)?.processed ?? processed),
+          total: Number((batchData as any)?.total ?? processed),
+        });
         if (batchProcessed === 0 || (batchData as any)?.has_more === false) break;
       }
 
@@ -91,18 +97,20 @@ export function useRimsCmsMutations({
       });
       if (finalizeError) throw finalizeError;
 
+      setCatalogSyncMessage(t('rimsMutations.refreshingSearchIndex'));
+      const { error: indexError } = await supabase.rpc('refresh_webshop_rim_search_index_v1');
+      if (indexError) throw indexError;
+
       setHasPendingCatalogSync(false);
-      setCatalogSyncMessage(
-        language === 'fi'
-          ? `Vannekatalogi julkaistu verkkokauppaan (${processed} käsitelty).`
-          : `Rim catalog published to webshop (${processed} processed).`,
-      );
+      setCatalogSyncMessage(t('rimsMutations.catalogPublished', { processed }));
+      setCatalogSyncProgress(null);
       await refreshRims({ force: true });
     } catch (err: any) {
       console.error('Apply rim webshop sync error:', err);
       setCatalogSyncMessage(err.message ?? String(err));
     } finally {
       setSyncing(false);
+      setCatalogSyncProgress(null);
     }
   };
 
@@ -119,21 +127,13 @@ export function useRimsCmsMutations({
         pricingRules?.qty2?.mode === 'fixed_total' &&
         !isFixedBundleTotalCompatible(pricingRules.qty2.fixed_total_eur, 2)
       ) {
-        throw new Error(
-          language === 'fi'
-            ? '2 kpl kiinteä pakettihinta pitää jakautua tasan kahdelle tuotteelle (sentteihin asti).'
-            : 'Fixed total for 2 items must be divisible evenly across 2 units (in cents).',
-        );
+        throw new Error(t('rimsMutations.invalidBundle2'));
       }
       if (
         pricingRules?.qty4?.mode === 'fixed_total' &&
         !isFixedBundleTotalCompatible(pricingRules.qty4.fixed_total_eur, 4)
       ) {
-        throw new Error(
-          language === 'fi'
-            ? '4 kpl kiinteä pakettihinta pitää jakautua tasan neljälle tuotteelle (sentteihin asti).'
-            : 'Fixed total for 4 items must be divisible evenly across 4 units (in cents).',
-        );
+        throw new Error(t('rimsMutations.invalidBundle4'));
       }
 
       const gallery = normalizeTextArray(editData.gallery);
@@ -168,11 +168,7 @@ export function useRimsCmsMutations({
 
       patchLocalCmsData(selectedRim.variant_id, payload);
       setHasPendingCatalogSync(true);
-      setCatalogSyncMessage(
-        language === 'fi'
-          ? 'Muutokset tallennettu. Suorita Apply Sync julkaistaksesi verkkokauppaan.'
-          : 'Changes saved. Run Apply Sync to publish them to the webshop.',
-      );
+      setCatalogSyncMessage(t('rimsMutations.changesSaved'));
       void refreshRims({ force: true });
       closeEditor();
     } catch (err: any) {
@@ -201,11 +197,7 @@ export function useRimsCmsMutations({
 
       patchLocalCmsData(rim.variant_id, payload);
       setHasPendingCatalogSync(true);
-      setCatalogSyncMessage(
-        language === 'fi'
-          ? 'Näkyvyysmuutos tallennettu. Suorita Apply Sync julkaistaksesi verkkokauppaan.'
-          : 'Visibility change saved. Run Apply Sync to publish it to the webshop.',
-      );
+      setCatalogSyncMessage(t('rimsMutations.visibilitySaved'));
     } catch (err: any) {
       console.error('Toggle rim visibility error:', err);
       setError(err.message ?? String(err));
@@ -228,11 +220,7 @@ export function useRimsCmsMutations({
 
       patchLocalCmsData(selectedRim.variant_id, null);
       setHasPendingCatalogSync(true);
-      setCatalogSyncMessage(
-        language === 'fi'
-          ? 'CMS-ohitukset poistettu. Suorita Apply Sync julkaistaksesi verkkokauppaan.'
-          : 'CMS overrides cleared. Run Apply Sync to publish to the webshop.',
-      );
+      setCatalogSyncMessage(t('rimsMutations.overridesCleared'));
       void refreshRims({ force: true });
       closeEditor();
     } catch (err: any) {
@@ -246,6 +234,7 @@ export function useRimsCmsMutations({
   return {
     applyRimWebshopSync,
     catalogSyncMessage,
+    catalogSyncProgress,
     handleResetCms,
     handleSave,
     handleToggleVisibility,

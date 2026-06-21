@@ -1,9 +1,10 @@
-import React from 'react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { motion } from 'motion/react';
-import { MapPin, Clock, Phone, Mail, Wrench, ArrowRight, Star, Award, Users, Shield } from 'lucide-react';
+import { MapPin, Clock, Phone, Wrench, ArrowRight, Award, Users, Shield } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
+import { businessProfile } from '../../../config/businessProfile';
+import { useLocalSeoHead } from '../../../utils/localSeo';
 
 interface HelsinkiPageProps {
   onBookingClick: () => void;
@@ -11,123 +12,117 @@ interface HelsinkiPageProps {
 }
 
 export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const canonicalPath = language === 'en' ? '/en/helsinki' : '/helsinki';
+
+  useLocalSeoHead({
+    language,
+    title:
+      language === 'fi'
+        ? 'Autokorjaamo Helsinki | Mitra Auto Hankasuontie'
+        : 'Car Garage in Helsinki | Mitra Auto Hankasuontie',
+    description:
+      language === 'fi'
+        ? 'Mitra Auto on autokorjaamo Helsingissä osoitteessa Hankasuontie 5. Huolto, rengastyöt, rengashotelli, vikadiagnostiikka ja ajanvaraus.'
+        : 'Mitra Auto is a car garage in Helsinki at Hankasuontie 5. Book maintenance, tire services, tire hotel and diagnostics.',
+    canonicalPath,
+    alternatePaths: { fi: '/helsinki', en: '/en/helsinki' },
+    pageType: 'WebPage',
+    breadcrumbs: [
+      { name: language === 'fi' ? 'Etusivu' : 'Home', path: language === 'fi' ? '/' : '/en' },
+      { name: 'Helsinki', path: canonicalPath },
+    ],
+  });
 
   const services = [
     {
       icon: Wrench,
-      title: language === 'fi' ? 'Autohuolto' : 'Car Service',
-      desc: language === 'fi' 
-        ? 'Kattava huolto ja korjaus Helsingissä'
-        : 'Comprehensive maintenance and repair in Helsinki',
-      link: language === 'fi' ? '/palvelut/autohuolto' : '/en/services/car-service',
+      title: t('helsinki.services.carService.title'),
+      desc: t('helsinki.services.carService.desc'),
+      link: t('helsinki.services.carService.link'),
     },
     {
       icon: Wrench,
-      title: language === 'fi' ? 'Renkaanvaihto' : 'Tire Change',
-      desc: language === 'fi'
-        ? 'Nopea ja asiantunteva renkaanvaihto'
-        : 'Fast and expert tire change service',
-      link: language === 'fi' ? '/palvelut/renkaanvaihto' : '/en/services/tire-change',
+      title: t('helsinki.services.tireChange.title'),
+      desc: t('helsinki.services.tireChange.desc'),
+      link: t('helsinki.services.tireChange.link'),
     },
     {
       icon: Wrench,
-      title: language === 'fi' ? 'Rengashotelli' : 'Tire Hotel',
-      desc: language === 'fi'
-        ? 'Turvallinen rengassäilytys Helsingissä'
-        : 'Secure tire storage in Helsinki',
-      link: language === 'fi' ? '/palvelut/rengashotelli' : '/en/services/tire-hotel',
+      title: t('helsinki.services.tireHotel.title'),
+      desc: t('helsinki.services.tireHotel.desc'),
+      link: t('helsinki.services.tireHotel.link'),
     },
     {
       icon: Wrench,
-      title: language === 'fi' ? 'Vikadiagnostiikka' : 'Diagnostics',
-      desc: language === 'fi'
-        ? 'Nykyaikainen vikakoodien luku ja vianetsintä'
-        : 'Modern error code reading and troubleshooting',
-      link: language === 'fi' ? '/palvelut/vikadiagnostiikka' : '/en/services/diagnostics',
+      title: t('helsinki.services.diagnostics.title'),
+      desc: t('helsinki.services.diagnostics.desc'),
+      link: t('helsinki.services.diagnostics.link'),
     },
   ];
 
   const whyHelsinki = [
     {
       icon: MapPin,
-      title: language === 'fi' ? 'Keskeinen sijainti' : 'Central Location',
-      desc: language === 'fi'
-        ? 'Hankasuontie 5, helppo pääsy autolla ja julkisilla'
-        : 'Hankasuontie 5, easy access by car and public transport',
+      title: t('helsinki.why.location.title'),
+      desc: t('helsinki.why.location.desc'),
     },
     {
       icon: Users,
-      title: language === 'fi' ? 'Paikalliset asiantuntijat' : 'Local Experts',
-      desc: language === 'fi'
-        ? 'Tiedämme Helsingin olosuhteet ja kuljettajien tarpeet'
-        : 'We know Helsinki conditions and drivers\' needs',
+      title: t('helsinki.why.experts.title'),
+      desc: t('helsinki.why.experts.desc'),
     },
     {
       icon: Award,
-      title: language === 'fi' ? 'Luotettu kumppani' : 'Trusted Partner',
-      desc: language === 'fi'
-        ? 'Yli [TBD] tyytyväistä asiakasta Helsingissä'
-        : 'Over [TBD] satisfied customers in Helsinki',
+      title: t('helsinki.why.partner.title'),
+      desc: t('helsinki.why.partner.desc'),
     },
     {
       icon: Shield,
-      title: language === 'fi' ? 'Laadukas palvelu' : 'Quality Service',
-      desc: language === 'fi'
-        ? 'Sertifioidut asentajat ja modernit laitteet'
-        : 'Certified technicians and modern equipment',
+      title: t('helsinki.why.quality.title'),
+      desc: t('helsinki.why.quality.desc'),
     },
   ];
 
   const stats = [
     {
-      value: '[TBD]',
-      label: language === 'fi' ? 'Vuotta Helsingissä' : 'Years in Helsinki',
+      value: businessProfile.address.streetAddress,
+      label: t('helsinki.stats.location'),
     },
     {
-      value: '[TBD]+',
-      label: language === 'fi' ? 'Tyytyväistä asiakasta' : 'Happy Customers',
+      value: businessProfile.openingHoursText[language].split('\n')[0],
+      label: t('helsinki.stats.weekdays'),
     },
     {
-      value: '4.8★',
-      label: language === 'fi' ? 'Keskiarvio' : 'Average Rating',
+      value: businessProfile.phoneDisplay,
+      label: t('helsinki.stats.phone'),
     },
     {
-      value: '<24h',
-      label: language === 'fi' ? 'Varausaika' : 'Booking Time',
+      value: 'FI / EN',
+      label: t('helsinki.stats.languages'),
     },
   ];
 
   const faqItems = [
     {
-      q: language === 'fi' ? 'Missä te täsmälleen sijaitsette Helsingissä?' : 'Where exactly are you located in Helsinki?',
-      a: language === 'fi'
-        ? 'Olemme osoitteessa Hankasuontie 5, 00390 Helsinki. Helppo löytää autolla tai julkisilla kulkuneuvoilla.'
-        : 'We\'re at Hankasuontie 5, 00390 Helsinki. Easy to find by car or public transport.',
+      q: t('helsinki.faq.location.q'),
+      a: t('helsinki.faq.location.a'),
     },
     {
-      q: language === 'fi' ? 'Palveletteko koko Helsingin aluetta?' : 'Do you serve all of Helsinki?',
-      a: language === 'fi'
-        ? 'Kyllä, palvelemme asiakkaita koko Helsingin alueelta. Tarjoamme myös hätähinauspalvelua 24/7 Helsingin seudulla.'
-        : 'Yes, we serve customers from all over Helsinki. We also offer 24/7 emergency towing in the Helsinki area.',
+      q: t('helsinki.faq.area.q'),
+      a: t('helsinki.faq.area.a'),
     },
     {
-      q: language === 'fi' ? 'Onko pysäköinti helppoa?' : 'Is parking easy?',
-      a: language === 'fi'
-        ? 'Meillä on ilmainen pysäköinti paikan päällä asiakkaillemme. Ei stressiä pysäköinnistä!'
-        : 'We have free on-site parking for our customers. No parking stress!',
+      q: t('helsinki.faq.parking.q'),
+      a: t('helsinki.faq.parking.a'),
     },
     {
-      q: language === 'fi' ? 'Miten nopeasti saan aikaa?' : 'How quickly can I get an appointment?',
-      a: language === 'fi'
-        ? 'Tyypillisesti voimme tarjota aikaa jo [TBD] päivän sisällä. Kiireellisissä tapauksissa soita meille.'
-        : 'Typically we can offer an appointment within [TBD] days. For urgent cases, call us directly.',
+      q: t('helsinki.faq.appointment.q'),
+      a: t('helsinki.faq.appointment.a'),
     },
     {
-      q: language === 'fi' ? 'Sopivatko palvelunne Helsingin talviolosuhteisiin?' : 'Are your services suitable for Helsinki winter conditions?',
-      a: language === 'fi'
-        ? 'Ehdottomasti! Erikoistuimme talvirenkaisiin, talvihuoltoon ja Helsingin haastaviin talviolosuhteisiin.'
-        : 'Absolutely! We specialize in winter tires, winter maintenance, and Helsinki\'s challenging winter conditions.',
+      q: t('helsinki.faq.winter.q'),
+      a: t('helsinki.faq.winter.a'),
     },
   ];
 
@@ -144,19 +139,15 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
           >
             {/* Breadcrumb */}
             <div className="text-sm text-muted-foreground mb-4">
-              {language === 'fi' ? 'Etusivu' : 'Home'} / {language === 'fi' ? 'Helsinki' : 'Helsinki'}
+              {t('helsinki.breadcrumb.home')} / {t('helsinki.breadcrumb.helsinki')}
             </div>
 
             {/* H1 - Helsinki REQUIRED in H1 (local intent) */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              {language === 'fi' 
-                ? 'Autohuolto ja rengaspalvelut Helsingissä'
-                : 'Car Service and Tire Services in Helsinki'}
+              {t('helsinki.hero.title')}
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              {language === 'fi'
-                ? 'Luotettava paikallinen kumppani kaikille autohuoltotarpeillesi Helsingissä'
-                : 'Your trusted local partner for all car service needs in Helsinki'}
+              {t('helsinki.hero.subtitle')}
             </p>
 
             {/* Primary CTA */}
@@ -166,16 +157,16 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
                 onClick={onBookingClick}
                 className="bg-accent hover:bg-accent/90 text-white px-8 py-6 text-lg"
               >
-                {language === 'fi' ? 'Varaa aika' : 'Book Now'}
+                {t('helsinki.bookNow')}
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => onNavigate(language === 'fi' ? '/yhteystiedot' : '/en/contact')}
+                onClick={() => onNavigate(t('helsinki.contactLink'))}
                 className="px-8 py-6 text-lg"
               >
-                {language === 'fi' ? 'Ota yhteyttä' : 'Contact Us'}
+                {t('helsinki.contactUs')}
               </Button>
             </div>
           </motion.div>
@@ -194,7 +185,7 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="text-center"
               >
-                <div className="text-3xl md:text-4xl font-bold mb-2">{stat.value}</div>
+                <div className="text-xl font-bold leading-tight md:text-2xl">{stat.value}</div>
                 <div className="text-white/80 text-sm">{stat.label}</div>
               </motion.div>
             ))}
@@ -212,14 +203,10 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' 
-                ? 'Miksi valita Mitra Auto Helsingissä?'
-                : 'Why Choose Mitra Auto in Helsinki?'}
+              {t('helsinki.whyTitle')}
             </h2>
             <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-              {language === 'fi'
-                ? 'Paikallinen asiantuntemus yhdistettynä ammattitaitoon ja moderniin teknologiaan'
-                : 'Local expertise combined with professionalism and modern technology'}
+              {t('helsinki.whySubtitle')}
             </p>
           </motion.div>
 
@@ -254,14 +241,10 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' 
-                ? 'Palvelumme Helsingissä'
-                : 'Our Services in Helsinki'}
+              {t('helsinki.servicesTitle')}
             </h2>
             <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-              {language === 'fi'
-                ? 'Kattavat autohuoltopalvelut helsinkiläisille kuljettajille'
-                : 'Comprehensive car services for Helsinki drivers'}
+              {t('helsinki.servicesSubtitle')}
             </p>
           </motion.div>
 
@@ -287,7 +270,7 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
                           className="p-0 h-auto"
                           onClick={() => onNavigate(service.link)}
                         >
-                          {language === 'fi' ? 'Lue lisää' : 'Learn more'}
+                          {t('helsinki.learnMore')}
                           <ArrowRight className="ml-1 w-4 h-4" />
                         </Button>
                       </div>
@@ -311,12 +294,10 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
               className="text-center mb-8"
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                {language === 'fi' ? 'Löydä meidät Helsingistä' : 'Find Us in Helsinki'}
+                {t('helsinki.findUsTitle')}
               </h2>
               <p className="text-muted-foreground text-lg">
-                {language === 'fi'
-                  ? 'Hankasuontie 5, 00390 Helsinki'
-                  : 'Hankasuontie 5, 00390 Helsinki'}
+                {t('helsinki.addressValue')}
               </p>
             </motion.div>
 
@@ -327,14 +308,14 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
               className="aspect-video bg-muted rounded-lg overflow-hidden mb-8"
             >
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1983.4906905345447!2d24.9077!3d60.2055!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNjDCsDEyJzE5LjgiTiAyNMKwNTQnMjcuNyJF!5e0!3m2!1sen!2sfi!4v1234567890"
+                src={businessProfile.googleMapsEmbedUrl}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title={language === 'fi' ? 'Mitra Auto Helsinki' : 'Mitra Auto Helsinki'}
+                title={t('helsinki.mapTitle')}
               />
             </motion.div>
 
@@ -342,25 +323,33 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
               <Card>
                 <CardContent className="p-6 text-center">
                   <MapPin className="w-8 h-8 text-accent mx-auto mb-3" />
-                  <h3 className="font-semibold mb-2">{language === 'fi' ? 'Osoite' : 'Address'}</h3>
-                  <p className="text-muted-foreground text-sm">Hankasuontie 5<br />00390 Helsinki</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <Clock className="w-8 h-8 text-accent mx-auto mb-3" />
-                  <h3 className="font-semibold mb-2">{language === 'fi' ? 'Aukioloajat' : 'Opening Hours'}</h3>
+                  <h3 className="font-semibold mb-2">{t('helsinki.address')}</h3>
                   <p className="text-muted-foreground text-sm">
-                    {language === 'fi' ? 'Ma–Pe: 9:00–18:00' : 'Mon–Fri: 9:00–18:00'}<br />
-                    {language === 'fi' ? 'La: 10:00–17:00' : 'Sat: 10:00–17:00'}
+                    {businessProfile.address.streetAddress}<br />
+                    {businessProfile.address.postalCode} {businessProfile.address.addressLocality}
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-6 text-center">
+                  <Clock className="w-8 h-8 text-accent mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">{t('helsinki.openingHours')}</h3>
+                  <p className="text-muted-foreground text-sm whitespace-pre-line">{businessProfile.openingHoursText[language]}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6 text-center">
                   <Phone className="w-8 h-8 text-accent mx-auto mb-3" />
-                  <h3 className="font-semibold mb-2">{language === 'fi' ? 'Yhteystiedot' : 'Contact'}</h3>
-                  <p className="text-muted-foreground text-sm">[TBD]<br />[TBD]</p>
+                  <h3 className="font-semibold mb-2">{t('helsinki.contact')}</h3>
+                  <p className="text-muted-foreground text-sm">
+                    <a href={`tel:${businessProfile.phoneE164}`} className="hover:text-foreground">
+                      {businessProfile.phoneDisplay}
+                    </a>
+                    <br />
+                    <a href={`mailto:${businessProfile.email}`} className="hover:text-foreground">
+                      {businessProfile.email}
+                    </a>
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -379,7 +368,7 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
               className="text-center mb-12"
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                {language === 'fi' ? 'Usein kysytyt kysymykset' : 'Frequently Asked Questions'}
+                {t('helsinki.faqTitle')}
               </h2>
             </motion.div>
 
@@ -414,14 +403,10 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
             className="max-w-3xl mx-auto text-center"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' 
-                ? 'Valmis kokemaan parasta autohuoltoa Helsingissä?'
-                : 'Ready to Experience the Best Car Service in Helsinki?'}
+              {t('helsinki.footerTitle')}
             </h2>
             <p className="text-white/90 mb-8 text-lg">
-              {language === 'fi'
-                ? 'Varaa aikasi nyt ja koe ero'
-                : 'Book your appointment now and experience the difference'}
+              {t('helsinki.footerSubtitle')}
             </p>
             <Button
               size="lg"
@@ -429,7 +414,7 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
               onClick={onBookingClick}
               className="px-8 py-6 text-lg"
             >
-              {language === 'fi' ? 'Varaa aika' : 'Book Now'}
+              {t('helsinki.bookNow')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>

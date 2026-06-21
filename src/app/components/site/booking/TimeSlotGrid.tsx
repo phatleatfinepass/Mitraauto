@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export interface TimeSlot {
   time: string;
@@ -23,6 +24,8 @@ export function TimeSlotGrid({
   disabled = false,
   loading = false,
 }: TimeSlotGridProps) {
+  const { t } = useLanguage();
+
   if (loading) {
     return (
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
@@ -40,13 +43,13 @@ export function TimeSlotGrid({
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Clock className="h-4 w-4" />
-        <span>Available time slots</span>
+        <span>{t('booking.step1.availableTimeSlots')}</span>
       </div>
       
       <div 
         className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"
         role="radiogroup"
-        aria-label="Available time slots"
+        aria-label={t('booking.step1.availableTimeSlots')}
       >
         {slots.map((slot) => {
           const isSelected = selectedSlot === slot.id;
@@ -67,14 +70,22 @@ export function TimeSlotGrid({
                   isSelected
                     ? 'bg-primary text-primary-foreground shadow-md scale-105 ring-2 ring-primary/50'
                     : isDisabled
-                    ? 'bg-secondary/30 text-muted-foreground cursor-not-allowed opacity-50'
+                    ? 'relative overflow-hidden border border-border/70 bg-secondary/30 text-muted-foreground cursor-not-allowed opacity-80'
                     : 'bg-secondary hover:bg-secondary/80 hover:shadow-sm hover:scale-102 active:scale-98'
                 }
               `}
             >
-              <span className="font-medium">{slot.time}</span>
+              {isDisabled ? (
+                <>
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 h-px w-[145%] -translate-x-1/2 -translate-y-1/2 rotate-[-22deg] bg-muted-foreground/45" />
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 h-px w-[145%] -translate-x-1/2 -translate-y-1/2 rotate-[22deg] bg-muted-foreground/35" />
+                </>
+              ) : null}
+              <span className={`relative z-10 font-medium ${isDisabled ? 'line-through decoration-2 decoration-muted-foreground/70' : ''}`}>
+                {slot.time}
+              </span>
               {!slot.available && slot.unavailableReason ? (
-                <span className="mt-0.5 max-w-full truncate text-[10px] leading-3" title={slot.unavailableReason}>
+                <span className="relative z-10 mt-0.5 max-w-full truncate text-[10px] leading-3" title={slot.unavailableReason}>
                   {slot.unavailableReason}
                 </span>
               ) : null}
@@ -85,7 +96,7 @@ export function TimeSlotGrid({
 
       {slots.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No available time slots for selected date
+          {t('booking.step1.noAvailableTimeSlots')}
         </p>
       )}
     </div>

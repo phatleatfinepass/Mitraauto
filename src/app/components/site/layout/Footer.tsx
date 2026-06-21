@@ -1,6 +1,7 @@
 import React from 'react';
 import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { businessProfile } from '../../../config/businessProfile';
 import logo from 'figma:asset/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png';
 
 interface FooterProps {
@@ -20,12 +21,25 @@ interface FooterSection {
 
 export function Footer({ onNavigate }: FooterProps) {
   const { language, setLanguage, t } = useLanguage();
+  const homeHref = language === 'en' ? '/en' : '/';
+  const servicesHref = language === 'en' ? '/en/services' : '/palvelut';
+  const catalogHref = language === 'en' ? '/en/catalog' : '/catalog';
+  const tireHotelHref = language === 'en' ? '/en/services/tire-hotel' : '/palvelut/rengashotelli';
+  const aboutHref = language === 'en' ? '/en/about' : '/meista';
+  const contactHref = language === 'en' ? '/en/contact' : '/yhteystiedot';
+  const selectedLanguageClass = 'bg-secondary text-foreground';
+  const inactiveLanguageClass = 'text-muted-foreground hover:text-foreground';
+  const languageButtonClasses: Record<typeof language, string> = {
+    fi: inactiveLanguageClass,
+    en: inactiveLanguageClass,
+  };
+  languageButtonClasses[language] = selectedLanguageClass;
 
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string, sectionId?: string) => {
     // Handle navigation to Services page with section scroll
-    if (href === '/services' && sectionId && onNavigate) {
+    if (href === servicesHref && sectionId && onNavigate) {
       event.preventDefault();
-      onNavigate('/services');
+      onNavigate(servicesHref);
       // Wait for page to render, then scroll to section
       setTimeout(() => {
         const element = document.getElementById(sectionId);
@@ -37,9 +51,9 @@ export function Footer({ onNavigate }: FooterProps) {
     }
 
     // Handle navigation to Home page with section scroll
-    if (href === '/' && sectionId && onNavigate) {
+    if (href === homeHref && sectionId && onNavigate) {
       event.preventDefault();
-      onNavigate('/');
+      onNavigate(homeHref);
       // Wait for page to render, then scroll to section
       setTimeout(() => {
         const element = document.getElementById(sectionId);
@@ -50,24 +64,10 @@ export function Footer({ onNavigate }: FooterProps) {
       return;
     }
     
-    // Handle About page navigation
-    if (href === '/about' && onNavigate) {
-      event.preventDefault();
-      onNavigate('/about');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    // Handle Tire Hotel navigation
-    if (href === '/tire-hotel' && onNavigate) {
-      event.preventDefault();
-      onNavigate('/tire-hotel');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    
-    // Handle Legal pages navigation
-    if (onNavigate && (href === '/legal/privacy' || href === '/legal/terms')) {
+    if (
+      onNavigate &&
+      [catalogHref, aboutHref, tireHotelHref, contactHref, '/privacy', '/terms'].includes(href)
+    ) {
       event.preventDefault();
       onNavigate(href);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -79,7 +79,7 @@ export function Footer({ onNavigate }: FooterProps) {
     {
       titleKey: 'footer.shop',
       links: [
-        { key: 'footer.catalog', href: '/catalog' },
+        { key: 'footer.catalog', href: catalogHref },
         // Temporarily hidden - Used Cars
         // { key: 'nav.usedCars', href: '/used-cars' },
       ],
@@ -87,22 +87,22 @@ export function Footer({ onNavigate }: FooterProps) {
     {
       titleKey: 'footer.services',
       links: [
-        { key: 'footer.carservice', href: '/services', sectionId: 'tire-work' },
-        { key: 'footer.tireHotel', href: '/tire-hotel' },
+        { key: 'footer.carservice', href: servicesHref, sectionId: 'tire-work' },
+        { key: 'footer.tireHotel', href: tireHotelHref },
       ],
     },
     {
       titleKey: 'footer.company',
       links: [
-        { key: 'footer.about', href: '/about' },
-        { key: 'footer.contact', href: '/', sectionId: 'contact-heading' },
+        { key: 'footer.about', href: aboutHref },
+        { key: 'footer.contact', href: contactHref },
       ],
     },
     {
       titleKey: 'footer.legal',
       links: [
-        { key: 'footer.privacy', href: '/legal/privacy' },
-        { key: 'footer.terms', href: '/legal/terms' },
+        { key: 'footer.privacy', href: '/privacy' },
+        { key: 'footer.terms', href: '/terms' },
       ],
     },
   ];
@@ -120,10 +120,25 @@ export function Footer({ onNavigate }: FooterProps) {
                 <span className="text-lg font-semibold">Mitra Auto</span>
               </div>
               <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
-                {language === 'fi' 
-                  ? 'Täyden palvelun korjaamo, joka tarjoaa rengas-, huolto- ja korjauspalveluita.' 
-                  : 'Full-service garage with tire, maintenance and repair services.'}
+                {t('footer.description')}
               </p>
+              <address className="mt-4 space-y-1 text-sm not-italic text-muted-foreground">
+                <div>{businessProfile.legalName}</div>
+                <a
+                  href={businessProfile.mapSearchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:text-foreground"
+                >
+                  {businessProfile.address.formatted}
+                </a>
+                <a href={`tel:${businessProfile.phoneE164}`} className="block hover:text-foreground">
+                  {businessProfile.phoneDisplay}
+                </a>
+                <a href={`mailto:${businessProfile.email}`} className="block hover:text-foreground">
+                  {businessProfile.email}
+                </a>
+              </address>
             </div>
 
             {/* Links Columns */}
@@ -198,21 +213,13 @@ export function Footer({ onNavigate }: FooterProps) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setLanguage('fi')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  language === 'fi' 
-                    ? 'bg-secondary text-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${languageButtonClasses.fi}`}
               >
                 FI
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  language === 'en' 
-                    ? 'bg-secondary text-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${languageButtonClasses.en}`}
               >
                 EN
               </button>

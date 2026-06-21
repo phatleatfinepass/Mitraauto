@@ -5,8 +5,9 @@ import { BookingStep1 } from './BookingStep1';
 import { BookingStep2 } from './BookingStep2';
 import { BookingStep3 } from './BookingStep3';
 import { BookingSuccess } from './BookingSuccess';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { FINNISH_PHONE_PREFIX, normalizeFinnishPhoneInput } from '../../../utils/phone';
+import { getLocalizedServiceNameById } from '../../../utils/serviceCatalog';
 
 type BookingStep = 'step1' | 'step2' | 'step3' | 'success';
 
@@ -27,6 +28,7 @@ interface BookingModalProps {
 
 export function BookingModal({ open, onOpenChange, preSelectedService, prefill }: BookingModalProps) {
   const { t, language } = useLanguage();
+  const locale = { fi: 'fi-FI', en: 'en-US' }[language];
   
   // Current step
   const [currentStep, setCurrentStep] = useState<BookingStep>('step1');
@@ -143,56 +145,15 @@ export function BookingModal({ open, onOpenChange, preSelectedService, prefill }
     currentStep === 'step3' ? 100 : 
     100;
 
-  // Get selected service name(s) for success screen
+  // Get selected service name(s) for success screen and persisted booking/email payload.
   const getServiceName = () => {
-    const serviceMap: Record<string, string> = {
-      'basic-hand-wash-car': `${t('service.basicHandWash')} · ${t('vehicle.passengerCar')}`,
-      'basic-hand-wash-suv': `${t('service.basicHandWash')} · ${t('vehicle.suv')}`,
-      'quick-wax-car': `${t('service.quickWax')} · ${t('vehicle.passengerCar')}`,
-      'quick-wax-suv': `${t('service.quickWax')} · ${t('vehicle.suv')}`,
-      'interior-cleaning-car': `${t('service.interiorCleaning')} · ${t('vehicle.passengerCar')}`,
-      'interior-cleaning-suv': `${t('service.interiorCleaning')} · ${t('vehicle.suv')}`,
-      'super-exterior-wash-car': `${t('service.premiumExteriorWash')} · ${t('vehicle.passengerCar')}`,
-      'super-exterior-wash-suv': `${t('service.premiumExteriorWash')} · ${t('vehicle.suv')}`,
-      'hard-wax-car': `${t('service.hardWaxProtection')} · ${t('vehicle.passengerCar')}`,
-      'hard-wax-suv': `${t('service.hardWaxProtection')} · ${t('vehicle.suv')}`,
-      'engine-wash': t('service.engineWash'),
-      'wheel-wash-set': t('service.wheelWash'),
-      'tire-change-car': t('service.tireChangeCar'),
-      'tire-change-suv': t('service.tireChangeSuv'),
-      'tire-change-van': t('service.tireChangeVan'),
-      'wheel-balancing': t('service.wheelBalancing'),
-      'tire-repair-outside': t('service.externalRepair'),
-      'tire-repair-inside': t('service.internalRepair'),
-      'tire-work-up-to-17': t('service.tireWorkUpTo17'),
-      'tire-work-18-19': t('service.tireWork18To19'),
-      'tire-work-20-21': t('service.tireWork20To21'),
-      'tire-hotel-storage': t('service.tireHotelStorage'),
-      'error-code-reading': t('service.errorCodeReading'),
-      'troubleshooting': t('service.troubleshooting'),
-      'engine-oil-change': t('service.engineOilChange'),
-      'seasonal-maintenance': t('service.seasonalMaintenance'),
-      'annual-maintenance': t('service.annualMaintenance'),
-      'manual-gearbox-oil': t('service.manualGearboxOil'),
-      'automatic-gearbox-oil': t('service.automaticGearboxOil'),
-      'automatic-gearbox-flush': t('service.automaticGearboxFlush'),
-      'brake-fluid': t('service.brakeFluid'),
-      'pedal-installation': t('service.pedalInstallation'),
-      'rust-repair': t('service.rustRepair'),
-      'ac-service-r134a': t('service.acServiceR134a'),
-      'ac-extra-refrigerant': t('service.extraRefrigerant'),
-      'ac-hybrid-extra-r134a': t('service.hybridSurcharge'),
-      'ac-service-r1234yf': t('service.acServiceR1234yf'),
-      'ac-hybrid-extra-r1234yf': t('service.hybridSurcharge'),
-      'ac-service-electric': t('service.acServiceElectric'),
-      'ac-diagnostics': t('service.acDiagnostics'),
-    };
-
     if (selectedServiceIds.length > 0) {
-      return selectedServiceIds.map((id) => serviceMap[id] || 'Service').join(', ');
+      return selectedServiceIds
+        .map((id) => getLocalizedServiceNameById(id, language) || t('booking.serviceFallback'))
+        .join(', ');
     }
     
-    return 'Service';
+    return t('booking.serviceFallback');
   };
 
   return (
@@ -270,7 +231,8 @@ export function BookingModal({ open, onOpenChange, preSelectedService, prefill }
               onEditStep1={handleEditStep1}
               onContinue={handleStep2Continue}
               t={t}
-              locale={language === 'fi' ? 'fi-FI' : 'en-US'}
+              language={language}
+              locale={locale}
               orderInstallToken={prefill?.installToken}
             />
           )}
@@ -288,7 +250,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService, prefill }
               onEditStep1={handleEditStep1}
               onConfirm={handleConfirm}
               t={t}
-              locale={language === 'fi' ? 'fi-FI' : 'en-US'}
+              locale={locale}
             />
           )}
 
@@ -302,7 +264,7 @@ export function BookingModal({ open, onOpenChange, preSelectedService, prefill }
               contactInfo={contactInfo}
               onClose={handleClose}
               t={t}
-              locale={language === 'fi' ? 'fi-FI' : 'en-US'}
+              locale={locale}
             />
           )}
         </div>

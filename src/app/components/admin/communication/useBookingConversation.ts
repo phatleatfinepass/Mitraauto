@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
+import { translateForLanguage } from '../../../i18n/LanguageContext';
 import { getSupabaseClient } from '../../../utils/supabase/client';
 import type { ScheduleBooking } from '../../../utils/schedule';
 import type {
@@ -20,7 +21,6 @@ interface UseBookingConversationArgs {
 export function useBookingConversation({
   buildCustomerCompletionDraft,
   getBookingLanguage,
-  language,
   setBookingExpanded,
   t,
 }: UseBookingConversationArgs) {
@@ -33,11 +33,11 @@ export function useBookingConversation({
   const ensureReplySubject = useCallback((subject?: string | null) => {
     const trimmed = (subject || '').trim();
     if (!trimmed) {
-      return language === 'fi' ? 'Vastaus varaukseesi liittyen' : 'Reply regarding your booking';
+      return t('replySubjectFallback');
     }
 
     return /^re:/i.test(trimmed) ? trimmed : `Re: ${trimmed}`;
-  }, [language]);
+  }, [t]);
 
   const buildReplyBody = useCallback((message: BookingConversationMessage) => {
     const source = (message.bodyText || message.snippet || '').trim();
@@ -121,8 +121,8 @@ export function useBookingConversation({
           }
         : current[booking.id] || {
             subject: isCompletionFlow
-              ? (messageLanguage === 'fi' ? 'Täydennä varauksesi tiedot' : 'Complete your booking details')
-              : (messageLanguage === 'fi' ? 'Viesti varaukseesi liittyen' : 'Message regarding your booking'),
+              ? translateForLanguage(messageLanguage, 'adminSchedule.completionMessageSubject')
+              : translateForLanguage(messageLanguage, 'adminSchedule.bookingMessageSubject'),
             message: isCompletionFlow
               ? buildCustomerCompletionDraft(booking).message
               : '',

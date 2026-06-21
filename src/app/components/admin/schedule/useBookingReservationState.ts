@@ -15,6 +15,7 @@ export function useBookingReservationState({
   t,
   timelineBookings,
 }: UseBookingReservationStateArgs) {
+  const dateLocale = { fi: 'fi-FI', en: 'en-US' }[language as 'fi' | 'en'] ?? 'en-US';
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ScheduleBooking[]>([]);
   const [isSearchingBookings, setIsSearchingBookings] = useState(false);
@@ -42,7 +43,7 @@ export function useBookingReservationState({
 
   const formatBookingGroupLabel = (dateValue: string) => {
     const bookingDate = new Date(`${dateValue}T12:00:00`);
-    const weekdayLabel = bookingDate.toLocaleDateString(language === 'fi' ? 'fi-FI' : 'en-US', {
+    const weekdayLabel = bookingDate.toLocaleDateString(dateLocale, {
       weekday: 'long',
     });
     const [year, month, day] = dateValue.split('-');
@@ -141,7 +142,7 @@ export function useBookingReservationState({
     } catch (error) {
       console.error('Error searching bookings:', error);
       if (requestId === searchRequestIdRef.current) {
-        toast.error(language === 'fi' ? 'Varauksien haku epäonnistui' : 'Failed to search bookings');
+        toast.error(t('searchBookingsFailed'));
       }
     } finally {
       if (requestId === searchRequestIdRef.current) {
@@ -165,7 +166,7 @@ export function useBookingReservationState({
       setArchivedBookings(data || []);
     } catch (error) {
       console.error('Error loading archived bookings:', error);
-      toast.error(language === 'fi' ? 'Arkistoitujen varausten lataus epäonnistui' : 'Failed to load archived bookings');
+      toast.error(t('loadArchivedFailed'));
     }
   };
 

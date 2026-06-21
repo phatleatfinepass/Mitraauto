@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
@@ -31,6 +31,15 @@ type RimPcdOption = {
   count?: number;
 };
 
+type RimFilterOptionsPayload = {
+  brands?: unknown[];
+  diameters?: unknown[];
+  widths?: unknown[];
+  pcds?: unknown[];
+};
+
+const RIM_FILTER_OPTIONS_CACHE_KEY = 'mitra.rim-filter-options.v1';
+
 export const DEFAULT_RIM_FILTERS = {
   rimDiameter: 'all',
   rimWidth: 'all',
@@ -48,7 +57,7 @@ export const DEFAULT_RIM_FILTERS = {
 };
 
 export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const [licensePlate, setLicensePlate] = useState('');
   const [filters, setFilters] = useState(DEFAULT_RIM_FILTERS);
@@ -63,15 +72,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
   useEffect(() => {
     let active = true;
 
-    const loadFilterOptions = async () => {
-      const { data, error } = await supabase.rpc('catalog_list_rim_filter_options_v1');
-      if (!active) return;
-      if (error) {
-        console.warn('Failed to load rim filter options:', error);
-        return;
-      }
-
-      const payload = data && typeof data === 'object' ? data as any : {};
+    const applyFilterOptions = (payload: RimFilterOptionsPayload) => {
       const brands = Array.isArray(payload.brands)
         ? payload.brands.map((brand: unknown) => String(brand ?? '').trim()).filter(Boolean)
         : [];
@@ -95,6 +96,33 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
       setDiameterOptions(diameters);
       setWidthOptions(widths);
       setPcdOptions(pcds);
+    };
+
+    const loadFilterOptions = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = window.sessionStorage.getItem(RIM_FILTER_OPTIONS_CACHE_KEY);
+          const cachedPayload = cached ? JSON.parse(cached) : null;
+          if (cachedPayload && typeof cachedPayload === 'object') {
+            applyFilterOptions(cachedPayload as RimFilterOptionsPayload);
+          }
+        } catch {
+          // Ignore malformed cache; the live RPC below will repopulate it.
+        }
+      }
+
+      const { data, error } = await supabase.rpc('catalog_list_rim_filter_options_v1');
+      if (!active) return;
+      if (error) {
+        console.warn('Failed to load rim filter options:', error);
+        return;
+      }
+
+      const payload = data && typeof data === 'object' ? data as RimFilterOptionsPayload : {};
+      applyFilterOptions(payload);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(RIM_FILTER_OPTIONS_CACHE_KEY, JSON.stringify(payload));
+      }
     };
 
     void loadFilterOptions();
@@ -140,9 +168,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
       }, vehicle.rimMounting ?? undefined);
       const rim = fitment.rim;
       if (!rim) {
-        throw new Error(language === 'fi'
-          ? 'Ajoneuvon vannemitoitusta ei voitu laskea.'
-          : 'Could not calculate rim fitment for this vehicle.');
+        throw new Error(t('catalog.rimFitmentMissing'));
       }
 
       const preferredWidth = rim.factory.preferredRimWidthIn ?? rim.factory.approvedRimWidthsIn[0] ?? null;
@@ -186,7 +212,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
         <div className="space-y-4" onKeyDown={handleLicensePlateKeyDown}>
           <div>
             <Label className={`${textClass} mb-4 block text-center text-lg`}>
-              {language === 'fi' ? 'Syötä rekisteritunnus' : 'Enter License Plate'}
+              {t('catalog.enterLicensePlate')}
             </Label>
             <LicensePlateDisplay
               value={licensePlate}
@@ -201,8 +227,8 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                 className="bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90 disabled:opacity-50"
               >
                 {vehicleLookupLoading
-                  ? (language === 'fi' ? 'Haetaan...' : 'Searching...')
-                  : (language === 'fi' ? 'Hae vannekoko' : 'Find rim size')}
+                  ? t('catalog.searching')
+                  : t('catalog.findRimSize')}
               </Button>
             </div>
             {vehicleLookupError && (
@@ -218,18 +244,18 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
           {/* Simple Main Filters - Search, Diameter, Width, PCD, Brand */}
           <div>
             <Label className={`${textClass} text-sm mb-3 block`}>
-              {language === 'fi' ? 'Vanteen haku' : 'Rim search'}
+              {t('catalog.rimSearch')}
             </Label>
             <div className="mb-4">
               <Label className={`${textClass} mb-2 block text-xs`}>
-                {language === 'fi' ? 'Haku' : 'Search'}
+                {t('catalog.search')}
               </Label>
               <div className="relative">
                 <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${secondaryTextClass}`} />
                 <Input
                   value={filters.search}
                   onChange={(e) => updateFilter('search', e.target.value)}
-                  placeholder={language === 'fi' ? 'Merkki, malli, EAN, PCD...' : 'Brand, model, EAN, PCD...'}
+                  placeholder={t('catalog.searchPlaceholderRim')}
                   className={`${inputBgClass} ${borderClass} ${textClass} pl-9 placeholder:${secondaryTextClass}/50`}
                 />
               </div>
@@ -238,14 +264,14 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
               {/* Diameter */}
               <div>
                 <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Halkaisija' : 'Diameter'}
+                  {t('productDetail.diameter')}
                 </Label>
                 <Select value={filters.rimDiameter} onValueChange={(value) => updateFilter('rimDiameter', value)}>
                   <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                     {diameterOptions.map(d => (
                       <SelectItem key={d} value={d} className={`${textClass} hover:bg-white/10`}>
                         {d}"
@@ -258,14 +284,14 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
               {/* Width */}
               <div>
                 <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Leveys' : 'Width'}
+                  {t('productDetail.width')}
                 </Label>
                 <Select value={filters.rimWidth} onValueChange={(value) => updateFilter('rimWidth', value)}>
                   <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                     {widthOptions.map(w => (
                       <SelectItem key={w} value={w} className={`${textClass} hover:bg-white/10`}>
                         {w}"
@@ -285,7 +311,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                     {pcdOptions.map(p => (
                       <SelectItem key={p.value} value={p.value} className={`${textClass} hover:bg-white/10`}>
                         {p.label}
@@ -298,14 +324,14 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
               {/* Brand */}
               <div>
                 <Label className={`${textClass} mb-2 block text-xs`}>
-                  {language === 'fi' ? 'Merkki' : 'Brand'}
+                  {t('catalog.brand')}
                 </Label>
                 <Select value={filters.brand} onValueChange={(value) => updateFilter('brand', value)}>
                   <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className={`${selectBgClass} ${borderClass}`}>
-                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>All</SelectItem>
+                    <SelectItem value="all" className={`${textClass} hover:bg-white/10`}>{t('catalog.all')}</SelectItem>
                     {brandOptions.map((brand) => (
                       <SelectItem key={brand} value={brand} className={`${textClass} hover:bg-white/10`}>
                         {brand}
@@ -322,7 +348,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
               onClick={() => onSearch()}
               className="flex-1 bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
             >
-              {language === 'fi' ? 'Hae vanteet' : 'Search rims'}
+              {t('catalog.searchRims')}
             </Button>
             <Button
               type="button"
@@ -335,7 +361,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
               }`}
             >
               <SlidersHorizontal className="w-4 h-4 mr-2" />
-              {language === 'fi' ? 'Näkymän asetukset' : 'View settings'}
+              {t('catalog.viewSettings')}
             </Button>
           </div>
 
@@ -348,12 +374,10 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
             >
               <SheetHeader className={theme === 'dark' ? 'border-b border-white/10' : 'border-b border-gray-200'}>
                 <SheetTitle className={textClass}>
-                  {language === 'fi' ? 'Vanteiden näkymäasetukset' : 'Rims view settings'}
+                  {t('catalog.rimsViewSettings')}
                 </SheetTitle>
                 <SheetDescription className={secondaryTextClass}>
-                  {language === 'fi'
-                    ? 'Rajaa vannetuloksia teknisten mittojen, saatavuuden ja järjestyksen mukaan.'
-                    : 'Refine rim results by technical fitment, availability, and ordering.'}
+                  {t('catalog.rimsViewSettingsDescription')}
                 </SheetDescription>
               </SheetHeader>
 
@@ -362,7 +386,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <Label className={`${textClass} mb-2 block text-sm`}>
-                        {language === 'fi' ? 'ET (offset)' : 'ET Offset'}
+                        {t('catalog.etOffset')}
                       </Label>
                       <Input
                         type="number"
@@ -374,7 +398,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                     </div>
                     <div>
                       <Label className={`${textClass} mb-2 block text-sm`}>
-                        {language === 'fi' ? 'CB (keskireikä)' : 'CB (center bore)'}
+                        {t('catalog.centerBore')}
                       </Label>
                       <Input
                         type="number"
@@ -392,7 +416,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                   <div className="space-y-4">
                     <div>
                       <Label className={`${textClass} mb-2 block text-sm`}>
-                        {language === 'fi' ? 'Järjestä' : 'Sort by'}
+                        {t('catalog.sortBy')}
                       </Label>
                       <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
                         <SelectTrigger className={`${inputBgClass} ${borderClass} ${textClass}`}>
@@ -400,13 +424,13 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                         </SelectTrigger>
                         <SelectContent className={`${selectBgClass} ${borderClass}`}>
                           <SelectItem value="price_asc" className={`${textClass} hover:bg-white/10`}>
-                            {language === 'fi' ? 'Hinta ↑' : 'Price ↑'}
+                            {t('catalog.priceAsc')}
                           </SelectItem>
                           <SelectItem value="price_desc" className={`${textClass} hover:bg-white/10`}>
-                            {language === 'fi' ? 'Hinta ↓' : 'Price ↓'}
+                            {t('catalog.priceDesc')}
                           </SelectItem>
                           <SelectItem value="brand_asc" className={`${textClass} hover:bg-white/10`}>
-                            {language === 'fi' ? 'Merkki A-Ö' : 'Brand A-Z'}
+                            {t('catalog.brandAsc')}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -419,7 +443,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                         className="data-[state=checked]:bg-[#FF6B35]"
                       />
                       <span className={`${textClass} text-sm`}>
-                        {language === 'fi' ? 'Vain varastossa' : 'In stock only'}
+                        {t('catalog.inStockOnly')}
                       </span>
                     </label>
                   </div>
@@ -433,7 +457,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                     onClick={clearFilters}
                     className={`${secondaryTextClass} hover:${textClass} hover:bg-white/10`}
                   >
-                    {language === 'fi' ? 'Tyhjennä' : 'Clear'}
+                    {t('catalog.clear')}
                   </Button>
                   <Button
                     onClick={() => {
@@ -442,7 +466,7 @@ export function RimFilters({ onFilterChange, onSearch, searchMode }: RimFiltersP
                     }}
                     className="flex-1 bg-[#FF6B35] text-white hover:bg-[#FF6B35]/90"
                   >
-                    {language === 'fi' ? 'Käytä asetukset' : 'Apply settings'}
+                    {t('catalog.applySettings')}
                   </Button>
                 </div>
               </div>

@@ -1,64 +1,77 @@
-import React from 'react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { motion } from 'motion/react';
 import { MapPin, Phone, Mail, Clock, ArrowRight, MessageCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
+import { businessProfile } from '../../../config/businessProfile';
+import { useLocalSeoHead } from '../../../utils/localSeo';
 
 interface ContactPageProps {
   onBookingClick: () => void;
 }
 
 export function ContactPage({ onBookingClick }: ContactPageProps) {
-  const { t, language } = useLanguage();
+  const { language, t } = useLanguage();
+  const canonicalPath = language === 'en' ? '/en/contact' : '/yhteystiedot';
+
+  useLocalSeoHead({
+    language,
+    title:
+      language === 'fi'
+        ? 'Yhteystiedot | Mitra Auto Helsinki'
+        : 'Contact Mitra Auto | Helsinki Garage',
+    description:
+      language === 'fi'
+        ? 'Mitra Auto Oy sijaitsee osoitteessa Hankasuontie 5, 00390 Helsinki. Katso aukioloajat, puhelin, sähköposti, kartta ja ajanvaraus.'
+        : 'Mitra Auto Oy is located at Hankasuontie 5, 00390 Helsinki. See opening hours, phone, email, map and booking options.',
+    canonicalPath,
+    alternatePaths: { fi: '/yhteystiedot', en: '/en/contact' },
+    pageType: 'ContactPage',
+    breadcrumbs: [
+      { name: language === 'fi' ? 'Etusivu' : 'Home', path: language === 'fi' ? '/' : '/en' },
+      { name: language === 'fi' ? 'Yhteystiedot' : 'Contact', path: canonicalPath },
+    ],
+  });
 
   const contactInfo = [
     {
       icon: MapPin,
       label: t('contact.address'),
-      value: 'Hankasuontie 5\n00390 Helsinki',
-      link: 'https://maps.google.com/?q=Hankasuontie+5,+00390+Helsinki',
+      value: `${businessProfile.address.streetAddress}\n${businessProfile.address.postalCode} ${businessProfile.address.addressLocality}`,
+      link: businessProfile.mapSearchUrl,
     },
     {
       icon: Phone,
       label: t('contact.phone'),
-      value: '[TBD]',
-      link: 'tel:[TBD]',
+      value: businessProfile.phoneDisplay,
+      link: `tel:${businessProfile.phoneE164}`,
     },
     {
       icon: Mail,
       label: t('contact.email'),
-      value: '[TBD]',
-      link: 'mailto:[TBD]',
+      value: businessProfile.email,
+      link: `mailto:${businessProfile.email}`,
     },
     {
       icon: Clock,
       label: t('contact.hours'),
-      value: language === 'fi' 
-        ? 'Ma–Pe: 9:00–18:00\nLa: 10:00–17:00\nSu: Suljettu'
-        : 'Mon–Fri: 9:00–18:00\nSat: 10:00–17:00\nSun: Closed',
+      value: businessProfile.openingHoursText[language],
       link: null,
     },
   ];
 
   const faqItems = [
     {
-      question: language === 'fi' ? 'Miten voin varata ajan?' : 'How can I book an appointment?',
-      answer: language === 'fi' 
-        ? 'Voit varata ajan verkossa klikkaamalla "Varaa aika" -painiketta tai soittamalla meille.'
-        : 'You can book online by clicking the "Book Now" button or by calling us.',
+      question: t('contactPage.faq.booking.q'),
+      answer: t('contactPage.faq.booking.a'),
     },
     {
-      question: language === 'fi' ? 'Missä te sijaitsette?' : 'Where are you located?',
-      answer: language === 'fi'
-        ? 'Olemme Helsingissä osoitteessa Hankasuontie 5, 00390 Helsinki. Helppo pääsy autolla ja julkisilla.'
-        : 'We are located in Helsinki at Hankasuontie 5, 00390 Helsinki. Easy access by car and public transport.',
+      question: t('contactPage.faq.location.q'),
+      answer: t('contactPage.faq.location.a'),
     },
     {
-      question: language === 'fi' ? 'Onko pysäköinti saatavilla?' : 'Is parking available?',
-      answer: language === 'fi'
-        ? 'Kyllä, meillä on ilmainen pysäköinti asiakkaille paikan päällä.'
-        : 'Yes, we have free parking available for customers on-site.',
+      question: t('contactPage.faq.parking.q'),
+      answer: t('contactPage.faq.parking.a'),
     },
   ];
 
@@ -75,17 +88,15 @@ export function ContactPage({ onBookingClick }: ContactPageProps) {
           >
             {/* Breadcrumb */}
             <div className="text-sm text-muted-foreground mb-4">
-              {language === 'fi' ? 'Etusivu' : 'Home'} / {language === 'fi' ? 'Yhteystiedot' : 'Contact'}
+              {t('contactPage.breadcrumb.home')} / {t('contactPage.breadcrumb.contact')}
             </div>
 
             {/* H1 - Helsinki in subtitle */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              {language === 'fi' ? 'Ota yhteyttä' : 'Get in Touch'}
+              {t('contact.title')}
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              {language === 'fi' 
-                ? 'Palvelemme Helsingissä – olemme täällä auttamassa sinua'
-                : 'Serving Helsinki – we\'re here to help you'}
+              {t('contactPage.hero.subtitle')}
             </p>
 
             {/* Primary CTA */}
@@ -94,7 +105,7 @@ export function ContactPage({ onBookingClick }: ContactPageProps) {
               onClick={onBookingClick}
               className="bg-accent hover:bg-accent/90 text-white px-8 py-6 text-lg"
             >
-              {language === 'fi' ? 'Varaa aika' : 'Book Now'}
+              {t('contactPage.bookNow')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>
@@ -147,14 +158,14 @@ export function ContactPage({ onBookingClick }: ContactPageProps) {
               className="aspect-video bg-muted rounded-lg overflow-hidden"
             >
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1983.4906905345447!2d24.9077!3d60.2055!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNjDCsDEyJzE5LjgiTiAyNMKwNTQnMjcuNyJF!5e0!3m2!1sen!2sfi!4v1234567890"
+                src={businessProfile.googleMapsEmbedUrl}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title={language === 'fi' ? 'Mitra Auto sijainti' : 'Mitra Auto location'}
+                title={t('contactPage.mapTitle')}
               />
             </motion.div>
           </div>
@@ -172,12 +183,10 @@ export function ContactPage({ onBookingClick }: ContactPageProps) {
               className="text-center mb-12"
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                {language === 'fi' ? 'Usein kysytyt kysymykset' : 'Frequently Asked Questions'}
+                {t('contactPage.faqTitle')}
               </h2>
               <p className="text-muted-foreground text-lg">
-                {language === 'fi' 
-                  ? 'Vastauksia yleisimpiin kysymyksiin'
-                  : 'Answers to common questions'}
+                {t('contactPage.faqSubtitle')}
               </p>
             </motion.div>
 
@@ -215,12 +224,10 @@ export function ContactPage({ onBookingClick }: ContactPageProps) {
             className="max-w-3xl mx-auto text-center"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' ? 'Valmis aloittamaan?' : 'Ready to Get Started?'}
+              {t('contactPage.footerTitle')}
             </h2>
             <p className="text-white/90 mb-8 text-lg">
-              {language === 'fi'
-                ? 'Varaa aikasi nyt – se vie vain muutaman minuutin'
-                : 'Book your appointment now – it only takes a few minutes'}
+              {t('contactPage.footerSubtitle')}
             </p>
             <Button
               size="lg"
@@ -228,7 +235,7 @@ export function ContactPage({ onBookingClick }: ContactPageProps) {
               onClick={onBookingClick}
               className="px-8 py-6 text-lg"
             >
-              {language === 'fi' ? 'Varaa aika' : 'Book Now'}
+              {t('contactPage.bookNow')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>

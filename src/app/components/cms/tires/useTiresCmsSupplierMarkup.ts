@@ -1,8 +1,8 @@
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ProductCMS, TireRow } from './types';
 
 export function useTiresCmsSupplierMarkup({
   baseApiPrice,
-  language,
   selectedTire,
   setEditData,
   setSaveError,
@@ -10,13 +10,14 @@ export function useTiresCmsSupplierMarkup({
   supplierMarkupPercent,
 }: {
   baseApiPrice: number | null;
-  language: string;
   selectedTire: TireRow | null;
   setEditData: React.Dispatch<React.SetStateAction<Partial<ProductCMS>>>;
   setSaveError: React.Dispatch<React.SetStateAction<string | null>>;
   supplierMarkupAmount: string | number;
   supplierMarkupPercent: string | number;
 }) {
+  const { t } = useLanguage();
+
   const applySupplierMarkup = () => {
     if (!selectedTire) return;
 
@@ -26,16 +27,12 @@ export function useTiresCmsSupplierMarkup({
     const markupPercent = percentText === '' ? 0 : Number(percentText);
 
     if (!baseApiPrice || !Number.isFinite(baseApiPrice)) {
-      setSaveError(language === 'fi' ? 'API-hintaa ei löytynyt tälle tuotteelle.' : 'No API price was found for this tire.');
+      setSaveError(t('tiresSupplierMarkup.noApiPrice'));
       return;
     }
 
     if (!Number.isFinite(markupAmount) || !Number.isFinite(markupPercent)) {
-      setSaveError(
-        language === 'fi'
-          ? 'Hintaeron pitää olla numero.'
-          : 'Markup or discount must be numeric.'
-      );
+      setSaveError(t('tiresSupplierMarkup.numericRequired'));
       return;
     }
 
@@ -51,7 +48,7 @@ export function useTiresCmsSupplierMarkup({
     const nextPrice = baseApiPrice * (1 + markupPercent / 100) + markupAmount;
 
     if (!Number.isFinite(nextPrice) || nextPrice < 0) {
-      setSaveError(language === 'fi' ? 'Lopullinen hinta ei ole kelvollinen.' : 'Final price is not valid.');
+      setSaveError(t('tiresSupplierMarkup.invalidFinalPrice'));
       return;
     }
 

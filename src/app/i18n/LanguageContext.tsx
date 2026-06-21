@@ -5,7 +5,7 @@ import type { Language } from './types';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const fallbackLanguage: Language = 'en';
@@ -14,7 +14,8 @@ const fallbackLanguageContext: LanguageContextType = {
   setLanguage: () => {
     // Ignore language changes when previewed without the provider.
   },
-  t: (key: string) => translations[key]?.[fallbackLanguage] || key,
+  t: (key: string, params?: Record<string, string | number>) =>
+    translateForLanguage(fallbackLanguage, key, params),
 };
 
 
@@ -33,6 +34,34 @@ function readStoredLanguage(): Language | null {
   }
 }
 
+function readPathLanguage(): Language | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const path = window.location.pathname.toLowerCase();
+  if (path === '/en' || path.startsWith('/en/')) {
+    return 'en';
+  }
+
+  if (
+    path === '/palvelut' ||
+    path.startsWith('/palvelut/') ||
+    path === '/yhteystiedot' ||
+    path === '/ukk' ||
+    path === '/meista' ||
+    path === '/helsinki' ||
+    path.startsWith('/helsinki/') ||
+    path === '/catalog' ||
+    path.startsWith('/catalog/') ||
+    path === '/shop'
+  ) {
+    return 'fi';
+  }
+
+  return null;
+}
+
 function persistLanguage(language: Language) {
   if (typeof window === 'undefined') {
     return;
@@ -47,6 +76,9 @@ function persistLanguage(language: Language) {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>(() => {
+    const pathLanguage = readPathLanguage();
+    if (pathLanguage) return pathLanguage;
+
     const stored = readStoredLanguage();
     if (stored) return stored;
 
@@ -66,8 +98,29 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = (key: string): string => {
-    return translations[key]?.[language] || key;
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const applyPathLanguage = () => {
+      const pathLanguage = readPathLanguage();
+      if (pathLanguage) {
+        setLanguage(pathLanguage);
+      }
+    };
+
+    applyPathLanguage();
+    window.addEventListener('popstate', applyPathLanguage);
+    window.addEventListener('mitra:navigation', applyPathLanguage);
+    return () => {
+      window.removeEventListener('popstate', applyPathLanguage);
+      window.removeEventListener('mitra:navigation', applyPathLanguage);
+    };
+  }, []);
+
+  const t = (key: string, params?: Record<string, string | number>): string => {
+    return translateForLanguage(language, key, params);
   };
 
   return (
@@ -80,4 +133,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 export function useLanguage() {
   const context = useContext(LanguageContext);
   return context;
+}
+
+export function translateForLanguage(language: Language, key: string, params?: Record<string, string | number>) {
+  return interpolateTranslation(translations[key]?.[language] || key, params);
+}
+
+function interpolateTranslation(template: string, params?: Record<string, string | number>) {
+  if (!params) return template;
+
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    const value = params[key];
+    return value === undefined ? match : String(value);
+  });
 }

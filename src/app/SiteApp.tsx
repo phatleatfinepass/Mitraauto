@@ -1,5 +1,5 @@
 import React, { startTransition, useState, useEffect, useCallback, useRef } from 'react';
-import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
+import { LanguageProvider, translateForLanguage, useLanguage } from './i18n/LanguageContext';
 import { ThemeProvider } from './theme/ThemeContext';
 import { Toaster } from './components/shared/Toaster';
 import { CartProvider, useCart } from './components/site/cart/CartContext';
@@ -22,14 +22,8 @@ import { ProductDetailPage, type Product as ProductDetail, type TireProduct as D
 import { mapProductSearchRow, type CatalogProduct } from './components/catalog/CatalogPage';
 import { CmsGuard } from './components/cms/core/CmsGuard';
 import { CmsControlCenter, type CmsTab } from './components/cms/layout/CmsControlCenter';
-import { AdminSchedulePage } from './components/admin/AdminSchedulePage';
-import { RescueCMSPage } from './components/cms/rescue/RescueCMSPage';
-import { TiresCMSPage } from './components/cms/tires/TiresCMSPage';
 import { TiresConflictResolvePage } from './components/cms/tires/TiresConflictResolvePage';
-import { RimsCMSPage } from './components/cms/rims/RimsCMSPage';
-import { OrdersCMSPage } from './components/cms/orders/OrdersCMSPage';
-import { InvoicesCMSPage } from './components/cms/invoices/InvoicesCMSPage';
-import { AccountCustomerCMSPage } from './components/cms/account-customer/AccountCustomerCMSPage';
+import { TireStorageCMSPage } from './components/cms/tire-storage/TireStorageCMSPage';
 // Site pages
 import { ContactPage } from './components/site/pages/ContactPage';
 import { FAQPage } from './components/site/pages/FAQPage';
@@ -38,6 +32,12 @@ import { CarServicePage } from './components/site/pages/CarServicePage';
 import { TireChangePage } from './components/site/pages/TireChangePage';
 import { DiagnosticsPage } from './components/site/pages/DiagnosticsPage';
 import { CarWashPage } from './components/site/pages/CarWashPage';
+import { ServiceDetailPage } from './components/site/pages/ServiceDetailPage';
+import {
+  getServiceDetailPathForResolvedDetail,
+  resolveServiceDetailByPath,
+  type ResolvedServiceDetail,
+} from './i18n/dictionaries/serviceSeo';
 import { CustomerBookingManagePage } from './components/site/pages/CustomerBookingManagePage';
 import { CustomerAccountPage } from './components/site/pages/CustomerAccountPage';
 import { NotFoundPage } from './components/site/pages/NotFoundPage';
@@ -50,6 +50,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from './utils/supabase/client';
 import { fetchProductSearchRowByIdentifier } from './utils/productsSearch';
+import { useLocalSeoHead } from './utils/localSeo';
+import {
+  getCatalogProductDetailPath,
+  getCatalogProductSeoIdentifier,
+  parseCatalogProductPath,
+} from './utils/catalogSeo';
 import { buildTyreLabelSectionData } from './utils/tyreLabel';
 import { 
   Wrench, 
@@ -58,7 +64,6 @@ import {
   ClipboardCheck,
   Shield,
   Calendar,
-  Star,
   CheckCircle2,
   ArrowRight,
   Award,
@@ -86,6 +91,19 @@ const heroImages = [
     alt: "Mitra Auto Workshop Garage"
   }
 ];
+
+const noindexAppPages = new Set([
+  'booking-manage',
+  'checkout',
+  'checkout-cancel',
+  'checkout-success',
+  'cms-beta',
+  'cms-tire-conflicts',
+  'cms-tire-storage',
+  'customer-account',
+  'pwa-cms',
+  'pwa-not-found',
+]);
 
 type ParsedTireSize = {
   width?: number;
@@ -148,14 +166,58 @@ function normalizeAppPath(path: string): string {
   return path;
 }
 
-function parseCatalogDetailPath(path: string): { productType: 'tire' | 'rim'; identifier: string } | null {
-  const normalizedPath = normalizeAppPath(path);
-  const match = normalizedPath.match(/^\/catalog\/(tire|rim)\/([^/]+)$/);
-  if (!match) return null;
-  return {
-    productType: match[1] as 'tire' | 'rim',
-    identifier: decodeURIComponent(match[2]),
-  };
+function parseAppRoute(path: string): { pathname: string; hash: string } {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mitra-auto.local';
+
+  try {
+    const url = new URL(path, origin);
+    return {
+      pathname: normalizeAppPath(url.pathname),
+      hash: url.hash,
+    };
+  } catch {
+    const [pathname = '/', hash = ''] = path.split('#');
+    return {
+      pathname: normalizeAppPath(pathname),
+      hash: hash ? `#${hash}` : '',
+    };
+  }
+}
+
+function getCanonicalCmsRoute(pathname: string): string | null {
+  if (pathname === '/dashboard') {
+    return '/cms';
+  }
+
+  if (pathname === '/admin/schedule') {
+    return '/cms#schedule';
+  }
+
+  if (pathname === '/cms/rescue' || pathname === '/cms/rescue-board') {
+    return '/cms#rescue';
+  }
+
+  if (pathname === '/cms/tires' || pathname === '/cms-tires') {
+    return '/cms#catalog/tires';
+  }
+
+  if (pathname === '/cms/rims' || pathname === '/cms-rims') {
+    return '/cms#catalog/rims';
+  }
+
+  if (pathname === '/cms/orders' || pathname === '/cms-orders') {
+    return '/cms#orders';
+  }
+
+  if (pathname === '/cms/invoices' || pathname === '/cms-invoices') {
+    return '/cms#invoices';
+  }
+
+  if (pathname === '/cms/account-customer' || pathname === '/cms/customers' || pathname === '/cms/accounts') {
+    return '/cms#account-customer';
+  }
+
+  return null;
 }
 
 const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
@@ -218,6 +280,8 @@ function generateProductImages(productId: string, baseImageUrl: string, productT
 }
 
 function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en' = 'en'): ProductDetail {
+  const tireDeliveryDays = translateForLanguage(language, 'catalog.delivery.tireDays');
+  const rimDeliveryDays = translateForLanguage(language, 'catalog.delivery.rimDays');
   const cmsImages =
     Array.isArray(product.gallery_images)
       ? product.gallery_images
@@ -239,6 +303,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
     return {
       type: 'tire',
       id: product.id,
+      seo_slug: product.seo_slug,
       brand: product.brand,
       model: product.model,
       title: product.title,
@@ -291,7 +356,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
       in_stock: product.in_stock,
       stock_quantity: product.in_stock ? Math.max(0, product.stock_qty ?? 0) : 0,
       supplier_name: undefined,
-      delivery_days: product.delivery_days ?? (product.in_stock ? (language === 'fi' ? '1-3 päivää' : '1-3 Days') : undefined),
+      delivery_days: product.delivery_days ?? (product.in_stock ? tireDeliveryDays : undefined),
       delivery_days_min: product.delivery_days_min,
       delivery_days_max: product.delivery_days_max,
       weight: undefined,
@@ -301,6 +366,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
   return {
     type: 'rim',
     id: product.id,
+    seo_slug: product.seo_slug,
     brand: product.brand,
     model: product.model,
     title: product.title,
@@ -325,7 +391,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
       in_stock: product.in_stock,
       stock_quantity: product.in_stock ? 4 : 0,
       supplier_name: undefined,
-      delivery_days: product.delivery_days ?? (product.in_stock ? (language === 'fi' ? '2-5 päivää' : '2-5 Days') : undefined),
+      delivery_days: product.delivery_days ?? (product.in_stock ? rimDeliveryDays : undefined),
       delivery_days_min: product.delivery_days_min,
       delivery_days_max: product.delivery_days_max,
       compatible_vehicles: [],
@@ -335,6 +401,28 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
 function HomePage() {
   const { t, language } = useLanguage();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
+  const catalogHref = language === 'en' ? '/en/catalog' : '/catalog';
+  const servicesHref = language === 'en' ? '/en/services' : '/palvelut';
+  const tireHotelHref = language === 'en' ? '/en/services/tire-hotel' : '/palvelut/rengashotelli';
+
+  useLocalSeoHead({
+    language,
+    title:
+      language === 'fi'
+        ? 'Mitra Auto | Autohuolto, renkaat ja korjaamo Helsingissä'
+        : 'Mitra Auto | Garage Services, Tyres and Booking in Helsinki',
+    description:
+      language === 'fi'
+        ? 'Mitra Auto on täyden palvelun autokorjaamo Helsingissä. Varaa autohuolto, rengastyöt, rengashotelli, vikadiagnostiikka tai autopesu.'
+        : 'Mitra Auto is a full-service garage in Helsinki. Book car service, tire work, tire hotel, diagnostics or car wash.',
+    canonicalPath: language === 'en' ? '/en' : '/',
+    alternatePaths: { fi: '/', en: '/en' },
+    pageType: 'WebPage',
+    breadcrumbs: [
+      { name: language === 'fi' ? 'Etusivu' : 'Home', path: language === 'fi' ? '/' : '/en' },
+    ],
+  });
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
@@ -346,14 +434,65 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'admin-schedule' | 'cms-beta' | 'cms-rescue' | 'cms-tires' | 'cms-tire-conflicts' | 'cms-rims' | 'cms-orders' | 'cms-invoices' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms-beta' | 'cms-tire-conflicts' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
+  const [selectedServiceDetail, setSelectedServiceDetail] = useState<ResolvedServiceDetail>({ kind: 'bespoke', pageId: 'car-service', language: 'en' });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const requestedProtectedPathRef = useRef<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
+
+  useEffect(() => {
+    if (!noindexAppPages.has(currentPage)) {
+      return;
+    }
+
+    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    const previousRobots = robots?.content ?? '';
+    const createdRobots = !robots;
+    if (!robots) {
+      robots = document.createElement('meta');
+      robots.name = 'robots';
+      document.head.appendChild(robots);
+    }
+    robots.content = 'noindex, nofollow';
+
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const previousCanonical = canonical?.href ?? '';
+    canonical?.remove();
+
+    const alternateLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="alternate"]')).map(
+      (link) => {
+        const href = link.href;
+        const hreflang = link.hreflang;
+        link.remove();
+        return { href, hreflang };
+      },
+    );
+
+    return () => {
+      if (robots) {
+        if (createdRobots) {
+          robots.remove();
+        } else {
+          robots.content = previousRobots;
+        }
+      }
+      if (canonical) {
+        canonical.href = previousCanonical;
+        document.head.appendChild(canonical);
+      }
+      alternateLinks.forEach(({ href, hreflang }) => {
+        const link = document.createElement('link');
+        link.rel = 'alternate';
+        link.hreflang = hreflang;
+        link.href = href;
+        document.head.appendChild(link);
+      });
+    };
+  }, [currentPage]);
 
   // Check auth state on mount
   useEffect(() => {
@@ -405,13 +544,13 @@ function HomePage() {
     if (invoicePaymentStatus) {
       const invoiceSuffix = invoiceNumber ? ` ${invoiceNumber}` : '';
       if (invoicePaymentStatus === 'paid') {
-        toast.success(language === 'fi' ? `Maksu vastaanotettu.${invoiceSuffix}` : `Payment received.${invoiceSuffix}`);
+        toast.success(t('toast.paymentReceived', { suffix: invoiceSuffix }));
       } else if (invoicePaymentStatus === 'already_paid') {
-        toast.info(language === 'fi' ? `Lasku on jo maksettu.${invoiceSuffix}` : `Invoice already paid.${invoiceSuffix}`);
+        toast.info(t('toast.invoiceAlreadyPaid', { suffix: invoiceSuffix }));
       } else if (invoicePaymentStatus === 'failed') {
-        toast.error(language === 'fi' ? `Maksu ei valmistunut.${invoiceSuffix}` : `Payment was not completed.${invoiceSuffix}`);
+        toast.error(t('toast.paymentIncomplete', { suffix: invoiceSuffix }));
       } else {
-        toast.info(language === 'fi' ? `Maksua vahvistetaan.${invoiceSuffix}` : `Payment is being confirmed.${invoiceSuffix}`);
+        toast.info(t('toast.paymentConfirming', { suffix: invoiceSuffix }));
       }
 
       params.delete('invoice_payment');
@@ -431,7 +570,7 @@ function HomePage() {
       }).then(({ data, error }) => {
         if (cancelled) return;
         if (error) {
-          toast.error(language === 'fi' ? 'Asennusvarauksen linkki ei ole voimassa.' : 'The install booking link is not valid.');
+          toast.error(t('toast.installBookingInvalid'));
           return;
         }
         setPreSelectedService(data?.serviceId || 'tire-change-car');
@@ -452,7 +591,7 @@ function HomePage() {
       setPreSelectedService('');
       setBookingModalOpen(true);
     }
-  }, [language]);
+  }, [t]);
 
 
 
@@ -469,6 +608,19 @@ function HomePage() {
       mediaQuery.removeEventListener('change', applyMatch);
     };
   }, []);
+
+  useEffect(() => {
+    if (currentPage !== 'service-detail') return;
+
+    const nextPath = getServiceDetailPathForResolvedDetail(selectedServiceDetail, language);
+    if (normalizeAppPath(window.location.pathname) !== nextPath) {
+      window.history.replaceState(window.history.state ?? {}, '', nextPath);
+    }
+
+    setSelectedServiceDetail((current) => (
+      current.language === language ? current : { ...current, language }
+    ));
+  }, [currentPage, language, selectedServiceDetail]);
 
   // Hero carousel timer - desktop only
   useEffect(() => {
@@ -488,6 +640,7 @@ function HomePage() {
       page: typeof currentPage,
       product: ProductDetail | null = null,
       nextCmsTab?: CmsTab,
+      nextServiceDetail?: ResolvedServiceDetail,
     ) => {
       startTransition(() => {
         setCurrentPage(page);
@@ -495,20 +648,30 @@ function HomePage() {
         if (nextCmsTab !== undefined) {
           setCmsTab(nextCmsTab);
         }
+        if (nextServiceDetail !== undefined) {
+          setSelectedServiceDetail(nextServiceDetail);
+        }
       });
     },
-    [setCurrentPage, setSelectedProduct, setCmsTab]
+    [setCurrentPage, setSelectedProduct, setCmsTab, setSelectedServiceDetail]
   );
   
   const updatePageFromPath = useCallback(
     (path: string, state?: { selectedProduct?: ProductDetail | null }) => {
-      const normalizedPath = normalizeAppPath(path);
+      const parsedRoute = parseAppRoute(path);
+      const normalizedPath = parsedRoute.pathname;
+      const effectiveHash = parsedRoute.hash || (typeof window !== 'undefined' ? window.location.hash : '');
+      const serviceDetail = resolveServiceDetailByPath(normalizedPath);
+      const catalogProductPath = parseCatalogProductPath(normalizedPath);
       const nextCmsTab =
-        normalizedPath === '/cms' || normalizedPath === '/cms/rescue' || normalizedPath === '/cms/password-setup'
-          ? resolveCmsTabFromHash(typeof window !== 'undefined' ? window.location.hash : undefined)
+        normalizedPath === '/cms' || normalizedPath === '/cms/password-setup'
+          ? resolveCmsTabFromHash(effectiveHash)
           : undefined;
+      const canonicalCmsRoute = getCanonicalCmsRoute(normalizedPath);
 
-      if (normalizedPath === '/') {
+      if (serviceDetail) {
+        transitionNavigationState('service-detail', null, undefined, serviceDetail);
+      } else if (normalizedPath === '/') {
         transitionNavigationState('home');
       }
 
@@ -530,16 +693,8 @@ function HomePage() {
         transitionNavigationState('helsinki');
       } else if (normalizedPath === '/palvelut') {
         transitionNavigationState('services');
-      } else if (normalizedPath === '/palvelut/autohuolto' || normalizedPath === '/helsinki/autohuolto') {
-        transitionNavigationState('car-service');
-      } else if (normalizedPath === '/palvelut/renkaanvaihto' || normalizedPath === '/helsinki/renkaanvaihto') {
-        transitionNavigationState('tire-change');
       } else if (normalizedPath === '/palvelut/rengashotelli' || normalizedPath === '/helsinki/rengashotelli') {
         transitionNavigationState('tire-hotel');
-      } else if (normalizedPath === '/palvelut/vikadiagnostiikka') {
-        transitionNavigationState('diagnostics');
-      } else if (normalizedPath === '/palvelut/autopesu') {
-        transitionNavigationState('car-wash');
       } else if (normalizedPath === '/meista') {
         transitionNavigationState('about');
       }
@@ -555,16 +710,8 @@ function HomePage() {
         transitionNavigationState('helsinki');
       } else if (normalizedPath === '/en/services') {
         transitionNavigationState('services');
-      } else if (normalizedPath === '/en/services/car-service' || normalizedPath === '/en/helsinki/car-service') {
-        transitionNavigationState('car-service');
-      } else if (normalizedPath === '/en/services/tire-change' || normalizedPath === '/en/helsinki/tire-change') {
-        transitionNavigationState('tire-change');
       } else if (normalizedPath === '/en/services/tire-hotel' || normalizedPath === '/en/helsinki/tire-hotel') {
         transitionNavigationState('tire-hotel');
-      } else if (normalizedPath === '/en/services/diagnostics') {
-        transitionNavigationState('diagnostics');
-      } else if (normalizedPath === '/en/services/car-wash') {
-        transitionNavigationState('car-wash');
       } else if (normalizedPath === '/en/about') {
         transitionNavigationState('about');
       } else if (normalizedPath === '/booking/manage' || normalizedPath === '/en/booking/manage') {
@@ -580,13 +727,11 @@ function HomePage() {
       }
       
       // Admin/CMS/Protected routes
-      else if (normalizedPath === '/dashboard') {
+      else if (canonicalCmsRoute) {
         if (typeof window !== 'undefined') {
-          window.history.replaceState(window.history.state, '', '/cms');
+          window.history.replaceState(window.history.state, '', canonicalCmsRoute);
         }
-        transitionNavigationState('cms-beta', null, nextCmsTab ?? 'rescue');
-      } else if (normalizedPath === '/admin/schedule') {
-        transitionNavigationState('admin-schedule');
+        transitionNavigationState('cms-beta', null, resolveCmsTabFromHash(parseAppRoute(canonicalCmsRoute).hash));
       } else if (
         normalizedPath === '/pwa/cms' ||
         normalizedPath === '/pwa/cms/rescue' ||
@@ -597,30 +742,15 @@ function HomePage() {
         transitionNavigationState('pwa-cms');
       } else if (normalizedPath === '/pwa' || normalizedPath.startsWith('/pwa/')) {
         transitionNavigationState('pwa-not-found');
-      } else if (normalizedPath === '/cms' || normalizedPath === '/cms/rescue' || normalizedPath === '/cms/password-setup') {
+      } else if (normalizedPath === '/cms' || normalizedPath === '/cms/password-setup') {
         transitionNavigationState('cms-beta', null, nextCmsTab);
-      } else if (normalizedPath === '/cms/rescue-board') {
-        transitionNavigationState('cms-rescue');
-      } else if (normalizedPath === '/cms/tires' || normalizedPath === '/cms-tires') {
-        transitionNavigationState('cms-tires');
       } else if (normalizedPath === '/cms/tires/conflicts') {
         transitionNavigationState('cms-tire-conflicts');
       } else if (
-        normalizedPath === '/cms/orders' ||
-        normalizedPath === '/cms-orders'
+        normalizedPath === '/cms/tire-storage' ||
+        normalizedPath === '/cms/tire-storage-preview'
       ) {
-        transitionNavigationState('cms-orders');
-      } else if (
-        normalizedPath === '/cms/invoices' ||
-        normalizedPath === '/cms-invoices'
-      ) {
-        transitionNavigationState('cms-invoices');
-      } else if (
-        normalizedPath === '/cms/account-customer' ||
-        normalizedPath === '/cms/customers' ||
-        normalizedPath === '/cms/accounts'
-      ) {
-        transitionNavigationState('cms-beta', null, 'account-customer');
+        transitionNavigationState('cms-tire-storage');
       } 
       
       // Legal routes
@@ -633,9 +763,9 @@ function HomePage() {
       } 
       
       // Catalog routes
-      else if (normalizedPath === '/catalog' || normalizedPath === '/shop') {
+      else if (normalizedPath === '/catalog' || normalizedPath === '/shop' || normalizedPath === '/en/catalog' || normalizedPath === '/en/shop') {
         transitionNavigationState('catalog');
-      } else if (normalizedPath.startsWith('/catalog/')) {
+      } else if (catalogProductPath) {
         transitionNavigationState('catalog-detail', state?.selectedProduct ?? null);
       } 
       
@@ -665,7 +795,8 @@ function HomePage() {
       } else if (options?.state) {
         window.history.replaceState(historyState, '', path);
       }
-      
+
+      window.dispatchEvent(new Event('mitra:navigation'));
       updatePageFromPath(path, historyState);
       // Scroll to top when navigating to new page (unless skipScroll is true)
       if (!options?.skipScroll) {
@@ -681,11 +812,8 @@ function HomePage() {
       startTransition(() => {
         setSelectedProduct(detail);
       });
-      const detailIdentifier =
-        product.seo_slug
-          ? product.seo_slug
-          : product.id;
-      const detailPath = `/catalog/${product.product_type}/${detailIdentifier}`;
+      const detailIdentifier = getCatalogProductSeoIdentifier(product);
+      const detailPath = getCatalogProductDetailPath(product.product_type, detailIdentifier, language);
       navigate(detailPath, { state: { selectedProduct: detail } });
     },
     [language, navigate, setSelectedProduct]
@@ -705,7 +833,7 @@ function HomePage() {
     const loadCatalogDetailFromUrl = async () => {
       if (currentPage !== 'catalog-detail' || selectedProduct) return;
 
-      const parsed = parseCatalogDetailPath(window.location.pathname);
+      const parsed = parseCatalogProductPath(window.location.pathname);
       if (!parsed) return;
 
       try {
@@ -713,6 +841,15 @@ function HomePage() {
         if (!active || !row) return;
         const catalogProduct = mapProductSearchRow(row, parsed.productType, language);
         const detail = mapCatalogProductToDetail(catalogProduct, language);
+        const canonicalPath = getCatalogProductDetailPath(
+          parsed.productType,
+          getCatalogProductSeoIdentifier(catalogProduct),
+          parsed.language,
+        );
+        const currentPath = normalizeAppPath(window.location.pathname);
+        if (currentPath !== canonicalPath) {
+          window.history.replaceState(window.history.state ?? {}, '', canonicalPath);
+        }
         startTransition(() => {
           setSelectedProduct(detail);
         });
@@ -730,7 +867,7 @@ function HomePage() {
 
   useEffect(() => {
     const handleNavigation = (event?: PopStateEvent) => {
-      const path = window.location.pathname;
+      const path = `${window.location.pathname}${window.location.search}${window.location.hash}`;
       const state = (event?.state as { selectedProduct?: ProductDetail | null }) ?? window.history.state;
       updatePageFromPath(path, state);
     };
@@ -788,21 +925,17 @@ function HomePage() {
     
     if (isAdmin) {
       const currentPath = normalizeAppPath(window.location.pathname);
+      const currentRoute = `${currentPath}${window.location.search}${window.location.hash}`;
       const targetPath = requestedProtectedPathRef.current ?? (
-        currentPath === '/cms' ||
-        currentPath === '/cms/password-setup' ||
-        currentPath === '/cms/orders' ||
-        currentPath === '/cms-orders' ||
-        currentPath === '/cms/invoices' ||
-        currentPath === '/cms-invoices' ||
-        currentPath === '/admin/schedule'
-          ? currentPath
+        currentPath.startsWith('/cms') || currentPath.startsWith('/admin') || currentPath.startsWith('/pwa')
+          ? currentRoute
           : '/cms'
       );
 
       requestedProtectedPathRef.current = null;
-      window.history.replaceState({}, '', targetPath);
-      updatePageFromPath(targetPath);
+      const canonicalTargetPath = getCanonicalCmsRoute(parseAppRoute(targetPath).pathname) ?? targetPath;
+      window.history.replaceState({}, '', canonicalTargetPath);
+      updatePageFromPath(canonicalTargetPath);
     }
   };
 
@@ -829,7 +962,7 @@ function HomePage() {
       setIsLoggedIn(false);
       
       // If on CMS/admin page, redirect to home
-      const cmsPages = ['admin-schedule', 'cms-rescue', 'cms-tires', 'cms-tire-conflicts', 'cms-rims', 'cms-orders', 'cms-invoices', 'cms-beta'];
+      const cmsPages = ['cms-tire-conflicts', 'cms-tire-storage', 'cms-beta'];
       if (cmsPages.includes(currentPage)) {
         startTransition(() => {
           setCurrentPage('home');
@@ -848,7 +981,7 @@ function HomePage() {
   const handleLoginNeeded = () => {
     const currentPath = normalizeAppPath(window.location.pathname);
     if (currentPath.startsWith('/cms') || currentPath.startsWith('/admin') || currentPath.startsWith('/pwa')) {
-      requestedProtectedPathRef.current = currentPath;
+      requestedProtectedPathRef.current = `${currentPath}${window.location.search}${window.location.hash}`;
     }
     setAuthView('login');
     setAuthModalOpen(true);
@@ -882,33 +1015,6 @@ function HomePage() {
     { icon: Wrench, key: 'hero.trust.quality' },
     { icon: Shield, key: 'hero.trust.reliability' },
     { icon: Zap, key: 'hero.trust.fast' },
-  ];
-
-  const reviews = [
-    {
-      name: 'Matti Virtanen',
-      rating: 5,
-      text: {
-        fi: 'Erittäin nopea ja ammattitaitoinen palvelu. Suosittelen lämpimästi!',
-        en: 'Very fast and professional service. Highly recommended!',
-      },
-    },
-    {
-      name: 'Anna Korhonen',
-      rating: 5,
-      text: {
-        fi: 'Rengashotelli toimii loistavasti. Ei tarvitse vaivata kotona.',
-        en: 'Tire hotel works perfectly. No need to store at home.',
-      },
-    },
-    {
-      name: 'Jukka Nieminen',
-      rating: 5,
-      text: {
-        fi: 'Helppo varata verkossa ja hinnat kilpailukykyiset.',
-        en: 'Easy to book online and competitive prices.',
-      },
-    },
   ];
 
   const tireHotelBenefits = [
@@ -963,13 +1069,13 @@ function HomePage() {
   ];
 
   const cmsTabs = [
-    { id: 'rescue' as const, label: 'Rescue 24/7', description: 'Manage emergency requests' },
-    { id: 'schedule' as const, label: 'Booking Schedule', description: 'Manage appointments' },
-    { id: 'catalog' as const, label: 'Catalog', description: 'Finalize tires and refactor rims' },
-    { id: 'orders' as const, label: 'Order & Invoice', description: 'Track purchases and invoice payments' },
-    { id: 'invoices' as const, label: 'Receipt', description: 'Receipts and paid documents' },
-    { id: 'account-customer' as const, label: 'Account', description: 'Manage CMS access and customer records' },
-    { id: 'future' as const, label: 'Future Tools', description: 'Coming soon' },
+    { id: 'rescue' as const, label: t('cmsTabs.rescue'), description: t('cmsTabs.rescueDescription') },
+    { id: 'schedule' as const, label: t('cmsTabs.schedule'), description: t('cmsTabs.scheduleDescription') },
+    { id: 'catalog' as const, label: t('cmsTabs.catalog'), description: t('cmsTabs.catalogDescription') },
+    { id: 'orders' as const, label: t('cmsTabs.orders'), description: t('cmsTabs.ordersDescription') },
+    { id: 'invoices' as const, label: t('cmsTabs.invoices'), description: t('cmsTabs.invoicesDescription') },
+    { id: 'account-customer' as const, label: t('cmsTabs.account'), description: t('cmsTabs.accountDescription') },
+    { id: 'future' as const, label: t('cmsTabs.futureTools'), description: t('cmsTabs.futureToolsDescription') },
   ];
 
   const isPwaRoute = currentPage === 'pwa-cms' || currentPage === 'pwa-not-found';
@@ -1061,6 +1167,18 @@ function HomePage() {
               setPreSelectedService(serviceId ?? '');
               setBookingModalOpen(true);
             }}
+            onNavigate={navigate}
+          />
+        ) : currentPage === 'service-detail' ? (
+          <ServiceDetailPage
+            pageId={selectedServiceDetail.kind === 'bespoke' ? selectedServiceDetail.pageId : null}
+            serviceId={selectedServiceDetail.kind === 'generated' ? selectedServiceDetail.serviceId : null}
+            routeLanguage={selectedServiceDetail.language}
+            onBookingClick={(serviceId) => {
+              setPreSelectedService(serviceId ?? '');
+              setBookingModalOpen(true);
+            }}
+            onNavigate={navigate}
           />
         ) : currentPage === 'tire-hotel' ? (
           <TireHotelPage
@@ -1115,9 +1233,11 @@ function HomePage() {
               onAddToCart={(product, quantity) => {
                 addToCart(product, quantity);
                 toast.success(
-                  language === 'fi' 
-                    ? `${quantity} × ${product.brand} ${product.model} lisätty ostoskoriin`
-                    : `${quantity} × ${product.brand} ${product.model} added to cart`
+                  t('toast.addedToCart', {
+                    quantity,
+                    brand: product.brand,
+                    model: product.model,
+                  })
                 );
               }}
             />
@@ -1144,33 +1264,13 @@ function HomePage() {
             onLoginNeeded={handleLogin}
             onNavigateHome={() => navigate('/')}
           />
-        ) : currentPage === 'admin-schedule' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="schedule">
-            <AdminSchedulePage />
-          </CmsGuard>
-        ) : currentPage === 'cms-rescue' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="rescue">
-            <RescueCMSPage />
-          </CmsGuard>
-        ) : currentPage === 'cms-tires' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
-            <TiresCMSPage />
-          </CmsGuard>
         ) : currentPage === 'cms-tire-conflicts' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_tires">
             <TiresConflictResolvePage />
           </CmsGuard>
-        ) : currentPage === 'cms-rims' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="catalog_rims">
-            <RimsCMSPage />
-          </CmsGuard>
-        ) : currentPage === 'cms-orders' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="orders">
-            <OrdersCMSPage />
-          </CmsGuard>
-        ) : currentPage === 'cms-invoices' ? (
-          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="invoices">
-            <InvoicesCMSPage documentScope="receipt" title="Receipt" />
+        ) : currentPage === 'cms-tire-storage' ? (
+          <CmsGuard onNeedLogin={handleLoginNeeded} requiredModule="tire_storage">
+            <TireStorageCMSPage />
           </CmsGuard>
         ) : currentPage === 'cms-beta' ? (
           <CmsGuard onNeedLogin={handleLoginNeeded}>
@@ -1225,7 +1325,7 @@ function HomePage() {
                     className="h-12 px-8 rounded-full"
                     asChild
                   >
-                    <a href="/catalog">{t('hero.cta.secondary')}</a>
+                    <a href={catalogHref}>{t('hero.cta.secondary')}</a>
                   </Button>
                   <button 
                     className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-white h-12 px-8 transition-all duration-200 cursor-pointer font-semibold"
@@ -1312,9 +1412,9 @@ function HomePage() {
                     asChild
                   >
                     <a
-                      href="/services"
+                      href={servicesHref}
                       className="inline-flex items-center gap-1"
-                      onClick={(event) => handleInternalNavigation(event, '/services')}
+                      onClick={(event) => handleInternalNavigation(event, servicesHref)}
                     >
                       {t('services.cta')}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
@@ -1341,7 +1441,7 @@ function HomePage() {
                 className="h-10 rounded-full px-4 sm:h-11"
                 asChild
               >
-                <a href="/catalog" className="inline-flex items-center gap-2">
+                <a href={catalogHref} className="inline-flex items-center gap-2">
                   {t('catalog.viewAll')}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </a>
@@ -1468,94 +1568,11 @@ function HomePage() {
                   className="h-11 w-full rounded-full sm:w-auto"
                   asChild
                 >
-                  <a href="/tire-hotel" className="inline-flex items-center gap-2">
+                  <a href={tireHotelHref} className="inline-flex items-center gap-2">
                     {t('tireHotel.cta')}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </a>
                 </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Customer Reviews */}
-        <section className="py-16 lg:py-32 relative" aria-labelledby="reviews-heading">
-          <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mb-8 text-center max-w-3xl mx-auto sm:mb-16">
-              <h2 id="reviews-heading" className="mb-3 text-3xl font-bold tracking-tight sm:mb-4 sm:text-4xl">
-                {t('reviews.title')}
-              </h2>
-              <p className="text-base text-muted-foreground sm:text-xl">
-                {t('common.reviewsSubtitle')}
-              </p>
-            </div>
-            
-            <div className="mb-8 grid gap-4 sm:mb-12 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
-              {reviews.map((review, idx) => (
-                <div 
-                  key={idx} 
-                  className={`${idx === 2 ? 'hidden lg:block' : ''} rounded-xl bg-secondary p-5 transition-all hover:bg-secondary/80 hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] sm:rounded-2xl sm:p-8`}
-                >
-                  <div className="mb-3 flex items-center gap-3 sm:mb-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 transition-all hover:bg-accent/15 hover:shadow-[0_0_20px_rgba(231,76,60,0.3)] sm:h-12 sm:w-12">
-                      <span className="text-sm font-semibold text-accent sm:text-base">
-                        {review.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold sm:text-base">{review.name}</div>
-                      <div className="flex gap-0.5" role="img" aria-label={`${review.rating} ${t('common.stars')}`}>
-                        {[...Array(review.rating)].map((_, i) => (
-                          <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent sm:h-4 sm:w-4" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:line-clamp-none sm:text-base">"{review.text[language]}"</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Overall Rating */}
-            <div className="text-center">
-              <div className="mx-auto w-full sm:w-auto">
-                <div className="grid grid-cols-2 gap-4 sm:gap-8">
-                  {/* Rating Card */}
-                  <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-accent/5 via-secondary to-secondary p-5 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(231,76,60,0.15)] sm:rounded-2xl sm:p-8">
-                    <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-accent/10 blur-3xl transition-transform group-hover:scale-150 sm:h-32 sm:w-32" />
-                    <div className="relative z-10 text-center">
-                      <div className="mb-2 flex items-baseline justify-center gap-1 sm:mb-3 sm:gap-2">
-                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">4.9</span>
-                        <span className="text-lg text-muted-foreground sm:text-2xl">/5</span>
-                      </div>
-                      <div className="mb-2 flex justify-center gap-0.5 sm:gap-1" role="img" aria-label={language === 'fi' ? '4.9 tähteä 5:stä' : '4.9 out of 5 stars'}>
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent drop-shadow-sm sm:h-5 sm:w-5" />
-                        ))}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {language === 'fi' ? 'Asiakasarvostelut' : 'Customer Rating'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Happy Customers Card */}
-                  <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 via-secondary to-secondary p-5 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] sm:rounded-2xl sm:p-8">
-                    <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary/10 blur-3xl transition-transform group-hover:scale-150 sm:h-32 sm:w-32" />
-                    <div className="relative z-10 text-center">
-                      <div className="mb-2 flex items-baseline justify-center gap-1 sm:mb-3">
-                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">500</span>
-                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">+</span>
-                      </div>
-                      <div className="mb-2 flex justify-center gap-1" role="img" aria-label="500+ happy customers">
-                        <Users className="h-4 w-4 fill-[#FF6B35] text-[#FF6B35] drop-shadow-sm sm:h-5 sm:w-5" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {t('common.happyCustomers')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

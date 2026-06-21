@@ -11,6 +11,7 @@ export type ProductSearchRow = {
   model: string;
   size_string: string | null;
   season: string | null;
+  tire_segment?: string | null;
   studded: boolean | null;
   runflat: boolean | null;
   xl_reinforced: boolean | null;
@@ -63,6 +64,7 @@ export type ProductSearchRow = {
   eu_wet?: string | null;
   eu_noise?: number | null;
   final_is_hidden?: boolean | null;
+  product_ready?: boolean | null;
   ean?: string | null;
   derived_ean?: string | null;
   manufacture_year?: number | null;
@@ -143,11 +145,13 @@ const PRODUCT_SEARCH_BASE_SELECT = [
 
 const WEBSHOP_TIRE_PUBLIC_SELECT = [
   PRODUCT_SEARCH_BASE_SELECT.replace(',final_is_hidden', ''),
+  'tire_segment',
   'sound_absorber',
   'gallery',
   'manufacture_year',
   'is_visible',
   'publish_status',
+  'product_ready',
 ].join(',');
 
 const WEBSHOP_RIM_PUBLIC_SELECT = [
@@ -169,9 +173,8 @@ interface FetchOptions {
   filters?: Record<string, any>;
 }
 
-type TireVariantLookupRow = {
-  id: string;
-};
+const PUBLIC_CATALOG_MAX_LIMIT = 100;
+const PUBLIC_CATALOG_MAX_OFFSET = 2400;
 
 type FitmentSizeFilter = {
   sizeKey?: string;
@@ -243,6 +246,11 @@ function getSeasonFilterValues(value: unknown): string[] {
   return [normalized];
 }
 
+function getTireVehicleTypeFilter(filters: Record<string, any>): string | null {
+  const value = String(filters.vehicleType ?? filters.tireSegment ?? '').trim().toLowerCase();
+  return value && value !== 'all' ? value : null;
+}
+
 function isAllSeasonFilter(value: unknown): boolean {
   const normalized = normalizeSeasonValue(value);
   return normalized === 'all_season' || normalized === 'allseason';
@@ -310,6 +318,23 @@ function isElectricCarTire(row: ProductSearchRow): boolean {
 }
 
 function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>): boolean {
+  const selectedBrands = Array.isArray(filters.brand)
+    ? filters.brand
+        .map((brand: unknown) => String(brand ?? '').trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+  if (selectedBrands.length > 0) {
+    const rowBrands = [
+      row.brand,
+      row.brand_display_name,
+    ]
+      .map((brand) => String(brand ?? '').trim().toLowerCase())
+      .filter(Boolean);
+    if (!rowBrands.some((brand) => selectedBrands.includes(brand))) {
+      return false;
+    }
+  }
+
   const eanFilter = String(filters.ean ?? '').replace(/\D/g, '');
   if (eanFilter) {
     const rowEan = String((row as any).ean ?? (row as any).derived_ean ?? '').replace(/\D/g, '');
@@ -346,6 +371,11 @@ function matchesTireFilters(row: ProductSearchRow, filters: Record<string, any>)
 
   const seasonFilterValues = getSeasonFilterValues(filters.season);
   if (seasonFilterValues.length > 0 && !seasonFilterValues.includes(normalizeSeasonValue(row.season))) {
+    return false;
+  }
+
+  const vehicleType = getTireVehicleTypeFilter(filters);
+  if (vehicleType && String(row.tire_segment ?? '').trim().toLowerCase() !== vehicleType) {
     return false;
   }
 
@@ -395,11 +425,16 @@ function matchesRimFilters(row: ProductSearchRow, filters: Record<string, any>):
 
 function applySort(rows: ProductSearchRow[], sortBy: string | undefined): ProductSearchRow[] {
   const list = [...rows];
+  const getEffectivePrice = (row: ProductSearchRow) => {
+    const finalPrice = parseFloatOrNull(row.final_price_eur);
+    return finalPrice ?? parseFloatOrNull(row.price) ?? 0;
+  };
+
   switch (sortBy) {
     case 'price_desc':
-      return list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+      return list.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a));
     case 'price_asc':
-      return list.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+      return list.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b));
     case 'wet_grip':
       return list.sort((a, b) => String(a.eu_wet ?? 'Z').localeCompare(String(b.eu_wet ?? 'Z')));
     case 'noise':
@@ -427,395 +462,6 @@ function normalizeOverlayPrice(value: unknown): number | null {
 
 function normalizeSearchTerm(value: unknown) {
   return String(value ?? '').trim();
-}
-
-function hasExactTireSizeFilters(filters: Record<string, any>) {
-  return Boolean(
-    (filters.width && filters.width !== 'all') ||
-    (filters.aspectRatio && filters.aspectRatio !== 'all') ||
-    (filters.diameter && filters.diameter !== 'all')
-  );
-}
-
-function isNumericTireSearch(query: string) {
-  const normalized = query.trim();
-  return /\d/.test(normalized) && !/[a-z]/i.test(normalized.replace(/\bxl\b/gi, '').replace(/\bev\b/gi, ''));
-}
-
-function parseSearchTireSize(query: string): { width?: number; aspect?: number; diameter?: number } {
-  const normalized = query.toUpperCase().replace(/\s+/g, '');
-  const match =
-    normalized.match(/(\d{3})[\/-](\d{2})(?:ZR|R)?(\d{2})/) ??
-    normalized.match(/(\d{3})(\d{2})R?(\d{2})/);
-
-  if (!match) return {};
-
-  return {
-    width: Number.parseInt(match[1], 10),
-    aspect: Number.parseInt(match[2], 10),
-    diameter: Number.parseInt(match[3], 10),
-  };
-}
-
-async function fetchTireVariantIdsBySearch(
-  query: string,
-  limit: number,
-  offset: number,
-): Promise<{ ids: string[]; total: number }> {
-  const trimmed = normalizeSearchTerm(query);
-  if (!trimmed) return { ids: [], total: 0 };
-
-  let request = supabase
-    .from('catalog_tire_variants')
-    .select('id', { count: 'estimated' })
-    .eq('cms_visible', true);
-
-  const digits = trimmed.replace(/\D/g, '');
-  const parsedSize = parseSearchTireSize(trimmed);
-
-  if (/^\d{8,14}$/.test(digits) && digits === trimmed) {
-    request = request.eq('ean', digits);
-  } else if (parsedSize.width && parsedSize.aspect && parsedSize.diameter) {
-    request = request
-      .eq('width_mm', parsedSize.width)
-      .eq('aspect_ratio', parsedSize.aspect)
-      .eq('diameter_in', parsedSize.diameter);
-  } else if (/^\d{3}$/.test(digits) && digits === trimmed) {
-    request = request.eq('width_mm', Number(digits));
-  } else if (/^\d{2}$/.test(digits) && digits === trimmed) {
-    request = request.or(`aspect_ratio.eq.${Number(digits)},diameter_in.eq.${Number(digits)}`);
-  } else {
-    request = request.ilike('size_string', `%${trimmed}%`);
-  }
-
-  const { data, error, count } = await request
-    .order('id', { ascending: true })
-    .range(offset, offset + limit - 1);
-
-  if (error) {
-    throw error;
-  }
-
-  const rows = (data ?? []) as TireVariantLookupRow[];
-  return {
-    ids: rows.map((row) => row.id),
-    total: count ?? rows.length,
-  };
-}
-
-async function fetchTireVariantIdsByFilters(
-  filters: Record<string, any>,
-  limit: number,
-  offset: number,
-): Promise<{ ids: string[]; total: number }> {
-  let request = supabase
-    .from('catalog_tire_variants')
-    .select('id', { count: 'estimated' })
-    .eq('cms_visible', true);
-
-  const normalizedSearch = normalizeSearchTerm(filters.search);
-  const parsedSearchSize = parseSearchTireSize(normalizedSearch);
-  const digits = normalizedSearch.replace(/\D/g, '');
-
-  const widthFilter =
-    filters.width && filters.width !== 'all'
-      ? Number(filters.width)
-      : parsedSearchSize.width ?? (/^\d{3}$/.test(digits) && digits === normalizedSearch ? Number(digits) : null);
-  const aspectFilter =
-    filters.aspectRatio && filters.aspectRatio !== 'all'
-      ? Number(filters.aspectRatio)
-      : parsedSearchSize.aspect ?? null;
-  const diameterFilter =
-    filters.diameter && filters.diameter !== 'all'
-      ? Number(filters.diameter)
-      : parsedSearchSize.diameter ?? null;
-
-  if (normalizedSearch) {
-    if (/^\d{8,14}$/.test(digits) && digits === normalizedSearch) {
-      request = request.eq('ean', digits);
-    } else if (!widthFilter && !aspectFilter && !diameterFilter) {
-      request = request.ilike('size_string', `%${normalizedSearch}%`);
-    }
-  }
-
-  if (widthFilter !== null) request = request.eq('width_mm', widthFilter);
-  if (aspectFilter !== null) request = request.eq('aspect_ratio', aspectFilter);
-  if (diameterFilter !== null) request = request.eq('diameter_in', diameterFilter);
-
-  const seasonFilterValues = getSeasonFilterValues(filters.season);
-  if (seasonFilterValues.length === 1) request = request.eq('season', seasonFilterValues[0]);
-  if (seasonFilterValues.length > 1) request = request.in('season', seasonFilterValues);
-  if (filters.runflat) request = request.eq('runflat', true);
-  if (filters.xl) request = request.eq('xl_reinforced', true);
-  if (filters.studded) request = request.eq('studded', true);
-
-  const { data, error, count } = await request
-    .order('id', { ascending: true })
-    .range(offset, offset + limit - 1);
-
-  if (error) {
-    throw error;
-  }
-
-  const rows = (data ?? []) as TireVariantLookupRow[];
-  return {
-    ids: rows.map((row) => row.id),
-    total: count ?? rows.length,
-  };
-}
-
-async function fetchProductsByVariantIds(
-  productType: 'tire' | 'rim',
-  variantIds: string[],
-): Promise<ProductSearchRow[]> {
-  if (!variantIds.length) return [];
-
-  const baseSelect = [
-    'variant_id',
-    'product_type',
-    'brand',
-    'brand_display_name',
-    'brand_logo_url',
-    'model',
-    'size_string',
-    'season',
-    'studded',
-    'runflat',
-    'xl_reinforced',
-    'load_index',
-    'speed_rating',
-    'speed_index',
-    'ev_ready',
-    'threepmsf',
-    'winter_approved',
-    'ice_approved',
-    'width_mm',
-    'aspect_ratio',
-    'diameter_in',
-    'width_in',
-    'rim_diameter_in',
-    'et_offset_mm',
-    'bolt_pattern',
-    'color',
-    'finish',
-    'price',
-    'final_price_eur',
-    'currency',
-    'in_stock',
-    'stock_qty',
-    'delivery_days_min',
-    'delivery_days_max',
-    'supplier_code_best',
-    'best_image_url',
-    'hero_image_url',
-    'best_image_alt',
-    'card_title',
-    'subtitle',
-    'short_description',
-    'long_description',
-    'tags',
-    'seo_slug',
-    'eu_label_json',
-    'eu_wet',
-    'eu_noise',
-    'final_is_hidden',
-    'ean',
-    'derived_ean',
-  ].join(',');
-
-  const { data, error } = await supabase
-    .from('products_search')
-    .select(baseSelect)
-    .eq('product_type', productType)
-    .eq('final_is_hidden', false)
-    .in('variant_id', variantIds)
-    .order('variant_id', { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-
-  const rowMap = new Map(
-    ((data ?? []) as ProductSearchRow[]).map((row) => [row.variant_id, { ...row, pricing_rules: null } satisfies ProductSearchRow]),
-  );
-
-  return variantIds.map((id) => rowMap.get(id)).filter(Boolean) as ProductSearchRow[];
-}
-
-function buildTireSizeSearchPattern(filters: Record<string, any>, normalizedSearch: string): string | null {
-  const width = filters.width && filters.width !== 'all' ? String(filters.width).trim() : '';
-  const aspect = filters.aspectRatio && filters.aspectRatio !== 'all' ? String(filters.aspectRatio).trim() : '';
-  const diameter = filters.diameter && filters.diameter !== 'all' ? String(filters.diameter).trim() : '';
-
-  if (width && aspect && diameter) return `${width}/${aspect} R${diameter}%`;
-  if (width && aspect) return `${width}/${aspect}%`;
-  if (width) return `${width}/%`;
-
-  const digits = normalizedSearch.replace(/\D/g, '');
-  const parsedSize = parseSearchTireSize(normalizedSearch);
-
-  if (parsedSize.width && parsedSize.aspect && parsedSize.diameter) {
-    return `${parsedSize.width}/${parsedSize.aspect} R${parsedSize.diameter}%`;
-  }
-  if (/^\d{3}$/.test(digits) && digits === normalizedSearch) {
-    return `${digits}/%`;
-  }
-  if (/^\d{3}\/\d{2}$/.test(normalizedSearch)) {
-    return `${normalizedSearch}%`;
-  }
-
-  return null;
-}
-
-async function fetchTireProductsBySizePattern(
-  filters: Record<string, any>,
-  normalizedSearch: string,
-  limit: number,
-  offset: number,
-): Promise<{ items: ProductSearchRow[]; total: number }> {
-  const pattern = buildTireSizeSearchPattern(filters, normalizedSearch);
-  if (!pattern) {
-    return { items: [], total: 0 };
-  }
-
-  const baseSelect = [
-    'variant_id',
-    'product_type',
-    'brand',
-    'brand_display_name',
-    'brand_logo_url',
-    'model',
-    'size_string',
-    'season',
-    'studded',
-    'runflat',
-    'xl_reinforced',
-    'load_index',
-    'speed_rating',
-    'speed_index',
-    'ev_ready',
-    'threepmsf',
-    'winter_approved',
-    'ice_approved',
-    'width_mm',
-    'aspect_ratio',
-    'diameter_in',
-    'width_in',
-    'rim_diameter_in',
-    'et_offset_mm',
-    'bolt_pattern',
-    'color',
-    'finish',
-    'price',
-    'final_price_eur',
-    'currency',
-    'in_stock',
-    'stock_qty',
-    'delivery_days_min',
-    'delivery_days_max',
-    'supplier_code_best',
-    'best_image_url',
-    'hero_image_url',
-    'best_image_alt',
-    'card_title',
-    'subtitle',
-    'short_description',
-    'long_description',
-    'tags',
-    'seo_slug',
-    'eu_label_json',
-    'eu_wet',
-    'eu_noise',
-    'final_is_hidden',
-  ].join(',');
-
-  const buildQuery = (orderMode: 'preferred' | 'safe' | 'none' = 'preferred') => {
-    let query = supabase
-      .from('products_search')
-      .select(baseSelect)
-      .eq('product_type', 'tire')
-      .eq('final_is_hidden', false)
-      .ilike('size_string', pattern);
-
-    const seasonFilterValues = getSeasonFilterValues(filters.season);
-    if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
-    if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
-    if (filters.ean) {
-      const ean = String(filters.ean).replace(/\D/g, '');
-      if (ean) {
-        query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
-      }
-    }
-    if (filters.runflat) query = query.eq('runflat', true);
-    if (filters.xl) query = query.eq('xl_reinforced', true);
-    if (filters.studded) query = query.eq('studded', true);
-    if (filters.electricCar) query = query.eq('ev_ready', true);
-    if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
-    if (filters.inStockOnly) query = query.eq('in_stock', true);
-
-    if (orderMode === 'safe') {
-      query = query.order('variant_id', { ascending: true });
-    } else if (orderMode === 'preferred') {
-      switch (filters.sortBy) {
-        case 'price_desc':
-          query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
-          break;
-        case 'price_asc':
-          query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
-          break;
-        case 'wet_grip':
-          query = query.order('eu_wet', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
-          break;
-        case 'noise':
-          query = query.order('eu_noise', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
-          break;
-        default:
-          query = query.order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
-          break;
-      }
-    }
-
-    return query.range(offset, offset + limit - 1);
-  };
-
-  const firstResult = await buildQuery('preferred');
-  if (firstResult.error && !isStatementTimeoutError(firstResult.error)) {
-    throw firstResult.error;
-  }
-
-  let usedFallbackOrdering = false;
-  let data: ProductSearchRow[] = [];
-
-  if (firstResult.error && isStatementTimeoutError(firstResult.error)) {
-    const safeOrderResult = await buildQuery('safe');
-    if (safeOrderResult.error && !isStatementTimeoutError(safeOrderResult.error)) {
-      throw safeOrderResult.error;
-    }
-
-    if (safeOrderResult.error && isStatementTimeoutError(safeOrderResult.error)) {
-      const unorderedResult = await buildQuery('none');
-      if (unorderedResult.error) {
-        throw unorderedResult.error;
-      }
-      usedFallbackOrdering = true;
-      data = (unorderedResult.data ?? []) as ProductSearchRow[];
-    } else {
-      usedFallbackOrdering = true;
-      data = (safeOrderResult.data ?? []) as ProductSearchRow[];
-    }
-  } else {
-    data = (firstResult.data ?? []) as ProductSearchRow[];
-  }
-
-  let filtered = data.map((row) => ({ ...row, pricing_rules: null })).filter((row) => matchesTireFilters(row, filters));
-  if (usedFallbackOrdering) {
-    filtered = applySort(filtered, filters.sortBy);
-  }
-
-  return {
-    items: filtered,
-    total: filtered.length === limit ? offset + filtered.length + 1 : offset + filtered.length,
-  };
 }
 
 function isRecoverableAuthError(error: unknown) {
@@ -854,6 +500,7 @@ async function fetchTireCatalogRpcByFitmentSizes(
       .eq('product_type', 'tire')
       .eq('is_visible', true)
       .eq('publish_status', 'published')
+      .eq('product_ready', true)
       .or(sizeOrFilter);
 
     const normalizedSearch = normalizeSearchTerm(filters.search);
@@ -875,6 +522,10 @@ async function fetchTireCatalogRpcByFitmentSizes(
     const seasonFilterValues = getSeasonFilterValues(filters.season);
     if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
     if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
+
+    const vehicleType = getTireVehicleTypeFilter(filters);
+    if (vehicleType) query = query.eq('tire_segment', vehicleType);
+
     if (filters.ean) {
       const ean = String(filters.ean).replace(/\D/g, '');
       if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
@@ -952,6 +603,7 @@ async function fetchTireCatalogRpc(
   const sortBy =
     typeof filters.sortBy === 'string' && filters.sortBy.length > 0 ? filters.sortBy : 'brand_asc';
   const includeRetreaded = Boolean(filters.includeRetreaded);
+  const tireSegment = getTireVehicleTypeFilter(filters);
 
   const listArgs = {
     p_search: search,
@@ -968,6 +620,7 @@ async function fetchTireCatalogRpc(
     p_include_retreaded: includeRetreaded,
     p_ev_ready: Boolean(filters.electricCar),
     p_sound_absorber: Boolean(filters.soundAbsorber),
+    p_tire_segment: tireSegment,
     p_sort_by: sortBy,
     p_limit: limit,
     p_offset: offset,
@@ -988,6 +641,7 @@ async function fetchTireCatalogRpc(
     p_include_retreaded: includeRetreaded,
     p_ev_ready: Boolean(filters.electricCar),
     p_sound_absorber: Boolean(filters.soundAbsorber),
+    p_tire_segment: tireSegment,
   };
 
   let [{ data: rows, error: listError }, { data: countValue, error: countError }] = await Promise.all([
@@ -1004,8 +658,11 @@ async function fetchTireCatalogRpc(
   const shouldRetryWithoutEvSoundParams =
     (listError || countError) &&
     /p_ev_ready|p_sound_absorber/.test(String(listError?.message ?? countError?.message ?? '').toLowerCase());
+  const shouldRetryWithoutVehicleTypeParam =
+    (listError || countError) &&
+    String(listError?.message ?? countError?.message ?? '').toLowerCase().includes('p_tire_segment');
 
-  if (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam || shouldRetryWithoutEvSoundParams) {
+  if (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam || shouldRetryWithoutEvSoundParams || shouldRetryWithoutVehicleTypeParam) {
     const [{ data: retryRows, error: retryListError }, { data: retryCountValue, error: retryCountError }] = await Promise.all([
       supabase.rpc('catalog_list_tires_v1', {
       p_search: search,
@@ -1075,6 +732,7 @@ async function fetchTireCatalogRpc(
 
   const items = enrichedRows
     .filter((row) => includeRetreaded || !isRetreadedTire(row))
+    .filter((row) => !tireSegment || String(row.tire_segment ?? '').trim().toLowerCase() === tireSegment)
     .filter((row) => {
       if (!ean) return true;
       const rowEan = String((row as any).ean ?? (row as any).derived_ean ?? '').replace(/\D/g, '');
@@ -1086,9 +744,120 @@ async function fetchTireCatalogRpc(
     total:
       countError && isStatementTimeoutError(countError)
         ? (items.length === limit ? offset + items.length + 1 : offset + items.length)
-        : (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam) && (!includeRetreaded || ean)
+        : (shouldRetryWithoutRetreadParam || shouldRetryWithoutEanParam || shouldRetryWithoutVehicleTypeParam) && (!includeRetreaded || ean || tireSegment)
           ? items.length
           : Number(countValue ?? items.length),
+  };
+}
+
+async function fetchTireCatalogPublishedFallback(
+  limit: number,
+  offset: number,
+  filters: Record<string, any>,
+): Promise<{ items: ProductSearchRow[]; total: number }> {
+  const buildQuery = (useSafeOrder = false) => {
+    let query = supabase
+      .from('webshop_items')
+      .select(WEBSHOP_TIRE_PUBLIC_SELECT)
+      .eq('product_type', 'tire')
+      .eq('is_visible', true)
+      .eq('publish_status', 'published')
+      .eq('product_ready', true);
+
+    const search = normalizeSearchTerm(filters.search);
+    if (search) {
+      query = query.or([
+        `brand.ilike.%${search}%`,
+        `brand_display_name.ilike.%${search}%`,
+        `model.ilike.%${search}%`,
+        `size_string.ilike.%${search}%`,
+        `card_title.ilike.%${search}%`,
+        `ean.ilike.%${search}%`,
+        `derived_ean.ilike.%${search}%`,
+      ].join(','));
+    }
+
+    if (Array.isArray(filters.brand) && filters.brand.length > 0) {
+      query = query.in('brand', filters.brand.map((brand: unknown) => String(brand ?? '').trim()).filter(Boolean));
+    }
+    if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
+    if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
+    if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
+
+    const seasonFilterValues = getSeasonFilterValues(filters.season);
+    if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
+    if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
+
+    const vehicleType = getTireVehicleTypeFilter(filters);
+    if (vehicleType) query = query.eq('tire_segment', vehicleType);
+
+    if (filters.ean) {
+      const ean = String(filters.ean).replace(/\D/g, '');
+      if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
+    }
+    if (filters.runflat) query = query.eq('runflat', true);
+    if (filters.xl) query = query.eq('xl_reinforced', true);
+    if (filters.studded) query = query.eq('studded', true);
+    if (filters.electricCar) query = query.eq('ev_ready', true);
+    if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
+    if (filters.inStockOnly) query = query.eq('in_stock', true);
+
+    if (useSafeOrder) {
+      query = query.order('variant_id', { ascending: true });
+    } else {
+      switch (filters.sortBy) {
+        case 'price_desc':
+          query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
+          break;
+        case 'price_asc':
+          query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
+          break;
+        case 'wet_grip':
+          query = query.order('eu_wet', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+          break;
+        case 'noise':
+          query = query.order('eu_noise', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
+          break;
+        default:
+          query = query.order('brand_display_name', { ascending: true }).order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
+          break;
+      }
+    }
+
+    return query.range(offset, offset + limit - 1);
+  };
+
+  const firstResult = await buildQuery(false);
+  let rows: ProductSearchRow[] = [];
+  let usedSafeOrderFallback = false;
+
+  if (firstResult.error && !isStatementTimeoutError(firstResult.error)) {
+    throw firstResult.error;
+  }
+
+  if (firstResult.error && isStatementTimeoutError(firstResult.error)) {
+    const safeOrderResult = await buildQuery(true);
+    if (safeOrderResult.error) throw safeOrderResult.error;
+    rows = (safeOrderResult.data ?? []) as ProductSearchRow[];
+    usedSafeOrderFallback = true;
+  } else {
+    rows = (firstResult.data ?? []) as ProductSearchRow[];
+  }
+
+  let items = rows.map((row) => ({
+    ...row,
+    product_type: 'tire' as const,
+    final_is_hidden: false,
+    pricing_rules: null,
+  })).filter((row) => matchesTireFilters(row, filters));
+
+  if (usedSafeOrderFallback) {
+    items = applySort(items, filters.sortBy);
+  }
+
+  return {
+    items,
+    total: items.length === limit ? offset + items.length + 1 : offset + items.length,
   };
 }
 
@@ -1193,7 +962,8 @@ async function fetchRimCatalogPublishedFallback(
       .select(WEBSHOP_RIM_PUBLIC_SELECT)
       .eq('product_type', 'rim')
       .eq('is_visible', true)
-      .eq('publish_status', 'published');
+      .eq('publish_status', 'published')
+      .eq('product_ready', true);
 
     const search = normalizeSearchTerm(filters.search);
     if (search) {
@@ -1313,6 +1083,7 @@ async function fetchAllSeasonTireProducts(
       .eq('product_type', 'tire')
       .eq('is_visible', true)
       .eq('publish_status', 'published')
+      .eq('product_ready', true)
       .or(allSeasonSearch);
 
     if (filters.search) {
@@ -1331,6 +1102,10 @@ async function fetchAllSeasonTireProducts(
     if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
     if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
     if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
+
+    const vehicleType = getTireVehicleTypeFilter(filters);
+    if (vehicleType) query = query.eq('tire_segment', vehicleType);
+
     if (filters.ean) {
       const ean = String(filters.ean).replace(/\D/g, '');
       if (ean) query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
@@ -1374,8 +1149,6 @@ export async function fetchProductSearchRowByIdentifier(
   const trimmedIdentifier = String(identifier ?? '').trim();
   if (!trimmedIdentifier) return null;
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedIdentifier);
-
   if (productType === 'rim') {
     const { data, error } = await supabase.rpc('catalog_get_rim_by_identifier_v1', {
       p_identifier: trimmedIdentifier,
@@ -1386,33 +1159,15 @@ export async function fetchProductSearchRowByIdentifier(
   }
 
   if (productType === 'tire') {
-    let query = supabase
-      .from('webshop_items')
-      .select(WEBSHOP_TIRE_PUBLIC_SELECT)
-      .eq('product_type', 'tire')
-      .eq('is_visible', true)
-      .eq('publish_status', 'published')
-      .limit(1);
-
-    query = isUuid ? query.eq('variant_id', trimmedIdentifier) : query.eq('seo_slug', trimmedIdentifier);
-
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await supabase.rpc('catalog_get_tire_by_identifier_v1', {
+      p_identifier: trimmedIdentifier,
+    });
     if (error) throw error;
-    return data ? ({ ...(data as ProductSearchRow), pricing_rules: null, final_is_hidden: false }) : null;
+    const rows = Array.isArray(data) ? data : [];
+    return rows[0] ? ({ ...(rows[0] as ProductSearchRow), pricing_rules: null, final_is_hidden: false }) : null;
   }
 
-  let query = supabase
-    .from('products_search')
-    .select(PRODUCT_SEARCH_BASE_SELECT)
-    .eq('product_type', productType)
-    .eq('final_is_hidden', false)
-    .limit(1);
-
-  query = isUuid ? query.eq('variant_id', trimmedIdentifier) : query.eq('seo_slug', trimmedIdentifier);
-
-  const { data, error } = await query.maybeSingle();
-  if (error) throw error;
-  return data ? ({ ...(data as ProductSearchRow), pricing_rules: null }) : null;
+  return null;
 }
 
 export async function fetchProductLocaleContent(variantId: string): Promise<ProductLocaleContent | null> {
@@ -1447,10 +1202,13 @@ export async function fetchProductsSearch(
     throw new Error(configError);
   }
 
-  const limit = options.limit ?? 24;
-  const offset = options.offset ?? 0;
+  const limit = Math.min(Math.max(options.limit ?? 24, 1), PUBLIC_CATALOG_MAX_LIMIT);
+  const requestedOffset = Math.max(options.offset ?? 0, 0);
+  if (requestedOffset > PUBLIC_CATALOG_MAX_OFFSET) {
+    return { items: [], total: PUBLIC_CATALOG_MAX_OFFSET };
+  }
+  const offset = requestedOffset;
   const filters = options.filters ?? {};
-  const normalizedSearch = normalizeSearchTerm(filters.search);
 
   if (productType === 'tire' && isAllSeasonFilter(filters.season) && getFitmentSizeFilters(filters).length === 0) {
     return await fetchAllSeasonTireProducts(limit, offset, filters);
@@ -1460,6 +1218,11 @@ export async function fetchProductsSearch(
     try {
       return await fetchTireCatalogRpc(limit, offset, filters);
     } catch (error) {
+      if (isStatementTimeoutError(error)) {
+        console.warn('Tire catalog RPC timed out; falling back to published product-ready webshop_items.', error);
+        return await fetchTireCatalogPublishedFallback(limit, offset, filters);
+      }
+
       if (!isRecoverableAuthError(error)) {
         throw error;
       }
@@ -1470,7 +1233,15 @@ export async function fetchProductsSearch(
         // Ignore cleanup failures and retry once with anon state.
       }
 
-      return await fetchTireCatalogRpc(limit, offset, filters);
+      try {
+        return await fetchTireCatalogRpc(limit, offset, filters);
+      } catch (retryError) {
+        if (isStatementTimeoutError(retryError)) {
+          console.warn('Tire catalog RPC timed out after auth retry; falling back to published product-ready webshop_items.', retryError);
+          return await fetchTireCatalogPublishedFallback(limit, offset, filters);
+        }
+        throw retryError;
+      }
     }
   }
 
@@ -1505,180 +1276,5 @@ export async function fetchProductsSearch(
     }
   }
 
-  const shouldUseFastTireLookup =
-    productType === 'tire' && ((normalizedSearch && isNumericTireSearch(normalizedSearch)) || hasExactTireSizeFilters(filters));
-
-  if (shouldUseFastTireLookup) {
-    return await fetchTireProductsBySizePattern(filters, normalizedSearch, limit, offset);
-  }
-
-  const runFetch = async (): Promise<{ items: ProductSearchRow[]; total: number }> => {
-    const baseSelect = PRODUCT_SEARCH_BASE_SELECT;
-
-    const buildQuery = (withCount: boolean, useSafeOrder = false) => {
-      let query = supabase
-        .from('products_search')
-        .select(baseSelect, withCount ? { count: 'estimated' } : undefined)
-        .eq('product_type', productType)
-        .eq('final_is_hidden', false);
-
-      if (productType === 'tire') {
-        if (filters.search) {
-          const q = String(filters.search).trim();
-          if (q) {
-            query = query.or([
-              `brand.ilike.%${q}%`,
-              `brand_display_name.ilike.%${q}%`,
-              `model.ilike.%${q}%`,
-              `size_string.ilike.%${q}%`,
-              `card_title.ilike.%${q}%`,
-            ].join(','));
-          }
-        }
-
-        if (filters.width && filters.width !== 'all') query = query.eq('width_mm', Number(filters.width));
-        if (filters.aspectRatio && filters.aspectRatio !== 'all') query = query.eq('aspect_ratio', Number(filters.aspectRatio));
-        if (filters.diameter && filters.diameter !== 'all') query = query.eq('diameter_in', Number(filters.diameter));
-        const seasonFilterValues = getSeasonFilterValues(filters.season);
-        if (seasonFilterValues.length === 1) query = query.eq('season', seasonFilterValues[0]);
-        if (seasonFilterValues.length > 1) query = query.in('season', seasonFilterValues);
-        if (filters.ean) {
-          const ean = String(filters.ean).replace(/\D/g, '');
-          if (ean) {
-            query = query.or(`ean.ilike.%${ean}%,derived_ean.ilike.%${ean}%`);
-          }
-        }
-        if (filters.runflat) query = query.eq('runflat', true);
-        if (filters.xl) query = query.eq('xl_reinforced', true);
-        if (filters.studded) query = query.eq('studded', true);
-        if (filters.electricCar) query = query.eq('ev_ready', true);
-        if (filters.soundAbsorber) query = query.eq('sound_absorber', true);
-        if (filters.inStockOnly) query = query.eq('in_stock', true);
-
-        if (useSafeOrder) {
-          query = query.order('variant_id', { ascending: true });
-        } else {
-          switch (filters.sortBy) {
-            case 'price_desc':
-              query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
-              break;
-            case 'price_asc':
-              query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
-              break;
-            case 'wet_grip':
-              query = query.order('eu_wet', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
-              break;
-            case 'noise':
-              query = query.order('eu_noise', { ascending: true, nullsFirst: false }).order('brand', { ascending: true }).order('model', { ascending: true });
-              break;
-            default:
-              query = query.order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
-              break;
-          }
-        }
-      } else {
-        if (filters.search) {
-          const q = String(filters.search).trim();
-          if (q) {
-            query = query.or([
-              `brand.ilike.%${q}%`,
-              `brand_display_name.ilike.%${q}%`,
-              `model.ilike.%${q}%`,
-              `card_title.ilike.%${q}%`,
-              `color.ilike.%${q}%`,
-            ].join(','));
-          }
-        }
-
-        if (filters.rimDiameter && filters.rimDiameter !== 'all') query = query.eq('rim_diameter_in', Number(filters.rimDiameter));
-        if (filters.rimWidth && filters.rimWidth !== 'all') query = query.eq('width_in', Number(filters.rimWidth));
-        if (filters.pcd && filters.pcd !== 'all') query = query.eq('bolt_pattern', filters.pcd);
-        if (filters.etOffset !== '' && filters.etOffset !== null && filters.etOffset !== undefined) {
-          query = query.eq('et_offset_mm', Number(filters.etOffset));
-        }
-        if (filters.color && filters.color !== 'all') query = query.ilike('color', filters.color);
-        if (filters.inStockOnly) query = query.eq('in_stock', true);
-
-        if (useSafeOrder) {
-          query = query.order('variant_id', { ascending: true });
-        } else {
-          switch (filters.sortBy) {
-            case 'price_desc':
-              query = query.order('final_price_eur', { ascending: false, nullsFirst: false }).order('price', { ascending: false, nullsFirst: false });
-              break;
-            case 'brand_asc':
-              query = query.order('brand', { ascending: true }).order('model', { ascending: true }).order('variant_id', { ascending: true });
-              break;
-            case 'price_asc':
-            default:
-              query = query.order('final_price_eur', { ascending: true, nullsFirst: false }).order('price', { ascending: true, nullsFirst: false });
-              break;
-          }
-        }
-      }
-
-      return query.range(offset, offset + limit - 1);
-    };
-
-    let data: any[] | null = null;
-    let count: number | null = null;
-    let usedSafeOrderFallback = false;
-
-    const firstResult = await buildQuery(true);
-    if (firstResult.error && !isStatementTimeoutError(firstResult.error)) {
-      throw firstResult.error;
-    }
-
-    if (firstResult.error && isStatementTimeoutError(firstResult.error)) {
-      const fallbackResult = await buildQuery(false);
-      if (fallbackResult.error && !isStatementTimeoutError(fallbackResult.error)) {
-        throw fallbackResult.error;
-      }
-
-      if (fallbackResult.error && isStatementTimeoutError(fallbackResult.error)) {
-        const safeOrderResult = await buildQuery(false, true);
-        if (safeOrderResult.error) {
-          throw safeOrderResult.error;
-        }
-        usedSafeOrderFallback = true;
-        data = (safeOrderResult.data ?? []) as any[];
-      } else {
-        data = (fallbackResult.data ?? []) as any[];
-      }
-
-      // Approximate count enough for public catalog pagination when exact count is too expensive.
-      count = data.length === limit ? offset + data.length + 1 : offset + data.length;
-    } else {
-      data = (firstResult.data ?? []) as any[];
-      count = firstResult.count ?? data.length;
-    }
-
-    let rows = (data ?? []).map((row) => ({
-      ...row,
-      pricing_rules: null,
-    })) as ProductSearchRow[];
-
-    rows = rows.filter((row) => !row.final_is_hidden);
-    if (usedSafeOrderFallback) {
-      rows = applySort(rows, filters.sortBy);
-    }
-
-    return { items: rows, total: count ?? rows.length };
-  };
-
-  try {
-    return await runFetch();
-  } catch (error) {
-    if (!isRecoverableAuthError(error)) {
-      throw error;
-    }
-
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch {
-      // Ignore cleanup failures and retry once with anon state.
-    }
-
-    return await runFetch();
-  }
+  return { items: [], total: 0 };
 }

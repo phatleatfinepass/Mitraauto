@@ -1,6 +1,6 @@
 import { useEffect, type ChangeEvent } from 'react';
-import { useTheme } from '../ThemeContext';
-import { useLanguage } from '../LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import FigmaLicnesePlateMd from '../../imports/FigmaLicnesePlateMd-142-2027';
 import FigmaLicnesePlateSm from '../../imports/FigmaLicnesePlateSm-142-2801';
 import FigmaLicnesePlateMobile from '../../imports/FigmaLicnesePlateMobile-142-2934';
@@ -242,7 +242,7 @@ export function LicensePlateDisplay({
   showHelper = true,
 }: LicensePlateDisplayProps) {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   
   const secondaryTextClass = theme === 'dark' ? 'text-[#B0B8C4]' : 'text-[#6B7280]';
   const stripCode = PLATE_COUNTRY_STRIP_CODES[country] ?? country;
@@ -302,7 +302,7 @@ export function LicensePlateDisplay({
     <button
       type="button"
       tabIndex={-1}
-      aria-label={language === 'fi' ? 'Valitse maa' : 'Country'}
+      aria-label={t('licensePlate.country')}
       onClick={onCountryClick}
       className="absolute left-0 top-0 z-30 h-full cursor-default bg-transparent"
       style={{ width: stripWidth }}
@@ -382,10 +382,7 @@ export function LicensePlateDisplay({
 
       {showHelper ? (
         <p className={`text-center ${secondaryTextClass} text-sm mt-3`}>
-          {language === 'fi' 
-            ? `Kirjoita rekisteritunnus muodossa ${plateFormat.placeholder}`
-            : `Enter the plate in ${plateFormat.placeholder} format`
-          }
+          {t('licensePlate.helper', { format: plateFormat.placeholder })}
         </p>
       ) : null}
     </div>

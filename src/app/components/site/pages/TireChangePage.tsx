@@ -1,5 +1,4 @@
-import React from 'react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { motion } from 'motion/react';
 import { Wrench, Clock, Euro, CheckCircle2, ArrowRight, Shield } from 'lucide-react';
 import { Button } from '../../ui/button';
@@ -10,68 +9,58 @@ interface TireChangePageProps {
 }
 
 export function TireChangePage({ onBookingClick }: TireChangePageProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
 
   const services = [
     {
-      name: language === 'fi' ? 'Henkilöauto' : 'Passenger Car',
-      desc: language === 'fi' ? '4 rengasta, tasapainotus, ilmanpaine' : '4 tires, balancing, air pressure',
+      name: t('tireChangePage.services.passenger.name'),
+      desc: t('tireChangePage.services.passenger.desc'),
       price: '[TBD]',
       duration: '[TBD] min',
     },
     {
-      name: language === 'fi' ? 'Maasturi / SUV' : 'SUV',
-      desc: language === 'fi' ? 'Suuremmat renkaat, tasapainotus' : 'Larger tires, balancing',
+      name: t('tireChangePage.services.suv.name'),
+      desc: t('tireChangePage.services.suv.desc'),
       price: '[TBD]',
       duration: '[TBD] min',
     },
     {
-      name: language === 'fi' ? 'Pakettiauto' : 'Van',
-      desc: language === 'fi' ? 'Raskaiden ajoneuvojen renkaat' : 'Heavy vehicle tires',
+      name: t('tireChangePage.services.van.name'),
+      desc: t('tireChangePage.services.van.desc'),
       price: '[TBD]',
       duration: '[TBD] min',
     },
   ];
 
   const whatsIncluded = [
-    language === 'fi' ? 'Renkaiden vaihto (4 kpl)' : 'Tire change (4 pcs)',
-    language === 'fi' ? 'Tasapainotus' : 'Wheel balancing',
-    language === 'fi' ? 'Ilmanpaineen tarkistus ja säätö' : 'Air pressure check and adjustment',
-    language === 'fi' ? 'Visuaalinen tarkastus' : 'Visual inspection',
-    language === 'fi' ? 'TPMS-sensoritarkastus (jos saatavilla)' : 'TPMS sensor check (if available)',
-    language === 'fi' ? 'Vanneruuvien kiristys oikeaan momenttiin' : 'Lug nut tightening to proper torque',
+    t('tireChangePage.included.change'),
+    t('tireChangePage.included.balancing'),
+    t('tireChangePage.included.pressure'),
+    t('tireChangePage.included.visual'),
+    t('tireChangePage.included.tpms'),
+    t('tireChangePage.included.torque'),
   ];
 
   const faqItems = [
     {
-      q: language === 'fi' ? 'Kuinka kauan renkaanvaihto kestää?' : 'How long does tire change take?',
-      a: language === 'fi'
-        ? 'Tyypillinen renkaanvaihto kestää noin [TBD] minuuttia sisältäen tasapainotuksen ja ilmanpaineen tarkistuksen.'
-        : 'A typical tire change takes about [TBD] minutes including balancing and air pressure check.',
+      q: t('tireChangePage.faq.duration.q'),
+      a: t('tireChangePage.faq.duration.a'),
     },
     {
-      q: language === 'fi' ? 'Milloin minun pitäisi vaihtaa talvi- ja kesärenkaaseen?' : 'When should I change to winter/summer tires?',
-      a: language === 'fi'
-        ? 'Suosittelemme talvirenkaiden vaihtoa lokakuussa ja kesärenkaiden vaihtoa huhtikuussa Helsingin ilmastossa.'
-        : 'We recommend changing to winter tires in October and summer tires in April for Helsinki\'s climate.',
+      q: t('tireChangePage.faq.season.q'),
+      a: t('tireChangePage.faq.season.a'),
     },
     {
-      q: language === 'fi' ? 'Tarjoatteko rengassäilytystä?' : 'Do you offer tire storage?',
-      a: language === 'fi'
-        ? 'Kyllä! Rengashotellipalvelumme säilyttää renkaasi turvallisesti optimaalisissa olosuhteissa. Katso lisää Rengashotelli-sivulta.'
-        : 'Yes! Our tire hotel service stores your tires safely in optimal conditions. See more on our Tire Hotel page.',
+      q: t('tireChangePage.faq.storage.q'),
+      a: t('tireChangePage.faq.storage.a'),
     },
     {
-      q: language === 'fi' ? 'Tarkistatteko renkaidenkunnon?' : 'Do you check tire condition?',
-      a: language === 'fi'
-        ? 'Kyllä, suoritamme visuaalisen tarkastuksen jokaiselle renkaalle ja ilmoitamme sinulle, jos huomaamme kulumista tai vaurioita.'
-        : 'Yes, we perform a visual inspection of each tire and inform you if we notice wear or damage.',
+      q: t('tireChangePage.faq.condition.q'),
+      a: t('tireChangePage.faq.condition.a'),
     },
     {
-      q: language === 'fi' ? 'Voinko tuoda omat renkaat?' : 'Can I bring my own tires?',
-      a: language === 'fi'
-        ? 'Kyllä, voit tuoda omat renkaat. Tarkistamme niiden kunnon ennen asennusta turvallisuussyistä.'
-        : 'Yes, you can bring your own tires. We\'ll check their condition before mounting for safety reasons.',
+      q: t('tireChangePage.faq.ownTires.q'),
+      a: t('tireChangePage.faq.ownTires.a'),
     },
   ];
 
@@ -87,18 +76,14 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
             className="max-w-4xl mx-auto text-center"
           >
             <div className="text-sm text-muted-foreground mb-4">
-              {language === 'fi' ? 'Etusivu' : 'Home'} / {language === 'fi' ? 'Palvelut' : 'Services'} / {language === 'fi' ? 'Renkaanvaihto' : 'Tire Change'}
+              {t('tireChangePage.breadcrumb.home')} / {t('tireChangePage.breadcrumb.services')} / {t('tireChangePage.breadcrumb.tireChange')}
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              {language === 'fi' 
-                ? 'Renkaanvaihto Helsingissä'
-                : 'Tire Change in Helsinki'}
+              {t('tireChangePage.hero.title')}
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              {language === 'fi'
-                ? 'Nopea ja asiantunteva renkaanvaihtopalvelu kausivaihdoille'
-                : 'Fast and expert tire change service for seasonal swaps'}
+              {t('tireChangePage.hero.subtitle')}
             </p>
 
             <Button
@@ -106,7 +91,7 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
               onClick={onBookingClick}
               className="bg-accent hover:bg-accent/90 text-white px-8 py-6 text-lg"
             >
-              {language === 'fi' ? 'Varaa renkaanvaihto' : 'Book Tire Change'}
+              {t('tireChangePage.bookTireChange')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>
@@ -124,7 +109,7 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
               className="text-center mb-12"
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                {language === 'fi' ? 'Mitä renkaanvaihto sisältää?' : 'What\'s Included?'}
+                {t('tireChangePage.includedTitle')}
               </h2>
             </motion.div>
 
@@ -156,7 +141,7 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' ? 'Hinnoittelu' : 'Pricing'}
+              {t('tireChangePage.pricingTitle')}
             </h2>
           </motion.div>
 
@@ -187,7 +172,7 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
                       className="w-full"
                       onClick={onBookingClick}
                     >
-                      {language === 'fi' ? 'Varaa' : 'Book'}
+                      {t('tireChangePage.book')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -208,7 +193,7 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
               className="text-center mb-12"
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                {language === 'fi' ? 'Usein kysytyt kysymykset' : 'Frequently Asked Questions'}
+                {t('tireChangePage.faqTitle')}
               </h2>
             </motion.div>
 
@@ -243,14 +228,10 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
             className="max-w-3xl mx-auto text-center"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' 
-                ? 'Valmis vaihtamaan renkaat?'
-                : 'Ready to Change Your Tires?'}
+              {t('tireChangePage.footerTitle')}
             </h2>
             <p className="text-white/90 mb-8 text-lg">
-              {language === 'fi'
-                ? 'Varaa aikasi nyt – kausivaihdot täyttyvät nopeasti'
-                : 'Book now – seasonal changes fill up fast'}
+              {t('tireChangePage.footerSubtitle')}
             </p>
             <Button
               size="lg"
@@ -258,7 +239,7 @@ export function TireChangePage({ onBookingClick }: TireChangePageProps) {
               onClick={onBookingClick}
               className="px-8 py-6 text-lg"
             >
-              {language === 'fi' ? 'Varaa renkaanvaihto' : 'Book Tire Change'}
+              {t('tireChangePage.bookTireChange')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>

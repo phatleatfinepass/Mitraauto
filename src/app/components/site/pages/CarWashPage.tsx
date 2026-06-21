@@ -1,7 +1,6 @@
-import React from 'react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { motion } from 'motion/react';
-import { Droplet, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Droplet, ArrowRight } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
 
@@ -10,38 +9,34 @@ interface CarWashPageProps {
 }
 
 export function CarWashPage({ onBookingClick }: CarWashPageProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
 
   const services = [
     {
-      name: language === 'fi' ? 'Perus käsipesu' : 'Basic Hand Wash',
-      desc: language === 'fi' ? 'Ulkopesu ja kuivaus' : 'Exterior wash and dry',
+      name: t('carWashPage.services.basic.name'),
+      desc: t('carWashPage.services.basic.desc'),
       price: '[TBD] €',
     },
     {
-      name: language === 'fi' ? 'Täyspesu' : 'Full Wash',
-      desc: language === 'fi' ? 'Ulko- ja sisäpesu' : 'Exterior and interior wash',
+      name: t('carWashPage.services.full.name'),
+      desc: t('carWashPage.services.full.desc'),
       price: '[TBD] €',
     },
     {
-      name: language === 'fi' ? 'Premium-pesu' : 'Premium Wash',
-      desc: language === 'fi' ? 'Täyspesu + vahaus' : 'Full wash + waxing',
+      name: t('carWashPage.services.premium.name'),
+      desc: t('carWashPage.services.premium.desc'),
       price: '[TBD] €',
     },
   ];
 
   const faqItems = [
     {
-      q: language === 'fi' ? 'Kuinka kauan autopesu kestää?' : 'How long does car wash take?',
-      a: language === 'fi'
-        ? 'Perus käsipesu kestää noin [TBD] minuuttia. Täyspesu kestää [TBD] minuuttia.'
-        : 'Basic hand wash takes about [TBD] minutes. Full wash takes [TBD] minutes.',
+      q: t('carWashPage.faq.duration.q'),
+      a: t('carWashPage.faq.duration.a'),
     },
     {
-      q: language === 'fi' ? 'Pesettekö käsin vai koneella?' : 'Do you wash by hand or machine?',
-      a: language === 'fi'
-        ? 'Kaikki pesut tehdään käsin laadukkailla tuotteilla autosi maalin suojaamiseksi.'
-        : 'All washes are done by hand with quality products to protect your car\'s paint.',
+      q: t('carWashPage.faq.hand.q'),
+      a: t('carWashPage.faq.hand.a'),
     },
   ];
 
@@ -55,20 +50,18 @@ export function CarWashPage({ onBookingClick }: CarWashPageProps) {
             className="max-w-4xl mx-auto text-center"
           >
             <div className="text-sm text-muted-foreground mb-4">
-              {language === 'fi' ? 'Etusivu' : 'Home'} / {language === 'fi' ? 'Palvelut' : 'Services'} / {language === 'fi' ? 'Autopesu' : 'Car Wash'}
+              {t('carWashPage.breadcrumb.home')} / {t('carWashPage.breadcrumb.services')} / {t('carWashPage.breadcrumb.carWash')}
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              {language === 'fi' ? 'Autopesu Helsingissä' : 'Car Wash in Helsinki'}
+              {t('carWashPage.hero.title')}
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              {language === 'fi'
-                ? 'Ammattimainen käsipesu ja hoito autollesi'
-                : 'Professional hand wash and care for your car'}
+              {t('carWashPage.hero.subtitle')}
             </p>
 
             <Button size="lg" onClick={onBookingClick} className="bg-accent hover:bg-accent/90 text-white px-8 py-6 text-lg">
-              {language === 'fi' ? 'Varaa autopesu' : 'Book Car Wash'}
+              {t('carWashPage.bookCarWash')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>
@@ -86,7 +79,7 @@ export function CarWashPage({ onBookingClick }: CarWashPageProps) {
                   <p className="text-muted-foreground mb-4">{service.desc}</p>
                   <div className="text-accent font-semibold text-lg mb-4">{service.price}</div>
                   <Button className="w-full" onClick={onBookingClick}>
-                    {language === 'fi' ? 'Varaa' : 'Book'}
+                    {t('carWashPage.book')}
                   </Button>
                 </CardContent>
               </Card>
@@ -99,7 +92,7 @@ export function CarWashPage({ onBookingClick }: CarWashPageProps) {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold mb-8 text-center">
-              {language === 'fi' ? 'Usein kysytyt kysymykset' : 'Frequently Asked Questions'}
+              {t('carWashPage.faqTitle')}
             </h2>
             <div className="space-y-4">
               {faqItems.map((item, index) => (
@@ -119,13 +112,13 @@ export function CarWashPage({ onBookingClick }: CarWashPageProps) {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' ? 'Anna autosi loistaa' : 'Let Your Car Shine'}
+              {t('carWashPage.footerTitle')}
             </h2>
             <p className="text-white/90 mb-8 text-lg">
-              {language === 'fi' ? 'Varaa autopesu tänään' : 'Book a car wash today'}
+              {t('carWashPage.footerSubtitle')}
             </p>
             <Button size="lg" variant="secondary" onClick={onBookingClick} className="px-8 py-6 text-lg">
-              {language === 'fi' ? 'Varaa nyt' : 'Book Now'}
+              {t('carWashPage.bookNow')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </div>

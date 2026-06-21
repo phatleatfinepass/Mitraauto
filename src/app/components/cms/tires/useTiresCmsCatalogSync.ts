@@ -1,17 +1,17 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { supabase } from '../../../utils/supabase/client';
 
-const WEBSHOP_TIRE_SYNC_BATCH_SIZE = 500;
+const WEBSHOP_TIRE_SYNC_BATCH_SIZE = 150;
 
 export function useTiresCmsCatalogSync({
   fetchTires,
   invalidateCache,
-  language,
 }: {
   fetchTires: (options?: { force?: boolean }) => Promise<any>;
   invalidateCache: () => void;
-  language: string;
 }) {
+  const { t } = useLanguage();
   const [syncingCatalog, setSyncingCatalog] = useState(false);
   const [hasPendingCatalogSync, setHasPendingCatalogSync] = useState(false);
   const [catalogSyncMessage, setCatalogSyncMessage] = useState<string | null>(null);
@@ -41,21 +41,29 @@ export function useTiresCmsCatalogSync({
 
       const runId = String((startData as any)?.run_id ?? '');
       if (!runId) {
-        throw new Error('Webshop tire sync did not return a run id.');
+        throw new Error(t('tiresCatalogSync.missingRunId'));
       }
 
       let processed = Number((startData as any)?.processed ?? 0);
       let total = Math.max(Number((startData as any)?.total ?? 0), 0);
       let hasMore = Boolean((startData as any)?.has_more);
+      let batchSize = WEBSHOP_TIRE_SYNC_BATCH_SIZE;
       setCatalogSyncProgress({ processed, total: Math.max(total, 1) });
 
-      while (hasMore) {
+      for (let guard = 0; guard < 2500 && hasMore; guard += 1) {
         const { data: batchData, error: batchError } = await supabase.rpc('refresh_webshop_tire_items_batch_v1', {
           p_run_id: runId,
-          p_batch_size: WEBSHOP_TIRE_SYNC_BATCH_SIZE,
+          p_batch_size: batchSize,
         });
 
-        if (batchError) throw batchError;
+        if (batchError) {
+          if (String((batchError as any)?.code ?? '') === '57014' && batchSize > 25) {
+            batchSize = Math.max(25, Math.floor(batchSize / 2));
+            guard -= 1;
+            continue;
+          }
+          throw batchError;
+        }
 
         processed = Number((batchData as any)?.processed ?? processed);
         total = Math.max(Number((batchData as any)?.total ?? total), 0);
@@ -75,14 +83,10 @@ export function useTiresCmsCatalogSync({
 
       invalidateCache();
       setHasPendingCatalogSync(false);
-      setCatalogSyncMessage(
-        language === 'fi'
-          ? 'Renkaiden muutokset julkaistu webshoppiin.'
-          : 'Tire changes published to the webshop.'
-      );
+      setCatalogSyncMessage(t('tiresCatalogSync.published'));
     } catch (err: any) {
       console.error('Catalog sync error:', err);
-      setCatalogSyncMessage(err?.message || 'Catalog sync failed');
+      setCatalogSyncMessage(err?.message || t('tiresCatalogSync.failed'));
     } finally {
       setSyncingCatalog(false);
       setCatalogSyncProgress(null);

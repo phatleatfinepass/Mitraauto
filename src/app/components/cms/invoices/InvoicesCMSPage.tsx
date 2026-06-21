@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { Ban, CheckCircle2, ChevronDown, Copy, FileText, Plus, RefreshCcw, Save, Search, Settings, Trash2, Upload } from 'lucide-react';
 import { supabase } from '../../../utils/supabase/client';
 import { projectId } from '../../../utils/supabase/info';
-import { useLanguage } from '../../LanguageContext';
-import { useTheme } from '../../ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
 import { getLocalizedServiceCategories, getServiceIdsFromStoredServiceName } from '../../../utils/serviceCatalog';
 import {
   calculateDraftLine,
@@ -475,7 +475,7 @@ function buildDraftFromSource(source: SourceRecord): DocumentDraft {
       customerName: source.customerName,
       customerEmail: source.customerEmail,
       customerPhone: source.customerPhone,
-      language: booking.booking_language === 'en' ? 'en' : 'fi',
+      language: ({ fi: 'fi', en: 'en' } as const)[booking.booking_language as 'fi' | 'en'] ?? 'fi',
       lines: [{
         ...emptyLine(),
         description: source.title,
@@ -791,9 +791,10 @@ export function InvoicesCMSPage({ documentScope = 'all', title }: InvoicesCMSPag
         nextDraft.lines = linesResult.data.map((line: any) => ({
           id: crypto.randomUUID(),
           description: String(
-            nextDraft.language === 'en' && line.source_payload?.description_en
-              ? line.source_payload.description_en
-              : (line.source_payload?.description_fi ?? line.title ?? '')
+            {
+              fi: line.source_payload?.description_fi ?? line.title ?? '',
+              en: line.source_payload?.description_en ?? line.source_payload?.description_fi ?? line.title ?? '',
+            }[nextDraft.language]
           ),
           descriptionFi: String(line.source_payload?.description_fi ?? line.title ?? ''),
           descriptionEn: String(line.source_payload?.description_en ?? ''),
@@ -1432,7 +1433,7 @@ export function InvoicesCMSPage({ documentScope = 'all', title }: InvoicesCMSPag
     const customer = imported.customer ?? {};
     const payment = imported.payment ?? {};
     const vehicle = imported.vehicle ?? {};
-    const importedLanguage = imported.language === 'en' ? 'en' : 'fi';
+    const importedLanguage = ({ fi: 'fi', en: 'en' } as const)[imported.language as 'fi' | 'en'] ?? 'fi';
     const nextLines = linesFromImportedDocument(imported).map((line) => ({
       ...line,
       description: importedLanguage === 'en' && line.descriptionEn ? line.descriptionEn : (line.descriptionFi || line.description),
@@ -2017,11 +2018,19 @@ export function InvoicesCMSPage({ documentScope = 'all', title }: InvoicesCMSPag
                     isDark={isDark}
                     aria-label={ti('description')}
                     value={line.description}
-                    onChange={(value) => updateLine(line.id, {
-                      description: String(value),
-                      descriptionFi: draft.language === 'fi' ? String(value) : line.descriptionFi,
-                      descriptionEn: draft.language === 'en' ? String(value) : line.descriptionEn,
-                    })}
+                    onChange={(value) => {
+                      const localizedDescription = {
+                        fi: { descriptionFi: String(value) },
+                        en: { descriptionEn: String(value) },
+                      }[draft.language];
+
+                      updateLine(line.id, {
+                        description: String(value),
+                        descriptionFi: line.descriptionFi,
+                        descriptionEn: line.descriptionEn,
+                        ...localizedDescription,
+                      });
+                    }}
                     placeholder={ti('description')}
                     rows={2}
                     textAreaClassName="min-h-[68px] resize-y"

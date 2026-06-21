@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useCart } from './CartContext';
-import { useTheme } from '../../ThemeContext';
-import { useLanguage } from '../../LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../../ui/sheet';
 import { Button } from '../../ui/button';
 import { Separator } from '../../ui/separator';
@@ -47,29 +47,9 @@ interface CartDrawerProps {
 export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
   const { items, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice, isCartOpen, setIsCartOpen } = useCart();
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const [showClearDialog, setShowClearDialog] = useState(false);
-
-  const t = (key: string) => {
-    const translations: Record<string, { fi: string; en: string }> = {
-      cart: { fi: 'Ostoskori', en: 'Shopping Cart' },
-      emptyCart: { fi: 'Ostoskori on tyhjä', en: 'Your cart is empty' },
-      emptyCartDesc: { fi: 'Lisää tuotteita ostoskoriin aloittaaksesi ostokset', en: 'Add products to cart to start shopping' },
-      continueShopping: { fi: 'Jatka ostoksia', en: 'Continue Shopping' },
-      checkout: { fi: 'Siirry kassalle', en: 'Proceed to Checkout' },
-      subtotal: { fi: 'Välisumma', en: 'Subtotal' },
-      vat: { fi: 'Sis. ALV 25.5%', en: 'Incl. VAT 25.5%' },
-      items: { fi: 'tuotetta', en: 'items' },
-      remove: { fi: 'Poista', en: 'Remove' },
-      perPcs: { fi: 'kpl', en: 'pcs' },
-      clearCart: { fi: 'Tyhjennä ostoskori', en: 'Clear cart' },
-      clearCartTitle: { fi: 'Tyhjennä ostoskori?', en: 'Clear cart?' },
-      clearCartDesc: { fi: 'Haluatko varmasti poistaa kaikki tuotteet ostoskorista? Tätä toimintoa ei voi perua.', en: 'Are you sure you want to remove all items from your cart? This action cannot be undone.' },
-      cancel: { fi: 'Peruuta', en: 'Cancel' },
-      clearConfirm: { fi: 'Tyhjennä', en: 'Clear' },
-    };
-    return translations[key]?.[language] || key;
-  };
+  const cartText = (key: string) => t(`cart.${key}`);
 
   return (
     <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
@@ -89,10 +69,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
             theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
           }`}>
             <ShoppingBag className="size-5" />
-            {t('cart')} {totalItems > 0 && `(${totalItems})`}
+            {cartText('title')} {totalItems > 0 && `(${totalItems})`}
           </SheetTitle>
           <SheetDescription className="sr-only">
-            {t('cart')}
+            {cartText('title')}
           </SheetDescription>
         </SheetHeader>
 
@@ -111,18 +91,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
             <h3 className={`text-lg mb-2 ${
               theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
             }`}>
-              {t('emptyCart')}
+              {cartText('emptyTitle')}
             </h3>
             <p className={`text-sm text-center mb-6 ${
               theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
             }`}>
-              {t('emptyCartDesc')}
+              {cartText('emptyDescription')}
             </p>
             <Button
               onClick={() => setIsCartOpen(false)}
               className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
             >
-              {t('continueShopping')}
+              {cartText('continueShopping')}
             </Button>
           </div>
         ) : (
@@ -142,7 +122,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                     : 'text-gray-500 hover:text-[#FF6B00]'
                 }`}
               >
-                ← {t('continueShopping')}
+                ← {cartText('continueShopping')}
               </button>
             </div>
 
@@ -228,7 +208,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                             theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white border border-[#E2E8F0]'
                           }`}>
                             <button
+                              type="button"
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              aria-label={`${cartText('decreaseQuantity')}: ${item.product.brand} ${item.product.model}`}
                               className={`p-1 rounded transition-colors ${
                                 theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-gray-100'
                               }`}
@@ -241,8 +223,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                               {item.quantity}
                             </span>
                             <button
+                              type="button"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
                               disabled={Boolean(stockLimit && item.quantity >= stockLimit)}
+                              aria-label={`${cartText('increaseQuantity')}: ${item.product.brand} ${item.product.model}`}
                               className={`p-1 rounded transition-colors ${
                                 stockLimit && item.quantity >= stockLimit
                                   ? 'cursor-not-allowed opacity-30'
@@ -260,14 +244,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                             <p className={`text-xs ${
                               theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'
                             }`}>
-                              €{unitPriceWithVat.toFixed(2)} / {t('perPcs')}
+                              €{unitPriceWithVat.toFixed(2)} / {cartText('perPcs')}
                             </p>
                           </div>
                         </div>
 
                         {/* Remove Button - Subtle styling to reduce cart abandonment */}
                         <button
+                          type="button"
                           onClick={() => removeFromCart(item.id)}
+                          aria-label={`${cartText('removeItem')}: ${item.product.brand} ${item.product.model}`}
                           className={`flex items-center gap-1 text-xs mt-2 transition-colors opacity-50 hover:opacity-100 ${
                             theme === 'dark'
                               ? 'text-gray-500 hover:text-red-400'
@@ -275,7 +261,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                           }`}
                         >
                           <Trash2 className="size-3" />
-                          {t('remove')}
+                          {cartText('remove')}
                         </button>
                       </div>
                     </div>
@@ -294,7 +280,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                   <span className={`text-sm ${
                     theme === 'dark' ? 'text-gray-300' : 'text-[#64748B]'
                   }`}>
-                    {t('subtotal')}
+                    {cartText('subtotal')}
                   </span>
                   <span className={`text-lg ${
                     theme === 'dark' ? 'text-white' : 'text-[#0F172A]'
@@ -305,7 +291,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                 <p className={`text-xs ${
                   theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'
                 }`}>
-                  {t('vat')}
+                  {cartText('vatIncluded')}
                 </p>
               </div>
 
@@ -319,19 +305,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                 className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white h-12 transition-transform hover:scale-[1.02]"
                 style={{ boxShadow: '0 2px 12px rgba(255, 107, 0, 0.25)' }}
               >
-                {t('checkout')}
+                {cartText('checkout')}
                 <ArrowRight className="size-5 ml-2" />
               </Button>
 
               {/* Subtle Clear Cart Link - Intentionally understated to reduce abandonment */}
               <div className="mt-3 text-center">
                 <button
+                  type="button"
                   onClick={() => setShowClearDialog(true)}
                   className={`text-xs transition-colors opacity-40 hover:opacity-60 ${
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                   }`}
                 >
-                  {t('clearCart')}
+                  {cartText('clearCart')}
                 </button>
               </div>
             </div>
@@ -349,12 +336,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
               <AlertDialogTitle className={
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }>
-                {t('clearCartTitle')}
+                {cartText('clearCartTitle')}
               </AlertDialogTitle>
               <AlertDialogDescription className={
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }>
-                {t('clearCartDesc')}
+                {cartText('clearCartDescription')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -363,7 +350,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                   ? 'bg-white/10 hover:bg-white/20 text-white border-white/20'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
               }>
-                {t('cancel')}
+                {cartText('cancel')}
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
@@ -376,7 +363,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                     : 'bg-red-600 hover:bg-red-700 text-white'
                 }
               >
-                {t('clearConfirm')}
+                {cartText('clearConfirm')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

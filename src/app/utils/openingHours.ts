@@ -1,3 +1,5 @@
+import { businessProfile } from '../config/businessProfile';
+
 type LocalizedMessage = {
   fi: string;
   en: string;
@@ -8,8 +10,18 @@ export interface ShopStatus {
   message: LocalizedMessage;
 }
 
-const WEEKDAY_HOURS = { open: 9, close: 18 };
-const SATURDAY_HOURS = { open: 10, close: 17 };
+function hourFromTime(value: string): number {
+  return Number.parseInt(value.split(':')[0] ?? '0', 10);
+}
+
+const WEEKDAY_HOURS = {
+  open: hourFromTime(businessProfile.openingHours[0].opens),
+  close: hourFromTime(businessProfile.openingHours[0].closes),
+};
+const SATURDAY_HOURS = {
+  open: hourFromTime(businessProfile.openingHours[1].opens),
+  close: hourFromTime(businessProfile.openingHours[1].closes),
+};
 
 function formatHour(hour: number): string {
   return `${String(hour).padStart(2, '0')}:00`;

@@ -1,10 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ProductCMS, RimRow } from './types';
 
 interface RimsContentSectionProps {
   isDark: boolean;
-  language: string;
   selectedRim: RimRow;
   editData: Partial<ProductCMS>;
   onEditDataChange: Dispatch<SetStateAction<Partial<ProductCMS>>>;
@@ -12,11 +12,11 @@ interface RimsContentSectionProps {
 
 export function RimsContentSection({
   isDark,
-  language,
   selectedRim,
   editData,
   onEditDataChange,
 }: RimsContentSectionProps) {
+  const { t } = useLanguage();
   const inputClass = `w-full rounded-lg border px-3 py-2 ${
     isDark
       ? 'bg-[#1C1C1E] border-white/20 text-white placeholder-gray-500'
@@ -26,12 +26,12 @@ export function RimsContentSection({
   return (
     <div>
       <h3 className={`mb-4 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {language === 'fi' ? 'Sisältö ja SEO' : 'Content and SEO'}
+        {t('rimsContent.title')}
       </h3>
       <div className="space-y-4">
         <div>
           <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Otsikko' : 'Title'}
+            {t('rimsContent.productTitle')}
           </label>
           <input
             type="text"
@@ -43,7 +43,7 @@ export function RimsContentSection({
         </div>
         <div>
           <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Alaotsikko' : 'Subtitle'}
+            {t('rimsContent.subtitle')}
           </label>
           <input
             type="text"
@@ -55,7 +55,7 @@ export function RimsContentSection({
         </div>
         <div>
           <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Lyhyt kuvaus' : 'Short description'}
+            {t('rimsContent.shortDescription')}
           </label>
           <textarea
             rows={3}
@@ -66,7 +66,7 @@ export function RimsContentSection({
         </div>
         <div>
           <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Pitkä kuvaus' : 'Long description'}
+            {t('rimsContent.longDescription')}
           </label>
           <textarea
             rows={6}
@@ -77,7 +77,7 @@ export function RimsContentSection({
         </div>
         <div>
           <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Manuaaliset badge-tagit' : 'Manual badge tags'}
+            {t('rimsContent.manualBadges')}
           </label>
           <input
             type="text"
@@ -88,14 +88,14 @@ export function RimsContentSection({
                 badges: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
               }))
             }
-            placeholder={language === 'fi' ? 'Esim. Uutuus, Kampanja' : 'e.g. New, Campaign'}
+            placeholder={t('rimsContent.manualBadgesPlaceholder')}
             className={inputClass}
           />
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'URL-tunniste' : 'SEO slug'}
+              {t('rimsContent.seoSlug')}
             </label>
             <input
               type="text"
@@ -106,7 +106,7 @@ export function RimsContentSection({
           </div>
           <div>
             <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'SEO-otsikko' : 'SEO title'}
+              {t('rimsContent.seoTitle')}
             </label>
             <input
               type="text"
@@ -117,7 +117,7 @@ export function RimsContentSection({
           </div>
           <div>
             <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'SEO-kuvaus' : 'SEO description'}
+              {t('rimsContent.seoDescription')}
             </label>
             <input
               type="text"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../../ThemeContext';
-import { useLanguage } from '../../LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useCart } from '../cart/CartContext';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
@@ -30,49 +30,13 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
   onNavigateToCheckout,
 }) => {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { items, totalPrice } = useCart();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [paytrailParams, setPaytrailParams] = useState<Record<string, string>>({});
 
-  const t = (key: string) => {
-    const translations: Record<string, { fi: string; en: string }> = {
-      // Hero section
-      paymentCancelled: { fi: 'Maksu keskeytettiin', en: 'Payment was cancelled' },
-      paymentCancelledSubtitle: { fi: 'Maksua ei suoritettu loppuun', en: 'Payment was not completed' },
-      cancelMessage: {
-        fi: 'Maksua ei suoritettu loppuun. Voit tarkistaa tietosi ja yrittää uudelleen.',
-        en: 'Your payment was not completed. You can review your details and try again.'
-      },
-
-      // Order info
-      cartSummary: { fi: 'Ostoskorin yhteenveto', en: 'Cart Summary' },
-      itemsInCart: { fi: 'tuotetta korissa', en: 'items in cart' },
-      totalAmount: { fi: 'Kokonaissumma', en: 'Total Amount' },
-      notCharged: { fi: 'Ei veloitettu', en: 'Not charged' },
-
-      // Helpful hints
-      helpfulHints: { fi: 'Hyvä tietää', en: 'Good to Know' },
-      accidentalCancel: {
-        fi: 'Jos maksu keskeytyi vahingossa, voit palata kassalle ja yrittää uudelleen.',
-        en: 'If the payment was cancelled by accident, you can return to checkout and try again.'
-      },
-      orderNotCharged: {
-        fi: 'Tilausta ei ole vielä veloitettu.',
-        en: 'The order has not been charged yet.'
-      },
-      cartPreserved: {
-        fi: 'Tuotteesi ovat edelleen ostoskorissa.',
-        en: 'Your items are still in the cart.'
-      },
-
-      // Actions
-      returnToCheckout: { fi: 'Palaa kassalle', en: 'Return to Checkout' },
-      backToHome: { fi: 'Takaisin etusivulle', en: 'Back to Home' },
-    };
-    return translations[key]?.[language] || key;
-  };
+  const checkoutCancelText = (key: string) => t(`checkoutCancel.${key}`);
 
   useEffect(() => {
     const fetchOrderInfo = async () => {
@@ -180,10 +144,10 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
             <AlertCircle className="w-12 h-12 text-orange-600" />
           </div>
           <h1 className={`text-4xl mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t('paymentCancelled')}
+            {checkoutCancelText('paymentCancelled')}
           </h1>
           <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            {t('paymentCancelledSubtitle')}
+            {checkoutCancelText('paymentCancelledSubtitle')}
           </p>
         </div>
 
@@ -192,7 +156,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
           theme === 'dark' ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-gray-200'
         }`}>
           <p className={`text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-            {t('cancelMessage')}
+            {checkoutCancelText('cancelMessage')}
           </p>
         </Card>
 
@@ -204,13 +168,13 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
             <div className="flex items-center gap-2 mb-4">
               <ShoppingCart className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
               <h2 className={`text-xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('cartSummary')}
+                {checkoutCancelText('cartSummary')}
               </h2>
             </div>
 
             <div className="mb-4">
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {displayItems.length} {t('itemsInCart')}
+                {displayItems.length} {checkoutCancelText('itemsInCart')}
               </p>
             </div>
 
@@ -252,10 +216,10 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
             <div className="flex justify-between items-center">
               <div>
                 <p className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {t('totalAmount')}
+                  {checkoutCancelText('totalAmount')}
                 </p>
                 <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {t('notCharged')}
+                  {checkoutCancelText('notCharged')}
                 </p>
               </div>
               <span className={`text-2xl ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} line-through`}>
@@ -272,7 +236,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
           <div className="flex items-center gap-2 mb-4">
             <Info className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
             <h2 className={`text-xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t('helpfulHints')}
+              {checkoutCancelText('helpfulHints')}
             </h2>
           </div>
 
@@ -284,7 +248,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
                 }`} />
               </div>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                {t('accidentalCancel')}
+                {checkoutCancelText('accidentalCancel')}
               </p>
             </div>
             <div className="flex items-start gap-3">
@@ -294,7 +258,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
                 }`} />
               </div>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                {t('orderNotCharged')}
+                {checkoutCancelText('orderNotCharged')}
               </p>
             </div>
             <div className="flex items-start gap-3">
@@ -304,7 +268,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
                 }`} />
               </div>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                {t('cartPreserved')}
+                {checkoutCancelText('cartPreserved')}
               </p>
             </div>
           </div>
@@ -317,7 +281,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
             className="flex-1 bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            {t('returnToCheckout')}
+            {checkoutCancelText('returnToCheckout')}
           </Button>
           <Button
             onClick={onNavigateHome}
@@ -329,7 +293,7 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
             }`}
           >
             <Home className="w-4 h-4 mr-2" />
-            {t('backToHome')}
+            {checkoutCancelText('backToHome')}
           </Button>
         </div>
       </div>

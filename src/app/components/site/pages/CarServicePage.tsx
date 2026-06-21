@@ -1,5 +1,4 @@
-import React from 'react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { motion } from 'motion/react';
 import { Wrench, Clock, Euro, CheckCircle2, ArrowRight, Shield, Star } from 'lucide-react';
 import { Button } from '../../ui/button';
@@ -10,38 +9,30 @@ interface CarServicePageProps {
 }
 
 export function CarServicePage({ onBookingClick }: CarServicePageProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
 
   const services = [
     {
-      name: language === 'fi' ? 'Perushuolto' : 'Basic Service',
-      desc: language === 'fi' 
-        ? 'Öljynvaihto, suodattimet, perustutkastus'
-        : 'Oil change, filters, basic inspection',
+      name: t('carServicePage.services.basic.name'),
+      desc: t('carServicePage.services.basic.desc'),
       price: '[TBD]',
       duration: '[TBD] min',
     },
     {
-      name: language === 'fi' ? 'Iso huolto' : 'Major Service',
-      desc: language === 'fi'
-        ? 'Kattava huolto, kaikki nesteet, jarrujen tarkastus'
-        : 'Comprehensive service, all fluids, brake check',
+      name: t('carServicePage.services.major.name'),
+      desc: t('carServicePage.services.major.desc'),
       price: '[TBD]',
       duration: '[TBD] min',
     },
     {
-      name: language === 'fi' ? 'Kausihuolto' : 'Seasonal Service',
-      desc: language === 'fi'
-        ? 'Valmistautuminen talveen tai kesään'
-        : 'Preparation for winter or summer',
+      name: t('carServicePage.services.seasonal.name'),
+      desc: t('carServicePage.services.seasonal.desc'),
       price: '[TBD]',
       duration: '[TBD] min',
     },
     {
-      name: language === 'fi' ? 'Ilmastointihuolto' : 'AC Service',
-      desc: language === 'fi'
-        ? 'Ilmastointijärjestelmän puhdistus ja huolto'
-        : 'AC system cleaning and service',
+      name: t('carServicePage.services.ac.name'),
+      desc: t('carServicePage.services.ac.desc'),
       price: '[TBD]',
       duration: '[TBD] min',
     },
@@ -50,75 +41,57 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
   const benefits = [
     {
       icon: Shield,
-      title: language === 'fi' ? 'Sertifioidut asentajat' : 'Certified Technicians',
-      desc: language === 'fi' 
-        ? 'Ammattitaitoiset mekaanikkot kaikille automerkeille'
-        : 'Skilled mechanics for all car brands',
+      title: t('carServicePage.benefits.technicians.title'),
+      desc: t('carServicePage.benefits.technicians.desc'),
     },
     {
       icon: CheckCircle2,
-      title: language === 'fi' ? 'Alkuperäiset varaosat' : 'Genuine Parts',
-      desc: language === 'fi'
-        ? 'Laadukkaita osia luotettavilta toimittajilta'
-        : 'Quality parts from trusted suppliers',
+      title: t('carServicePage.benefits.parts.title'),
+      desc: t('carServicePage.benefits.parts.desc'),
     },
     {
       icon: Clock,
-      title: language === 'fi' ? 'Nopea palvelu' : 'Fast Service',
-      desc: language === 'fi'
-        ? 'Tehokas läpimenoaika ilman laatutinkimistä'
-        : 'Efficient turnaround without compromising quality',
+      title: t('carServicePage.benefits.fast.title'),
+      desc: t('carServicePage.benefits.fast.desc'),
     },
     {
       icon: Star,
-      title: language === 'fi' ? 'Tyytyväisyystakuu' : 'Satisfaction Guarantee',
-      desc: language === 'fi'
-        ? '100% tyytyväisyys tai rahat takaisin'
-        : '100% satisfaction or money back',
+      title: t('carServicePage.benefits.guarantee.title'),
+      desc: t('carServicePage.benefits.guarantee.desc'),
     },
   ];
 
   const whatsIncluded = [
-    language === 'fi' ? 'Täydellinen ajoneuvon tarkastus' : 'Complete vehicle inspection',
-    language === 'fi' ? 'Öljynvaihto ja suodatinvaihto' : 'Oil and filter change',
-    language === 'fi' ? 'Nesteiden täydennys' : 'Fluid top-up',
-    language === 'fi' ? 'Jarrujen tarkastus' : 'Brake inspection',
-    language === 'fi' ? 'Renkaidenpaineen tarkistus' : 'Tire pressure check',
-    language === 'fi' ? 'Valojen tarkastus' : 'Light inspection',
-    language === 'fi' ? 'Akun testaus' : 'Battery testing',
-    language === 'fi' ? 'Yksityiskohtainen huoltoraportti' : 'Detailed service report',
+    t('carServicePage.included.inspection'),
+    t('carServicePage.included.oilFilter'),
+    t('carServicePage.included.fluids'),
+    t('carServicePage.included.brakes'),
+    t('carServicePage.included.tirePressure'),
+    t('carServicePage.included.lights'),
+    t('carServicePage.included.battery'),
+    t('carServicePage.included.report'),
   ];
 
   const faqItems = [
     {
-      q: language === 'fi' ? 'Kuinka usein autoni tarvitsee huoltoa?' : 'How often does my car need service?',
-      a: language === 'fi'
-        ? 'Tyypillisesti perushuolto suositellaan joka [TBD] kuukausi tai [TBD] km välein, kumpi tulee ensin. Tarkista valmistajan suositukset.'
-        : 'Typically, basic service is recommended every [TBD] months or [TBD] km, whichever comes first. Check manufacturer recommendations.',
+      q: t('carServicePage.faq.frequency.q'),
+      a: t('carServicePage.faq.frequency.a'),
     },
     {
-      q: language === 'fi' ? 'Säilyykö takuu?' : 'Will my warranty remain valid?',
-      a: language === 'fi'
-        ? 'Kyllä, käytämme valmistajan spesifikaatioiden mukaisia osia ja menetelmiä, joten takuusi pysyy voimassa.'
-        : 'Yes, we use manufacturer-spec parts and procedures, so your warranty remains valid.',
+      q: t('carServicePage.faq.warranty.q'),
+      a: t('carServicePage.faq.warranty.a'),
     },
     {
-      q: language === 'fi' ? 'Voinko odottaa huollon aikana?' : 'Can I wait during the service?',
-      a: language === 'fi'
-        ? 'Kyllä, meillä on mukava odotustila Wi-Fi:llä ja kahvilla. Voit myös jättää auton ja palata myöhemmin.'
-        : 'Yes, we have a comfortable waiting area with Wi-Fi and coffee. You can also drop off and return later.',
+      q: t('carServicePage.faq.wait.q'),
+      a: t('carServicePage.faq.wait.a'),
     },
     {
-      q: language === 'fi' ? 'Mitä tapahtuu jos löydätte lisäongelmia?' : 'What if you find additional issues?',
-      a: language === 'fi'
-        ? 'Otamme sinuun yhteyttä välittömästi ja selitämme ongelman, korjauskustannukset ja vaihtoehdot. Emme tee lisätöitä ilman hyväksyntääsi.'
-        : 'We\'ll contact you immediately and explain the issue, repair cost, and options. We never do additional work without your approval.',
+      q: t('carServicePage.faq.issues.q'),
+      a: t('carServicePage.faq.issues.a'),
     },
     {
-      q: language === 'fi' ? 'Onko huolto erilainen talvella ja kesällä?' : 'Is service different in winter and summer?',
-      a: language === 'fi'
-        ? 'Kyllä, kausihuolto valmistaa autosi Helsingin talveen (akku, jäähdytysneste, lämmittimet) tai kesään (ilmastointi, jäähdytysjärjestelmä).'
-        : 'Yes, seasonal service prepares your car for Helsinki\'s winter (battery, coolant, heaters) or summer (AC, cooling system).',
+      q: t('carServicePage.faq.seasonal.q'),
+      a: t('carServicePage.faq.seasonal.a'),
     },
   ];
 
@@ -135,19 +108,15 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
           >
             {/* Breadcrumb */}
             <div className="text-sm text-muted-foreground mb-4">
-              {language === 'fi' ? 'Etusivu' : 'Home'} / {language === 'fi' ? 'Palvelut' : 'Services'} / {language === 'fi' ? 'Autohuolto' : 'Car Service'}
+              {t('carServicePage.breadcrumb.home')} / {t('carServicePage.breadcrumb.services')} / {t('carServicePage.breadcrumb.carService')}
             </div>
 
             {/* H1 - Helsinki REQUIRED (service detail = local intent) */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              {language === 'fi' 
-                ? 'Autohuolto Helsingissä'
-                : 'Car Service in Helsinki'}
+              {t('carServicePage.hero.title')}
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              {language === 'fi'
-                ? 'Ammattitaitoinen ja luotettava autohuolto kaikille merkeille Helsingissä'
-                : 'Professional and reliable car service for all brands in Helsinki'}
+              {t('carServicePage.hero.subtitle')}
             </p>
 
             {/* Primary CTA */}
@@ -156,7 +125,7 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
               onClick={onBookingClick}
               className="bg-accent hover:bg-accent/90 text-white px-8 py-6 text-lg"
             >
-              {language === 'fi' ? 'Varaa huolto' : 'Book Service'}
+              {t('carServicePage.bookService')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>
@@ -174,12 +143,10 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
               className="text-center mb-12"
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                {language === 'fi' ? 'Mitä huolto sisältää?' : 'What\'s Included?'}
+                {t('carServicePage.includedTitle')}
               </h2>
               <p className="text-muted-foreground text-lg">
-                {language === 'fi'
-                  ? 'Kattava huolto autosi pitämiseksi turvallisena ja tehokkaana'
-                  : 'Comprehensive service to keep your car safe and efficient'}
+                {t('carServicePage.includedSubtitle')}
               </p>
             </motion.div>
 
@@ -211,12 +178,10 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' ? 'Huoltopaketit' : 'Service Packages'}
+              {t('carServicePage.packagesTitle')}
             </h2>
             <p className="text-muted-foreground text-lg">
-              {language === 'fi'
-                ? 'Valitse tarpeisiisi sopiva huoltopaketti'
-                : 'Choose the service package that fits your needs'}
+              {t('carServicePage.packagesSubtitle')}
             </p>
           </motion.div>
 
@@ -252,7 +217,7 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
                         size="sm"
                         onClick={onBookingClick}
                       >
-                        {language === 'fi' ? 'Varaa' : 'Book'}
+                        {t('carServicePage.book')}
                       </Button>
                     </div>
                   </CardContent>
@@ -273,7 +238,7 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' ? 'Miksi valita meidät?' : 'Why Choose Us?'}
+              {t('carServicePage.whyTitle')}
             </h2>
           </motion.div>
 
@@ -309,7 +274,7 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
               className="text-center mb-12"
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                {language === 'fi' ? 'Usein kysytyt kysymykset' : 'Frequently Asked Questions'}
+                {t('carServicePage.faqTitle')}
               </h2>
             </motion.div>
 
@@ -344,14 +309,10 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
             className="max-w-3xl mx-auto text-center"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              {language === 'fi' 
-                ? 'Valmis huoltamaan autosi?'
-                : 'Ready to Service Your Car?'}
+              {t('carServicePage.footerTitle')}
             </h2>
             <p className="text-white/90 mb-8 text-lg">
-              {language === 'fi'
-                ? 'Varaa aikasi nyt – se vie vain muutaman minuutin'
-                : 'Book your appointment now – it only takes a few minutes'}
+              {t('carServicePage.footerSubtitle')}
             </p>
             <Button
               size="lg"
@@ -359,7 +320,7 @@ export function CarServicePage({ onBookingClick }: CarServicePageProps) {
               onClick={onBookingClick}
               className="px-8 py-6 text-lg"
             >
-              {language === 'fi' ? 'Varaa huolto' : 'Book Service'}
+              {t('carServicePage.bookService')}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>

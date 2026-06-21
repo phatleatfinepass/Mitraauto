@@ -1,13 +1,13 @@
-import { AlertCircle, RotateCcw, Save, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, RotateCcw, Save, X } from 'lucide-react';
 
-import { useLanguage } from '../../LanguageContext';
-import { useTheme } from '../../ThemeContext';
-import { RimsCmsPagination } from './RimsCmsPagination';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
 import { RimsCmsTableSection } from './RimsCmsTableSection';
 import { RimsCmsToolbar } from './RimsCmsToolbar';
 import { RimsContentSection } from './RimsContentSection';
 import { RimsImagesSection } from './RimsImagesSection';
 import { RimsPricingSection } from './RimsPricingSection';
+import { getRimWarningKeys, type RimWarningKey } from './rimReadiness';
 import { RimsSpecsSection } from './RimsSpecsSection';
 import { RimsVisibilitySection } from './RimsVisibilitySection';
 import { useRimsCmsEditor } from './useRimsCmsEditor';
@@ -18,6 +18,17 @@ import type { RimRow } from './types';
 
 const VAT_RATE = 0.255;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
+
+const WARNING_LABEL_KEYS: Record<RimWarningKey, string> = {
+  mounting_specs: 'rimsCmsTable.warningMountingSpecs',
+  image: 'rimsCmsTable.warningImage',
+  price: 'rimsCmsTable.warningPrice',
+  stock: 'rimsCmsTable.warningStock',
+  pcd: 'rimsCmsTable.warningPcd',
+  et_cb: 'rimsCmsTable.warningEtCb',
+  ean: 'rimsCmsTable.warningEan',
+  material_finish: 'rimsCmsTable.warningMaterialFinish',
+};
 
 function toPriceWithVat(priceWithoutVat: number | null | undefined) {
   if (priceWithoutVat === null || priceWithoutVat === undefined) return null;
@@ -38,9 +49,9 @@ function formatSize(rim: RimRow) {
 
 export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
-  const pageSize = 100;
+  const pageSize = 25;
 
   const list = useRimsCmsList(pageSize);
   const editor = useRimsCmsEditor();
@@ -50,7 +61,6 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
     onEditDataChange: editor.setEditData,
   });
   const mutations = useRimsCmsMutations({
-    language,
     selectedRim: editor.selectedRim,
     editData: editor.editData,
     patchLocalCmsData: list.patchLocalCmsData,
@@ -63,6 +73,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
   const clampedPage = Math.min(list.currentPage, totalPages);
   const startItem = list.totalCount === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
   const endItem = Math.min(clampedPage * pageSize, list.totalCount);
+  const drawerWarnings = editor.selectedRim ? getRimWarningKeys(editor.selectedRim) : [];
   const paginationItems = (() => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
 
@@ -80,7 +91,6 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
     <div className={`${embedded ? 'min-h-0' : 'min-h-screen'} ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
       <RimsCmsToolbar
         isDark={isDark}
-        language={language}
         hideHeader={embedded}
         searchTerm={list.searchTerm}
         supplierFilter={list.supplierFilter}
@@ -92,6 +102,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
         syncing={mutations.syncing}
         hasPendingCatalogSync={mutations.hasPendingCatalogSync}
         catalogSyncMessage={mutations.catalogSyncMessage}
+        catalogSyncProgress={mutations.catalogSyncProgress}
         onSearchTermChange={list.setSearchTerm}
         onSupplierFilterChange={list.setSupplierFilter}
         onShowMissingPriceOnlyChange={list.setShowMissingPriceOnly}
@@ -103,55 +114,28 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
       />
 
       <div className="px-8 py-6">
-        {list.loading ? (
-          <div className="py-20 text-center">
-            <div className={`mx-auto h-12 w-12 animate-spin rounded-full border-b-2 ${isDark ? 'border-white' : 'border-gray-900'}`} />
-          </div>
-        ) : list.error ? (
+        {list.error && !list.loading ? (
           <div className={`rounded-lg p-4 ${isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
             <p>{list.error}</p>
           </div>
         ) : (
           <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                {language === 'fi' ? `Yhteensä ${list.totalCount} tuotetta` : `${list.totalCount} items total`}
-                {list.refreshing ? ` (${language === 'fi' ? 'päivitetään' : 'refreshing'})` : ''}
-              </p>
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {language === 'fi'
-                  ? `Näytetään ${startItem}-${endItem} / ${list.totalCount} (sivu ${clampedPage}/${totalPages})`
-                  : `Showing ${startItem}-${endItem} of ${list.totalCount} (page ${clampedPage}/${totalPages})`}
-              </p>
-            </div>
-
             <RimsCmsTableSection
+              cachedItemCount={list.cachedItemCount}
+              currentPage={clampedPage}
+              endItem={endItem}
               isDark={isDark}
-              language={language}
               rims={list.rims}
+              loading={list.loading}
+              paginationItems={paginationItems}
+              preloading={list.preloading}
+              startItem={startItem}
+              totalCount={list.totalCount}
+              totalPages={totalPages}
               formatSize={formatSize}
+              onPageChange={list.setCurrentPage}
               onToggleVisibility={mutations.handleToggleVisibility}
               onEdit={editor.openEditor}
-            />
-
-            {list.rims.length === 0 && (
-              <div className="py-20 text-center">
-                <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {language === 'fi' ? 'Ei vanteita löytynyt' : 'No rims found'}
-                </p>
-              </div>
-            )}
-
-            <RimsCmsPagination
-              isDark={isDark}
-              language={language}
-              currentPage={clampedPage}
-              totalPages={totalPages}
-              totalCount={list.totalCount}
-              startItem={startItem}
-              endItem={endItem}
-              paginationItems={paginationItems}
-              onPageChange={list.setCurrentPage}
             />
           </>
         )}
@@ -165,7 +149,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
             <div className={`sticky top-0 z-10 flex items-center justify-between border-b px-6 py-4 ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'}`}>
               <div>
                 <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Muokkaa vannetta' : 'Edit Rim'}
+                  {t('rimsCmsPage.editRim')}
                 </h2>
                 <p className={`mt-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {editor.selectedRim.brand} {editor.selectedRim.model} - {formatSize(editor.selectedRim)}
@@ -183,18 +167,18 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
             <div className="space-y-8 px-6 py-6">
               <div>
                 <h3 className={`mb-4 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Tunnisteet' : 'Identity'}
+                  {t('rimsCmsPage.identity')}
                 </h3>
                 <div className={`grid grid-cols-2 gap-4 rounded-lg p-4 md:grid-cols-4 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
                   {[
-                    [language === 'fi' ? 'Brändi' : 'Brand', editor.selectedRim.brand],
-                    [language === 'fi' ? 'Malli' : 'Model', editor.selectedRim.model || '-'],
+                    [t('rimsCmsPage.brand'), editor.selectedRim.brand],
+                    [t('rimsCmsPage.model'), editor.selectedRim.model || '-'],
                     ['EAN', editor.selectedRim.ean || '-'],
-                    [language === 'fi' ? 'Koko' : 'Size', formatSize(editor.selectedRim)],
+                    [t('rimsCmsPage.size'), formatSize(editor.selectedRim)],
                     ['PCD', editor.selectedRim.bolt_pattern || '-'],
                     ['ET', editor.selectedRim.et_offset_mm ?? '-'],
-                    [language === 'fi' ? 'Hinta ALV 0%' : 'Price VAT 0%', editor.selectedRim.price_eur !== null ? `€${editor.selectedRim.price_eur.toFixed(2)}` : '-'],
-                    [language === 'fi' ? 'Hinta ALV 25.5%' : 'Price VAT 25.5%', toPriceWithVat(editor.selectedRim.price_eur) !== null ? `€${toPriceWithVat(editor.selectedRim.price_eur)!.toFixed(2)}` : '-'],
+                    [t('rimsCmsPage.priceVat0'), editor.selectedRim.price_eur !== null ? `€${editor.selectedRim.price_eur.toFixed(2)}` : '-'],
+                    [t('rimsCmsPage.priceVat255'), toPriceWithVat(editor.selectedRim.price_eur) !== null ? `€${toPriceWithVat(editor.selectedRim.price_eur)!.toFixed(2)}` : '-'],
                   ].map(([label, value]) => (
                     <div key={String(label)}>
                       <label className={`mb-1 block text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -206,9 +190,31 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
                 </div>
               </div>
 
+              <div>
+                <h3 className={`mb-4 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {t('rimsCmsPage.warnings')}
+                </h3>
+                {drawerWarnings.length > 0 ? (
+                  <div className={`flex flex-wrap gap-2 rounded-lg p-4 ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+                    {drawerWarnings.map((warning) => (
+                      <span
+                        key={warning}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${isDark ? 'bg-amber-500/15 text-amber-200' : 'bg-white text-amber-800'}`}
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        {t(WARNING_LABEL_KEYS[warning])}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`rounded-lg p-4 text-sm ${isDark ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {t('rimsCmsPage.noWarnings')}
+                  </div>
+                )}
+              </div>
+
               <RimsImagesSection
                 isDark={isDark}
-                language={language}
                 selectedRim={editor.selectedRim}
                 gallery={images.gallery}
                 supplierFallbackUrl={images.supplierFallbackUrl}
@@ -216,28 +222,24 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
               />
               <RimsContentSection
                 isDark={isDark}
-                language={language}
                 selectedRim={editor.selectedRim}
                 editData={editor.editData}
                 onEditDataChange={editor.setEditData}
               />
               <RimsSpecsSection
                 isDark={isDark}
-                language={language}
                 selectedRim={editor.selectedRim}
                 editData={editor.editData}
                 onEditDataChange={editor.setEditData}
               />
               <RimsPricingSection
                 isDark={isDark}
-                language={language}
                 selectedRim={editor.selectedRim}
                 editData={editor.editData}
                 onEditDataChange={editor.setEditData}
               />
               <RimsVisibilitySection
                 isDark={isDark}
-                language={language}
                 selectedRim={editor.selectedRim}
                 editData={editor.editData}
                 onEditDataChange={editor.setEditData}
@@ -261,7 +263,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 <RotateCcw className="h-4 w-4" />
-                {language === 'fi' ? 'Tyhjennä CMS' : 'Reset CMS'}
+                {t('rimsCmsPage.resetCms')}
               </button>
               <div className="flex items-center gap-3">
                 <button
@@ -272,7 +274,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
                     isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                   } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
-                  {language === 'fi' ? 'Peruuta' : 'Cancel'}
+                  {t('rimsCmsPage.cancel')}
                 </button>
                 <button
                   type="button"
@@ -283,9 +285,7 @@ export function RimsCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
                   } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   <Save className="h-4 w-4" />
-                  {mutations.saving
-                    ? (language === 'fi' ? 'Tallennetaan...' : 'Saving...')
-                    : (language === 'fi' ? 'Tallenna' : 'Save')}
+                  {mutations.saving ? t('rimsCmsPage.saving') : t('rimsCmsPage.save')}
                 </button>
               </div>
             </div>

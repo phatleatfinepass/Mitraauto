@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useTheme } from '../ThemeContext';
-import { useLanguage } from '../LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';

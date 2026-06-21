@@ -6,6 +6,14 @@ import type { TireRow } from './types';
 const TIRES_CMS_STATE_KEY = 'mitra.tires-cms.state.v3';
 const TIRES_CMS_CACHE_KEY = 'mitra.tires-cms.cache.v3';
 const TIRES_CMS_SYNC_KEY = 'mitra.tires-cms.sync.v1';
+const TIRES_CMS_INDEX_DB_NAME = 'mitra-tires-cms-index';
+const TIRES_CMS_INDEX_STORE_NAME = 'queries';
+const CMS_COUNT_TIMEOUT_MS = 1200;
+const CMS_PRELOAD_PAGE_COUNT = 10;
+const CMS_PAGE_SETTLE_DELAY_MS = 1000;
+const CMS_PERSISTED_QUERY_LIMIT = 3;
+const CMS_PERSISTED_PAGE_LIMIT = 10;
+const CMS_MAX_INDEXED_ROWS = 25000;
 
 type TiresCmsQueryCacheEntry = {
   totalCount: number;
@@ -14,6 +22,12 @@ type TiresCmsQueryCacheEntry = {
 
 type TiresCmsCacheStore = {
   queries: Record<string, TiresCmsQueryCacheEntry>;
+};
+
+type TiresCmsIndexedQueryRecord = {
+  queryKey: string;
+  query: TiresCmsQueryCacheEntry;
+  updatedAt: number;
 };
 
 type MissingMetadataField =
@@ -43,6 +57,22 @@ type MissingSeoField =
   | 'seo_slug'
   | 'seo_title'
   | 'seo_description';
+
+async function resolveWithTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const normalizedPromise = Promise.resolve(promise);
+  normalizedPromise.catch(() => undefined);
+  try {
+    return await Promise.race([
+      normalizedPromise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 const EXCLUDED_TIRE_KEYWORDS = [
   'motorcycle',
@@ -94,6 +124,7 @@ function buildTiresCmsQueryKey(params: {
   showMissingEanOnly: boolean;
   hideNonPassenger: boolean;
   supplierFilter: string;
+  tireSegmentFilter: string;
   missingMetadataFields: string[];
   showMissingImagesOnly: boolean;
   showWithEprelOnly: boolean;
@@ -105,6 +136,7 @@ function buildTiresCmsQueryKey(params: {
     missing: params.showMissingEanOnly,
     hideNonPassenger: params.hideNonPassenger,
     supplier: params.supplierFilter,
+    tireSegment: params.tireSegmentFilter,
     missingMetadataFields: [...params.missingMetadataFields].sort(),
     missingImages: params.showMissingImagesOnly,
     withEprel: params.showWithEprelOnly,
@@ -141,7 +173,182 @@ function readTiresCmsCacheStore(): TiresCmsCacheStore {
 
 function writeTiresCmsCacheStore(cacheStore: TiresCmsCacheStore) {
   if (typeof window === 'undefined') return;
-  window.sessionStorage.setItem(TIRES_CMS_CACHE_KEY, JSON.stringify(cacheStore));
+  try {
+    const compactQueries = Object.fromEntries(
+      Object.entries(cacheStore.queries)
+        .slice(-CMS_PERSISTED_QUERY_LIMIT)
+        .map(([queryKey, query]) => [
+          queryKey,
+          {
+            totalCount: query.totalCount,
+            pages: Object.fromEntries(
+              Object.entries(query.pages)
+                .sort(([left], [right]) => Number(left) - Number(right))
+                .slice(0, CMS_PERSISTED_PAGE_LIMIT),
+            ),
+          },
+        ]),
+    );
+    window.sessionStorage.setItem(TIRES_CMS_CACHE_KEY, JSON.stringify({ queries: compactQueries }));
+  } catch {
+    window.sessionStorage.removeItem(TIRES_CMS_CACHE_KEY);
+  }
+}
+
+function openTiresCmsIndexDb(): Promise<IDBDatabase | null> {
+  if (typeof window === 'undefined' || !('indexedDB' in window)) {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const request = window.indexedDB.open(TIRES_CMS_INDEX_DB_NAME, 1);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(TIRES_CMS_INDEX_STORE_NAME)) {
+        db.createObjectStore(TIRES_CMS_INDEX_STORE_NAME, { keyPath: 'queryKey' });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
+}
+
+async function readTiresCmsIndexedQuery(queryKey: string): Promise<TiresCmsQueryCacheEntry | null> {
+  const db = await openTiresCmsIndexDb();
+  if (!db) return null;
+
+  return new Promise((resolve) => {
+    const transaction = db.transaction(TIRES_CMS_INDEX_STORE_NAME, 'readonly');
+    const store = transaction.objectStore(TIRES_CMS_INDEX_STORE_NAME);
+    const request = store.get(queryKey);
+
+    request.onsuccess = () => {
+      const record = request.result as TiresCmsIndexedQueryRecord | undefined;
+      resolve(record?.query ?? null);
+      db.close();
+    };
+    request.onerror = () => {
+      resolve(null);
+      db.close();
+    };
+  });
+}
+
+async function writeTiresCmsIndexedQuery(queryKey: string, query: TiresCmsQueryCacheEntry) {
+  const db = await openTiresCmsIndexDb();
+  if (!db) return;
+
+  await new Promise<void>((resolve) => {
+    const transaction = db.transaction(TIRES_CMS_INDEX_STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(TIRES_CMS_INDEX_STORE_NAME);
+    store.put({ queryKey, query, updatedAt: Date.now() } satisfies TiresCmsIndexedQueryRecord);
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      resolve();
+    };
+  });
+}
+
+async function clearTiresCmsIndexedQueries() {
+  const db = await openTiresCmsIndexDb();
+  if (!db) return;
+
+  await new Promise<void>((resolve) => {
+    const transaction = db.transaction(TIRES_CMS_INDEX_STORE_NAME, 'readwrite');
+    transaction.objectStore(TIRES_CMS_INDEX_STORE_NAME).clear();
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      resolve();
+    };
+  });
+}
+
+function splitRowsByPage<T>(rows: T[], currentPage: number, pageSize: number) {
+  const pages: Record<string, T[]> = {};
+  for (let index = 0; index < rows.length; index += pageSize) {
+    const pageRows = rows.slice(index, index + pageSize);
+    if (pageRows.length === 0) continue;
+    pages[String(currentPage + Math.floor(index / pageSize))] = pageRows;
+  }
+  return pages;
+}
+
+function countCachedRows(cacheStore: TiresCmsCacheStore, queryKey: string) {
+  const pages = cacheStore.queries[queryKey]?.pages ?? {};
+  return Object.values(pages).reduce((total, rows) => total + rows.length, 0);
+}
+
+function getPositiveWindowStartPage(currentPage: number, totalPages: number) {
+  if (currentPage <= 1) return 1;
+  if (totalPages > 0 && currentPage >= totalPages) {
+    return Math.max(1, totalPages - CMS_PRELOAD_PAGE_COUNT + 1);
+  }
+  return Math.max(1, currentPage - 1);
+}
+
+function hasMissingPositiveWindow(
+  cacheStore: TiresCmsCacheStore,
+  queryKey: string,
+  currentPage: number,
+  totalPages: number,
+) {
+  const pages = cacheStore.queries[queryKey]?.pages ?? {};
+  const startPage = getPositiveWindowStartPage(currentPage, totalPages);
+  const endPage = Math.min(totalPages || startPage + CMS_PRELOAD_PAGE_COUNT - 1, startPage + CMS_PRELOAD_PAGE_COUNT - 1);
+  for (let page = startPage; page <= endPage; page += 1) {
+    if (!pages[String(page)]) return true;
+  }
+  return false;
+}
+
+function findFirstMissingPage(cacheStore: TiresCmsCacheStore, queryKey: string, totalPages: number) {
+  const pages = cacheStore.queries[queryKey]?.pages ?? {};
+  for (let page = 1; page <= totalPages; page += 1) {
+    if (!pages[String(page)]) return page;
+  }
+  return null;
+}
+
+function pruneIndexedPages(
+  cacheStore: TiresCmsCacheStore,
+  queryKey: string,
+  currentPage: number,
+  pageSize: number,
+): TiresCmsCacheStore {
+  const query = cacheStore.queries[queryKey];
+  if (!query) return cacheStore;
+
+  const maxPages = Math.max(CMS_PRELOAD_PAGE_COUNT, Math.floor(CMS_MAX_INDEXED_ROWS / pageSize));
+  const pageEntries = Object.entries(query.pages);
+  if (pageEntries.length <= maxPages) return cacheStore;
+
+  const keptPages = Object.fromEntries(
+    pageEntries
+      .sort(([left], [right]) => Math.abs(Number(left) - currentPage) - Math.abs(Number(right) - currentPage))
+      .slice(0, maxPages)
+      .sort(([left], [right]) => Number(left) - Number(right)),
+  );
+
+  return {
+    queries: {
+      ...cacheStore.queries,
+      [queryKey]: {
+        ...query,
+        pages: keptPages,
+      },
+    },
+  };
 }
 
 function resolveEffectiveEan(identityEan: unknown, rowDerivedEan: unknown, rowEan: unknown) {
@@ -214,6 +421,7 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly: false,
         hideNonPassenger: true,
         supplierFilter: 'all',
+        tireSegmentFilter: 'all',
         missingMetadataFields: [] as MissingMetadataField[],
         showMissingImagesOnly: false,
         showWithEprelOnly: false,
@@ -232,6 +440,7 @@ export function useTiresCmsList(pageSize = 25) {
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
+        tireSegmentFilter: typeof parsedState?.tireSegmentFilter === 'string' ? parsedState.tireSegmentFilter : 'all',
         missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
         showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
         showWithEprelOnly: Boolean(parsedState?.showWithEprelOnly),
@@ -254,6 +463,7 @@ export function useTiresCmsList(pageSize = 25) {
         hideNonPassenger:
           typeof parsedState?.hideNonPassenger === 'boolean' ? parsedState.hideNonPassenger : true,
         supplierFilter: typeof parsedState?.supplierFilter === 'string' ? parsedState.supplierFilter : 'all',
+        tireSegmentFilter: typeof parsedState?.tireSegmentFilter === 'string' ? parsedState.tireSegmentFilter : 'all',
         missingMetadataFields: Array.isArray(parsedState?.missingMetadataFields) ? parsedState.missingMetadataFields : [],
         showMissingImagesOnly: Boolean(parsedState?.showMissingImagesOnly),
         showWithEprelOnly: Boolean(parsedState?.showWithEprelOnly),
@@ -269,6 +479,7 @@ export function useTiresCmsList(pageSize = 25) {
         showMissingEanOnly: false,
         hideNonPassenger: true,
         supplierFilter: 'all',
+        tireSegmentFilter: 'all',
         missingMetadataFields: [] as MissingMetadataField[],
         showMissingImagesOnly: false,
         showWithEprelOnly: false,
@@ -286,6 +497,7 @@ export function useTiresCmsList(pageSize = 25) {
   const [showMissingEanOnly, setShowMissingEanOnly] = useState(initialState.showMissingEanOnly);
   const [hideNonPassenger, setHideNonPassenger] = useState(initialState.hideNonPassenger);
   const [supplierFilter, setSupplierFilter] = useState(initialState.supplierFilter);
+  const [tireSegmentFilter, setTireSegmentFilter] = useState(initialState.tireSegmentFilter);
   const [missingMetadataFields, setMissingMetadataFields] = useState<MissingMetadataField[]>(
     initialState.missingMetadataFields,
   );
@@ -295,16 +507,24 @@ export function useTiresCmsList(pageSize = 25) {
   const [currentPage, setCurrentPage] = useState(initialState.currentPage);
   const [totalCount, setTotalCount] = useState(initialState.totalCount);
   const [hasNextPage, setHasNextPage] = useState(initialState.totalCount > initialState.currentPage * pageSize);
+  const [cachedItemCount, setCachedItemCount] = useState(0);
+  const [preloading, setPreloading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const didMountRef = useRef(false);
   const cacheRef = useRef<TiresCmsCacheStore>(initialState.cacheStore);
-  const initialRevalidatedRef = useRef(false);
   const lastForcedFetchAtRef = useRef(0);
+  const activeQueryKeyRef = useRef('');
+  const currentPageRef = useRef(initialState.currentPage);
+  const preloadRunRef = useRef(0);
+  const activeFetchKeyRef = useRef<string | null>(null);
+  const latestPageRequestRef = useRef(0);
+  const backgroundIndexRunRef = useRef(0);
   const queryKey = buildTiresCmsQueryKey({
     searchTerm: debouncedSearchTerm,
     showMissingEanOnly,
     hideNonPassenger,
     supplierFilter,
+    tireSegmentFilter,
     missingMetadataFields,
     showMissingImagesOnly,
     showWithEprelOnly,
@@ -313,6 +533,54 @@ export function useTiresCmsList(pageSize = 25) {
   });
   const cachedQuery = cacheRef.current.queries[queryKey];
   const cachedPage = cachedQuery?.pages?.[String(currentPage)] ?? null;
+
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
+    activeQueryKeyRef.current = queryKey;
+    setCachedItemCount(countCachedRows(cacheRef.current, queryKey));
+  }, [queryKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let cancelled = false;
+    void readTiresCmsIndexedQuery(queryKey).then((indexedQuery) => {
+      if (cancelled || !indexedQuery || activeQueryKeyRef.current !== queryKey) return;
+
+      const existingQuery = cacheRef.current.queries[queryKey];
+      const existingCount = existingQuery ? countCachedRows(cacheRef.current, queryKey) : 0;
+      const indexedCount = Object.values(indexedQuery.pages ?? {}).reduce((total, rows) => total + rows.length, 0);
+      if (indexedCount <= existingCount) return;
+
+      const nextCacheStore: TiresCmsCacheStore = {
+        queries: {
+          ...cacheRef.current.queries,
+          [queryKey]: indexedQuery,
+        },
+      };
+      cacheRef.current = nextCacheStore;
+      writeTiresCmsCacheStore(nextCacheStore);
+      setTotalCount(indexedQuery.totalCount);
+      setCachedItemCount(indexedCount);
+
+      const hydratedPage = indexedQuery.pages[String(currentPageRef.current)];
+      if (hydratedPage) {
+        latestPageRequestRef.current += 1;
+        setTires(hydratedPage);
+        setHasNextPage(currentPageRef.current * pageSize < indexedQuery.totalCount);
+        setLoading(false);
+        setRefreshing(false);
+        setError(null);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pageSize, queryKey]);
 
   const toNumberOrNull = useCallback((value: any) => {
     if (value === null || value === undefined || value === '') return null;
@@ -343,6 +611,145 @@ export function useTiresCmsList(pageSize = 25) {
   const getManualNonPassengerFlag = useCallback((specOverrides: any) =>
     Boolean(specOverrides?.classification?.non_passenger_manual), []);
 
+  const mapRowsToTires = useCallback((rows: any[]) => {
+    const normalizedEanCounts = new Map<string, number>();
+
+    for (const row of rows) {
+      const cmsData = row.cms_data || null;
+      const identity = (cmsData?.spec_overrides as any)?.identity ?? {};
+      const ean = (resolveEffectiveEan(identity?.ean, row.derived_ean, row.ean) || '').trim();
+      if (!ean) continue;
+      normalizedEanCounts.set(ean, (normalizedEanCounts.get(ean) ?? 0) + 1);
+    }
+
+    return rows.map((row: any) => {
+      const cmsData = row.cms_data || null;
+      const specOverrides = (cmsData?.spec_overrides as any) ?? {};
+      const identity = specOverrides.identity ?? {};
+      const tyreLabelIdentity = getTyreLabelIdentity(specOverrides);
+      const identityEanDigits = String(tyreLabelIdentity?.ean ?? identity?.ean ?? '').replace(/\D/g, '');
+      const {
+        effectiveBrand,
+        effectiveModel,
+        effectiveSize,
+        effectiveEan: resolvedEan,
+      } = resolveEffectiveMandatoryIdentity(specOverrides, row);
+      const euLabel = row.eu_label_json && typeof row.eu_label_json === 'object' ? row.eu_label_json : null;
+      const eprelCode =
+        extractLabelValue(euLabel, [
+          'eprel_code',
+          'eprel_registration_number',
+          'eprel_id',
+          'eprel',
+          'EPRELId',
+          'EprelCode',
+        ]) ?? null;
+      const eprelRegistrationNumber = eprelCode ? String(eprelCode).trim() : null;
+      const eprelQrUrl =
+        extractLabelValue(euLabel, ['eprel_qr_url', 'qr_url']) ??
+        (eprelRegistrationNumber ? `https://eprel.ec.europa.eu/qr/${eprelRegistrationNumber}` : null);
+      const eprelSheetUrl =
+        extractLabelValue(euLabel, ['eprel_sheet_url', 'eprel_fiche_url', 'fiche_url']) ?? null;
+      const eprelSourceUrl =
+        extractLabelValue(euLabel, ['eprel_url', 'source_url', 'data_source_url', 'register_code']) ??
+        eprelQrUrl;
+      const euNoiseClass =
+        euLabel?.noise_class ??
+        euLabel?.noiseClass ??
+        euLabel?.external_noise_class ??
+        euLabel?.externalNoiseClass ??
+        null;
+      const euFuel = normalizeEuRating(
+        extractLabelValue(euLabel, [
+          'fuel',
+          'fuel_class',
+          'fuelclass',
+          'fuelefficiency',
+          'fuel_efficiency',
+          'rrc',
+          'rolling_resistance',
+          'energy',
+        ])
+      );
+      const euWet = normalizeEuRating(
+        row.eu_wet ??
+          extractLabelValue(euLabel, [
+            'wet',
+            'wet_class',
+            'wet_grip_class',
+            'wetgripclass',
+            'wet_grip',
+            'wetgrip',
+          ])
+      );
+      const euNoise = normalizeEuNoise(
+        row.eu_noise ??
+          extractLabelValue(euLabel, [
+            'noise',
+            'noise_db',
+            'noiseclass',
+            'noise_class',
+            'noisedb',
+            'db',
+          ])
+      );
+      const missingEan =
+        !resolvedEan ||
+        String(resolvedEan).trim().length === 0 ||
+        String(resolvedEan).startsWith('EANMISSING_');
+      const duplicateEanConflict = (() => {
+        const normalized = (resolvedEan ?? '').trim();
+        const keepServerDuplicateFlag =
+          Boolean(row.has_ean_multi_spec_conflict) && identityEanDigits.length === 0;
+        return normalized ? keepServerDuplicateFlag || (normalizedEanCounts.get(normalized) ?? 0) > 1 : false;
+      })();
+      const resolvedPrice = row.final_price_eur ?? row.price ?? null;
+      const mandatoryFieldConflict =
+        missingEan ||
+        effectiveBrand.length === 0 ||
+        effectiveModel.length === 0 ||
+        effectiveSize.length === 0 ||
+        resolvedPrice === null ||
+        resolvedPrice === undefined;
+      const autoNonPassenger =
+        typeof row.is_non_passenger_auto === 'boolean' ? row.is_non_passenger_auto : isAutoNonPassengerTire(row);
+      const manualNonPassenger = getManualNonPassengerFlag(cmsData?.spec_overrides);
+
+      return {
+        ...row,
+        brand: effectiveBrand,
+        model: effectiveModel,
+        size_string: effectiveSize,
+        derived_ean: resolvedEan,
+        eu_fuel_class: euFuel,
+        eu_wet_grip_class: euWet,
+        eu_noise_db: euNoise,
+        eu_noise_class: typeof euNoiseClass === 'string' ? euNoiseClass : null,
+        eprel_code: eprelRegistrationNumber,
+        eprel_registration_number: eprelRegistrationNumber,
+        eprel_qr_url: eprelQrUrl ? String(eprelQrUrl) : null,
+        eprel_sheet_url: eprelSheetUrl ? String(eprelSheetUrl) : null,
+        eprel_source: euLabel?.source ? String(euLabel.source) : null,
+        eprel_source_url: eprelSourceUrl ? String(eprelSourceUrl) : null,
+        final_price_eur:
+          cmsData?.promo_enabled && cmsData?.promo_price_eur !== null && cmsData?.promo_price_eur !== undefined
+            ? cmsData.promo_price_eur
+            : cmsData?.price_override_eur ?? row.final_price_eur ?? row.price ?? null,
+        has_missing_ean: missingEan,
+        has_duplicate_ean_conflict: duplicateEanConflict,
+        has_mandatory_field_conflict: mandatoryFieldConflict,
+        is_non_passenger_auto: autoNonPassenger,
+        is_non_passenger_manual: manualNonPassenger,
+        is_non_passenger: autoNonPassenger || manualNonPassenger,
+        ean_conflict_open:
+          (Boolean(row.ean_conflict_open) && identityEanDigits.length === 0) ||
+          duplicateEanConflict ||
+          mandatoryFieldConflict,
+        cms_data: cmsData,
+      } as TireRow;
+    });
+  }, [getManualNonPassengerFlag, isAutoNonPassengerTire]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearchTerm(searchTerm), 250);
     return () => window.clearTimeout(timer);
@@ -358,6 +765,7 @@ export function useTiresCmsList(pageSize = 25) {
     showMissingEanOnly,
     hideNonPassenger,
     supplierFilter,
+    tireSegmentFilter,
     debouncedSearchTerm,
     missingMetadataFields,
     showMissingImagesOnly,
@@ -373,8 +781,9 @@ export function useTiresCmsList(pageSize = 25) {
         searchTerm,
         showMissingEanOnly,
         hideNonPassenger,
-        supplierFilter,
-        missingMetadataFields,
+    supplierFilter,
+    tireSegmentFilter,
+    missingMetadataFields,
         showMissingImagesOnly,
         showWithEprelOnly,
         missingSeoFields,
@@ -386,8 +795,9 @@ export function useTiresCmsList(pageSize = 25) {
     hideNonPassenger,
     searchTerm,
     showMissingEanOnly,
-    supplierFilter,
-    missingMetadataFields,
+        supplierFilter,
+        tireSegmentFilter,
+        missingMetadataFields,
     showMissingImagesOnly,
     showWithEprelOnly,
     missingSeoFields,
@@ -395,13 +805,15 @@ export function useTiresCmsList(pageSize = 25) {
 
   useEffect(() => {
     if (!cachedPage) return;
+    latestPageRequestRef.current += 1;
     setTires(cachedPage);
     setTotalCount(cachedQuery?.totalCount ?? 0);
+    setCachedItemCount(countCachedRows(cacheRef.current, queryKey));
     setHasNextPage(currentPage * pageSize < (cachedQuery?.totalCount ?? 0));
     setLoading(false);
     setRefreshing(false);
     setError(null);
-  }, [cachedPage, cachedQuery?.totalCount, currentPage, pageSize]);
+  }, [cachedPage, cachedQuery?.totalCount, currentPage, pageSize, queryKey]);
 
   const fetchTires = useCallback(async (options?: { force?: boolean }) => {
     const force = Boolean(options?.force);
@@ -414,21 +826,45 @@ export function useTiresCmsList(pageSize = 25) {
       lastForcedFetchAtRef.current = now;
     }
 
-    if (!force && cachedPage) {
+    const cachedTotalForWindow = cachedQuery?.totalCount ?? totalCount;
+    const cachedTotalPagesForWindow = Math.max(1, Math.ceil(cachedTotalForWindow / pageSize));
+    if (!force && cachedPage && !hasMissingPositiveWindow(cacheRef.current, queryKey, currentPage, cachedTotalPagesForWindow)) {
       return;
     }
 
-    const isInitialLoad = tires.length === 0;
-    if (isInitialLoad) {
+    const requestKey = `${queryKey}:${currentPage}:${force ? 'force' : 'normal'}`;
+    if (activeFetchKeyRef.current === requestKey) {
+      return;
+    }
+    activeFetchKeyRef.current = requestKey;
+    const requestId = latestPageRequestRef.current + 1;
+    latestPageRequestRef.current = requestId;
+    const requestPage = currentPage;
+    const requestQueryKey = queryKey;
+    const isCurrentRequest = () =>
+      latestPageRequestRef.current === requestId &&
+      activeQueryKeyRef.current === requestQueryKey;
+
+    const isPageLoad = !cachedPage;
+    const shouldShowPreloading =
+      !isPageLoad &&
+      hasMissingPositiveWindow(cacheRef.current, queryKey, requestPage, cachedTotalPagesForWindow);
+    if (isPageLoad) {
+      preloadRunRef.current += 1;
+      setTires([]);
       setLoading(true);
     } else {
       setRefreshing(true);
+      if (shouldShowPreloading) setPreloading(true);
     }
     setError(null);
 
     try {
       const trimmedSearch = debouncedSearchTerm.trim();
-      const offset = (currentPage - 1) * pageSize;
+      const fetchLimit = pageSize * CMS_PRELOAD_PAGE_COUNT;
+      const cachedTotalPages = Math.max(1, Math.ceil((cachedQuery?.totalCount ?? 0) / pageSize));
+      const windowStartPage = getPositiveWindowStartPage(currentPage, cachedQuery?.totalCount ? cachedTotalPages : 0);
+      const offset = (windowStartPage - 1) * pageSize;
       const mapRowsToTires = (rows: any[]) => {
         const normalizedEanCounts = new Map<string, number>();
 
@@ -569,18 +1005,31 @@ export function useTiresCmsList(pageSize = 25) {
       };
 
       try {
-        let { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
+        const listParams = {
           p_search: trimmedSearch || null,
           p_missing_ean_only: showMissingEanOnly,
           p_exclude_non_passenger: hideNonPassenger,
           p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+          p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
           p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
           p_missing_image_only: showMissingImagesOnly,
           p_has_eprel_only: showWithEprelOnly,
           p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
-          p_limit: pageSize,
+          p_limit: fetchLimit,
           p_offset: offset,
-        });
+        };
+        const countParams = {
+          p_search: trimmedSearch || null,
+          p_missing_ean_only: showMissingEanOnly,
+          p_exclude_non_passenger: hideNonPassenger,
+          p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+          p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
+          p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+          p_missing_image_only: showMissingImagesOnly,
+          p_has_eprel_only: showWithEprelOnly,
+          p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
+        };
+        let { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', listParams);
 
         if (rpcError) {
           if (!isStatementTimeoutError(rpcError)) {
@@ -590,13 +1039,13 @@ export function useTiresCmsList(pageSize = 25) {
           let fallbackQuery = supabase
             .from('webshop_items')
             .select(
-              'variant_id,product_type,ean,derived_ean,supplier_code_best,supplier_external_id_best,brand,brand_display_name,model,size_string,season,studded,runflat,xl_reinforced,load_index,speed_rating,speed_index,ev_ready,sound_absorber,threepmsf,winter_approved,ice_approved,eu_wet,eu_noise,eu_label_json,final_price_eur,price,in_stock,hero_image_url,gallery,manufacture_year',
+              'variant_id,product_type,ean,derived_ean,supplier_code_best,supplier_external_id_best,brand,brand_display_name,model,size_string,season,tire_segment,studded,runflat,xl_reinforced,load_index,speed_rating,speed_index,ev_ready,sound_absorber,threepmsf,winter_approved,ice_approved,eu_wet,eu_noise,eu_label_json,final_price_eur,price,in_stock,hero_image_url,gallery,manufacture_year',
             )
             .eq('product_type', 'tire')
             .eq('is_visible', true)
             .eq('publish_status', 'published')
             .order('variant_id', { ascending: true })
-            .range(offset, offset + pageSize - 1);
+            .range(offset, offset + fetchLimit - 1);
 
           if (trimmedSearch) {
             fallbackQuery = fallbackQuery.or([
@@ -609,6 +1058,7 @@ export function useTiresCmsList(pageSize = 25) {
             ].join(','));
           }
           if (supplierFilter !== 'all') fallbackQuery = fallbackQuery.eq('supplier_code_best', supplierFilter);
+          if (tireSegmentFilter !== 'all') fallbackQuery = fallbackQuery.eq('tire_segment', tireSegmentFilter);
 
           const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
           if (fallbackError) throw fallbackError;
@@ -616,18 +1066,38 @@ export function useTiresCmsList(pageSize = 25) {
         }
 
         let resolvedTotalCount = 0;
-        const { data: rpcCount, error: rpcCountError } = await supabase.rpc('cms_count_tires_admin_v1', {
-          p_search: trimmedSearch || null,
-          p_missing_ean_only: showMissingEanOnly,
-          p_exclude_non_passenger: hideNonPassenger,
-          p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
-          p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
-          p_missing_image_only: showMissingImagesOnly,
-          p_has_eprel_only: showWithEprelOnly,
-          p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
-        });
+        const countPromise = supabase.rpc('cms_count_tires_admin_v1', countParams);
+        const countResponse = await resolveWithTimeout(countPromise, CMS_COUNT_TIMEOUT_MS);
+        const rpcCount = countResponse?.data;
+        const rpcCountError = countResponse?.error;
+        if (!countResponse) {
+          countPromise.then(({ data, error: exactCountError }) => {
+            if (exactCountError || activeQueryKeyRef.current !== requestQueryKey) return;
+            const exactTotal = Number(data ?? 0);
+            setTotalCount(exactTotal);
+            setHasNextPage(requestPage * pageSize < exactTotal);
+            const existingQuery = cacheRef.current.queries[requestQueryKey];
+            if (!existingQuery) return;
+            const nextCacheStore: TiresCmsCacheStore = {
+              queries: {
+                ...cacheRef.current.queries,
+                [requestQueryKey]: {
+                  ...existingQuery,
+                  totalCount: exactTotal,
+                },
+              },
+            };
+            const prunedCacheStore = pruneIndexedPages(nextCacheStore, requestQueryKey, requestPage, pageSize);
+            cacheRef.current = prunedCacheStore;
+            writeTiresCmsCacheStore(prunedCacheStore);
+            void writeTiresCmsIndexedQuery(requestQueryKey, prunedCacheStore.queries[requestQueryKey]);
+            setCachedItemCount(countCachedRows(prunedCacheStore, requestQueryKey));
+          }).catch(() => undefined);
+        }
 
-        if (rpcCountError) {
+        if (!countResponse) {
+          resolvedTotalCount = offset + (Array.isArray(rpcRows) && rpcRows.length === fetchLimit ? rpcRows.length + 1 : (rpcRows?.length ?? 0));
+        } else if (rpcCountError) {
           if (isStatementTimeoutError(rpcCountError)) {
             resolvedTotalCount = offset + (Array.isArray(rpcRows) ? rpcRows.length : 0);
           } else {
@@ -652,7 +1122,7 @@ export function useTiresCmsList(pageSize = 25) {
               .in('variant_id', variantIds),
             supabase
               .from('catalog_selected_items')
-              .select('id,manufacture_year')
+              .select('id,manufacture_year,tire_segment')
               .in('id', variantIds),
           ]);
 
@@ -665,7 +1135,7 @@ export function useTiresCmsList(pageSize = 25) {
             console.warn('Failed to enrich CMS tire DOT years from catalog_selected_items:', selectedRowsError);
             const { data: webshopRows, error: webshopRowsError } = await supabase
               .from('webshop_items')
-              .select('variant_id,manufacture_year')
+              .select('variant_id,manufacture_year,tire_segment')
               .in('variant_id', variantIds);
             if (webshopRowsError) {
               console.warn('Failed to enrich CMS tire DOT years from webshop_items:', webshopRowsError);
@@ -691,6 +1161,11 @@ export function useTiresCmsList(pageSize = 25) {
               ?? webshopByVariantId.get(row.variant_id)?.manufacture_year
               ?? row.manufacture_year
               ?? null,
+            tire_segment:
+              selectedByVariantId.get(row.variant_id)?.tire_segment
+              ?? webshopByVariantId.get(row.variant_id)?.tire_segment
+              ?? row.tire_segment
+              ?? null,
             cms_data: liveCmsByVariantId.has(row.variant_id)
               ? liveCmsByVariantId.get(row.variant_id)
               : row.cms_data ?? null,
@@ -698,6 +1173,7 @@ export function useTiresCmsList(pageSize = 25) {
         }
 
         if (rows.length === 0) {
+          if (!isCurrentRequest()) return;
           setTires([]);
           setTotalCount(resolvedTotalCount);
           setHasNextPage(false);
@@ -708,21 +1184,27 @@ export function useTiresCmsList(pageSize = 25) {
                 totalCount: resolvedTotalCount,
                 pages: {
                   ...(cacheRef.current.queries[queryKey]?.pages ?? {}),
-                  [String(currentPage)]: [],
+                  [String(windowStartPage)]: [],
                 },
               },
             },
           };
-          cacheRef.current = nextCacheStore;
-          writeTiresCmsCacheStore(nextCacheStore);
+          const prunedCacheStore = pruneIndexedPages(nextCacheStore, queryKey, currentPage, pageSize);
+          cacheRef.current = prunedCacheStore;
+          writeTiresCmsCacheStore(prunedCacheStore);
+          void writeTiresCmsIndexedQuery(queryKey, prunedCacheStore.queries[queryKey]);
+          setCachedItemCount(countCachedRows(prunedCacheStore, queryKey));
           return;
         }
 
         const mappedRows = mapRowsToTires(rows);
-        const resolvedHasNextPage = currentPage * pageSize < resolvedTotalCount;
+        const pageCache = splitRowsByPage(mappedRows, windowStartPage, pageSize);
+        const currentRows = pageCache[String(requestPage)] ?? [];
+        const resolvedHasNextPage = requestPage * pageSize < resolvedTotalCount;
+        if (!isCurrentRequest()) return;
         setTotalCount(resolvedTotalCount);
         setHasNextPage(resolvedHasNextPage);
-        setTires(mappedRows);
+        setTires(currentRows);
         const nextCacheStore: TiresCmsCacheStore = {
           queries: {
             ...cacheRef.current.queries,
@@ -730,13 +1212,17 @@ export function useTiresCmsList(pageSize = 25) {
               totalCount: resolvedTotalCount,
               pages: {
                 ...(cacheRef.current.queries[queryKey]?.pages ?? {}),
-                [String(currentPage)]: mappedRows,
+                ...pageCache,
               },
             },
           },
         };
-        cacheRef.current = nextCacheStore;
-        writeTiresCmsCacheStore(nextCacheStore);
+        const prunedCacheStore = pruneIndexedPages(nextCacheStore, queryKey, requestPage, pageSize);
+        cacheRef.current = prunedCacheStore;
+        writeTiresCmsCacheStore(prunedCacheStore);
+        void writeTiresCmsIndexedQuery(queryKey, prunedCacheStore.queries[queryKey]);
+        setCachedItemCount(countCachedRows(prunedCacheStore, queryKey));
+
         return;
       } catch (rpcListError: any) {
         if (cachedPage && force) {
@@ -749,6 +1235,7 @@ export function useTiresCmsList(pageSize = 25) {
         throw rpcListError;
       }
     } catch (err: any) {
+      if (!isCurrentRequest()) return;
       if (isRecoverableFetchError(err) && cachedPage) {
         setError(null);
       } else {
@@ -756,8 +1243,14 @@ export function useTiresCmsList(pageSize = 25) {
         setError(err.message);
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (activeFetchKeyRef.current === requestKey) {
+        activeFetchKeyRef.current = null;
+      }
+      if (isCurrentRequest()) {
+        if (shouldShowPreloading) setPreloading(false);
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [
     currentPage,
@@ -770,24 +1263,177 @@ export function useTiresCmsList(pageSize = 25) {
     queryKey,
     showMissingEanOnly,
     supplierFilter,
+    tireSegmentFilter,
     missingMetadataFields,
     showMissingImagesOnly,
     showWithEprelOnly,
     missingSeoFields,
+    totalCount,
     tires.length,
   ]);
 
   useEffect(() => {
-    if (cachedPage && initialRevalidatedRef.current) {
+    if (typeof window === 'undefined') {
+      void fetchTires();
       return;
     }
 
-    if (cachedPage) {
-      initialRevalidatedRef.current = true;
+    latestPageRequestRef.current += 1;
+    preloadRunRef.current += 1;
+    if (!cachedPage) {
+      setTires([]);
+      setLoading(true);
     }
 
-    void fetchTires({ force: Boolean(cachedPage) });
-  }, [cachedPage, fetchTires]);
+    const timer = window.setTimeout(() => {
+      void fetchTires();
+    }, CMS_PAGE_SETTLE_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [currentPage, queryKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || totalCount <= 0) return;
+
+    const totalPagesForQuery = Math.max(1, Math.ceil(totalCount / pageSize));
+    if (!findFirstMissingPage(cacheRef.current, queryKey, totalPagesForQuery)) {
+      setPreloading(false);
+      return;
+    }
+
+    const runId = backgroundIndexRunRef.current + 1;
+    backgroundIndexRunRef.current = runId;
+    let cancelled = false;
+
+    const indexMissingPages = async () => {
+      setPreloading(true);
+
+      const trimmedSearch = debouncedSearchTerm.trim();
+      const chunkPageCount = CMS_PRELOAD_PAGE_COUNT;
+      const fetchLimit = pageSize * chunkPageCount;
+      const baseListParams = {
+        p_search: trimmedSearch || null,
+        p_missing_ean_only: showMissingEanOnly,
+        p_exclude_non_passenger: hideNonPassenger,
+        p_supplier_code: supplierFilter !== 'all' ? supplierFilter : null,
+        p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
+        p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
+        p_missing_image_only: showMissingImagesOnly,
+        p_has_eprel_only: showWithEprelOnly,
+        p_missing_seo_fields: missingSeoFields.length > 0 ? missingSeoFields : null,
+      };
+
+      while (!cancelled && backgroundIndexRunRef.current === runId) {
+        const currentTotalPages = Math.max(1, Math.ceil((cacheRef.current.queries[queryKey]?.totalCount ?? totalCount) / pageSize));
+        const missingPage = findFirstMissingPage(cacheRef.current, queryKey, currentTotalPages);
+        if (!missingPage) break;
+
+        const offset = (missingPage - 1) * pageSize;
+        const { data: rpcRows, error: rpcError } = await supabase.rpc('cms_list_tires_admin_v1', {
+          ...baseListParams,
+          p_limit: fetchLimit,
+          p_offset: offset,
+        });
+
+        if (cancelled || backgroundIndexRunRef.current !== runId) return;
+        if (rpcError) {
+          if (!isRecoverableFetchError(rpcError)) {
+            console.warn('Background tire CMS indexing failed:', rpcError);
+          }
+          break;
+        }
+
+        let rows = (rpcRows ?? []) as any[];
+        const variantIds = rows
+          .map((row: any) => row?.variant_id)
+          .filter((value: any): value is string => typeof value === 'string' && value.length > 0);
+
+        if (variantIds.length > 0) {
+          const [{ data: liveCmsRows, error: liveCmsError }, { data: selectedRows, error: selectedRowsError }] = await Promise.all([
+            supabase
+              .from('product_cms')
+              .select(
+                'variant_id,title,subtitle,short_description,long_description,hero_image_url,gallery,seo_slug,seo_title,seo_description,is_hidden,spec_overrides,price_override_eur,promo_enabled,promo_price_eur,promo_start,promo_end',
+              )
+              .in('variant_id', variantIds),
+            supabase
+              .from('catalog_selected_items')
+              .select('id,manufacture_year,tire_segment')
+              .in('id', variantIds),
+          ]);
+
+          if (!cancelled && !liveCmsError) {
+            const liveCmsByVariantId = new Map(((liveCmsRows ?? []) as any[]).map((row) => [row.variant_id, row]));
+            const selectedByVariantId = selectedRowsError
+              ? new Map<string, any>()
+              : new Map(((selectedRows ?? []) as any[]).map((row) => [row.id, row]));
+
+            rows = rows.map((row: any) => ({
+              ...row,
+              manufacture_year:
+                selectedByVariantId.get(row.variant_id)?.manufacture_year ??
+                row.manufacture_year ??
+                null,
+              tire_segment:
+                selectedByVariantId.get(row.variant_id)?.tire_segment ??
+                row.tire_segment ??
+                null,
+              cms_data: liveCmsByVariantId.has(row.variant_id)
+                ? liveCmsByVariantId.get(row.variant_id)
+                : row.cms_data ?? null,
+            }));
+          }
+        }
+
+        const mappedRows = mapRowsToTires(rows);
+        const pageCache = splitRowsByPage(mappedRows, missingPage, pageSize);
+        const nextCacheStore: TiresCmsCacheStore = {
+          queries: {
+            ...cacheRef.current.queries,
+            [queryKey]: {
+              totalCount,
+              pages: {
+                ...(cacheRef.current.queries[queryKey]?.pages ?? {}),
+                ...pageCache,
+              },
+            },
+          },
+        };
+        const prunedCacheStore = pruneIndexedPages(nextCacheStore, queryKey, currentPageRef.current, pageSize);
+        cacheRef.current = prunedCacheStore;
+        writeTiresCmsCacheStore(prunedCacheStore);
+        void writeTiresCmsIndexedQuery(queryKey, prunedCacheStore.queries[queryKey]);
+        setCachedItemCount(countCachedRows(prunedCacheStore, queryKey));
+
+        if (mappedRows.length < fetchLimit) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
+      }
+
+      if (!cancelled && backgroundIndexRunRef.current === runId) {
+        setPreloading(false);
+      }
+    };
+
+    void indexMissingPages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    debouncedSearchTerm,
+    hideNonPassenger,
+    mapRowsToTires,
+    missingMetadataFields,
+    missingSeoFields,
+    pageSize,
+    queryKey,
+    showMissingEanOnly,
+    showMissingImagesOnly,
+    showWithEprelOnly,
+    supplierFilter,
+    tireSegmentFilter,
+    totalCount,
+  ]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -795,6 +1441,7 @@ export function useTiresCmsList(pageSize = 25) {
     const handleExternalSync = () => {
       cacheRef.current = { queries: {} };
       writeTiresCmsCacheStore(cacheRef.current);
+      void clearTiresCmsIndexedQueries();
       lastForcedFetchAtRef.current = 0;
       void fetchTires({ force: true });
     };
@@ -985,6 +1632,7 @@ export function useTiresCmsList(pageSize = 25) {
   const invalidateCache = useCallback(() => {
     cacheRef.current = { queries: {} };
     writeTiresCmsCacheStore(cacheRef.current);
+    void clearTiresCmsIndexedQueries();
   }, []);
 
   return {
@@ -1008,6 +1656,7 @@ export function useTiresCmsList(pageSize = 25) {
     setShowMissingImagesOnly,
     setShowWithEprelOnly,
     setSupplierFilter,
+    setTireSegmentFilter,
     hideNonPassenger,
     missingMetadataFields,
     missingSeoFields,
@@ -1015,8 +1664,11 @@ export function useTiresCmsList(pageSize = 25) {
     showMissingImagesOnly,
     showWithEprelOnly,
     startItem,
+    tireSegmentFilter,
     tires,
     totalCount,
+    cachedItemCount,
+    preloading,
     totalPages,
     loading,
   };

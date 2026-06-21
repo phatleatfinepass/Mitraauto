@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTheme } from '../../ThemeContext';
-import { useLanguage } from '../../LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { supabase } from '../../../utils/supabase/client';
 import { AlertCircle, Banknote, CheckCircle2, ChevronRight, CreditCard, Globe, Mail, Package, Phone, ReceiptEuro, RefreshCcw, RotateCcw, Search, Send, Truck, XCircle } from 'lucide-react';
 import { calculateLinePricing, getPricingRulesFromSpecOverrides, type ProductPricingRules } from '../../../utils/pricing';
@@ -39,6 +39,7 @@ type OrderMarkStatus = (typeof ORDER_MARK_STATUSES)[number];
 type PaymentMethod = 'card' | 'cash' | 'paytrail';
 type PaymentResult = 'purchased' | 'pending' | 'fail';
 type PaymentInfo = { method: PaymentMethod; result: PaymentResult };
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
 type OrderCreateForm = {
   firstName: string;
   lastName: string;
@@ -82,12 +83,12 @@ interface SelectedOrderModalProps {
   getStatusBadgeClass: (status: string) => string;
   getStatusMeta: (status: string) => { icon: React.ComponentType<{ className?: string }>; tone: 'gray' | 'purple' | 'green' | 'blue' | 'red' | 'orange' };
   isDark: boolean;
-  language: string;
   markOrderStatus: (orderId: string, nextStatus: OrderMarkStatus) => void;
   order: OrderRow | null;
   orderMarkStatuses: readonly OrderMarkStatus[];
   orderTotals: { subtotalCents: number | null; vatCents: number | null; totalCents: number | null; vatPercent: number | null } | null;
   selectedItems: any[];
+  t: TranslateFn;
   updatingStatusId: string | null;
   onClose: () => void;
 }
@@ -107,12 +108,12 @@ function SelectedOrderModal({
   getStatusBadgeClass,
   getStatusMeta,
   isDark,
-  language,
   markOrderStatus,
   order,
   orderMarkStatuses,
   orderTotals,
   selectedItems,
+  t,
   updatingStatusId,
   onClose,
 }: SelectedOrderModalProps) {
@@ -125,13 +126,17 @@ function SelectedOrderModal({
       : payment.result === 'pending'
         ? isDark ? 'border-amber-500/30 bg-amber-500/20 text-amber-300' : 'border-amber-300 bg-amber-100 text-amber-700'
         : isDark ? 'border-red-500/30 bg-red-500/20 text-red-300' : 'border-red-300 bg-red-100 text-red-700';
-  const paymentMethodLabel = payment.method === 'paytrail' ? 'Paytrail' : payment.method === 'card' ? 'Card' : 'Cash';
+  const localizedPaymentMethodLabel = payment.method === 'paytrail'
+    ? 'Paytrail'
+    : payment.method === 'card'
+      ? t('ordersCms.card')
+      : t('ordersCms.cash');
   const paymentResultLabel =
     payment.result === 'purchased'
-      ? language === 'fi' ? 'Maksettu' : 'Purchased'
+      ? t('ordersCms.purchased')
       : payment.result === 'pending'
-        ? language === 'fi' ? 'Odottaa' : 'Pending'
-        : language === 'fi' ? 'Epäonnistui' : 'Fail';
+        ? t('ordersCms.pending')
+        : t('ordersCms.fail');
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -145,7 +150,7 @@ function SelectedOrderModal({
       }`}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className={`text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Tilauksen tiedot' : 'Order details'}
+            {t('ordersCms.orderDetails')}
           </h2>
           <button
             onClick={onClose}
@@ -153,37 +158,37 @@ function SelectedOrderModal({
               isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
             }`}
           >
-            {language === 'fi' ? 'Sulje' : 'Close'}
+            {t('ordersCms.close')}
           </button>
         </div>
 
         <div className={`mb-5 grid grid-cols-1 gap-3 text-sm md:grid-cols-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
           <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
             <p><strong>ID:</strong> {order.id}</p>
-            <p><strong>{language === 'fi' ? 'Päivä' : 'Date'}:</strong> {formatDate(order.created_at)}</p>
+            <p><strong>{t('ordersCms.date')}:</strong> {formatDate(order.created_at)}</p>
             <p className="mt-1">
-              <strong>{language === 'fi' ? 'Maksun tila' : 'Payment status'}:</strong>{' '}
+              <strong>{t('ordersCms.paymentStatus')}:</strong>{' '}
               <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${paymentBadgeClass}`}>
-                {paymentMethodLabel} · {paymentResultLabel}
+                {localizedPaymentMethodLabel} · {paymentResultLabel}
               </span>
             </p>
-            <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> {formatMoney(orderTotals?.subtotalCents ?? null)}</p>
+            <p><strong>{t('ordersCms.subtotal')}:</strong> {formatMoney(orderTotals?.subtotalCents ?? null)}</p>
             <p>
-              <strong>{language === 'fi' ? 'ALV' : 'VAT'} ({orderTotals?.vatPercent !== null && orderTotals?.vatPercent !== undefined ? orderTotals.vatPercent.toFixed(1) : '-' }%):</strong>{' '}
+              <strong>{t('ordersCms.vat')} ({orderTotals?.vatPercent !== null && orderTotals?.vatPercent !== undefined ? orderTotals.vatPercent.toFixed(1) : '-' }%):</strong>{' '}
               {formatMoney(orderTotals?.vatCents ?? null)}
             </p>
-            <p><strong>{language === 'fi' ? 'Yhteensä' : 'Total'}:</strong> {formatMoney(orderTotals?.totalCents ?? order.grand_total_cents)}</p>
+            <p><strong>{t('ordersCms.total')}:</strong> {formatMoney(orderTotals?.totalCents ?? order.grand_total_cents)}</p>
           </div>
           <div className={`rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-            <p><strong>{language === 'fi' ? 'Asiakas' : 'Customer'}:</strong> {formatCustomerName(order)}</p>
+            <p><strong>{t('ordersCms.customer')}:</strong> {formatCustomerName(order)}</p>
             <p><strong>Email:</strong> {getCustomerEmail(order)}</p>
-            <p><strong>{language === 'fi' ? 'Puhelin' : 'Phone'}:</strong> {getCustomerPhone(order)}</p>
+            <p><strong>{t('ordersCms.phone')}:</strong> {getCustomerPhone(order)}</p>
           </div>
         </div>
 
         <div className={`mb-5 rounded-lg border p-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
           <p className={`mb-2 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Päivitä toimituksen tila' : 'Update fulfillment status'}
+            {t('ordersCms.updateFulfillmentStatus')}
           </p>
           <div className="flex flex-wrap gap-2">
             {orderMarkStatuses.map((status) => {
@@ -208,7 +213,7 @@ function SelectedOrderModal({
 
         <div>
           <h3 className={`mb-3 text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Tilatut tuotteet' : 'Ordered items'}
+            {t('ordersCms.orderedItems')}
           </h3>
           {selectedItems.length === 0 ? (
             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>-</p>
@@ -232,10 +237,10 @@ function SelectedOrderModal({
                     <div className={`space-y-1 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                       <p><strong>EAN:</strong> {ean || '-'}</p>
                       <p><strong>SKU:</strong> {sku || '-'}</p>
-                      <p><strong>{language === 'fi' ? 'Koko' : 'Size'}:</strong> {size || '-'}</p>
-                      <p><strong>{language === 'fi' ? 'Määrä' : 'Qty'}:</strong> {qty}</p>
-                      <p><strong>{language === 'fi' ? 'Yksikköhinta' : 'Unit price'}:</strong> EUR {(unitCents / 100).toFixed(2)}</p>
-                      <p><strong>{language === 'fi' ? 'Rivin summa' : 'Line total'}:</strong> EUR {lineTotal.toFixed(2)}</p>
+                      <p><strong>{t('ordersCms.size')}:</strong> {size || '-'}</p>
+                      <p><strong>{t('ordersCms.qty')}:</strong> {qty}</p>
+                      <p><strong>{t('ordersCms.unitPrice')}:</strong> EUR {(unitCents / 100).toFixed(2)}</p>
+                      <p><strong>{t('ordersCms.lineTotal')}:</strong> EUR {lineTotal.toFixed(2)}</p>
                     </div>
                   </div>
                 );
@@ -256,12 +261,12 @@ interface CreateOrderModalProps {
   eanLookupMessage: string | null;
   handleCreateOrder: () => void;
   isDark: boolean;
-  language: string;
   lookupItemByEan: (eanRaw: string) => Promise<void>;
   open: boolean;
   setCreateForm: React.Dispatch<React.SetStateAction<OrderCreateForm>>;
   setCreateOrderOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setEanLookupMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  t: TranslateFn;
 }
 
 function CreateOrderModal({
@@ -272,12 +277,12 @@ function CreateOrderModal({
   eanLookupMessage,
   handleCreateOrder,
   isDark,
-  language,
   lookupItemByEan,
   open,
   setCreateForm,
   setCreateOrderOpen,
   setEanLookupMessage,
+  t,
 }: CreateOrderModalProps) {
   if (!open) return null;
 
@@ -293,7 +298,7 @@ function CreateOrderModal({
       }`}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className={`text-xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'Luo tilaus' : 'Create order'}
+            {t('ordersCms.createOrder')}
           </h2>
           <button
             onClick={() => setCreateOrderOpen(false)}
@@ -301,21 +306,21 @@ function CreateOrderModal({
               isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
             }`}
           >
-            {language === 'fi' ? 'Sulje' : 'Close'}
+            {t('ordersCms.close')}
           </button>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <input
             type="text"
-            placeholder={language === 'fi' ? 'Etunimi' : 'First name'}
+            placeholder={t('ordersCms.firstName')}
             value={createForm.firstName}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, firstName: e.target.value }))}
             className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
           />
           <input
             type="text"
-            placeholder={language === 'fi' ? 'Sukunimi' : 'Last name'}
+            placeholder={t('ordersCms.lastName')}
             value={createForm.lastName}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, lastName: e.target.value }))}
             className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
@@ -329,14 +334,14 @@ function CreateOrderModal({
           />
           <input
             type="text"
-            placeholder={language === 'fi' ? 'Puhelin' : 'Phone'}
+            placeholder={t('ordersCms.phone')}
             value={createForm.phone}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, phone: e.target.value }))}
             className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
           />
           <input
             type="text"
-            placeholder={language === 'fi' ? 'Tuotteen nimi' : 'Item name'}
+            placeholder={t('ordersCms.itemName')}
             value={createForm.itemName}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, itemName: e.target.value }))}
             className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
@@ -362,7 +367,7 @@ function CreateOrderModal({
           <input
             type="number"
             min={1}
-            placeholder={language === 'fi' ? 'Määrä' : 'Qty'}
+            placeholder={t('ordersCms.qty')}
             value={createForm.qty}
             onChange={(e) => {
               const value = e.target.value;
@@ -388,7 +393,7 @@ function CreateOrderModal({
             type="number"
             min={0}
             step="0.01"
-            placeholder={language === 'fi' ? 'Yksikköhinta EUR' : 'Unit price EUR'}
+            placeholder={t('ordersCms.unitPriceEur')}
             value={createForm.unitPriceEur}
             onChange={(e) => setCreateForm((prev) => ({
               ...prev,
@@ -402,7 +407,7 @@ function CreateOrderModal({
             min={0}
             max={100}
             step="0.1"
-            placeholder={language === 'fi' ? 'ALV %' : 'VAT %'}
+            placeholder={t('ordersCms.vatPercent')}
             value={createForm.vatPercent}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, vatPercent: e.target.value }))}
             className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
@@ -412,8 +417,8 @@ function CreateOrderModal({
             onChange={(e) => setCreateForm((prev) => ({ ...prev, paymentMethod: e.target.value as PaymentMethod }))}
             className={`rounded-lg border px-3 py-2 ${isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'}`}
           >
-            <option value="cash">{language === 'fi' ? 'Käteinen' : 'Cash'}</option>
-            <option value="card">{language === 'fi' ? 'Kortti' : 'Card'}</option>
+            <option value="cash">{t('ordersCms.cash')}</option>
+            <option value="card">{t('ordersCms.card')}</option>
           </select>
           <select
             value={createForm.status}
@@ -442,19 +447,19 @@ function CreateOrderModal({
               <>
                 {usingAutoPricing && autoPricing.savingsEur > 0 && (
                   <p>
-                    <strong>{language === 'fi' ? 'Pakettialennus' : 'Bundle discount'}:</strong>{' '}
+                    <strong>{t('ordersCms.bundleDiscount')}:</strong>{' '}
                     EUR {autoPricing.savingsEur.toFixed(2)}
                   </p>
                 )}
-                <p><strong>{language === 'fi' ? 'Välisumma' : 'Subtotal'}:</strong> EUR {subtotal.toFixed(2)}</p>
-                <p><strong>{language === 'fi' ? 'ALV' : 'VAT'} ({Number.isFinite(vatPercent) ? vatPercent.toFixed(1) : '0.0'}%):</strong> EUR {vat.toFixed(2)}</p>
-                <p><strong>{language === 'fi' ? 'Kokonaissumma' : 'Total'}:</strong> EUR {total.toFixed(2)}</p>
+                <p><strong>{t('ordersCms.subtotal')}:</strong> EUR {subtotal.toFixed(2)}</p>
+                <p><strong>{t('ordersCms.vat')} ({Number.isFinite(vatPercent) ? vatPercent.toFixed(1) : '0.0'}%):</strong> EUR {vat.toFixed(2)}</p>
+                <p><strong>{t('ordersCms.totalAmount')}:</strong> EUR {total.toFixed(2)}</p>
               </>
             );
           })()}
           {eanLookupLoading && (
             <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {language === 'fi' ? 'Haetaan EAN-tuotetta...' : 'Looking up EAN item...'}
+              {t('ordersCms.lookingUpEan')}
             </p>
           )}
           {eanLookupMessage && (
@@ -474,7 +479,7 @@ function CreateOrderModal({
               isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
             }`}
           >
-            {language === 'fi' ? 'Peruuta' : 'Cancel'}
+            {t('ordersCms.cancel')}
           </button>
           <button
             onClick={handleCreateOrder}
@@ -484,8 +489,8 @@ function CreateOrderModal({
             }`}
           >
             {creatingOrder
-              ? (language === 'fi' ? 'Luodaan...' : 'Creating...')
-              : (language === 'fi' ? 'Luo tilaus' : 'Create order')}
+              ? t('ordersCms.creating')
+              : t('ordersCms.createOrder')}
           </button>
         </div>
       </div>
@@ -496,7 +501,6 @@ function CreateOrderModal({
 interface OrdersToolbarProps {
   fetchOrders: () => void;
   isDark: boolean;
-  language: string;
   purchasedOnly: boolean;
   resetCreateForm: () => void;
   searchTerm: string;
@@ -505,12 +509,12 @@ interface OrdersToolbarProps {
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   setStatusFilter: React.Dispatch<React.SetStateAction<StatusFilter>>;
   statusFilter: StatusFilter;
+  t: TranslateFn;
 }
 
 function OrdersToolbar({
   fetchOrders,
   isDark,
-  language,
   purchasedOnly,
   resetCreateForm,
   searchTerm,
@@ -519,6 +523,7 @@ function OrdersToolbar({
   setSearchTerm,
   setStatusFilter,
   statusFilter,
+  t,
 }: OrdersToolbarProps) {
   return (
     <div className={`border-b ${isDark ? 'bg-[#161A22] border-white/10' : 'bg-white border-gray-200'} px-8 py-4`}>
@@ -527,7 +532,7 @@ function OrdersToolbar({
           <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
           <input
             type="text"
-            placeholder={language === 'fi' ? 'Hae tilausta, sähköpostia tai puhelinta...' : 'Search order, email, or phone...'}
+            placeholder={t('ordersCms.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={`w-full rounded-lg border py-2 pl-10 pr-4 ${
@@ -546,14 +551,14 @@ function OrdersToolbar({
               isDark ? 'border-white/20 bg-[#1C1C1E] text-white' : 'border-gray-300 bg-white text-gray-900'
             }`}
           >
-            <option value="all">{language === 'fi' ? 'Kaikki tilat' : 'All statuses'}</option>
-            <option value="receive">{language === 'fi' ? 'Vastaanotettu' : 'Receive'}</option>
-            <option value="sent">{language === 'fi' ? 'Lähetetty' : 'Sent'}</option>
-            <option value="ready">{language === 'fi' ? 'Valmis noudettavaksi' : 'Ready'}</option>
-            <option value="delivered">{language === 'fi' ? 'Toimitettu' : 'Delivered'}</option>
-            <option value="cancelled">{language === 'fi' ? 'Peruttu' : 'Cancelled'}</option>
-            <option value="returned">{language === 'fi' ? 'Palautettu' : 'Returned'}</option>
-            <option value="done">{language === 'fi' ? 'Valmis' : 'Done'}</option>
+            <option value="all">{t('ordersCms.allStatuses')}</option>
+            <option value="receive">{t('ordersCms.statusReceive')}</option>
+            <option value="sent">{t('ordersCms.statusSent')}</option>
+            <option value="ready">{t('ordersCms.statusReady')}</option>
+            <option value="delivered">{t('ordersCms.statusDelivered')}</option>
+            <option value="cancelled">{t('ordersCms.statusCancelled')}</option>
+            <option value="returned">{t('ordersCms.statusReturned')}</option>
+            <option value="done">{t('ordersCms.statusDone')}</option>
           </select>
 
           <label className="flex cursor-pointer items-center gap-2">
@@ -564,7 +569,7 @@ function OrdersToolbar({
               className="h-4 w-4 rounded border-gray-300"
             />
             <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {language === 'fi' ? 'Näytä vain ostetut' : 'Show purchased only'}
+              {t('ordersCms.showPurchasedOnly')}
             </span>
           </label>
 
@@ -575,7 +580,7 @@ function OrdersToolbar({
             }`}
           >
             <RefreshCcw className="h-4 w-4" />
-            {language === 'fi' ? 'Päivitä' : 'Refresh'}
+            {t('ordersCms.refresh')}
           </button>
           <button
             onClick={() => {
@@ -587,7 +592,7 @@ function OrdersToolbar({
             }`}
           >
             <Package className="h-4 w-4" />
-            {language === 'fi' ? 'Luo tilaus' : 'Create order'}
+            {t('ordersCms.createOrder')}
           </button>
         </div>
       </div>
@@ -612,13 +617,13 @@ interface OrdersTableSectionProps {
   getStatusBadgeClass: (status: string) => string;
   getStatusMeta: (status: string) => { icon: React.ComponentType<{ className?: string }>; tone: 'gray' | 'purple' | 'green' | 'blue' | 'red' | 'orange' };
   isDark: boolean;
-  language: string;
   loading: boolean;
   markOrderStatus: (orderId: string, nextStatus: OrderMarkStatus) => void;
   orders: OrderRow[];
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
   setSelectedOrder: React.Dispatch<React.SetStateAction<OrderRow | null>>;
   startItem: number;
+  t: TranslateFn;
   totalCount: number;
   totalPages: number;
   currentPage: number;
@@ -643,13 +648,13 @@ function OrdersTableSection({
   getStatusBadgeClass,
   getStatusMeta,
   isDark,
-  language,
   loading,
   markOrderStatus,
   orders,
   setCurrentPage,
   setSelectedOrder,
   startItem,
+  t,
   totalCount,
   totalPages,
   updatingStatusId,
@@ -659,7 +664,7 @@ function OrdersTableSection({
       <div className="py-20 text-center">
         <div className={`mx-auto h-12 w-12 animate-spin rounded-full border-b-2 ${isDark ? 'border-white' : 'border-gray-900'}`} />
         <p className={`mt-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          {language === 'fi' ? 'Ladataan tilauksia...' : 'Loading orders...'}
+          {t('ordersCms.loadingOrders')}
         </p>
       </div>
     );
@@ -672,12 +677,12 @@ function OrdersTableSection({
           <table className="w-full min-w-[1100px]">
             <thead className={isDark ? 'bg-white/5' : 'bg-gray-50'}>
               <tr>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Päivä' : 'Date'}</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Tilaus' : 'Order'}</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Asiakas' : 'Customer'}</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Tuotteet' : 'Items'}</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Yhteensä' : 'Total'}</th>
-                <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Toiminto' : 'Action'}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('ordersCms.date')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('ordersCms.order')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('ordersCms.customer')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('ordersCms.items')}</th>
+                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('ordersCms.total')}</th>
+                <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('ordersCms.action')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
@@ -736,10 +741,8 @@ function OrdersTableSection({
                       {deletionInfo && (
                         <p className={`mt-1 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
                           {deletionInfo.isExpired
-                            ? (language === 'fi' ? 'Poistettavissa nyt' : 'Scheduled for deletion now')
-                            : (language === 'fi'
-                                ? `Poistuu ${deletionInfo.daysLeft} päivän kuluttua`
-                                : `Scheduled deletion in ${deletionInfo.daysLeft} day(s)`)}
+                            ? t('ordersCms.scheduledDeletionNow')
+                            : t('ordersCms.scheduledDeletionIn', { count: deletionInfo.daysLeft })}
                         </p>
                       )}
                     </td>
@@ -748,7 +751,7 @@ function OrdersTableSection({
                         <button
                           onClick={() => markOrderStatus(order.id, getNextStatus(displayStatus))}
                           disabled={updatingStatusId === order.id}
-                          title={language === 'fi' ? 'Päivitä seuraavaan tilaan' : 'Move to next status'}
+                          title={t('ordersCms.moveToNextStatus')}
                           className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${getStatusBadgeClass(displayStatus)} ${
                             isDark ? 'hover:bg-white/10' : 'hover:opacity-90'
                           }`}
@@ -777,7 +780,7 @@ function OrdersTableSection({
       {orders.length === 0 && (
         <div className="py-10 text-center">
           <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>
-            {language === 'fi' ? 'Tilauksia ei löytynyt' : 'No orders found'}
+            {t('ordersCms.noOrdersFound')}
           </p>
         </div>
       )}
@@ -785,9 +788,7 @@ function OrdersTableSection({
       {totalPages > 1 && (
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            {language === 'fi'
-              ? `Näytetään ${startItem}-${endItem} / ${totalCount}`
-              : `Showing ${startItem}-${endItem} of ${totalCount}`}
+            {t('ordersCms.showingRange', { start: startItem, end: endItem, total: totalCount })}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -797,7 +798,7 @@ function OrdersTableSection({
                 isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
               }`}
             >
-              {language === 'fi' ? 'Edellinen' : 'Previous'}
+              {t('ordersCms.previous')}
             </button>
             <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               {currentPage} / {totalPages}
@@ -809,7 +810,7 @@ function OrdersTableSection({
                 isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-900 hover:bg-gray-100'
               }`}
             >
-              {language === 'fi' ? 'Seuraava' : 'Next'}
+              {t('ordersCms.next')}
             </button>
           </div>
         </div>
@@ -820,7 +821,8 @@ function OrdersTableSection({
 
 export function OrdersCMSPage() {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const dateLocale = { fi: 'fi-FI', en: 'en-GB' }[language];
   const isDark = theme === 'dark';
   const [workspaceMode, setWorkspaceMode] = useState<'orders' | 'invoices'>('orders');
 
@@ -1135,86 +1137,27 @@ export function OrdersCMSPage() {
     setEanLookupMessage(null);
 
     try {
-      const searchSelect = 'variant_id, brand, model, size_string, price';
-      const isMissingColumn = (error: any, column: string) => {
-        const text = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
-        return text.includes('column') && text.includes(column.toLowerCase());
-      };
+      const { data, error } = await supabase
+        .from('webshop_items')
+        .select('variant_id, brand, model, size_string, price, final_price_eur')
+        .eq('publish_status', 'published')
+        .eq('is_visible', true)
+        .or(`ean.eq.${ean},derived_ean.eq.${ean}`)
+        .order('product_ready', { ascending: false })
+        .order('final_price_eur', { ascending: true, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
 
-      let data: any = null;
-
-      // 1) Direct lookup by `ean` when column exists.
-      {
-        const byEan = await supabase
-          .from('products_search')
-          .select(searchSelect)
-          .eq('ean', ean)
-          .limit(1)
-          .maybeSingle();
-
-        if (!byEan.error) {
-          data = byEan.data;
-        } else if (!isMissingColumn(byEan.error, 'ean')) {
-          throw byEan.error;
-        }
-      }
-
-      // 2) Fallback lookup by `derived_ean` when column exists.
-      if (!data) {
-        const byDerivedEan = await supabase
-          .from('products_search')
-          .select(searchSelect)
-          .eq('derived_ean', ean)
-          .limit(1)
-          .maybeSingle();
-
-        if (!byDerivedEan.error) {
-          data = byDerivedEan.data;
-        } else if (!isMissingColumn(byDerivedEan.error, 'derived_ean')) {
-          throw byDerivedEan.error;
-        }
-      }
-
-      // 3) CMS-style robust fallback: map EAN -> variant_id from catalog tables, then resolve via products_search.
-      if (!data) {
-        const [{ data: tireHits, error: tireError }, { data: rimHits, error: rimError }] = await Promise.all([
-          supabase.from('catalog_tire_variants').select('id').eq('ean', ean).limit(1),
-          supabase.from('catalog_rim_variants').select('id').eq('ean', ean).limit(1),
-        ]);
-
-        if (tireError) {
-          console.warn('EAN lookup tire fallback error:', tireError);
-        }
-        if (rimError) {
-          console.warn('EAN lookup rim fallback error:', rimError);
-        }
-
-        const variantIds = [
-          ...(tireHits ?? []).map((row: any) => row.id),
-          ...(rimHits ?? []).map((row: any) => row.id),
-        ].filter(Boolean);
-
-        if (variantIds.length > 0) {
-          const byVariant = await supabase
-            .from('products_search')
-            .select(searchSelect)
-            .in('variant_id', variantIds)
-            .limit(1)
-            .maybeSingle();
-
-          if (byVariant.error) throw byVariant.error;
-          data = byVariant.data;
-        }
-      }
+      if (error) throw error;
 
       if (!data) {
-        setEanLookupMessage(language === 'fi' ? 'EAN ei löytynyt tuotteista.' : 'EAN not found in products.');
+        setEanLookupMessage(t('ordersCms.eanNotFound'));
         return;
       }
 
       const resolvedTitle = `${data.brand ?? ''} ${data.model ?? ''}`.trim();
       const titled = data.size_string ? `${resolvedTitle} ${data.size_string}`.trim() : resolvedTitle;
-      const resolvedPrice = data.price ?? null;
+      const resolvedPrice = data.final_price_eur ?? data.price ?? null;
       const resolvedVariantId = data.variant_id ?? null;
 
       let pricingRules: ProductPricingRules | null = null;
@@ -1251,7 +1194,7 @@ export function OrdersCMSPage() {
         };
       });
 
-      setEanLookupMessage(language === 'fi' ? 'Tuote löytyi ja hinta täytettiin.' : 'Item found and price auto-filled.');
+      setEanLookupMessage(t('ordersCms.eanFound'));
     } catch (err: any) {
       console.error('EAN lookup error:', err);
       setEanLookupMessage(err.message ?? 'EAN lookup failed');
@@ -1267,11 +1210,11 @@ export function OrdersCMSPage() {
     const unitPriceValue = Number.parseFloat(createForm.unitPriceEur);
     const vatPercentValue = Number.parseFloat(createForm.vatPercent);
     if (!Number.isFinite(unitPriceValue) || unitPriceValue <= 0) {
-      setCreateOrderError(language === 'fi' ? 'Anna kelvollinen yksikköhinta.' : 'Provide a valid unit price.');
+      setCreateOrderError(t('ordersCms.invalidUnitPrice'));
       return;
     }
     if (!Number.isFinite(vatPercentValue) || vatPercentValue < 0 || vatPercentValue > 100) {
-      setCreateOrderError(language === 'fi' ? 'Anna kelvollinen ALV-prosentti (0-100).' : 'Provide a valid VAT % (0-100).');
+      setCreateOrderError(t('ordersCms.invalidVatPercent'));
       return;
     }
 
@@ -1376,11 +1319,7 @@ export function OrdersCMSPage() {
       console.error('Create order error:', err);
       const errorText = `${err?.message ?? ''} ${err?.details ?? ''}`.toLowerCase();
       if (errorText.includes('row-level security') || String(err?.code ?? '') === '42501') {
-        setCreateOrderError(
-          language === 'fi'
-            ? 'Ei oikeutta kirjoittaa orders-tauluun (RLS). Aja ORDERS_CMS_SAFE_READ_POLICY.sql.'
-            : 'No write permission for orders table (RLS). Run ORDERS_CMS_SAFE_READ_POLICY.sql.'
-        );
+        setCreateOrderError(t('ordersCms.ordersRlsWriteDenied'));
       } else {
         setCreateOrderError(err.message ?? 'Failed to create order');
       }
@@ -1752,7 +1691,7 @@ export function OrdersCMSPage() {
     if (!value) return '-';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '-';
-    return new Intl.DateTimeFormat(language === 'fi' ? 'fi-FI' : 'en-GB', {
+    return new Intl.DateTimeFormat(dateLocale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -1794,8 +1733,8 @@ export function OrdersCMSPage() {
     null;
   const WorkspaceIcon = workspaceMode === 'orders' ? Package : ReceiptEuro;
   const workspaceTitle = workspaceMode === 'orders'
-    ? (language === 'fi' ? 'Tilaukset' : 'Orders')
-    : (language === 'fi' ? 'Laskut' : 'Invoices');
+    ? t('ordersCms.orders')
+    : t('ordersCms.invoices');
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B0D10]' : 'bg-gray-50'}`}>
@@ -1821,8 +1760,8 @@ export function OrdersCMSPage() {
                   }`}
                 >
                   {mode === 'orders'
-                    ? (language === 'fi' ? 'Tilaukset' : 'Orders')
-                    : (language === 'fi' ? 'Laskut' : 'Invoices')}
+                    ? t('ordersCms.orders')
+                    : t('ordersCms.invoices')}
                 </button>
               ))}
             </div>
@@ -1833,7 +1772,7 @@ export function OrdersCMSPage() {
       {workspaceMode === 'invoices' ? (
         <InvoicesCMSPage
           documentScope="invoice"
-          title={language === 'fi' ? 'Laskut' : 'Invoices'}
+          title={t('ordersCms.invoices')}
         />
       ) : (
         <>
@@ -1841,7 +1780,6 @@ export function OrdersCMSPage() {
       <OrdersToolbar
         fetchOrders={fetchOrders}
         isDark={isDark}
-        language={language}
         purchasedOnly={purchasedOnly}
         resetCreateForm={resetCreateForm}
         searchTerm={searchTerm}
@@ -1850,24 +1788,25 @@ export function OrdersCMSPage() {
         setSearchTerm={setSearchTerm}
         setStatusFilter={setStatusFilter}
         statusFilter={statusFilter}
+        t={t}
       />
 
       <div className="px-8 py-6">
         <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-[#161A22]' : 'border-gray-200 bg-white'}`}>
-            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{language === 'fi' ? 'Näytetyt tilaukset' : 'Visible orders'}</p>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('ordersCms.visibleOrders')}</p>
             <p className={`mt-1 text-2xl ${isDark ? 'text-white' : 'text-gray-900'}`}>{orderSummary.total}</p>
           </div>
           <div className={`rounded-lg border p-4 ${isDark ? 'border-green-500/30 bg-green-500/10' : 'border-green-200 bg-green-50'}`}>
-            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-green-300' : 'text-green-700'}`}>{language === 'fi' ? 'Valmis / Toimitettu' : 'Done / Delivered'}</p>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-green-300' : 'text-green-700'}`}>{t('ordersCms.doneDelivered')}</p>
             <p className={`mt-1 text-2xl ${isDark ? 'text-green-300' : 'text-green-700'}`}>{orderSummary.done}</p>
           </div>
           <div className={`rounded-lg border p-4 ${isDark ? 'border-blue-500/30 bg-blue-500/10' : 'border-blue-200 bg-blue-50'}`}>
-            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{language === 'fi' ? 'Käsittelyssä' : 'In progress'}</p>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{t('ordersCms.inProgress')}</p>
             <p className={`mt-1 text-2xl ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{orderSummary.transit}</p>
           </div>
           <div className={`rounded-lg border p-4 ${isDark ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
-            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-red-300' : 'text-red-700'}`}>{language === 'fi' ? 'Poikkeus' : 'Exception'}</p>
+            <p className={`text-xs uppercase tracking-wider ${isDark ? 'text-red-300' : 'text-red-700'}`}>{t('ordersCms.exception')}</p>
             <p className={`mt-1 text-2xl ${isDark ? 'text-red-300' : 'text-red-700'}`}>{orderSummary.alert}</p>
           </div>
         </div>
@@ -1876,7 +1815,7 @@ export function OrdersCMSPage() {
           <div className={`mb-4 flex gap-3 p-4 rounded-lg ${isDark ? 'bg-red-900/20 text-red-300' : 'bg-red-50 text-red-700'}`}>
             <AlertCircle className="w-5 h-5 shrink-0" />
             <div>
-              <p className="font-medium">{language === 'fi' ? 'Virhe tilausten haussa' : 'Error loading orders'}</p>
+              <p className="font-medium">{t('ordersCms.errorLoadingOrders')}</p>
               <p className="text-sm">{error}</p>
             </div>
           </div>
@@ -1900,13 +1839,13 @@ export function OrdersCMSPage() {
           getStatusBadgeClass={getStatusBadgeClass}
           getStatusMeta={getStatusMeta}
           isDark={isDark}
-          language={language}
           loading={loading}
           markOrderStatus={markOrderStatus}
           orders={orders}
           setCurrentPage={setCurrentPage}
           setSelectedOrder={setSelectedOrder}
           startItem={startItem}
+          t={t}
           totalCount={totalCount}
           totalPages={totalPages}
           updatingStatusId={updatingStatusId}
@@ -1927,12 +1866,12 @@ export function OrdersCMSPage() {
           getStatusBadgeClass={getStatusBadgeClass}
           getStatusMeta={getStatusMeta}
           isDark={isDark}
-          language={language}
           markOrderStatus={markOrderStatus}
           order={selectedOrder}
           orderMarkStatuses={ORDER_MARK_STATUSES}
           orderTotals={selectedOrderTotals}
           selectedItems={selectedItems}
+          t={t}
           updatingStatusId={updatingStatusId}
           onClose={() => setSelectedOrder(null)}
         />
@@ -1945,12 +1884,12 @@ export function OrdersCMSPage() {
           eanLookupMessage={eanLookupMessage}
           handleCreateOrder={handleCreateOrder}
           isDark={isDark}
-          language={language}
           lookupItemByEan={lookupItemByEan}
           open={createOrderOpen}
           setCreateForm={setCreateForm}
           setCreateOrderOpen={setCreateOrderOpen}
           setEanLookupMessage={setEanLookupMessage}
+          t={t}
         />
       </div>
         </>

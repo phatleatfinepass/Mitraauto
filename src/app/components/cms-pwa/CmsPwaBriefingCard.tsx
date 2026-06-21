@@ -6,6 +6,7 @@ type BriefingTone = 'critical' | 'warning' | 'normal' | 'done';
 export interface BriefingAction {
   label: string;
   kind?: 'primary' | 'secondary' | 'danger';
+  icon?: 'phone' | 'mail';
   href?: string;
   target?: string;
   rel?: string;
@@ -182,8 +183,8 @@ export function CmsPwaBriefingCard({ item }: CmsPwaBriefingCardProps) {
                 );
               }
 
-              const isTelAction = action.label.toLowerCase().includes('call') || action.label.toLowerCase().includes('soita');
-              const isMailAction = action.label.toLowerCase().includes('email') || action.label.toLowerCase().includes('sähkö');
+              const isTelAction = action.icon === 'phone' || action.label.toLowerCase().includes('call');
+              const isMailAction = action.icon === 'mail' || action.label.toLowerCase().includes('email') || action.label.toLowerCase().includes('mail');
               return (
                 <button
                   key={`${item.id}-${action.label}`}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Card } from '../../ui/card';
 import { ContactSection } from '../sections/ContactSection';
 import { ImageWithFallback } from '../../figma/ImageWithFallback';
@@ -10,6 +10,7 @@ import {
   CircleDot,
   Warehouse
 } from 'lucide-react';
+import { businessProfile } from '../../../config/businessProfile';
 import workshop from 'figma:asset/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png';
 
 interface AboutPageProps {
@@ -18,7 +19,7 @@ interface AboutPageProps {
 }
 
 export function AboutPage({ onBookingClick, onNavigate }: AboutPageProps) {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
 
   const expertiseAreas = [
     {
@@ -41,19 +42,6 @@ export function AboutPage({ onBookingClick, onNavigate }: AboutPageProps) {
       titleKey: 'about.expertise.tireHotel.title',
       descKey: 'about.expertise.tireHotel.desc',
     }
-  ];
-
-  const teamMembers = [
-    { name: 'Mikko Virtanen', role: language === 'fi' ? 'Päämekaanikko' : 'Lead Mechanic' },
-    { name: 'Anna Korhonen', role: language === 'fi' ? 'Palvelupäällikkö' : 'Service Manager' },
-    { name: 'Jari Nieminen', role: language === 'fi' ? 'Rengasasiantuntija' : 'Tire Specialist' },
-    { name: 'Laura Mäkinen', role: language === 'fi' ? 'Asiakaspalvelu' : 'Customer Service' },
-  ];
-
-  const partners = [
-    { name: 'RengasDuo', description: language === 'fi' ? 'Rengastoimittaja' : 'Tire Supplier' },
-    { name: 'Vannetukku', description: language === 'fi' ? 'Vannepartner' : 'Rim Partner' },
-    { name: 'Paytrail', description: language === 'fi' ? 'Maksupalvelu' : 'Payment Service' },
   ];
 
   return (
@@ -85,11 +73,11 @@ export function AboutPage({ onBookingClick, onNavigate }: AboutPageProps) {
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('about.businessInfo.businessId')}: </span>
-                    <span className="font-mono">3408833-8</span>
+                    <span className="font-mono">{businessProfile.businessId}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('contact.address')}: </span>
-                    <span>Hankasuontie 5, 00390 Helsinki</span>
+                    <span>{businessProfile.address.formatted}</span>
                   </div>
                 </div>
               </div>

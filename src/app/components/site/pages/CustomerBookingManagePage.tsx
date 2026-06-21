@@ -19,6 +19,8 @@ import { Textarea } from '../../ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../../ui/alert';
 import { Badge } from '../../ui/badge';
 import { normalizeFinnishPhone, normalizeFinnishPhoneInput } from '../../../utils/phone';
+import { translateForLanguage } from '../../../i18n/LanguageContext';
+import type { Language } from '../../../i18n/types';
 
 type ManageMode = 'view' | 'edit' | 'cancel' | 'complete';
 
@@ -224,25 +226,25 @@ function formatBookingWindow(booking: ManagedBooking, locale: string) {
   return `${dateLabel} · ${booking.bookingTime}${booking.bookingEndTime ? ` - ${booking.bookingEndTime}` : ''}`;
 }
 
-function getStatusMeta(status: string, language: 'fi' | 'en') {
+function getStatusMeta(status: string, language: Language) {
   const normalized = status.toLowerCase();
 
   if (normalized === 'cancelled' || normalized === 'canceled') {
     return {
-      label: language === 'fi' ? 'Peruttu' : 'Cancelled',
+      label: translateForLanguage(language, 'customerBookingManage.status.cancelled'),
       variant: 'destructive' as const,
     };
   }
 
   if (normalized === 'pending' || normalized === 'awaiting_customer') {
     return {
-      label: language === 'fi' ? 'Odottaa vahvistusta' : 'Awaiting confirmation',
+      label: translateForLanguage(language, 'customerBookingManage.status.awaitingConfirmation'),
       variant: 'secondary' as const,
     };
   }
 
   return {
-    label: language === 'fi' ? 'Vahvistettu' : 'Confirmed',
+    label: translateForLanguage(language, 'customerBookingManage.status.confirmed'),
     variant: 'secondary' as const,
   };
 }
@@ -356,92 +358,53 @@ export function CustomerBookingManagePage({ onNavigateHome }: CustomerBookingMan
   });
 
   const language = booking?.bookingLanguage ?? initial.languageHint;
-  const locale = language === 'fi' ? 'fi-FI' : 'en-US';
+  const locale = { fi: 'fi-FI', en: 'en-US' }[language];
   const explicitModeProvided = initial.hasExplicitMode;
 
   const copy = useMemo(() => {
-    return language === 'fi'
-      ? {
-          title: 'Hallitse varaustasi',
-          subtitle: 'Tarkista aika, täydennä vain puuttuvat tiedot tai peruuta varaus.',
-          secureAccess: 'Suojattu hallintalinki',
-          secureDescription: 'Avataan varausta...',
-          tokenMissing: 'Avaa tämä sivu sähköpostissa olevasta varauslinkistä.',
-          tokenLabel: 'Varauslinkin token',
-          tokenPlaceholder: 'Liitä sähköpostissa saatu token',
-          loadBooking: 'Avaa varaus',
-          loading: 'Avataan...',
-          invalidToken: 'Hallintalinkki on virheellinen tai vanhentunut.',
-          service: 'Palvelu',
-          missingFieldsTitle: 'Puuttuvat tiedot',
-          cancelWarning: 'Peruutus on lopullinen. Voit jättää vapaaehtoisen syyn ennen vahvistusta.',
-          reasonLabel: 'Peruutuksen syy',
-          confirmCancel: 'Vahvista peruutus',
-          cancelling: 'Perutaan...',
-          saveChanges: 'Tallenna muutokset',
-          editDetails: 'Muokkaa tietoja',
-          saving: 'Tallennetaan...',
-          completeDetails: 'Vahvista tiedot',
-          backHome: 'Takaisin etusivulle',
-          backToSummary: 'Takaisin yhteenvetoon',
-          cancelBooking: 'Peruuta varaus',
-          missingLicensePlate: 'Rekisterinumero',
-          missingPhone: 'Puhelinnumero',
-          missingEmail: 'Sähköposti',
-          notes: 'Lisätiedot',
-          licensePlate: 'Rekisterinumero',
-          phone: 'Puhelin',
-          email: 'Sähköposti',
-          cancelled: 'Tämä varaus on jo peruttu.',
-          updatedSuccess: 'Varaus päivitettiin. Päivitetty kalenterikutsu lähetettiin sähköpostiin.',
-          completedSuccess: 'Tiedot vahvistettiin. Päivitetty kalenterikutsu lähetettiin sähköpostiin.',
-          cancelledSuccess: 'Varaus peruttiin ja peruutusviesti lähetettiin sähköpostiin.',
-          summaryHint: 'Ei lisätietoja.',
-          bookingReady: 'Varauksen tiedot ovat valmiit.',
-          vehicle: 'Ajoneuvo',
-          customer: 'Asiakas',
-          noVehicle: 'Ei rekisterinumeroa',
-        }
-      : {
-          title: 'Manage your booking',
-          subtitle: 'Check the appointment, complete only missing details, or cancel it.',
-          secureAccess: 'Secure manage link',
-          secureDescription: 'Opening your booking...',
-          tokenMissing: 'Open this page from the booking link in your email.',
-          tokenLabel: 'Booking token',
-          tokenPlaceholder: 'Paste the token from your email',
-          loadBooking: 'Open booking',
-          loading: 'Opening...',
-          invalidToken: 'The management link is invalid or expired.',
-          service: 'Service',
-          missingFieldsTitle: 'Missing details',
-          cancelWarning: 'Cancellation is final. You can optionally leave a reason before confirming.',
-          reasonLabel: 'Cancellation reason',
-          confirmCancel: 'Confirm cancellation',
-          cancelling: 'Cancelling...',
-          saveChanges: 'Save changes',
-          saving: 'Saving...',
-          completeDetails: 'Confirm details',
-          backHome: 'Back to home',
-          backToSummary: 'Back to summary',
-          cancelBooking: 'Cancel booking',
-          missingLicensePlate: 'License plate',
-          missingPhone: 'Phone',
-          missingEmail: 'Email',
-          notes: 'Notes',
-          licensePlate: 'License plate',
-          phone: 'Phone',
-          email: 'Email',
-          cancelled: 'This booking has already been cancelled.',
-          updatedSuccess: 'Booking updated. A refreshed calendar invite was emailed to you.',
-          completedSuccess: 'Details confirmed. A refreshed calendar invite was emailed to you.',
-          cancelledSuccess: 'Booking cancelled. A cancellation message was emailed to you.',
-          summaryHint: 'No notes.',
-          bookingReady: 'Your booking details are ready.',
-          vehicle: 'Vehicle',
-          customer: 'Customer',
-          noVehicle: 'No license plate',
-        };
+    const manageText = (key: string) => translateForLanguage(language, `customerBookingManage.${key}`);
+
+    return {
+      title: manageText('title'),
+      subtitle: manageText('subtitle'),
+      secureAccess: manageText('secureAccess'),
+      secureDescription: manageText('secureDescription'),
+      tokenMissing: manageText('tokenMissing'),
+      tokenLabel: manageText('tokenLabel'),
+      tokenPlaceholder: manageText('tokenPlaceholder'),
+      loadBooking: manageText('loadBooking'),
+      loading: manageText('loading'),
+      invalidToken: manageText('invalidToken'),
+      service: manageText('service'),
+      missingFieldsTitle: manageText('missingFieldsTitle'),
+      cancelWarning: manageText('cancelWarning'),
+      reasonLabel: manageText('reasonLabel'),
+      confirmCancel: manageText('confirmCancel'),
+      cancelling: manageText('cancelling'),
+      saveChanges: manageText('saveChanges'),
+      editDetails: manageText('editDetails'),
+      saving: manageText('saving'),
+      completeDetails: manageText('completeDetails'),
+      backHome: manageText('backHome'),
+      backToSummary: manageText('backToSummary'),
+      cancelBooking: manageText('cancelBooking'),
+      missingLicensePlate: manageText('missingLicensePlate'),
+      missingPhone: manageText('missingPhone'),
+      missingEmail: manageText('missingEmail'),
+      notes: manageText('notes'),
+      licensePlate: manageText('licensePlate'),
+      phone: manageText('phone'),
+      email: manageText('email'),
+      cancelled: manageText('cancelled'),
+      updatedSuccess: manageText('updatedSuccess'),
+      completedSuccess: manageText('completedSuccess'),
+      cancelledSuccess: manageText('cancelledSuccess'),
+      summaryHint: manageText('summaryHint'),
+      bookingReady: manageText('bookingReady'),
+      vehicle: manageText('vehicle'),
+      customer: manageText('customer'),
+      noVehicle: manageText('noVehicle'),
+    };
   }, [language]);
 
   const completionFields = useMemo(() => {

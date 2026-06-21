@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useLanguage } from '../../LanguageContext';
-import { useTheme } from '../../ThemeContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
 import { Card } from '../../ui/card';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';

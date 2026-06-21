@@ -1,10 +1,10 @@
 import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import { buildProductImageFallback } from '../../utils/productImage';
-import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
+import { calculateLinePricing, PRODUCT_VAT_MULTIPLIER, type ProductPricingRules } from '../../utils/pricing';
 
 interface RimCardProps {
   product?: {
@@ -51,7 +51,7 @@ const PREVIEW_RIM_PRODUCT: NonNullable<RimCardProps['product']> = {
 };
 
 export function RimCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart, disableInitialAnimation = false }: RimCardProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const product = productProp ?? PREVIEW_RIM_PRODUCT;
@@ -66,11 +66,16 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
     setCardImageSrc(product.best_image_url || fallbackImage);
   }, [product.best_image_url, fallbackImage]);
 
-  const fourPiecePrice = calculateLinePricing(
-    product.best_price_eur || 0,
-    4,
-    product.pricing_rules ?? null,
-  ).lineTotalEur;
+  const hasSellablePrice = typeof product.best_price_eur === 'number' && Number.isFinite(product.best_price_eur) && product.best_price_eur > 0;
+  const canAddToCart = product.in_stock && hasSellablePrice;
+  const displayUnitPrice = hasSellablePrice ? (product.best_price_eur ?? 0) * PRODUCT_VAT_MULTIPLIER : null;
+  const fourPiecePrice = hasSellablePrice
+    ? calculateLinePricing(
+        product.best_price_eur ?? 0,
+        4,
+        product.pricing_rules ?? null,
+      ).lineTotalEur * PRODUCT_VAT_MULTIPLIER
+    : null;
 
   const sizeLabel = [product.rim_width, product.rim_diameter ? `${product.rim_diameter}"` : undefined]
     .filter(Boolean)
@@ -79,24 +84,24 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
   const fitmentRows = [
     { label: 'PCD', value: product.pcd || '—' },
     { label: 'ET', value: product.et_offset != null ? String(product.et_offset) : '—' },
-    { label: language === 'fi' ? 'CB' : 'CB', value: product.cb != null ? `${product.cb} mm` : '—' },
+    { label: 'CB', value: product.cb != null ? `${product.cb} mm` : '—' },
     {
-      label: language === 'fi' ? 'Materiaali' : 'Material',
+      label: t('productDetail.material'),
       value: product.material
         ? product.material.toLowerCase() === 'alloy'
-          ? (language === 'fi' ? 'Kevytmetalli' : 'Alloy')
+          ? t('catalog.materialAlloy')
           : product.material.toLowerCase() === 'steel'
-            ? (language === 'fi' ? 'Teräs' : 'Steel')
+            ? t('catalog.materialSteel')
             : product.material
         : '—',
     },
   ];
 
   const metaChips = [
-    product.color ? { label: language === 'fi' ? `Väri ${product.color}` : `Color ${product.color}` } : null,
+    product.color ? { label: t('catalog.colorPrefix', { color: product.color }) } : null,
     product.in_stock
-      ? { label: language === 'fi' ? 'Varastossa' : 'In stock', accent: true }
-    : { label: language === 'fi' ? 'Tilapäisesti loppu' : 'Out of stock' },
+      ? { label: t('catalog.inStockLower'), accent: true }
+    : { label: t('catalog.outOfStockTemporary') },
   ].filter(Boolean) as Array<{ label: string; accent?: boolean }>;
   const tagChips = (product.generated_tags?.length ? product.generated_tags : product.tags ?? [])
     .map((tag) => String(tag ?? '').trim())
@@ -169,7 +174,7 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
             </div>
 
             <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isDark ? 'bg-white/5 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
-              {language === 'fi' ? 'Vanne' : 'Rim'}
+              {t('catalog.rim')}
             </div>
           </div>
 
@@ -227,25 +232,25 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className={`text-xs uppercase tracking-[0.16em] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  {language === 'fi' ? 'Hinta / kpl' : 'Price / each'}
+                  {t('catalog.priceEach')}
                 </p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">
-                  {(product.best_price_eur || 0).toFixed(2)} €
+                  {displayUnitPrice !== null ? `${displayUnitPrice.toFixed(2)} €` : t('catalog.priceOnRequest')}
                 </p>
               </div>
               <div className="text-right">
                 <p className={`text-xs uppercase tracking-[0.16em] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  {language === 'fi' ? 'Sarja 4 kpl' : 'Set of 4'}
+                  {t('catalog.setOf4')}
                 </p>
                 <p className={`mt-1 text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                  {fourPiecePrice.toFixed(2)} €
+                  {fourPiecePrice !== null ? `${fourPiecePrice.toFixed(2)} €` : t('catalog.priceOnRequestShort')}
                 </p>
               </div>
             </div>
           </div>
 
           <button
-            disabled={!product.in_stock}
+            disabled={!canAddToCart}
             className="pointer-events-auto relative z-20 mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF6B35]/90 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={(event) => {
               event.preventDefault();
@@ -254,9 +259,11 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
             }}
           >
             <ShoppingCart className="h-4 w-4" />
-            {product.in_stock
-              ? (language === 'fi' ? 'Lisää koriin' : 'Add to cart')
-              : (language === 'fi' ? 'Tilapäisesti loppu' : 'Out of stock')}
+            {canAddToCart
+              ? t('catalog.addToCart')
+              : product.in_stock
+                ? t('catalog.priceOnRequest')
+                : t('catalog.outOfStockTemporary')}
           </button>
         </div>
       </article>

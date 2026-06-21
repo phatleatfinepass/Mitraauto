@@ -1,11 +1,11 @@
 import React from 'react';
-import { useLanguage } from '../LanguageContext';
-import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
 import { motion } from 'motion/react';
 import { ShoppingCart, PackageX, Sun, Snowflake, SunSnow } from 'lucide-react';
 import svgPaths from '../../imports/svg-eon971h5o4';
 import { buildProductImageFallback } from '../../utils/productImage';
-import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
+import { calculateLinePricing, PRODUCT_VAT_MULTIPLIER, type ProductPricingRules } from '../../utils/pricing';
 
 interface TireCardProps {
   product?: {
@@ -51,7 +51,7 @@ const PREVIEW_TIRE_PRODUCT: NonNullable<TireCardProps['product']> = {
 };
 
 export function TireCard({ product: productProp, href, index: _index = 0, onClick, onAddToCart, disableInitialAnimation = false }: TireCardProps) {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { theme } = useTheme();
   const product = productProp ?? PREVIEW_TIRE_PRODUCT;
 
@@ -68,9 +68,9 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
   const getSeasonLabel = (season?: string) => {
     if (!season) return '';
     const labels = {
-      summer: language === 'fi' ? 'Kesä' : 'Summer',
-      winter: language === 'fi' ? 'Talvi' : 'Winter',
-      all_season: language === 'fi' ? 'Ympärivuotinen' : 'All Season',
+      summer: t('productDetail.summer'),
+      winter: t('productDetail.winter'),
+      all_season: t('productDetail.allSeason'),
     };
     return labels[season.toLowerCase() as keyof typeof labels] || season;
   };
@@ -110,23 +110,28 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
   const euWet = product.eu_wet;
   const euNoise = product.eu_noise;
   const hasEuLabel = euFuel !== undefined || euWet !== undefined || euNoise !== undefined;
+  const hasSellablePrice = typeof product.best_price_eur === 'number' && Number.isFinite(product.best_price_eur) && product.best_price_eur > 0;
+  const canAddToCart = product.in_stock && hasSellablePrice;
+  const displayUnitPrice = hasSellablePrice ? (product.best_price_eur ?? 0) * PRODUCT_VAT_MULTIPLIER : null;
 
   // Calculate 4-piece price
-  const fourPiecePrice = calculateLinePricing(
-    product.best_price_eur || 0,
-    4,
-    product.pricing_rules ?? null,
-  ).lineTotalEur;
+  const fourPiecePrice = hasSellablePrice
+    ? calculateLinePricing(
+        product.best_price_eur ?? 0,
+        4,
+        product.pricing_rules ?? null,
+      ).lineTotalEur * PRODUCT_VAT_MULTIPLIER
+    : null;
 
   const featureBadges = [
     { key: 'ev', show: Boolean(product.ev_ready), label: 'EV' },
-    { key: 'sound', show: Boolean(product.sound_absorber), label: language === 'fi' ? 'Hiljainen' : 'Silent' },
+    { key: 'sound', show: Boolean(product.sound_absorber), label: t('catalog.silent') },
     { key: 'runflat', show: Boolean(product.runflat), label: 'RunFlat' },
     { key: 'xl', show: Boolean(product.xl), label: 'XL' },
-    { key: 'studded', show: Boolean(product.studded), label: language === 'fi' ? 'Nastat' : 'Studded' },
+    { key: 'studded', show: Boolean(product.studded), label: t('productDetail.studdedShort') },
     { key: 'threepmsf', show: Boolean(product.threepmsf), label: '3PMSF' },
     { key: 'winter', show: Boolean(product.winter_approved) && !Boolean(product.studded), label: 'M+S' },
-    { key: 'ice', show: Boolean(product.ice_approved), label: language === 'fi' ? 'Jää' : 'Ice Approved' },
+    { key: 'ice', show: Boolean(product.ice_approved), label: t('catalog.iceApproved') },
   ].filter((badge) => badge.show);
 
   const handleCardLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -322,7 +327,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                                   <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
                                     theme === 'dark' ? 'text-gray-400' : 'text-[#6a7282]'
                                   }`}>
-                                    {language === 'fi' ? 'POLT' : 'fuel'}
+                                    {t('catalog.fuelShort')}
                                   </p>
                                 </div>
                               </div>
@@ -364,7 +369,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                                   <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
                                     theme === 'dark' ? 'text-gray-400' : 'text-[#6a7282]'
                                   }`}>
-                                    {language === 'fi' ? 'MRKÄ' : 'WeT'}
+                                    {t('catalog.wetGripShort')}
                                   </p>
                                 </div>
                               </div>
@@ -456,7 +461,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                             <p className={`font-medium leading-[24px] not-italic relative shrink-0 text-[16px] text-center text-nowrap tracking-[-0.4395px] whitespace-pre sm:text-[18px] sm:leading-[28px] ${
                               theme === 'dark' ? 'text-white' : 'text-[#101828]'
                             }`}>
-                              {(product.best_price_eur || 0).toFixed(2)}
+                              {displayUnitPrice !== null ? displayUnitPrice.toFixed(2) : t('catalog.priceOnRequest')}
                             </p>
                           </div>
                         </div>
@@ -467,7 +472,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                             <p className={`font-normal leading-[13.5px] not-italic relative shrink-0 text-[9px] text-center text-nowrap tracking-[0.167px] uppercase whitespace-pre ${
                               theme === 'dark' ? 'text-gray-400' : 'text-[#6a7282]'
                             }`}>
-                              {fourPiecePrice.toFixed(2)} €/4PCS
+                              {fourPiecePrice !== null ? `${fourPiecePrice.toFixed(2)} €/4PCS` : t('catalog.priceOnRequestShort')}
                             </p>
                           </div>
                         </div>
@@ -509,7 +514,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
 
                 {/* Add Button */}
                 <button
-                  disabled={!product.in_stock}
+                  disabled={!canAddToCart}
                   className="pointer-events-auto z-20 bg-[#ff6b35] hover:bg-[#ff6b35]/90 box-border content-stretch flex gap-2 h-9 items-center justify-center relative rounded-[25px] shadow-[0px_4px_12px_0px_rgba(255,107,53,0.25)] shrink-0 w-full text-white transition-all duration-300 hover:shadow-[0px_6px_20px_0px_rgba(255,107,53,0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 sm:h-[40px] sm:gap-[14px]"
                   onClick={(event) => {
                     event.preventDefault();
@@ -517,7 +522,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                     onAddToCart?.(event);
                   }}
                 >
-                  {product.in_stock ? (
+                  {canAddToCart ? (
                     <>
                       <div className="relative shrink-0 size-[16px]">
                         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
@@ -554,7 +559,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                       <div className="h-[20px] relative shrink-0">
                         <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border h-[20px] relative">
                           <p className="font-semibold leading-[20px] not-italic text-[14px] text-nowrap tracking-[-0.2904px] whitespace-pre">
-                            {language === 'fi' ? 'Lisää' : 'Add'}
+                            {t('catalog.addShort')}
                           </p>
                         </div>
                       </div>
@@ -567,7 +572,7 @@ export function TireCard({ product: productProp, href, index: _index = 0, onClic
                       <div className="h-[20px] relative shrink-0">
                         <div className="bg-clip-padding border-0 border-[transparent] border-solid box-border h-[20px] relative">
                           <p className="font-semibold leading-[20px] not-italic text-[14px] text-nowrap tracking-[-0.2904px] whitespace-pre">
-                            {language === 'fi' ? 'Loppu' : 'Out'}
+                            {product.in_stock ? t('catalog.priceOnRequestShort') : t('catalog.outShort')}
                           </p>
                         </div>
                       </div>

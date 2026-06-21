@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useTheme } from '../ThemeContext';
-import { useLanguage } from '../LanguageContext';
+import { useTheme } from '../../theme/ThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -16,29 +16,14 @@ interface AdminLoginPageProps {
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, onLogin }) => {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const t = (key: string) => {
-    const translations: Record<string, { fi: string; en: string }> = {
-      adminLogin: { fi: 'Admin-kirjautuminen', en: 'Admin Login' },
-      adminPortal: { fi: 'Admin-portaali', en: 'Admin Portal' },
-      email: { fi: 'Sähköposti', en: 'Email' },
-      password: { fi: 'Salasana', en: 'Password' },
-      login: { fi: 'Kirjaudu sisään', en: 'Login' },
-      loginDescription: { fi: 'Kirjaudu sisään hallintapaneeliin', en: 'Sign in to access the admin panel' },
-      emailPlaceholder: { fi: 'admin@mitra-auto.fi', en: 'admin@mitra-auto.fi' },
-      passwordPlaceholder: { fi: 'Syötä salasanasi', en: 'Enter your password' },
-      loggingIn: { fi: 'Kirjaudutaan...', en: 'Logging in...' },
-      showPassword: { fi: 'Näytä salasana', en: 'Show password' },
-      hidePassword: { fi: 'Piilota salasana', en: 'Hide password' },
-    };
-    return translations[key]?.[language] || key;
-  };
+  const adminLoginText = (key: string) => t(`adminLogin.${key}`);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,11 +36,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
       if (result.success) {
         onLoginSuccess();
       } else {
-        setError(result.error || 'Login failed');
+        setError(result.error || adminLoginText('failed'));
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError(language === 'fi' ? 'Kirjautuminen epäonnistui' : 'Login failed');
+      setError(adminLoginText('failed'));
     } finally {
       setLoading(false);
     }
@@ -74,10 +59,10 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
           <h1 className={`text-3xl font-semibold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            {t('adminPortal')}
+            {adminLoginText('adminPortal')}
           </h1>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            {t('loginDescription')}
+            {adminLoginText('loginDescription')}
           </p>
         </div>
 
@@ -89,7 +74,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
             {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email" className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                {t('email')}
+                {adminLoginText('email')}
               </Label>
               <div className="relative">
                 <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
@@ -100,7 +85,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('emailPlaceholder')}
+                  placeholder={adminLoginText('emailPlaceholder')}
                   required
                   disabled={loading}
                   className={`pl-10 ${
@@ -115,7 +100,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
             {/* Password Field */}
             <div className="space-y-2">
               <Label htmlFor="password" className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                {t('password')}
+                {adminLoginText('password')}
               </Label>
               <div className="relative">
                 <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
@@ -126,7 +111,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('passwordPlaceholder')}
+                  placeholder={adminLoginText('passwordPlaceholder')}
                   required
                   disabled={loading}
                   className={`pl-10 pr-10 ${
@@ -141,7 +126,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                   className={`absolute right-3 top-1/2 -translate-y-1/2 ${
                     theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
                   }`}
-                  aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                  aria-label={showPassword ? adminLoginText('hidePassword') : adminLoginText('showPassword')}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -166,7 +151,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
               disabled={loading}
               className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12"
             >
-              {loading ? t('loggingIn') : t('login')}
+              {loading ? adminLoginText('loggingIn') : adminLoginText('login')}
             </Button>
           </form>
         </Card>
@@ -175,7 +160,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
         <p className={`text-center text-sm mt-6 ${
           theme === 'dark' ? 'text-gray-500' : 'text-gray-600'
         }`}>
-          {language === 'fi' ? 'Vain valtuutetuille käyttäjille' : 'Authorized users only'}
+          {adminLoginText('authorizedOnly')}
         </p>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useTheme } from '../../ThemeContext';
-import { useLanguage } from '../../LanguageContext';
+import { useTheme } from '../../../theme/ThemeContext';
+import { translateForLanguage, useLanguage } from '../../../i18n/LanguageContext';
 import { supabase } from '../../../utils/supabase/client';
 import { X, Save, AlertCircle, Upload, GripVertical, RotateCcw, Loader2, Wand2, ExternalLink } from 'lucide-react';
 import { TiresCmsToolbar } from './TiresCmsToolbar';
-import { TiresImagesSection } from './TiresImagesSection';
+import TiresImagesSection from './TiresImagesSection';
 import { TiresBundlePricingSection } from './TiresBundlePricingSection';
 import { TiresCmsTableSection } from './TiresCmsTableSection';
 import { TiresContentSection } from './TiresContentSection';
@@ -235,15 +235,14 @@ function TireEprelDrawerSection({
   auditResult,
   eprelListStatus,
   isDark,
-  language,
   selectedTire,
 }: {
   auditResult: TireEanAuditResult | null;
   eprelListStatus?: EprelListVariantStatus;
   isDark: boolean;
-  language: string;
   selectedTire: TireRow;
 }) {
+  const { t } = useLanguage();
   const catalogRegistrationNumber = extractEprelRegistrationNumber(
     selectedTire.eprel_registration_number,
     selectedTire.eprel_code,
@@ -285,7 +284,7 @@ function TireEprelDrawerSection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-            {language === 'fi' ? 'EPREL-tuotteet' : 'Items with EPREL'}
+            {t('tiresCmsPage.eprelItems')}
           </h3>
           <p className={`mt-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {selectedTire.brand} {selectedTire.model}
@@ -299,19 +298,19 @@ function TireEprelDrawerSection({
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'}`}>
           <div className={`mb-4 text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-            {language === 'fi' ? 'Catalog item' : 'Catalog item'}
+            {t('tiresCmsPage.catalogItem')}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="EPREL ID" value={catalogRegistrationNumber} />
             <Field label="Source" value={selectedTire.eprel_source || '—'} />
-            <Field label="QR" value={<LinkValue href={catalogQrUrl} label={catalogRegistrationNumber ? `QR ${catalogRegistrationNumber}` : 'Open'} />} />
-            <Field label="Fiche" value={<LinkValue href={selectedTire.eprel_sheet_url} label="Open fiche" />} />
+            <Field label="QR" value={<LinkValue href={catalogQrUrl} label={catalogRegistrationNumber ? `QR ${catalogRegistrationNumber}` : t('tiresCmsPage.open')} />} />
+            <Field label="Fiche" value={<LinkValue href={selectedTire.eprel_sheet_url} label={t('tiresCmsPage.openFiche')} />} />
           </div>
         </div>
 
         <div className={`rounded-lg border p-4 ${isDark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'}`}>
           <div className={`mb-4 text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-            {language === 'fi' ? 'Latest EPREL fetch' : 'Latest EPREL fetch'}
+            {t('tiresCmsPage.latestEprelFetch')}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="EPREL ID" value={latestRegistrationNumber} />
@@ -321,7 +320,7 @@ function TireEprelDrawerSection({
             <Field label="Size" value={auditResult?.extracted?.size_string} />
             <Field label="EAN" value={auditResult?.extracted?.metadata?.ean ?? auditResult?.ean} />
             <Field label="Source" value={auditResult?.extracted?.metadata?.data_source} />
-            <Field label="Links" value={<LinkValue href={latestFicheUrl ?? latestSourceUrl} label={latestFicheUrl ? 'Open fiche' : 'Open source'} />} />
+            <Field label="Links" value={<LinkValue href={latestFicheUrl ?? latestSourceUrl} label={latestFicheUrl ? t('tiresCmsPage.openFiche') : t('tiresCmsPage.openSource')} />} />
           </div>
         </div>
       </div>
@@ -331,7 +330,7 @@ function TireEprelDrawerSection({
 
 export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const isDark = theme === 'dark';
   const [bulkMarkupAmount, setBulkMarkupAmount] = useState('20');
   const [bulkMarkupPercent, setBulkMarkupPercent] = useState('');
@@ -347,6 +346,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   } | null>(null);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   const [supplierDraft, setSupplierDraft] = useState('all');
+  const [tireSegmentDraft, setTireSegmentDraft] = useState('all');
   const [showNonPassengerDraft, setShowNonPassengerDraft] = useState(false);
   const [missingMetadataFieldsDraft, setMissingMetadataFieldsDraft] = useState<string[]>([]);
   const [showMissingImagesOnlyDraft, setShowMissingImagesOnlyDraft] = useState(false);
@@ -366,11 +366,12 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   const [eprelSuggestionError, setEprelSuggestionError] = useState<string | null>(null);
   const [eprelSuggestionResult, setEprelSuggestionResult] = useState<TireEprelIdSuggestion | null>(null);
   const [eprelListStatuses, setEprelListStatuses] = useState<Record<string, EprelListVariantStatus>>({});
-  const [eprelListLoading, setEprelListLoading] = useState(false);
+  const [, setEprelListLoading] = useState(false);
   const [pendingConflictCount, setPendingConflictCount] = useState(0);
 
   const {
     currentPage,
+    cachedItemCount,
     endItem,
     error,
     fetchTires,
@@ -378,7 +379,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     loading,
     patchLocalCmsData,
     patchLocalIdentityData,
-    refreshing,
+    preloading,
     searchTerm,
     setCurrentPage,
     setHideNonPassenger,
@@ -388,6 +389,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     setShowMissingImagesOnly,
     setShowWithEprelOnly,
     setSupplierFilter,
+    setTireSegmentFilter,
     hideNonPassenger,
     missingMetadataFields,
     missingSeoFields,
@@ -395,6 +397,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     showWithEprelOnly,
     startItem,
     supplierFilter,
+    tireSegmentFilter,
     tires,
     totalCount,
     totalPages,
@@ -403,9 +406,9 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   const loadPendingConflictCount = useCallback(async () => {
     try {
       const { count, error } = await supabase
-        .from('catalog_selected_tire_conflict_queue')
-        .select('selected_item_id', { count: 'exact', head: true })
-        .eq('review_status', 'pending');
+        .from('catalog_selected_tires_cms_admin_v1')
+        .select('variant_id', { count: 'exact', head: true })
+        .or('ean_conflict_open.eq.true,has_ean_multi_spec_conflict.eq.true,has_mandatory_conflict.eq.true');
       if (error) throw error;
       setPendingConflictCount(count ?? 0);
     } catch (error) {
@@ -520,6 +523,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
   useEffect(() => {
     setSupplierDraft(supplierFilter);
+    setTireSegmentDraft(tireSegmentFilter);
     setShowNonPassengerDraft(!hideNonPassenger);
     setMissingMetadataFieldsDraft(missingMetadataFields);
     setShowMissingImagesOnlyDraft(showMissingImagesOnly);
@@ -527,6 +531,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     setMissingSeoFieldsDraft(missingSeoFields);
   }, [
     supplierFilter,
+    tireSegmentFilter,
     hideNonPassenger,
     missingMetadataFields,
     showMissingImagesOnly,
@@ -545,7 +550,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   } = useTiresCmsCatalogSync({
     fetchTires,
     invalidateCache,
-    language,
   });
 
   useEffect(() => {
@@ -565,6 +569,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
           p_missing_ean_only: false,
           p_exclude_non_passenger: hideNonPassenger,
           p_supplier_code: bulkMarkupSupplier,
+          p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
           p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
           p_missing_image_only: showMissingImagesOnly,
           p_has_eprel_only: showWithEprelOnly,
@@ -599,6 +604,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     settingsDrawerOpen,
     showMissingImagesOnly,
     showWithEprelOnly,
+    tireSegmentFilter,
   ]);
 
   const toNumberOrNull = (value: any) => {
@@ -800,7 +806,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     fetchTires,
     invalidateCache,
     hasMissingSupplierPrice,
-    language,
     onCloseEditor: closeEditor,
     patchLocalCmsData,
     patchLocalIdentityData,
@@ -810,7 +815,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   });
 
   const { getWarningTooltip, hideWarningTooltip, showWarningTooltip, warningTooltip } =
-    useTiresCmsWarnings(language);
+    useTiresCmsWarnings();
 
   const handleImageDragOver = (event: React.DragEvent<HTMLDivElement>, index: number) => {
     event.preventDefault();
@@ -886,7 +891,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
   const generateAiFieldValue = async (field: TiresAiCopyField, targetLanguage: 'fi' | 'en' = 'fi') => {
     if (!selectedTire) {
-      throw new Error(language === 'fi' ? 'Rengasta ei ole valittu.' : 'No tire selected.');
+      throw new Error(t('tiresCmsPage.noTireSelected'));
     }
 
     const effectiveIdentity = getEffectiveIdentity(selectedTire);
@@ -931,7 +936,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
     const value = String((data as { value?: string } | null)?.value ?? '').trim();
     if (!value) {
-      throw new Error(targetLanguage === 'fi' ? 'AI ei palauttanut sisältöä.' : 'AI did not return content.');
+      throw new Error(translateForLanguage(targetLanguage, 'tiresCmsPage.aiNoContent'));
     }
 
     return value;
@@ -939,7 +944,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
   const generateAllAiValues = async (targetLanguage: 'fi' | 'en') => {
     if (!selectedTire) {
-      throw new Error(language === 'fi' ? 'Rengasta ei ole valittu.' : 'No tire selected.');
+      throw new Error(t('tiresCmsPage.noTireSelected'));
     }
 
     const effectiveIdentity = getEffectiveIdentity(selectedTire);
@@ -984,7 +989,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
     const values = (data as { values?: Partial<Record<TiresAiCopyField, string>> } | null)?.values;
     if (!values) {
-      throw new Error(targetLanguage === 'fi' ? 'AI ei palauttanut sisältöä.' : 'AI did not return content.');
+      throw new Error(translateForLanguage(targetLanguage, 'tiresCmsPage.aiNoContent'));
     }
 
     return values;
@@ -1011,7 +1016,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
       setAiGenerationError(
         detailedMessage ||
           error?.message ||
-          (language === 'fi' ? 'AI-sisällön luonti epäonnistui.' : 'AI content generation failed.')
+          t('tiresCmsPage.aiContentFailed')
       );
       setAiGenerationErrorField(field);
   };
@@ -1047,16 +1052,16 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     setAiGeneratingField('all_fields');
     setAiGenerationError(null);
     setAiGenerationErrorField(null);
-    setAiGenerationProgress({ current: 0, total: 4, label: language === 'fi' ? 'Valmistellaan tietoja...' : 'Preparing data...' });
+    setAiGenerationProgress({ current: 0, total: 4, label: t('tiresCmsPage.preparingData') });
 
     try {
-      setAiGenerationProgress({ current: 0.35, total: 4, label: language === 'fi' ? 'Luodaan suomenkielinen sisältö...' : 'Generating Finnish content...' });
+      setAiGenerationProgress({ current: 0.35, total: 4, label: t('tiresCmsPage.generatingFinnishContent') });
       const fiValues = await generateAllAiValues('fi');
-      setAiGenerationProgress({ current: 2, total: 4, label: language === 'fi' ? 'Suomenkielinen sisältö valmis' : 'Finnish content ready' });
+      setAiGenerationProgress({ current: 2, total: 4, label: t('tiresCmsPage.finnishContentReady') });
 
-      setAiGenerationProgress({ current: 2.35, total: 4, label: language === 'fi' ? 'Luodaan englanninkielinen sisältö...' : 'Generating English content...' });
+      setAiGenerationProgress({ current: 2.35, total: 4, label: t('tiresCmsPage.generatingEnglishContent') });
       const enValues = await generateAllAiValues('en');
-      setAiGenerationProgress({ current: 4, total: 4, label: language === 'fi' ? 'Valmis' : 'Done' });
+      setAiGenerationProgress({ current: 4, total: 4, label: t('tiresCmsPage.done') });
 
       setEditData((prev) => ({
         ...prev,
@@ -1105,9 +1110,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
     if (!supplierEprelRegistrationNumber && !effectiveEan) {
       setEanAuditError(
-        language === 'fi'
-          ? 'EPREL ID tai EAN puuttuu auditointia varten.'
-          : 'EPREL ID or EAN is required for audit.'
+        t('tiresCmsPage.eanAuditMissingInput')
       );
       setEanAuditResult(null);
       return;
@@ -1174,7 +1177,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
       setEanAuditError(
         detailedMessage ||
           error?.message ||
-          (language === 'fi' ? 'EAN-auditointi epäonnistui.' : 'EAN audit failed.')
+          t('tiresCmsPage.eanAuditFailed')
       );
       setEanAuditResult(null);
     } finally {
@@ -1236,7 +1239,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
       setEprelSuggestionError(
         detailedMessage ||
           error?.message ||
-          (language === 'fi' ? 'EPREL ID -ehdotus epäonnistui.' : 'EPREL ID suggestion failed.')
+          t('tiresCmsPage.eprelSuggestionFailed')
       );
     } finally {
       setEprelSuggestionLoading(false);
@@ -1500,36 +1503,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
   };
 
   const filteredTires = tires;
-  const eprelPilotSummary = filteredTires.reduce(
-    (acc, tire) => {
-      const status = eprelListStatuses[tire.variant_id];
-      if (!status) {
-        acc.not_checked += 1;
-        return acc;
-      }
-
-      if (status.match_status === 'matched') acc.matched += 1;
-      else if (status.match_status === 'no_match') acc.no_match += 1;
-      else if (status.match_status === 'multiple_matches') acc.multiple_matches += 1;
-      else acc.other += 1;
-
-      if (status.review_status === 'pending') acc.pending_review += 1;
-      else if (status.review_status === 'accepted') acc.accepted_review += 1;
-      else if (status.review_status === 'mixed' || status.review_status === 'audited') acc.mixed_review += 1;
-
-      return acc;
-    },
-    {
-      matched: 0,
-      no_match: 0,
-      multiple_matches: 0,
-      other: 0,
-      not_checked: 0,
-      pending_review: 0,
-      accepted_review: 0,
-      mixed_review: 0,
-    }
-  );
   const draftTyreLabelSection = selectedTire
     ? buildTyreLabelSectionData({
         existing: (editData.spec_overrides as any)?.tyre_label_section,
@@ -1710,7 +1683,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         : costAfterFeesExVat ?? originalApiPrice;
   const { applySupplierMarkup: applySupplierMarkupWithBase } = useTiresCmsSupplierMarkup({
     baseApiPrice: costAfterFeesExVat ?? originalApiPrice,
-    language,
     selectedTire,
     setEditData,
     setSaveError,
@@ -1724,6 +1696,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
       p_missing_ean_only: false,
       p_exclude_non_passenger: hideNonPassenger,
       p_supplier_code: supplierCode,
+      p_tire_segment: tireSegmentFilter !== 'all' ? tireSegmentFilter : null,
       p_missing_metadata_fields: missingMetadataFields.length > 0 ? missingMetadataFields : null,
       p_missing_image_only: showMissingImagesOnly,
       p_has_eprel_only: showWithEprelOnly,
@@ -1749,29 +1722,27 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     const percentAdjustment = Number(bulkMarkupPercent);
 
     if (!supplierCode || supplierCode === 'ALL') {
-      setCatalogSyncMessage(language === 'fi' ? 'Valitse toimittaja.' : 'Choose a supplier.');
+      setCatalogSyncMessage(t('tiresCmsPage.chooseSupplier'));
       return;
     }
 
     if (!hasAmountInput && !hasPercentInput) {
       setCatalogSyncMessage(
-        language === 'fi'
-          ? 'Anna muutos joko euroina tai prosentteina.'
-          : 'Enter an adjustment in either euros or percent.'
+        t('tiresCmsPage.enterAdjustment')
       );
       return;
     }
 
     if (hasAmountInput && !Number.isFinite(amountAdjustment)) {
       setCatalogSyncMessage(
-        language === 'fi' ? 'Euromäärän pitää olla numero.' : 'Euro adjustment must be a number.'
+        t('tiresCmsPage.invalidEuroAdjustment')
       );
       return;
     }
 
     if (hasPercentInput && !Number.isFinite(percentAdjustment)) {
       setCatalogSyncMessage(
-        language === 'fi' ? 'Prosentin pitää olla numero.' : 'Percent adjustment must be a number.'
+        t('tiresCmsPage.invalidPercentAdjustment')
       );
       return;
     }
@@ -1784,9 +1755,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
       if (totalItems === 0) {
         setCatalogSyncMessage(
-          language === 'fi'
-            ? 'Yhtään sopivaa rengasta ei löytynyt nykyisestä näkymästä.'
-            : 'No matching tires were found in the current view.'
+          t('tiresCmsPage.noMatchingTires')
         );
         return;
       }
@@ -1832,13 +1801,15 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
-        language === 'fi'
-          ? `${hasPercentInput ? 'Prosenttimuutos' : 'Hintaero'} asetettu ${processed} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
-          : `${hasPercentInput ? 'Percent adjustment' : 'Markup or discount'} applied to ${processed} tires from supplier ${supplierCode}. Run "Apply Sync".`
+        t('tiresCmsPage.bulkMarkupApplied', {
+          adjustment: hasPercentInput ? t('tiresCmsPage.percentAdjustment') : t('tiresCmsPage.priceAdjustment'),
+          count: processed,
+          supplier: supplierCode,
+        })
       );
     } catch (error: any) {
       console.error('Bulk supplier markup error:', error);
-      setCatalogSyncMessage(error?.message || (language === 'fi' ? 'Massahinnoittelu epäonnistui.' : 'Bulk markup failed.'));
+      setCatalogSyncMessage(error?.message || t('tiresCmsPage.bulkMarkupFailed'));
     } finally {
       setApplyingBulkMarkup(false);
       setBulkMarkupProgress(null);
@@ -1849,7 +1820,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     const supplierCode = String(bulkMarkupSupplier).trim().toUpperCase();
 
     if (!supplierCode || supplierCode === 'ALL') {
-      setCatalogSyncMessage(language === 'fi' ? 'Valitse toimittaja.' : 'Choose a supplier.');
+      setCatalogSyncMessage(t('tiresCmsPage.chooseSupplier'));
       return;
     }
 
@@ -1861,9 +1832,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
       if (totalItems === 0) {
         setCatalogSyncMessage(
-          language === 'fi'
-            ? 'Yhtään sopivaa rengasta ei löytynyt nykyisestä näkymästä.'
-            : 'No matching tires were found in the current view.'
+          t('tiresCmsPage.noMatchingTires')
         );
         return;
       }
@@ -1899,14 +1868,15 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
 
       setHasPendingCatalogSync(true);
       setCatalogSyncMessage(
-        language === 'fi'
-          ? `API-hinta palautettu ${processed} renkaalle toimittajalta ${supplierCode}. Suorita "Apply Sync".`
-          : `Reverted ${processed} tires from supplier ${supplierCode} back to API price. Run "Apply Sync".`
+        t('tiresCmsPage.revertedToApiPrice', {
+          count: processed,
+          supplier: supplierCode,
+        })
       );
     } catch (error: any) {
       console.error('Bulk supplier markup revert error:', error);
       setCatalogSyncMessage(
-        error?.message || (language === 'fi' ? 'API-hintaan palautus epäonnistui.' : 'Failed to revert to API price.')
+        error?.message || t('tiresCmsPage.revertToApiPriceFailed')
       );
     } finally {
       setRevertingBulkMarkup(false);
@@ -1918,6 +1888,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     const nextHideNonPassenger = !showNonPassengerDraft;
     const hasChanges =
       supplierDraft !== supplierFilter ||
+      tireSegmentDraft !== tireSegmentFilter ||
       nextHideNonPassenger !== hideNonPassenger ||
       showMissingImagesOnlyDraft !== showMissingImagesOnly ||
       showWithEprelOnlyDraft !== showWithEprelOnly ||
@@ -1932,6 +1903,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
     invalidateCache();
     setCurrentPage(1);
     setSupplierFilter(supplierDraft);
+    setTireSegmentFilter(tireSegmentDraft);
     setHideNonPassenger(nextHideNonPassenger);
     setMissingMetadataFields(missingMetadataFieldsDraft);
     setShowMissingImagesOnly(showMissingImagesOnlyDraft);
@@ -1945,7 +1917,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
       <TiresWarningTooltip isDark={isDark} warningTooltip={warningTooltip} />
       <TiresCmsToolbar
         isDark={isDark}
-        language={language}
         hideHeader={embedded}
         searchTerm={searchTerm}
         showNonPassengerDraft={showNonPassengerDraft}
@@ -1955,11 +1926,15 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         missingSeoFieldsDraft={missingSeoFieldsDraft}
         supplierFilter={supplierFilter}
         supplierDraft={supplierDraft}
+        tireSegmentDraft={tireSegmentDraft}
         supplierOptions={SUPPLIER_OPTIONS}
         syncingCatalog={syncingCatalog}
         hasPendingCatalogSync={hasPendingCatalogSync}
         catalogSyncMessage={catalogSyncMessage}
         catalogSyncProgress={catalogSyncProgress}
+        cachedItemCount={cachedItemCount}
+        totalCount={totalCount}
+        preloading={preloading}
         pendingConflictCount={pendingConflictCount}
         bulkMarkupAmount={bulkMarkupAmount}
         bulkMarkupPercent={bulkMarkupPercent}
@@ -1972,6 +1947,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         settingsDrawerOpen={settingsDrawerOpen}
         supplierFilterDirty={
           supplierDraft !== supplierFilter ||
+          tireSegmentDraft !== tireSegmentFilter ||
           (!showNonPassengerDraft) !== hideNonPassenger ||
           showMissingImagesOnlyDraft !== showMissingImagesOnly ||
           showWithEprelOnlyDraft !== showWithEprelOnly ||
@@ -1985,6 +1961,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
         onShowWithEprelOnlyDraftChange={setShowWithEprelOnlyDraft}
         onMissingSeoFieldsDraftChange={setMissingSeoFieldsDraft}
         onSupplierDraftChange={setSupplierDraft}
+        onTireSegmentDraftChange={setTireSegmentDraft}
         onBulkMarkupSupplierChange={setBulkMarkupSupplier}
         onSettingsDrawerOpenChange={setSettingsDrawerOpen}
         onApplySupplierFilter={handleApplySupplierFilter}
@@ -2012,23 +1989,15 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
           currentPage={currentPage}
           endItem={endItem}
           error={error}
-          eprelListLoading={eprelListLoading}
-          eprelListStatuses={eprelListStatuses}
-          eprelPilotSummary={eprelPilotSummary}
           filteredTires={filteredTires}
           getEffectiveIdentity={getEffectiveIdentity}
-          getWarningTooltip={getWarningTooltip}
           handleEdit={handleEdit}
           handleToggleVisibility={handleToggleVisibility}
           hasMissingSupplierPrice={hasMissingSupplierPrice}
-          hideWarningTooltip={hideWarningTooltip}
           isDark={isDark}
-          language={language}
           loading={loading}
-          refreshing={refreshing}
           mustHideFromStore={mustHideFromStore}
           onPageChange={setCurrentPage}
-          showWarningTooltip={showWarningTooltip}
           startItem={startItem}
           totalCount={totalCount}
           totalPages={totalPages}
@@ -2054,7 +2023,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
             } px-6 py-4 flex items-center justify-between`}>
               <div>
                 <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {language === 'fi' ? 'Muokkaa rengasta' : 'Edit Tire'}
+                  {t('tiresCmsPage.editTire')}
                 </h2>
                 <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {getEffectiveIdentity(selectedTire).brand} {getEffectiveIdentity(selectedTire).model} — {getEffectiveIdentity(selectedTire).size_string || '—'}
@@ -2076,7 +2045,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                 auditResult={eanAuditResult}
                 eprelListStatus={eprelListStatuses[selectedTire.variant_id]}
                 isDark={isDark}
-                language={language}
                 selectedTire={selectedTire}
               />
               
@@ -2111,7 +2079,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                   getIdentityOverride={getIdentityOverride}
                   hasEuOverride={hasEUOverride()}
                   isDark={isDark}
-                  language={language}
                   onAuditByEan={handleAuditByEan}
                   onSuggestEprelId={handleSuggestEprelId}
                   onSetAuditReviewStatus={handleSetAuditReviewStatus}
@@ -2132,7 +2099,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                 editData={editData}
                 effectiveDraftPrice={effectiveDraftPrice}
                 isDark={isDark}
-                language={language}
                 onApplySupplierMarkup={applySupplierMarkupWithBase}
                 onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
                 originalApiPrice={originalApiPrice}
@@ -2149,7 +2115,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                   clearBundlePricing={clearBundlePricing}
                   getBundlePricing={getBundlePricing}
                   isDark={isDark}
-                  language={language}
                   selectedTireFinalPriceEur={effectiveDraftPrice}
                   selectedTirePrice={originalApiPrice}
                   setBundleTier={setBundleTier}
@@ -2165,7 +2130,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                 handleImageUpload={handleImageUpload}
                 handleRemoveImage={handleRemoveImage}
                 isDark={isDark}
-                language={language}
                 uploadError={uploadError}
                 uploadingImages={uploadingImages}
               />
@@ -2186,7 +2150,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                 identityModel={getEffectiveIdentity(selectedTire).model}
                 identitySizeString={getEffectiveIdentity(selectedTire).size_string}
                 isDark={isDark}
-                language={language}
                 onEditDataChange={(updater) => setEditData((prev) => updater(prev))}
                 onGenerateAllFields={handleGenerateAllAiFields}
               />
@@ -2196,7 +2159,6 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                 hasMissingSupplierPrice={hasMissingSupplierPrice}
                 isDark={isDark}
                 isManualNonPassenger={getManualNonPassengerFlag(editData.spec_overrides)}
-                language={language}
                 mustHideFromStore={mustHideFromStore}
                 onHiddenChange={(hidden) => setEditData((prev) => ({ ...prev, is_hidden: hidden }))}
                 onManualNonPassengerChange={(checked) =>
@@ -2251,7 +2213,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <RotateCcw className="w-4 h-4" />
-                {language === 'fi' ? 'Tyhjennä CMS' : 'Reset CMS'}
+                {t('tiresCmsPage.resetCms')}
               </button>
               <button
                 onClick={handleCloseDrawer}
@@ -2262,7 +2224,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                     : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                 }`}
               >
-                {language === 'fi' ? 'Peruuta' : 'Cancel'}
+                {t('tiresCmsPage.cancel')}
               </button>
               <button
                 onClick={handleSave}
@@ -2274,7 +2236,7 @@ export function TiresCMSPage({ embedded = false }: { embedded?: boolean } = {}) 
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <Save className="w-4 h-4" />
-                {saving ? (language === 'fi' ? 'Tallennetaan...' : 'Saving...') : (language === 'fi' ? 'Tallenna' : 'Save')}
+                {saving ? t('tiresCmsPage.saving') : t('tiresCmsPage.save')}
               </button>
             </div>
           </div>

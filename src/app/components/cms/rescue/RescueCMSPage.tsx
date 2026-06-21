@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../../../utils/supabase/client';
-import { useLanguage } from '../../LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import {
@@ -251,7 +251,7 @@ function SectionBlock({
 }
 
 export function RescueCMSPage() {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const [requests, setRequests] = useState<RescueRequestRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -480,14 +480,14 @@ export function RescueCMSPage() {
         });
       }
 
-      setSaveMessage(language === 'fi' ? 'Pelastustapaus tallennettu.' : 'Rescue case saved.');
+      setSaveMessage(t('rescueCms.caseSaved'));
       await loadEvents(selectedRequest.id);
     } catch (err: any) {
       setError(err?.message || 'Failed to save rescue request.');
     } finally {
       setSaving(false);
     }
-  }, [currentUserEmail, editor.assignedTo, editor.internalNotes, editor.priority, editor.status, language, loadEvents, logEvent, selectedRequest]);
+  }, [currentUserEmail, editor.assignedTo, editor.internalNotes, editor.priority, editor.status, loadEvents, logEvent, selectedRequest, t]);
 
   const selectedStatus = normalizeStatus(selectedRequest?.status);
   const selectedStatusIndex = STATUS_ORDER.indexOf(selectedStatus);
