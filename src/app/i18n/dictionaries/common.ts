@@ -22,7 +22,7 @@ export const commonTranslations = {
     fi: 'Käytämme Microsoft Claritya sivuston käytön ymmärtämiseen ja ajanvarauksen, verkkokaupan ja sivujen parantamiseen. Emme lähetä Claritylle nimiä, sähköposteja, puhelinnumeroita, rekisteritunnuksia tai maksutietoja.',
     en: 'We use Microsoft Clarity to understand site usage and improve booking, shopping, and page experience. We do not send names, emails, phone numbers, license plates, or payment details to Clarity.',
   },
-  'analyticsConsent.accept': { fi: 'Hyväksy analytiikka', en: 'Accept analytics' },
+  'analyticsConsent.accept': { fi: 'Hyväksy', en: 'Accept' },
   'analyticsConsent.decline': { fi: 'Hylkää', en: 'Decline' },
   'footer.cookiePolicy': { fi: 'Evästekäytäntö', en: 'Cookie Policy' },
   'footer.cookieSettings': { fi: 'Evästeasetukset', en: 'Cookie settings' },

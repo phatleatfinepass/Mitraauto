@@ -4,7 +4,7 @@ import { useTheme } from '../../../theme/ThemeContext';
 import { Card } from '../../ui/card';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5, PrivacyPolicyV51, PrivacyPolicyV60 } from '../../legal/PrivacyPolicyVersions';
+import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5, PrivacyPolicyV51, PrivacyPolicyV61 } from '../../legal/PrivacyPolicyVersions';
 import { TermsV1, TermsV2, TermsV3, TermsV4, TermsV5, TermsV6, TermsV61 } from '../../legal/TermsVersions';
 
 interface LegalPageProps {
@@ -56,7 +56,7 @@ const privacyVersions: LegalVersion[] = [
     descriptionKey: 'legal.timeline.v7.privacyDescription'
   },
   {
-    version: 'v6.0',
+    version: 'v6.1',
     date: '2026-06-22',
     dateKey: 'legal.timeline.v8.date',
     descriptionKey: 'legal.timeline.v8.privacyDescription'
@@ -84,6 +84,13 @@ const termsVersions: LegalVersion[] = [
     descriptionKey: 'legal.timeline.v7.termsDescription'
   },
 ];
+
+const cookiePolicyVersion: LegalVersion = {
+  version: 'v1.0',
+  date: '2026-06-22',
+  dateKey: 'legal.timeline.v8.date',
+  descriptionKey: 'legal.timeline.v8.cookieDescription',
+};
 
 const timelineVersions: LegalVersion[] = [
   ...termsVersions,
@@ -200,7 +207,7 @@ export function LegalPage({ initialSection }: LegalPageProps) {
         return <PrivacyPolicyV51 t={t} />;
       case 6:
       default:
-        return <PrivacyPolicyV60 t={t} />;
+        return <PrivacyPolicyV61 t={t} />;
     }
   };
 
@@ -228,7 +235,7 @@ export function LegalPage({ initialSection }: LegalPageProps) {
   };
 
   const shouldShowPaytrailSection = new Date(selectedTimelineDate) >= new Date('2025-11-27');
-  const shouldShowCookiePolicySection = selectedPrivacyVersionIndex === privacyVersions.length - 1;
+  const shouldShowCookiePolicySection = selectedTimelineDate >= cookiePolicyVersion.date;
   const isSelectedTermsArchived = selectedTermsVersionIndex < termsVersions.length - 1;
   const isSelectedPrivacyArchived = selectedPrivacyVersionIndex < privacyVersions.length - 1;
   const visibleTimelineVersions = timelineVersions.slice(timelineStartIndex, timelineStartIndex + visibleTimelineCount);
@@ -498,12 +505,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                     {t('legal.cookie.title')}
                   </h1>
                   <motion.span
-                    key={selectedPrivacyVersionIndex}
+                    key={cookiePolicyVersion.version}
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
                   >
-                    {privacyVersions[selectedPrivacyVersionIndex].version}
+                    {cookiePolicyVersion.version}
                   </motion.span>
                 </div>
                 <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
@@ -511,8 +518,11 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                   {t('legal.cookie.subtitle')}
                 </p>
                 <div className="text-sm text-muted-foreground space-y-1">
-                  <p><strong>{t('legal.privacy.effective')}:</strong> {t(privacyVersions[selectedPrivacyVersionIndex].dateKey)}</p>
-                  <p><strong>{t('legal.privacy.lastUpdated')}:</strong> {t(privacyVersions[selectedPrivacyVersionIndex].dateKey)}</p>
+                  <p><strong>{t('legal.cookie.effective')}:</strong> {t(cookiePolicyVersion.dateKey)}</p>
+                  <p><strong>{t('legal.cookie.lastUpdated')}:</strong> {t(cookiePolicyVersion.dateKey)}</p>
+                  <p className="mt-3 text-xs italic text-[#FF6B35]">
+                    {t(cookiePolicyVersion.descriptionKey)}
+                  </p>
                 </div>
               </div>
 

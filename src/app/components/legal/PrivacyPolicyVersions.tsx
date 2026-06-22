@@ -789,8 +789,8 @@ export function PrivacyPolicyV51({ t }: { t: (key: string) => string }) {
   );
 }
 
-// Version 6.0 - Microsoft Clarity and analytics consent release (June 2026)
-export function PrivacyPolicyV60({ t }: { t: (key: string) => string }) {
+// Version 6.1 - Microsoft Clarity and analytics consent release (June 2026)
+export function PrivacyPolicyV61({ t }: { t: (key: string) => string }) {
   return (
     <PrivacyPolicyV5x
       t={t}

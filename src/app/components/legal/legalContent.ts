@@ -128,7 +128,7 @@ const legalContentEntries = {
   "privacy.0125": { fi: "Voimme päivittää tätä tietosuojaselostetta, kun palvelut, järjestelmät, lainsäädäntö tai käsittelytavat muuttuvat. Julkaisemme ajantasaisen version verkkosivustolla ja säilytämme aiemmat versiot historiatietona.", en: "We may update this Privacy Policy when services, systems, law, or processing practices change. We publish the current version on the website and keep previous versions as version history." },
   "privacy.0126": { fi: "Nykyinen versio: Tietosuojaseloste v5.1", en: "Current version: Privacy Policy v5.1" },
   "privacy.0127": { fi: "Voimaantulopäivä: 1.5.2026", en: "Effective date: 1 May 2026" },
-  "privacy.0128": { fi: "Nykyinen versio: Tietosuojaseloste v6.0", en: "Current version: Privacy Policy v6.0" },
+  "privacy.0128": { fi: "Nykyinen versio: Tietosuojaseloste v6.1", en: "Current version: Privacy Policy v6.1" },
   "privacy.0129": { fi: "Voimaantulopäivä: 22.6.2026", en: "Effective date: 22 June 2026" },
   "privacy.0130": { fi: "Tämä julkaisu lisää Microsoft Clarity -analytiikan, evästesuostumuksen ja analytiikan käsittelijätiedot.", en: "This release adds Microsoft Clarity analytics, cookie consent, and analytics processor information." },
   "terms.0001": { fi: "1. Sopimus, soveltamisala ja palveluntarjoaja", en: "1. Agreement, Scope, and Service Provider" },
