@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { MapPin, Phone, Mail, Clock, Navigation } from 'lucide-react';
 import MapContainer from '../../../imports/MapContainer';
 import { getShopStatus } from '../../../utils/openingHours';
+import { businessProfile } from '../../../config/businessProfile';
 
 export function ContactSection() {
   const { t, language } = useLanguage();
@@ -18,49 +19,39 @@ export function ContactSection() {
     return () => clearInterval(interval);
   }, []);
 
-  // Static contact information (doesn't change with language)
-  const CONTACT_INFO = {
-    address: 'Hankasuontie 5, 00390 Helsinki',
-    phone: '+358 40 7777 163',
-    phoneDisplay: '+358 40 7777 163',
-    email: 'contact@mitra-auto.fi',
-    // Universal map URL that opens in user's default map app
-    mapUrl: 'https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland',
-  };
-
   const contactDetails = [
     {
       icon: MapPin,
       label: t('contact.address'),
-      value: CONTACT_INFO.address,
-      href: CONTACT_INFO.mapUrl,
+      value: businessProfile.address.formatted,
+      href: businessProfile.appleMapsUrl,
       isClickable: true,
     },
     {
       icon: Phone,
       label: t('contact.phone'),
-      value: CONTACT_INFO.phoneDisplay,
-      href: `tel:${CONTACT_INFO.phone}`,
+      value: businessProfile.phoneDisplay,
+      href: `tel:${businessProfile.phoneE164}`,
       isClickable: true,
     },
     {
       icon: Mail,
       label: t('contact.email'),
-      value: CONTACT_INFO.email,
-      href: `mailto:${CONTACT_INFO.email}`,
+      value: businessProfile.email,
+      href: `mailto:${businessProfile.email}`,
       isClickable: true,
     },
     {
       icon: Clock,
       label: t('contact.hours'),
-      value: t('contact.hoursValue'),
+      value: businessProfile.openingHoursText[language],
       isClickable: false,
     },
   ];
 
   return (
     <section 
-      className="py-16 md:py-24 lg:py-32 bg-background relative" 
+      className="relative overflow-hidden bg-background py-16 md:py-24 lg:py-32"
       aria-labelledby="contact-heading"
     >
       <div className="container mx-auto max-w-7xl px-6 lg:px-8">
@@ -75,15 +66,15 @@ export function ContactSection() {
         </div>
 
         {/* Two Column Layout */}
-         <div className="grid grid-cols-1 gap-8 md:gap-12 lg:grid-cols-[60%_40%] items-start">
+         <div className="grid grid-cols-1 items-start gap-8 md:gap-12 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           {/* Left Column - Map Placeholder */}
            <div className="order-1 w-full">
             <a
-              href={CONTACT_INFO.mapUrl}
+              href={businessProfile.mapSearchUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full relative aspect-square rounded-2xl bg-gray-100 overflow-hidden shadow-sm transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer group"
-              aria-label={`${t('contact.mapPlaceholder')} - ${CONTACT_INFO.address}`}
+              aria-label={`${t('contact.mapPlaceholder')} - ${businessProfile.address.formatted}`}
             >
               {/* Map Background */}
               <div className="absolute inset-0 w-full h-full">
@@ -172,7 +163,7 @@ export function ContactSection() {
                   asChild
                 >
                   <a 
-                    href={CONTACT_INFO.mapUrl}
+                    href={businessProfile.appleMapsUrl}
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2"
@@ -187,7 +178,7 @@ export function ContactSection() {
                   asChild
                 >
                   <a 
-                    href={`mailto:${CONTACT_INFO.email}`}
+                    href={`mailto:${businessProfile.email}`}
                     className="inline-flex items-center justify-center gap-2"
                   >
                     <Mail className="h-4 w-4" aria-hidden="true" />

@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { buildProductImageFallback } from '../../utils/productImage';
-import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
+import { calculateLinePricing, PRODUCT_VAT_MULTIPLIER, type ProductPricingRules } from '../../utils/pricing';
 
 interface RimCardProps {
   product?: {
@@ -66,11 +66,16 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
     setCardImageSrc(product.best_image_url || fallbackImage);
   }, [product.best_image_url, fallbackImage]);
 
-  const fourPiecePrice = calculateLinePricing(
-    product.best_price_eur || 0,
-    4,
-    product.pricing_rules ?? null,
-  ).lineTotalEur;
+  const hasSellablePrice = typeof product.best_price_eur === 'number' && Number.isFinite(product.best_price_eur) && product.best_price_eur > 0;
+  const canAddToCart = product.in_stock && hasSellablePrice;
+  const displayUnitPrice = hasSellablePrice ? (product.best_price_eur ?? 0) * PRODUCT_VAT_MULTIPLIER : null;
+  const fourPiecePrice = hasSellablePrice
+    ? calculateLinePricing(
+        product.best_price_eur ?? 0,
+        4,
+        product.pricing_rules ?? null,
+      ).lineTotalEur * PRODUCT_VAT_MULTIPLIER
+    : null;
 
   const sizeLabel = [product.rim_width, product.rim_diameter ? `${product.rim_diameter}"` : undefined]
     .filter(Boolean)
@@ -230,7 +235,7 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
                   {t('catalog.priceEach')}
                 </p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">
-                  {(product.best_price_eur || 0).toFixed(2)} €
+                  {displayUnitPrice !== null ? `${displayUnitPrice.toFixed(2)} €` : t('catalog.priceOnRequest')}
                 </p>
               </div>
               <div className="text-right">
@@ -238,14 +243,14 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
                   {t('catalog.setOf4')}
                 </p>
                 <p className={`mt-1 text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                  {fourPiecePrice.toFixed(2)} €
+                  {fourPiecePrice !== null ? `${fourPiecePrice.toFixed(2)} €` : t('catalog.priceOnRequestShort')}
                 </p>
               </div>
             </div>
           </div>
 
           <button
-            disabled={!product.in_stock}
+            disabled={!canAddToCart}
             className="pointer-events-auto relative z-20 mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FF6B35]/90 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={(event) => {
               event.preventDefault();
@@ -254,9 +259,11 @@ export function RimCard({ product: productProp, href, index: _index = 0, onClick
             }}
           >
             <ShoppingCart className="h-4 w-4" />
-            {product.in_stock
+            {canAddToCart
               ? t('catalog.addToCart')
-              : t('catalog.outOfStockTemporary')}
+              : product.in_stock
+                ? t('catalog.priceOnRequest')
+                : t('catalog.outOfStockTemporary')}
           </button>
         </div>
       </article>

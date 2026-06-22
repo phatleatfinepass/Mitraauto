@@ -1,0 +1,522 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic:
+      - generic: MA
+      - generic:
+        - paragraph: Mitra Auto
+        - paragraph: Loading garage services and booking tools.
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "Skip to main content" [ref=e4] [cursor=pointer]:
+        - /url: "#main-content"
+      - navigation [ref=e5]:
+        - generic [ref=e7]:
+          - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+            - /url: /en
+            - img "Mitra Auto" [ref=e9]
+            - generic [ref=e10]: Mitra Auto
+          - generic [ref=e11]:
+            - link "Home" [ref=e12] [cursor=pointer]:
+              - /url: /en
+            - link "Services" [ref=e13] [cursor=pointer]:
+              - /url: /en/services
+            - link "Catalog" [ref=e14] [cursor=pointer]:
+              - /url: /en/catalog
+            - link "Tire Hotel" [ref=e15] [cursor=pointer]:
+              - /url: /en/services/tire-hotel
+          - generic [ref=e16]:
+            - button "Toggle theme" [ref=e17]:
+              - img [ref=e18]
+            - button "Toggle language" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e24]: en
+            - button "Cart" [ref=e25]:
+              - img [ref=e26]
+            - button "Login" [ref=e30]:
+              - img [ref=e31]
+      - main [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e37]:
+            - heading "Document History" [level=3] [ref=e38]
+            - generic [ref=e40]:
+              - button "Previous version" [ref=e41]:
+                - img [ref=e42]
+              - generic [ref=e46]:
+                - button "November 27, 2025" [ref=e47]:
+                  - generic [ref=e49]: November 27, 2025
+                - button "April 15, 2026" [ref=e50]:
+                  - generic [ref=e52]: April 15, 2026
+                - button "May 1, 2026" [ref=e53]:
+                  - generic [ref=e55]: May 1, 2026
+                - button "June 22, 2026" [ref=e56]:
+                  - generic [ref=e58]: June 22, 2026
+              - button "Next version" [disabled] [ref=e59]:
+                - img [ref=e60]
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - generic [ref=e66]:
+                - heading "Privacy Policy" [level=1] [ref=e67]
+                - generic [ref=e68]: v6.0
+              - paragraph [ref=e70]: How we collect, process and protect your personal data and vehicle information in accordance with GDPR and Finnish Data Protection Act.
+              - generic [ref=e71]:
+                - paragraph [ref=e72]:
+                  - strong [ref=e73]: "Effective Date:"
+                  - text: June 22, 2026
+                - paragraph [ref=e74]:
+                  - strong [ref=e75]: "Last Updated:"
+                  - text: June 22, 2026
+                - paragraph [ref=e76]: Microsoft Clarity and analytics consent update
+            - generic [ref=e79]:
+              - generic [ref=e80]:
+                - heading "1. Controller, Scope, and Contact Information" [level=2] [ref=e81]
+                - paragraph [ref=e82]: This Privacy Policy explains how Mitra Auto Oy processes personal data on the website, booking service, workshop and tire services, Rescue 24/7, webshop, payments, customer support, CMS administration, Account & Customer system, customer PWA, customer accounts, customer benefits, reminders, and digital service book.
+                - paragraph [ref=e83]: This policy applies to consumer customers, contacts of business and fleet customers, customer account users, webshop users, emergency service users, job applicants where they contact us through the service, and other persons whose data is processed in Mitra Auto services.
+                - list [ref=e84]:
+                  - listitem [ref=e85]:
+                    - strong [ref=e86]: "Company:"
+                    - text: Mitra Auto Oy
+                  - listitem [ref=e87]:
+                    - strong [ref=e88]: "Business ID:"
+                    - text: 3408833-8
+                  - listitem [ref=e89]:
+                    - strong [ref=e90]: "Address:"
+                    - text: Hankasuontie 5, 00390 Helsinki, Finland
+                  - listitem [ref=e91]:
+                    - strong [ref=e92]: "Email:"
+                    - link "contact@mitra-auto.fi" [ref=e93] [cursor=pointer]:
+                      - /url: mailto:contact@mitra-auto.fi
+                  - listitem [ref=e94]:
+                    - strong [ref=e95]: "Phone:"
+                    - link "+358 40 777 7163" [ref=e96] [cursor=pointer]:
+                      - /url: tel:+358407777163
+              - generic [ref=e97]:
+                - heading "2. Services and Systems Covered" [level=2] [ref=e98]
+                - paragraph [ref=e99]: Mitra Auto uses digital systems to receive, provide, track, and manage services and customer data. Account & Customer is part of the staff administration system used to maintain customer, vehicle, license plate, booking, order, receipt, emergency service, service history, reminder, and customer benefit data.
+                - paragraph [ref=e100]: The customer PWA is the customer-facing view where a customer may see vehicles, upcoming appointments, possible service dates, pickup and handover details, digital service book, reminders, customer benefits, and contact details connected to the account.
+                - list [ref=e101]:
+                  - listitem [ref=e102]: Website and contact forms.
+                  - listitem [ref=e103]: Booking, service intake, work orders, pickup, and handover.
+                  - listitem [ref=e104]: Webshop, orders, payments, invoices, and receipts.
+                  - listitem [ref=e105]: Workshop, tire, cleaning, inspection, parts, and Rescue 24/7 services.
+                  - listitem [ref=e106]: CMS, Account & Customer, customer PWA, customer account, digital service book, customer benefits, and reminder system.
+              - generic [ref=e107]:
+                - heading "3. Personal Data We Collect" [level=2] [ref=e108]
+                - paragraph [ref=e109]: We collect data directly from the customer, from services used by the customer, from service entries made by Mitra Auto staff, from payment providers, from transport and service partners, and from technical systems. We collect only data needed for defined purposes.
+                - list [ref=e110]:
+                  - listitem [ref=e111]: "Identification and contact details: name, email, phone number, address, language, and customer identifiers."
+                  - listitem [ref=e112]: "Account data: customer account identifier, login data, role, access rights, account status, consents, and notification settings."
+                  - listitem [ref=e113]: "Vehicle data: license plate, vehicle name, make, model, VIN, tire and rim data, storage data, and mileage where needed for services or reminders."
+                  - listitem [ref=e114]: "Booking and scheduling data: appointments, service type, pickup and handover times, changes, and cancellations."
+                  - listitem [ref=e115]: "Service history and digital service book: completed work, diagnostics, repairs, parts, oil changes, tire work, cleaning, inspection-related data, recommendations, mileage readings, and staff notes."
+                  - listitem [ref=e116]: Order, payment, invoice, and receipt data, including payment data processed through Paytrail.
+                  - listitem [ref=e117]: "Rescue 24/7 data: name, phone, location, license plate, emergency service request status, and event log."
+                  - listitem [ref=e118]: "Customer benefit data: points, discounts, benefit level, campaigns, redemptions, and rules connected to benefits."
+                  - listitem [ref=e119]: "Communications and consents: email, SMS, and customer support history, plus marketing and contact consents."
+                  - listitem [ref=e120]: "Technical and security data: IP address, browser, device, cookies, session, logs, errors, audit entries, and information needed for security."
+                - paragraph [ref=e121]: GPS location is collected only for emergency service or a location feature expressly requested by the customer.
+              - generic [ref=e122]:
+                - heading "4. Vehicles, License Plates, and Customer Mapping" [level=2] [ref=e123]
+                - paragraph [ref=e124]: A license plate may be personal data when it can be connected to an identifiable person, business contact, customer account, or service history. Mitra Auto therefore processes license plates and vehicle mappings according to GDPR principles.
+                - list [ref=e125]:
+                  - listitem [ref=e126]: A private customer may have one or several vehicles connected to the customer account.
+                  - listitem [ref=e127]: A business or fleet customer may have several vehicles and license plates under the same customer group.
+                  - listitem [ref=e128]: Bookings, orders, emergency requests, receipts, pickup details, and service history may be linked to a customer profile using email, phone number, customer identifier, or license plate.
+                  - listitem [ref=e129]: If a license plate or other identifier gives an uncertain or conflicting match, the mapping is reviewed by staff before the data is shown to a customer.
+              - generic [ref=e130]:
+                - heading "5. Legal Bases for Processing" [level=2] [ref=e131]
+                - paragraph [ref=e132]: We process personal data under GDPR Article 6. The same category of data may be needed under different legal bases in different situations.
+                - list [ref=e133]:
+                  - listitem [ref=e134]:
+                    - strong [ref=e135]: "Contract performance:"
+                    - text: bookings, maintenance, repairs, tire services, orders, payments, pickup, customer account, and digital service book.
+                  - listitem [ref=e136]:
+                    - strong [ref=e137]: "Legal obligation:"
+                    - text: accounting, taxation, consumer protection, warranty and liability matters, complaints, and authority requests.
+                  - listitem [ref=e138]:
+                    - strong [ref=e139]: "Legitimate interest:"
+                    - text: customer relationship management, safe service delivery, data integrity, abuse prevention, review of license-plate mappings, internal auditing, and service development.
+                  - listitem [ref=e140]:
+                    - strong [ref=e141]: "Consent:"
+                    - text: marketing, optional benefit messages, analytics cookies, optional location functionality, and other situations where consent is required by law.
+                - paragraph [ref=e142]: Where processing is based on legitimate interest, we assess necessity, the effect on the customer, and reasonable expectations. The customer may object to such processing under GDPR.
+              - generic [ref=e143]:
+                - heading "6. Purposes of Processing" [level=2] [ref=e144]
+                - paragraph [ref=e145]: "We use personal data for the following purposes:"
+                - list [ref=e146]:
+                  - listitem [ref=e147]: to provide services, bookings, orders, payments, invoices, and receipts;
+                  - listitem [ref=e148]: to display the customer PWA, customer account, vehicle list, digital service book, and customer benefits;
+                  - listitem [ref=e149]: to match customer data using license plate, email, phone number, or customer identifier;
+                  - listitem [ref=e150]: to show the next appointment, possible service date, pickup, handover, and work progress;
+                  - listitem [ref=e151]: to send service reminders, pickup notices, payment notices, security messages, and customer support messages;
+                  - listitem [ref=e152]: to manage customer benefits, points, discounts, offers, and campaigns;
+                  - listitem [ref=e153]: to handle complaints, correction requests, warranties, liability matters, and authority matters;
+                  - listitem [ref=e154]: for security, access control, abuse prevention, logging, and auditing;
+                  - listitem [ref=e155]: to improve service quality, inventory, resources, schedules, and customer experience.
+              - generic [ref=e156]:
+                - heading "7. Customer Account, PWA, and Digital Service Book" [level=2] [ref=e157]
+                - paragraph [ref=e158]: The customer account and PWA show data that Mitra Auto has linked to the customer, customer group, or vehicle. Visible data may include upcoming appointments, service intake, pickup and handover, possible next service date, service history, service recommendations, and customer benefits.
+                - list [ref=e159]:
+                  - listitem [ref=e160]: The digital service book may include maintenance and repair work, replaced parts, tire work, cleaning work, inspection entries, mileage readings, and recommendations.
+                  - listitem [ref=e161]: The next possible service date or reminder may be created from service history, mileage, vehicle data, previous work, or staff assessment.
+                  - listitem [ref=e162]: Customer benefit data may include points, discounts, campaigns, benefit levels, and conditions of use.
+                - paragraph [ref=e163]: Customer account data does not replace official receipts, invoices, warranty terms, or authority registers.
+              - generic [ref=e164]:
+                - heading "8. Automated Matching, Suggestions, and Human Review" [level=2] [ref=e165]
+                - paragraph [ref=e166]: Mitra Auto may use rule-based automated matching so bookings, orders, receipts, emergency requests, and service history can be linked to the correct customer profile. Matching may be based on a unique email, unique license plate, customer identifier, or confirmed business or fleet list.
+                - paragraph [ref=e167]: Uncertain matches, conflicts, duplicate license plates, and mappings between several customers are directed to staff review. Staff may approve, reject, correct, unlink, merge, or anonymize the mapping.
+                - paragraph [ref=e168]: This matching is not automated decision-making under GDPR Article 22 that would produce legal effects or similarly significant effects for the customer.
+              - generic [ref=e169]:
+                - heading "9. Sharing and Processors" [level=2] [ref=e170]
+                - paragraph [ref=e171]: We do not sell personal data. We disclose or make personal data available for processing only where needed for the service, law, security, or a customer request.
+                - list [ref=e172]:
+                  - listitem [ref=e173]: payment providers, banks, accounting, and invoicing services;
+                  - listitem [ref=e174]: IT, hosting, database, email, SMS, analytics, and security service providers, including Microsoft Clarity based on consent;
+                  - listitem [ref=e175]: parts, tire, towing, transport, inspection, and other service partners to the extent required by the service;
+                  - listitem [ref=e176]: authorities, insurance companies, consumer advice, debt collection services, or courts where required by law, legal claim, or contract;
+                  - listitem [ref=e177]: named contacts of a business or fleet customer where processing concerns that customer group vehicles or services.
+                - paragraph [ref=e178]: We use agreements with personal data processors that limit processing to Mitra Auto instructions and require appropriate security.
+              - generic [ref=e179]:
+                - heading "10. International Transfers" [level=2] [ref=e180]
+                - paragraph [ref=e181]: We aim to use service providers located in the EU or EEA. If personal data is transferred outside the EU or EEA, we use GDPR safeguards such as European Commission Standard Contractual Clauses, transfer impact assessment, and technical and organizational protections from the provider.
+              - generic [ref=e182]:
+                - heading "11. Retention" [level=2] [ref=e183]
+                - paragraph [ref=e184]: We retain personal data only for as long as needed for the processing purpose, contract, law, liability period, warranty, complaint, accounting, or legal claim. When data is no longer needed, we delete or anonymize it within a reasonable time.
+                - list [ref=e185]:
+                  - listitem [ref=e186]: Accounting, invoice, and receipt data is generally retained for the period required by accounting law.
+                  - listitem [ref=e187]: Service, repair, warranty, and complaint data is retained for as long as it may be needed for service history, warranty, liability, or legal claims.
+                  - listitem [ref=e188]: Customer account and PWA data is retained during the customer relationship and afterward only where required by law, contract, or legitimate interest.
+                  - listitem [ref=e189]: Marketing consents and opt-outs are retained for as long as needed to prove the consent or opt-out.
+                  - listitem [ref=e190]: Technical logs and audit data are retained for a limited time for security, error investigation, and abuse prevention.
+              - generic [ref=e191]:
+                - heading "12. Security and Access Control" [level=2] [ref=e192]
+                - paragraph [ref=e193]: We protect personal data with technical and organizational measures. CMS and Account & Customer access is granted only to staff who need the data for work duties.
+                - list [ref=e194]:
+                  - listitem [ref=e195]: Super Admin may manage CMS access rights, roles, visibility, and staff accounts.
+                  - listitem [ref=e196]: Admin and supervisor access is limited to customer, booking, order, and service data needed for the role.
+                  - listitem [ref=e197]: We use login controls, role-based permissions, session management, logging, auditing, and access removal where needed.
+                  - listitem [ref=e198]: Personal data breaches are handled under GDPR, and we notify the supervisory authority and data subjects where required by law.
+              - generic [ref=e199]:
+                - heading "13. Communications, Reminders, and Marketing" [level=2] [ref=e200]
+                - paragraph [ref=e201]: We send service-related messages such as booking confirmations, schedule changes, pickup notices, payment links, security messages, service questions, and customer support messages. These messages are necessary to provide the service and are generally not marketing.
+                - paragraph [ref=e202]: Service reminders may be sent based on contract, legitimate interest, or consent depending on the message content. Marketing, benefit messages, and optional campaign messages are sent only on a lawful basis, and the customer may opt out.
+              - generic [ref=e203]:
+                - heading "14. GDPR Rights" [level=2] [ref=e204]
+                - paragraph [ref=e205]: Customers and other data subjects have rights under GDPR. These rights also apply to vehicle and license-plate mappings where the data can be connected to an identifiable person.
+                - list [ref=e206]:
+                  - listitem [ref=e207]:
+                    - strong [ref=e208]: "Access:"
+                    - text: the right to know whether we process personal data and to receive a copy of the data.
+                  - listitem [ref=e209]:
+                    - strong [ref=e210]: "Rectification:"
+                    - text: the right to correct inaccurate or incomplete data, including vehicle and license-plate mappings.
+                  - listitem [ref=e211]:
+                    - strong [ref=e212]: "Erasure and anonymization:"
+                    - text: the right to request deletion where there is no legal, contractual, or other lawful ground for retention.
+                  - listitem [ref=e213]:
+                    - strong [ref=e214]: "Restriction:"
+                    - text: the right to request restriction, for example while data accuracy is reviewed.
+                  - listitem [ref=e215]:
+                    - strong [ref=e216]: "Portability:"
+                    - text: the right to receive data provided by the customer in a structured and machine-readable format where the conditions are met.
+                  - listitem [ref=e217]:
+                    - strong [ref=e218]: "Objection:"
+                    - text: the right to object to processing based on legitimate interest and to direct marketing.
+                  - listitem [ref=e219]:
+                    - strong [ref=e220]: "Withdraw consent:"
+                    - text: the right to withdraw consent at any time without affecting processing carried out before withdrawal.
+                  - listitem [ref=e221]:
+                    - strong [ref=e222]: "Complaint:"
+                    - text: the right to lodge a complaint with the Finnish Data Protection Ombudsman.
+                - paragraph [ref=e223]: Requests may be sent to contact@mitra-auto.fi. We may ask for additional information to verify identity and find the correct customer or vehicle mapping.
+              - generic [ref=e224]:
+                - heading "15. Cookies and Technical Tracking" [level=2] [ref=e225]
+                - paragraph [ref=e226]: We use essential cookies and similar technical data to provide the website, login, shopping cart, session, security, and PWA functionality. We may use analytics or marketing cookies only where there is a lawful basis and consent where required.
+                - list [ref=e227]:
+                  - listitem [ref=e228]:
+                    - strong [ref=e229]: "Essential cookies:"
+                    - text: needed for technical operation and security of the service.
+                  - listitem [ref=e230]:
+                    - strong [ref=e231]: "Preference cookies:"
+                    - text: remember choices such as language or interface settings.
+                  - listitem [ref=e232]:
+                    - strong [ref=e233]: "Analytics (Microsoft Clarity):"
+                    - text: used to improve site usage, booking, and webshop experience only lawfully and with consent where required.
+                - paragraph [ref=e234]: Browser settings may limit cookies, but blocking essential cookies may prevent some services from working.
+              - generic [ref=e235]:
+                - heading "16. Children" [level=2] [ref=e236]
+                - paragraph [ref=e237]: Mitra Auto services are intended mainly for vehicle owners, holders, drivers, business customers, and adults. We do not knowingly collect personal data of children without involvement of a guardian or other legal representative.
+              - generic [ref=e238]:
+                - heading "17. Changes and Effective Version" [level=2] [ref=e239]
+                - paragraph [ref=e240]: We may update this Privacy Policy when services, systems, law, or processing practices change. We publish the current version on the website and keep previous versions as version history.
+                - paragraph [ref=e241]: This release adds Microsoft Clarity analytics, cookie consent, and analytics processor information.
+                - paragraph [ref=e242]: "Current version: Privacy Policy v6.0"
+                - paragraph [ref=e243]: "Effective date: 22 June 2026"
+          - generic [ref=e246]:
+            - generic [ref=e247]:
+              - generic [ref=e248]:
+                - heading "Terms & Conditions of Service" [level=1] [ref=e249]
+                - generic [ref=e250]: v6.1
+              - paragraph [ref=e252]: General terms and conditions under which Mitra Auto Oy provides automotive service, tire services, inspection, and tire hotel services in Finland.
+              - generic [ref=e253]:
+                - paragraph [ref=e254]:
+                  - strong [ref=e255]: "Effective Date:"
+                  - text: May 1, 2026
+                - paragraph [ref=e256]:
+                  - strong [ref=e257]: "Last Updated:"
+                  - text: May 1, 2026
+                - paragraph [ref=e258]: Customer account, benefits, and digital service book terms
+            - generic [ref=e261]:
+              - generic [ref=e262]:
+                - heading "1. Agreement, Scope, and Service Provider" [level=2] [ref=e263]
+                - paragraph [ref=e264]: These Terms apply to Mitra Auto Oy website, booking, workshop and tire services, webshop, payments, Rescue 24/7, customer support, customer PWA, customer account, digital service book, reminders, and customer benefits. By using the services, making a booking, buying products, paying an invoice, or using a customer account, you accept these Terms.
+                - list [ref=e265]:
+                  - listitem [ref=e266]:
+                    - strong [ref=e267]: "Service provider:"
+                    - text: Mitra Auto Oy
+                  - listitem [ref=e268]: "Business ID: 3408833-8"
+                  - listitem [ref=e269]: "Address: Hankasuontie 5, 00390 Helsinki, Finland"
+                  - listitem [ref=e270]:
+                    - text: "Email:"
+                    - link "contact@mitra-auto.fi" [ref=e271] [cursor=pointer]:
+                      - /url: mailto:contact@mitra-auto.fi
+                  - listitem [ref=e272]:
+                    - text: "Phone:"
+                    - link "+358 40 777 7163" [ref=e273] [cursor=pointer]:
+                      - /url: tel:+358407777163
+                - paragraph [ref=e274]: The Finnish version prevails if there is a conflict between language versions.
+              - generic [ref=e275]:
+                - heading "2. Services Covered" [level=2] [ref=e276]
+                - paragraph [ref=e277]: Mitra Auto provides vehicle-related services and supporting digital functions. The exact service content is determined by the customer booking, accepted offer, order, work order, payment, or separate agreement.
+                - list [ref=e278]:
+                  - listitem [ref=e279]: workshop, maintenance, diagnostics, oil change, brake, chassis, electrical, air conditioning, and other vehicle work;
+                  - listitem [ref=e280]: tire and rim services, tire sales, installation, balancing, puncture repair, seasonal change, and tire hotel;
+                  - listitem [ref=e281]: cleaning, inspection, parts, pickup, handover, and transport-related services;
+                  - listitem [ref=e282]: webshop, booking, invoicing, payments, receipts, and customer support;
+                  - listitem [ref=e283]: Rescue 24/7 emergency service, towing coordination, and roadside support;
+                  - listitem [ref=e284]: customer PWA, customer account, vehicle list, digital service book, reminders, possible service dates, and customer benefits.
+                - paragraph [ref=e285]: Digital features may be developed, limited, discontinued, or released gradually. This does not remove customer rights under an already agreed service, repair, or purchase contract.
+              - generic [ref=e286]:
+                - heading "3. Definitions" [level=2] [ref=e287]
+                - list [ref=e288]:
+                  - listitem [ref=e289]:
+                    - strong [ref=e290]: "Customer:"
+                    - text: a consumer, business customer, fleet customer, customer account user, or other person using the services.
+                  - listitem [ref=e291]:
+                    - strong [ref=e292]: "Consumer:"
+                    - text: a natural person acting mainly outside business or professional activity.
+                  - listitem [ref=e293]:
+                    - strong [ref=e294]: "Business and fleet customer:"
+                    - text: a company, organization, trader, or customer managing a vehicle fleet.
+                  - listitem [ref=e295]:
+                    - strong [ref=e296]: "Vehicle:"
+                    - text: a vehicle owned, controlled, used, or otherwise connected to the service by the customer.
+                  - listitem [ref=e297]:
+                    - strong [ref=e298]: "Customer account and PWA:"
+                    - text: the customer-facing online view for bookings, vehicles, service history, reminders, and benefits.
+                  - listitem [ref=e299]:
+                    - strong [ref=e300]: "Digital service book:"
+                    - text: service history maintained by Mitra Auto, which may include maintenance, repair, tire, parts, cleaning, inspection, and recommendation data.
+                  - listitem [ref=e301]:
+                    - strong [ref=e302]: "Customer benefits:"
+                    - text: points, discounts, benefit levels, campaigns, reminders, or other customer relationship benefits.
+              - generic [ref=e303]:
+                - heading "4. Customer Account, Access, and Security" [level=2] [ref=e304]
+                - paragraph [ref=e305]: The customer account is intended to make customer service use easier. The customer may see data connected to the account, customer group, or vehicle, such as upcoming bookings, pickup and handover details, service history, possible service dates, reminders, and customer benefits.
+                - list [ref=e306]:
+                  - listitem [ref=e307]: The customer is responsible for secure use of login credentials and must notify Mitra Auto of suspected misuse.
+                  - listitem [ref=e308]: Mitra Auto may limit, suspend, or close a customer account where needed for security, abuse prevention, inaccurate data, unpaid receivables, or legal compliance.
+                  - listitem [ref=e309]: Business and fleet customer users, roles, and vehicle lists may be confirmed based on a named contact person or separate agreement.
+              - generic [ref=e310]:
+                - heading "5. Vehicles, License Plates, and Customer Mapping" [level=2] [ref=e311]
+                - paragraph [ref=e312]: The customer is responsible for the accuracy of contact details, vehicle data, license plates, and business or fleet lists, and for having the right to use or manage the vehicle in the service.
+                - list [ref=e313]:
+                  - listitem [ref=e314]: Mitra Auto may connect bookings, orders, receipts, emergency requests, pickup details, schedules, and service history to a customer profile using email, phone number, customer identifier, or license plate.
+                  - listitem [ref=e315]: If a mapping is incorrect, the customer must notify Mitra Auto. Mitra Auto will correct, unlink, or anonymize the incorrect mapping within a reasonable time.
+                  - listitem [ref=e316]: Management of several vehicles, a company, or a fleet group does not change vehicle ownership, liability, or insurance terms.
+              - generic [ref=e317]:
+                - heading "6. Bookings, Schedules, Pickup, and Cancellations" [level=2] [ref=e318]
+                - paragraph [ref=e319]: A booking is the customer request for a service time. A binding agreement is formed when Mitra Auto confirms the booking, starts the work, accepts an order, or gives an offer accepted by the customer. Estimated times are not guarantees of completion time unless expressly agreed.
+                - list [ref=e320]:
+                  - listitem [ref=e321]: The customer must deliver the vehicle at the agreed time and provide necessary information, keys, lock codes, or approvals for the work.
+                  - listitem [ref=e322]: Mitra Auto may reschedule where work, parts, safety, weather, staffing, or another justified reason requires it.
+                  - listitem [ref=e323]: Cancellation or change must be made as early as possible. Repeated no-shows or late cancellations may be charged for reasonable costs where permitted by law.
+              - generic [ref=e324]:
+                - heading "7. Orders, Prices, Payments, and Invoicing" [level=2] [ref=e325]
+                - paragraph [ref=e326]: Prices are stated in euros. Consumer prices include VAT unless otherwise stated. Business customer prices may show VAT separately. The final price may change if work scope, parts, vehicle condition, or customer-approved additional work changes.
+                - list [ref=e327]:
+                  - listitem [ref=e328]: Payments may be handled online, by invoice, payment link, payment provider, or another method accepted by Mitra Auto.
+                  - listitem [ref=e329]: Mitra Auto may require advance payment, prepayment of parts, credit check, or payment before vehicle handover.
+                  - listitem [ref=e330]: Unpaid invoices may incur late interest, reminder fees, and collection costs as permitted by law.
+              - generic [ref=e331]:
+                - heading "8. Tire Hotel and Storage Services" [level=2] [ref=e332]
+                - paragraph [ref=e333]: Tire hotel and other storage services apply to customer tires, rims, or other separately agreed products. Storage period, price, pickup, change, and possible additional services are determined by booking, order, or separate agreement.
+                - list [ref=e334]:
+                  - listitem [ref=e335]: The customer is responsible for ensuring stored products are lawful, identifiable, and suitable for the service.
+                  - listitem [ref=e336]: Mitra Auto may inspect tire condition and notify the customer if tires are not safe or legal to use.
+                  - listitem [ref=e337]: Unclaimed, unpaid, or unidentified products may be subject to separate storage, notice, and handling terms within the limits permitted by law.
+              - generic [ref=e338]:
+                - heading "9. Rescue 24/7 and Roadside Situations" [level=2] [ref=e339]
+                - paragraph [ref=e340]: Rescue 24/7 is a service for emergency and roadside situations that may include customer contact, location, license plate, situation description, towing coordination, tire change, jump-start help, or other suitable support. Availability depends on location, weather, safety, partners, and resources.
+                - paragraph [ref=e341]: The customer is responsible for providing correct location and vehicle data. If the situation is an immediate danger to life, health, or public safety, the customer must contact the public emergency number 112.
+              - generic [ref=e342]:
+                - heading "10. Digital Service Book and Service History" [level=2] [ref=e343]
+                - paragraph [ref=e344]: The digital service book shows service history stored in Mitra Auto systems. It may include repairs, maintenance, parts, tire work, cleaning, inspections, mileage readings, recommendations, staff entries, and summaries shown to the customer.
+                - list [ref=e345]:
+                  - listitem [ref=e346]: The service book is not an authority register and does not replace official invoices, receipts, inspection documents, or manufacturer service book unless separately agreed.
+                  - listitem [ref=e347]: Mitra Auto aims to keep data accurate, but history may contain errors entered by the customer, a previous system, a third party, or staff.
+                  - listitem [ref=e348]: The customer may request correction of inaccurate data. Mitra Auto may retain a correction log for legal liability and auditing.
+              - generic [ref=e349]:
+                - heading "11. Service Reminders, Notices, and Communications" [level=2] [ref=e350]
+                - paragraph [ref=e351]: Mitra Auto may send service messages such as booking confirmations, schedule changes, pickup notices, payment links, security messages, and service-related questions. These messages are needed to provide the service.
+                - paragraph [ref=e352]: Mitra Auto may also provide reminders for oil change, tire change, scheduled maintenance, inspection, or another vehicle-related need. Reminders are based on available data and do not replace customer responsibility to monitor vehicle safety and manufacturer instructions.
+                - paragraph [ref=e353]: Marketing and benefit messages are sent only on a lawful basis, and the customer may opt out where applicable.
+              - generic [ref=e354]:
+                - heading "12. Customer Benefits, Points, and Discounts" [level=2] [ref=e355]
+                - paragraph [ref=e356]: Customer benefits may include points, discounts, benefit levels, campaigns, reminders, or other benefits defined by Mitra Auto. Benefits are additional service features, not money, bank deposits, or customer property unless mandatory law states otherwise.
+                - list [ref=e357]:
+                  - listitem [ref=e358]: Mitra Auto may reasonably change benefit rules, accrual, validity, use limits, and campaigns.
+                  - listitem [ref=e359]: A benefit generally cannot be exchanged for cash or transferred to another customer without Mitra Auto approval.
+                  - listitem [ref=e360]: Misuse, incorrect mapping, unpaid invoice, or account closure may prevent use of benefits.
+              - generic [ref=e361]:
+                - heading "13. Customer Obligations" [level=2] [ref=e362]
+                - list [ref=e363]:
+                  - listitem [ref=e364]: provide correct contact, billing, vehicle, license plate, and service data;
+                  - listitem [ref=e365]: disclose known faults, safety risks, accessories, locking systems, and previous repairs where they may affect the work;
+                  - listitem [ref=e366]: ensure the vehicle does not contain dangerous, illegal, or unrelated property;
+                  - listitem [ref=e367]: pay agreed prices, additional work, parts, storage services, and other approved costs;
+                  - listitem [ref=e368]: use the customer account, PWA, and Mitra Auto services lawfully and appropriately.
+              - generic [ref=e369]:
+                - heading "14. Consumer Rights, Withdrawal, Warranty, and Defects" [level=2] [ref=e370]
+                - paragraph [ref=e371]: Consumer customers have rights under Finnish consumer protection law. Nothing in these Terms limits mandatory consumer protection rights.
+                - list [ref=e372]:
+                  - listitem [ref=e373]: Withdrawal rights for services, service start, and possible compensation are determined by consumer protection law. If a consumer asks the service to begin before the withdrawal period ends, the consumer may be required to pay for work already performed.
+                  - listitem [ref=e374]: Return and withdrawal rights for goods such as tires or parts are determined by law, product nature, use, and possible special order status.
+                  - listitem [ref=e375]: Warranty or defect liability for work, parts, and products is determined by law, manufacturer terms, Mitra Auto warranty, and the agreed work.
+                - paragraph [ref=e376]: Complaints must be made within a reasonable time after discovering the defect to contact@mitra-auto.fi.
+              - generic [ref=e377]:
+                - heading "15. Liability and Limitations" [level=2] [ref=e378]
+                - paragraph [ref=e379]: Mitra Auto is responsible for performing the service professionally and as agreed. Mitra Auto is not liable for damage caused by inaccurate customer data, hidden vehicle defects, customer refusal of recommended work, third-party services, force majeure, or customer negligence unless mandatory law states otherwise.
+                - paragraph [ref=e380]: The digital customer account, PWA, service book, possible service dates, and reminders are information services. They do not guarantee vehicle condition, safety, inspection readiness, or fulfillment of manufacturer service program.
+              - generic [ref=e381]:
+                - heading "16. Data Protection" [level=2] [ref=e382]
+                - paragraph [ref=e383]: Mitra Auto processes personal data according to the Privacy Policy. A license plate, vehicle mapping, and digital service book may be personal data where they can be connected to an identifiable person, business contact, or customer account.
+                - paragraph [ref=e384]: The customer may request correction, unlinking, or anonymization of an incorrect customer, vehicle, or license-plate mapping according to the Privacy Policy.
+              - generic [ref=e385]:
+                - heading "17. Misuse and Account Closure" [level=2] [ref=e386]
+                - paragraph [ref=e387]: Mitra Auto may block service use, remove access rights, cancel benefits, suspend an account, or close an account if the customer misuses the service, provides materially inaccurate data, attempts to view another customer data, leaves payments unpaid, breaches these Terms, or causes a security or privacy risk.
+                - paragraph [ref=e388]: Account closure does not remove Mitra Auto right to retain data needed for law, contract, payments, liability, warranty, complaint, accounting, or legal claims.
+              - generic [ref=e389]:
+                - heading "18. Disputes, Governing Law, and Consumer Advice" [level=2] [ref=e390]
+                - paragraph [ref=e391]: These Terms are governed by Finnish law, excluding conflict-of-law rules. Mandatory consumer rights are not limited.
+                - list [ref=e392]:
+                  - listitem [ref=e393]: Disputes should first be handled by contacting Mitra Auto.
+                  - listitem [ref=e394]: A consumer may contact consumer advice and bring the matter to the Finnish Consumer Disputes Board.
+                  - listitem [ref=e395]: Business customer disputes are primarily resolved in Helsinki District Court unless mandatory law or a separate agreement requires otherwise.
+                - paragraph [ref=e396]:
+                  - link "kkv.fi/en" [ref=e397] [cursor=pointer]:
+                    - /url: https://www.kkv.fi/en/
+                  - text: "|"
+                  - link "kuluttajariita.fi/en" [ref=e398] [cursor=pointer]:
+                    - /url: https://www.kuluttajariita.fi/en/
+              - generic [ref=e399]:
+                - heading "19. Changes and Effective Version" [level=2] [ref=e400]
+                - paragraph [ref=e401]: Mitra Auto may update these Terms when services, digital features, law, prices, payment methods, customer account, customer benefits, or operating practices change. Material changes are communicated in a reasonable way. Previous terms may apply to orders or agreements made before the change unless mandatory law or an agreed change requires otherwise.
+                - paragraph [ref=e402]: "Current version: Terms and Conditions v6.1"
+                - paragraph [ref=e403]: "Effective date: 1 May 2026"
+          - generic [ref=e406]:
+            - generic [ref=e407]:
+              - heading "Payment Service Provider" [level=1] [ref=e408]
+              - paragraph [ref=e410]: Information about payment intermediation and payment service provider.
+              - generic [ref=e411]:
+                - paragraph [ref=e412]:
+                  - strong [ref=e413]: "Effective Date:"
+                  - text: November 27, 2025
+                - paragraph [ref=e414]:
+                  - strong [ref=e415]: "Last Updated:"
+                  - text: November 27, 2025
+            - generic [ref=e417]:
+              - paragraph [ref=e418]: Paytrail Oyj is a collecting payment service provider and an authorized Payment Institution working in cooperation with Finnish banks and credit institutions. Paytrail Oyj will be shown as the recipient on your bank or credit card statement. Paytrail Oyj will forward the payment to the merchant. For complaints, please contact the website the payment was made to.
+              - generic [ref=e419]:
+                - paragraph [ref=e420]: Paytrail Oyj
+                - paragraph [ref=e421]:
+                  - strong [ref=e422]: "Business ID:"
+                  - text: 2122839-7
+                - paragraph [ref=e423]: Innova 2
+                - paragraph [ref=e424]: Lutakonaukio 7
+                - paragraph [ref=e425]: 40100 Jyväskylä
+                - paragraph [ref=e426]:
+                  - link "https://www.paytrail.com/kuluttaja/tietoa-maksamisesta" [ref=e427] [cursor=pointer]:
+                    - /url: https://www.paytrail.com/kuluttaja/tietoa-maksamisesta
+                    - text: https://www.paytrail.com/kuluttaja/tietoa-maksamisesta
+                    - img [ref=e428]
+      - contentinfo [ref=e430]:
+        - generic [ref=e431]:
+          - generic [ref=e433]:
+            - generic [ref=e434]:
+              - generic [ref=e435]:
+                - img "Mitra Auto" [ref=e436]
+                - generic [ref=e437]: Mitra Auto
+              - paragraph [ref=e438]: Full-service garage with tire, maintenance and repair services.
+              - generic [ref=e439]:
+                - generic [ref=e440]: Mitra Auto Oy
+                - link "Hankasuontie 5, 00390 Helsinki" [ref=e441] [cursor=pointer]:
+                  - /url: https://www.google.com/maps/search/?api=1&query=Hankasuontie%205%2C%2000390%20Helsinki%2C%20Finland
+                - link "+358 40 777 7163" [ref=e442] [cursor=pointer]:
+                  - /url: tel:+358407777163
+                - link "contact@mitra-auto.fi" [ref=e443] [cursor=pointer]:
+                  - /url: mailto:contact@mitra-auto.fi
+            - generic [ref=e444]:
+              - heading "Shop" [level=3] [ref=e445]
+              - list [ref=e446]:
+                - listitem [ref=e447]:
+                  - link "Catalog" [ref=e448] [cursor=pointer]:
+                    - /url: /en/catalog
+            - generic [ref=e449]:
+              - heading "Services" [level=3] [ref=e450]
+              - list [ref=e451]:
+                - listitem [ref=e452]:
+                  - link "Car Service" [ref=e453] [cursor=pointer]:
+                    - /url: /en/services
+                - listitem [ref=e454]:
+                  - link "Tire Hotel" [ref=e455] [cursor=pointer]:
+                    - /url: /en/services/tire-hotel
+            - generic [ref=e456]:
+              - heading "Company" [level=3] [ref=e457]
+              - list [ref=e458]:
+                - listitem [ref=e459]:
+                  - link "About Us" [ref=e460] [cursor=pointer]:
+                    - /url: /en/about
+                - listitem [ref=e461]:
+                  - link "Contact" [ref=e462] [cursor=pointer]:
+                    - /url: /en/contact
+            - generic [ref=e463]:
+              - heading "Legal" [level=3] [ref=e464]
+              - list [ref=e465]:
+                - listitem [ref=e466]:
+                  - link "Privacy" [ref=e467] [cursor=pointer]:
+                    - /url: /privacy
+                - listitem [ref=e468]:
+                  - link "Terms" [ref=e469] [cursor=pointer]:
+                    - /url: /terms
+                - listitem [ref=e470]:
+                  - link "Cookie settings" [ref=e471] [cursor=pointer]:
+                    - /url: "#analytics-consent"
+          - generic [ref=e473]:
+            - paragraph [ref=e474]: © Mitra Auto 2026
+            - generic [ref=e475]:
+              - link "Facebook" [ref=e476] [cursor=pointer]:
+                - /url: https://facebook.com
+                - img [ref=e477]
+              - link "Twitter" [ref=e479] [cursor=pointer]:
+                - /url: https://twitter.com
+                - img [ref=e480]
+              - link "Instagram" [ref=e482] [cursor=pointer]:
+                - /url: https://instagram.com
+                - img [ref=e483]
+              - link "LinkedIn" [ref=e486] [cursor=pointer]:
+                - /url: https://linkedin.com
+                - img [ref=e487]
+            - generic [ref=e491]:
+              - button "FI" [ref=e492]
+              - button "EN" [ref=e493]
+    - region "Notifications alt+T"

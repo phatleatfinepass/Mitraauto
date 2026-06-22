@@ -16,10 +16,18 @@ import logo from 'figma:asset/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png';
 
 const INTERNAL_NAV_PATHS = new Set([
   '/',
+  '/en',
   '/services',
+  '/en/services',
+  '/palvelut',
   '/tire-hotel',
+  '/en/services/tire-hotel',
+  '/palvelut/rengashotelli',
   '/catalog',
+  '/en/catalog',
   '/about',
+  '/en/about',
+  '/meista',
   '/account',
   '/cms',
 ]);
@@ -63,11 +71,16 @@ export function Navbar({
     return false;
   };
   
+  const homeHref = t('route.home');
+  const servicesHref = t('route.services');
+  const catalogHref = t('route.catalog');
+  const tireHotelHref = t('route.tireHotel');
+
   const navLinks = [
-    { key: 'nav.home', href: '/' },
-    { key: 'nav.services', href: '/services' },
-    { key: 'nav.catalog', href: '/catalog' },
-    { key: 'nav.tireHotel', href: '/tire-hotel' },
+    { key: 'nav.home', href: homeHref },
+    { key: 'nav.services', href: servicesHref },
+    { key: 'nav.catalog', href: catalogHref },
+    { key: 'nav.tireHotel', href: tireHotelHref },
     // Temporarily hidden - Used Cars
     // { key: 'nav.usedCars', href: '/used-cars' },
   ];
@@ -78,9 +91,9 @@ export function Navbar({
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <a
-            href="/"
+            href={homeHref}
             className="flex items-center gap-2 transition-opacity hover:opacity-60"
-            onClick={(event) => handleLinkClick(event, '/')}
+            onClick={(event) => handleLinkClick(event, homeHref)}
           >
             <img
               src={logo}

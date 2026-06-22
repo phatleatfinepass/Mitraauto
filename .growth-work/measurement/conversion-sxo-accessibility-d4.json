@@ -1,0 +1,129 @@
+{
+  "version": "2026-06-22.d4",
+  "project": "Mitra Auto",
+  "status": "local_browser_and_source_qa_complete_with_exceptions",
+  "created_at": "2026-06-22",
+  "scope": "Service booking, product purchase, install booking, contact/local action, and Tire Hotel retention journey QA.",
+  "test_conditions": {
+    "local_server": "http://127.0.0.1:3004",
+    "build_command": "npm run build",
+    "browser": "Playwright MCP Chromium",
+    "desktop_viewport": "1280x900",
+    "mobile_viewport": "390x844",
+    "field_cwv": "unavailable",
+    "authenticated_platform_data": "unavailable",
+    "live_payment_or_booking_submission": "not performed"
+  },
+  "journeys": [
+    {
+      "id": "service-booking",
+      "routes_smoked": [
+        "/palvelut/autohuolto",
+        "/en/services/car-service"
+      ],
+      "result": "pass_with_measurement_and_owner_exceptions",
+      "observations": [
+        "Service page renders a specific H1, service summary, price/process sections, related services, and a specific Book car service CTA.",
+        "Booking CTA opens a modal with dialog role, heading, progress, labelled license plate input, date picker, cancel, close, and disabled Continue until required inputs exist.",
+        "Booking submission was not completed to avoid creating test customer data."
+      ],
+      "risks": [
+        "Current source still names the submit-success analytics event booking_completed; D-2 requires rename/alias to booking_submitted.",
+        "Owner-approved accepted/completed/no-show definitions remain unavailable."
+      ]
+    },
+    {
+      "id": "product-purchase",
+      "routes_smoked": [
+        "/catalog/tire/accelera-651-sport-265-30-r19-93-w-summer",
+        "/checkout"
+      ],
+      "result": "pass_with_accessibility_warnings",
+      "observations": [
+        "Product page renders exact variant name, size, price, VAT, quantity, stock, delivery, EAN/specs, fitment caveat, and Add to cart.",
+        "Cart dialog renders item identity, quantity controls, subtotal, VAT note, remove, continue shopping, checkout, and clear cart.",
+        "Checkout renders labelled contact fields, delivery choice, billing checkbox, terms/privacy link, order summary, VAT, total, and secure payment copy.",
+        "Confirm order is disabled until terms are accepted; missing required customer data triggers validation before payment creation."
+      ],
+      "risks": [
+        "Checkout exposes duplicate responsive submit buttons to strict browser-agent locators.",
+        "Checkbox controls appeared duplicated in the accessibility tree.",
+        "Validation error appeared as a toast instead of field-associated error text in the visible accessibility snapshot."
+      ]
+    },
+    {
+      "id": "install-booking",
+      "routes_smoked": [
+        "source-only: order email install URL and order_install_booking"
+      ],
+      "result": "source_contract_pass_runtime_token_not_available",
+      "observations": [
+        "Paid order confirmation can return an install URL.",
+        "createInstallBookingFromOrder rejects reused install tokens and creates one confirmed booking tied to the order.",
+        "Booking email/manage thread is seeded after install booking creation."
+      ],
+      "risks": [
+        "No real paid-order install token was available for browser smoke.",
+        "Install booking success must not be treated as completed service."
+      ]
+    },
+    {
+      "id": "contact-local-action",
+      "routes_smoked": [
+        "/yhteystiedot"
+      ],
+      "result": "pass_with_trust_warning",
+      "observations": [
+        "Contact page renders H1, address, tel link, mailto link, hours, map iframe, FAQ, and booking CTA on mobile.",
+        "Contact actions remain available without analytics consent."
+      ],
+      "risks": [
+        "Footer social links point to generic platform homepages, not verified Mitra Auto profiles.",
+        "GBP/citation owner readback remains unavailable from D-3."
+      ]
+    },
+    {
+      "id": "tire-hotel-retention",
+      "routes_smoked": [
+        "/palvelut/rengashotelli"
+      ],
+      "result": "pass_with_owner_review_exception",
+      "observations": [
+        "Tire Hotel page renders storage promise, price, process, inclusions, exclusions, suitability, safety limits, related services, and specific booking CTA.",
+        "Owner-review caveat is visible in content."
+      ],
+      "risks": [
+        "Retention lifecycle definitions and source data remain owner/platform exceptions.",
+        "No live retention/account data was available."
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "severity": "warning",
+      "title": "Checkout responsive controls create duplicate agent targets",
+      "evidence": "Strict locator for Vahvista tilaus resolved to two submit buttons, one mobile and one desktop, in the DOM.",
+      "impact": "Browser agents and assistive tech can encounter ambiguous high-impact actions if hidden controls are not fully removed from the accessibility tree.",
+      "owner": "Frontend/QA"
+    },
+    {
+      "severity": "warning",
+      "title": "Checkout validation is toast-level rather than field-associated",
+      "evidence": "Submitting checkout with accepted terms and empty required fields produced toast text Täytä etu- ja sukunimi.",
+      "impact": "Screen reader and keyboard users may have weaker recovery than with inline field errors tied to invalid controls.",
+      "owner": "Frontend/Accessibility"
+    },
+    {
+      "severity": "warning",
+      "title": "Footer social links are placeholders",
+      "evidence": "Footer links resolve to https://facebook.com, https://twitter.com, https://instagram.com, and https://linkedin.com.",
+      "impact": "Trust and local proof are weakened; users can leave the site without reaching a real Mitra profile.",
+      "owner": "Business/Frontend"
+    }
+  ],
+  "gate_result": {
+    "d4_local_qa": "complete",
+    "growth_ready_status": "blocked_by_d3_platform_and_d5_monitoring_plus_open_d4_warnings",
+    "next_required_task": "D-5 - Experiment And Monitoring QA Closeout"
+  }
+}

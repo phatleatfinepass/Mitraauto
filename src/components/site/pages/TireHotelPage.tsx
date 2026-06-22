@@ -172,9 +172,9 @@ export function TireHotelPage({ onBookingClick }: TireHotelPageProps) {
               {/* Floating badge */}
               <div className="absolute -bottom-6 -right-6 bg-accent text-white p-6 rounded-2xl shadow-xl">
                 <div className="text-center">
-                  <div className="text-3xl font-bold">500+</div>
+                  <div className="text-3xl font-bold">Helsinki</div>
                   <div className="text-sm opacity-90">
-                    {t('tireHotel.happyCustomers')}
+                    {t('tireHotel.title')}
                   </div>
                 </div>
               </div>

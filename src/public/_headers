@@ -15,5 +15,13 @@
   Content-Type: application/xml; charset=utf-8
   Cache-Control: public, max-age=3600
 
+/sitemap-products*
+  Content-Type: application/xml; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/merchant-products.xml
+  Content-Type: application/xml; charset=utf-8
+  Cache-Control: public, max-age=3600
+
 /icons/*
   Cache-Control: public, max-age=31536000, immutable

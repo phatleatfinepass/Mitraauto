@@ -8,6 +8,7 @@ import { BookingSuccess } from './BookingSuccess';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { FINNISH_PHONE_PREFIX, normalizeFinnishPhoneInput } from '../../../utils/phone';
 import { getLocalizedServiceNameById } from '../../../utils/serviceCatalog';
+import { trackClarityEvent, upgradeClaritySession } from '../../../lib/clarity';
 
 type BookingStep = 'step1' | 'step2' | 'step3' | 'success';
 
@@ -135,6 +136,12 @@ export function BookingModal({ open, onOpenChange, preSelectedService, prefill }
   };
 
   const handleConfirm = () => {
+    trackClarityEvent('booking_completed', {
+      service_count: selectedServiceIds.length || 1,
+      has_install_prefill: Boolean(prefill?.installToken),
+      language,
+    });
+    upgradeClaritySession('booking_completed');
     setCurrentStep('success');
   };
 

@@ -79,25 +79,19 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.mitra-auto.fi/en/catalog</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.mitra-auto.fi/palvelut/autohuolto</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.mitra-auto.fi/helsinki/autohuolto</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://www.mitra-auto.fi/en/services/car-service</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.mitra-auto.fi/en/helsinki/car-service</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -109,19 +103,7 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.mitra-auto.fi/helsinki/renkaanvaihto</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://www.mitra-auto.fi/en/services/tire-change</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.mitra-auto.fi/en/helsinki/tire-change</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -133,19 +115,7 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.mitra-auto.fi/helsinki/rengashotelli</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://www.mitra-auto.fi/en/services/tire-hotel</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.mitra-auto.fi/en/helsinki/tire-hotel</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -193,19 +163,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.mitra-auto.fi/palvelut/dpf-pesu</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://www.mitra-auto.fi/en/services/dpf-service</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.mitra-auto.fi/en/services/dpf-cleaning</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

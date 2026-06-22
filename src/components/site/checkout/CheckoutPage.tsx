@@ -12,8 +12,9 @@ import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Build
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '../../../utils/supabase/client';
-import { calculateLinePricing } from '../../../utils/pricing';
+import { getProductCommerceSnapshot } from '../../../utils/productCommerce';
 import { FINNISH_PHONE_PREFIX, hasFinnishPhoneValue, normalizeFinnishPhone, normalizeFinnishPhoneInput } from '../../../utils/phone';
+import { trackClarityEvent, upgradeClaritySession } from '../../../lib/clarity';
 
 const VAT_RATE = 0.255;
 const VAT_PERCENT = 25.5;
@@ -92,25 +93,6 @@ function saveCheckoutDraft(formData: CheckoutFormData) {
 export function clearCheckoutDraft() {
   if (typeof window === 'undefined') return;
   window.sessionStorage.removeItem(CHECKOUT_DRAFT_STORAGE_KEY);
-}
-
-function resolveCheckoutProductImage(product: any) {
-  const candidates = [
-    product?.image_url,
-    product?.hero_image_url,
-    product?.best_image_url,
-    product?.gallery_images?.[0],
-    product?.images?.[0],
-    product?.gallery?.[0],
-    product?.image,
-  ];
-
-  for (const candidate of candidates) {
-    const value = String(candidate ?? '').trim();
-    if (value) return value;
-  }
-
-  return '';
 }
 
 function resolveCheckoutProductSize(product: any) {
@@ -229,55 +211,53 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
 
     setIsProcessing(true);
     saveCheckoutDraft(formData);
+    trackClarityEvent('checkout_payment_started', {
+      cart_lines: items.length,
+      cart_items: items.reduce((sum, item) => sum + item.quantity, 0),
+      delivery_method: formData.shippingMethod,
+      language,
+    });
+    upgradeClaritySession('checkout_started');
 
     try {
       // Build items array in correct Paytrail format
       const paytrailItems = items.map(item => {
-        const stockLimitCandidates = [
-          item.product?.stock_quantity,
-          item.product?.stock_qty,
-          item.product?.available_quantity,
-        ];
-        const stockLimit = stockLimitCandidates
-          .map((value) => Number(value))
-          .find((value) => Number.isFinite(value) && value > 0);
-        if (stockLimit && item.quantity > stockLimit) {
-          const productLabel = `${item.product.brand || ''} ${item.product.model || item.product.name || ''}`.trim();
-          throw new Error(
-            `${productLabel}: ${checkoutText('error.onlyStockAvailable')} ${Math.floor(stockLimit)} ${checkoutText('error.availableSuffix')}`
-          );
-        }
-
-        const linePricing = calculateLinePricing(
-          item.base_price ?? item.price ?? 0,
-          item.quantity,
-          item.pricing_rules ?? item.product?.pricing_rules ?? null,
-        );
-        const unitPriceWithVatCents = Math.round(linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER * 100);
         const productName = String(
           item.product.title ||
           item.product.name ||
           `${item.product.brand || ''} ${item.product.model || ''}`.trim() ||
           'Product'
         ).trim();
-        const sku = item.product.id || item.id;
+        const commerce = getProductCommerceSnapshot(item.product, {
+          quantity: item.quantity,
+          displayName: productName,
+        });
+        const stockLimit = commerce.stockQuantity;
+        if (stockLimit && item.quantity > stockLimit) {
+          const productLabel = `${item.product.brand || ''} ${item.product.model || item.product.name || ''}`.trim();
+          throw new Error(
+            `${productLabel}: ${checkoutText('error.onlyStockAvailable')} ${Math.floor(stockLimit)} ${checkoutText('error.availableSuffix')}`
+          );
+        }
         const deliveryRange = resolveDeliveryDayRange(item.product);
 
         return {
           qty: item.quantity,
-          client_unit_price_cents: unitPriceWithVatCents,
-          sku: sku,
+          client_unit_price_cents: commerce.unitPriceInclVatCents,
+          sku: commerce.sku || item.id,
+          gtin: commerce.gtin,
+          mpn: commerce.mpn,
           name: productName,
           vatPercentage: VAT_PERCENT,
-          image_url: resolveCheckoutProductImage(item.product),
-          brand: item.product.brand || null,
-          model: item.product.model || null,
+          image_url: commerce.primaryImageUrl,
+          brand: commerce.brand,
+          model: commerce.model,
           size_text: resolveCheckoutProductSize(item.product),
-          product_type: item.product.product_type || item.product.type || null,
-          stock_qty: stockLimit ? Math.floor(stockLimit) : null,
-          delivery_days_min: deliveryRange.min,
-          delivery_days_max: deliveryRange.max,
-          line_total_cents: unitPriceWithVatCents * item.quantity,
+          product_type: commerce.productType,
+          stock_qty: commerce.stockQuantity,
+          delivery_days_min: deliveryRange.min ?? commerce.deliveryDaysMin,
+          delivery_days_max: deliveryRange.max ?? commerce.deliveryDaysMax,
+          line_total_cents: commerce.lineTotalInclVatCents,
         };
       });
 
@@ -798,11 +778,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
 
               <div className="space-y-3 mb-4">
                 {items.map((item) => {
-                  const linePricing = calculateLinePricing(
-                    item.base_price ?? item.price ?? 0,
-                    item.quantity,
-                    item.pricing_rules ?? item.product?.pricing_rules ?? null,
-                  );
+                  const commerce = getProductCommerceSnapshot(item.product, {
+                    quantity: item.quantity,
+                    displayName: `${item.product.brand || ''} ${item.product.model || item.product.name || ''}`.trim(),
+                  });
 
                   return (
                     <div key={item.id} className="flex gap-3">
@@ -826,10 +805,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
                           <p className={`text-xs ${
                             theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
                           }`}>
-                            {item.quantity} × €{(linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER).toFixed(2)}
+                            {item.quantity} × €{commerce.unitPriceInclVatEur.toFixed(2)}
                           </p>
                           <p className="text-sm text-[#FF6B00] mt-1">
-                            €{(linePricing.lineTotalEur * VAT_MULTIPLIER).toFixed(2)}
+                            €{commerce.lineTotalInclVatEur.toFixed(2)}
                           </p>
                         </div>
                       </div>

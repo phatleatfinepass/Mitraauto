@@ -1,0 +1,139 @@
+{
+  "version": "2026-06-22.phase-d-wrapup",
+  "project": "Mitra Auto",
+  "phase": "Phase D - Measurement, Revenue, Conversion, And Platform QA",
+  "status": "complete_locally_with_platform_owner_and_accessibility_exceptions",
+  "progress": "100%",
+  "board_progress_after_close": "80%",
+  "created_at": "2026-06-22",
+  "mode": "Growth AUDIT plus PLAN",
+  "archetypes": [
+    "local service",
+    "booking/reservation",
+    "ecommerce/catalog checkout",
+    "retention/customer account support",
+    "multilingual FI/EN SPA"
+  ],
+  "decision": "Phase D is complete locally as a governed measurement, revenue, conversion, platform-readback, experiment, and monitoring contract. Growth-ready classification remains blocked until Phase E verifies source parity, provider evidence, production behavior, live crawl/browser QA, drift baseline, platform readback, owner approvals, and D-4 checkout warnings.",
+  "evidence_used": [
+    ".growth-work/measurement/kpi-tree.json",
+    ".growth-work/measurement/event-dictionary.json",
+    ".growth-work/measurement/booking-order-reconciliation.json",
+    ".growth-work/measurement/platform-readback-d3.json",
+    ".growth-work/measurement/conversion-sxo-accessibility-d4.json",
+    ".growth-work/measurement/experiment-monitoring-d5.json",
+    ".growth-work/experiments/experiment-registry.json",
+    ".growth-work/reports/kpi-tree-audit.json",
+    ".growth-work/reports/experiment-guard.json",
+    ".seo-work/conversion/conversion-journeys.json",
+    ".seo-work/reports/CONVERSION-AUDIT.md",
+    ".seo-work/reports/CONVERSION-SXO-ACCESSIBILITY-QA-D4-2026-06-22.md",
+    ".seo-work/reports/EXPERIMENT-MONITORING-QA-D5-2026-06-22.md"
+  ],
+  "evidence_unavailable": [
+    "Search Console authenticated property and URL Inspection readback",
+    "Google Business Profile owner diagnostics and local action metrics",
+    "Merchant Center account/feed diagnostics",
+    "Analytics dashboard/API/debug readback",
+    "CrUX/PageSpeed field data",
+    "Server logs",
+    "Live booking, order, payment, fulfillment, invoice, retention, support, refund, return, cancellation, and no-show exports",
+    "Finance-approved revenue, VAT, fee, refund, margin, CAC, and contribution definitions",
+    "Owner-approved booking/order/customer lifecycle status dictionary",
+    "Legal/privacy approval for analytics vendor scope, retention, identifiers, consent, and deletion process"
+  ],
+  "extra_growth_layer": [
+    {
+      "layer": "D0 Source Truth And Ownership",
+      "purpose": "Define approved business outcome, source systems, owners, consent model, status dictionaries, finance treatment, and update cadence.",
+      "state": "blocked_for_live_readiness",
+      "owner": "Business/Analytics/Operations/Finance/Privacy"
+    },
+    {
+      "layer": "D1 KPI And Event Semantics",
+      "purpose": "Keep the KPI tree, event dictionary, key-event policy, PII exclusions, and metric graph schema-valid.",
+      "state": "complete_locally_with_unverified_metric_quality",
+      "owner": "Analytics/Engineering/Business"
+    },
+    {
+      "layer": "D2 Server Reconciliation",
+      "purpose": "Reconcile analytics events to bookings, orders, payment_events, invoice events, fulfillment statuses, and retention states before reporting business outcomes.",
+      "state": "contract_complete_implementation_and_live_readback_pending",
+      "owner": "Analytics/Engineering/Operations/Ecommerce/Finance"
+    },
+    {
+      "layer": "D3 Platform Readback",
+      "purpose": "Record dataset envelopes and health readback for Search Console, GBP, Merchant Center, analytics, CrUX/PageSpeed, and logs.",
+      "state": "blocked_by_platform_access_and_public_asset_mismatch",
+      "owner": "SEO/Platform/Business/Ecommerce/Analytics"
+    },
+    {
+      "layer": "D4 Journey And Accessibility QA",
+      "purpose": "Prove critical service, product, checkout, contact, install booking, and retention journeys are usable, truthful, recoverable, and accessible.",
+      "state": "complete_locally_with_checkout_warnings",
+      "owner": "Product/QA/Frontend/Accessibility"
+    },
+    {
+      "layer": "D5 Experiment And Monitoring Governance",
+      "purpose": "Preregister draft experiments, search controls, guardrails, release annotations, monitoring thresholds, incident workflow, and rollback policy.",
+      "state": "complete_locally_no_experiment_launch_ready",
+      "owner": "Growth/Analytics/SEO/Engineering"
+    },
+    {
+      "layer": "D6 Phase E Evidence Handoff",
+      "purpose": "Move unresolved platform, production, source parity, drift, provider, and live journey evidence into Phase E with explicit owners.",
+      "state": "handoff_ready",
+      "owner": "Release/Engineering/SEO/Analytics/Business"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "critical",
+      "title": "Production robots, sitemap, product sitemap, and merchant feed asset mismatch blocks live platform readiness",
+      "evidence": "D-3 recorded robots.txt as 404 and sitemap/feed URLs returning HTML rather than expected XML/text.",
+      "owner": "Engineering/SEO/Figma Make deployment",
+      "phase_e_owner_task": "E-1/E-3"
+    },
+    {
+      "severity": "critical",
+      "title": "Authenticated platform readback is unavailable",
+      "evidence": "Search Console, GBP, Merchant Center, analytics, CrUX/PageSpeed, and server-log datasets remain unavailable with dataset envelopes marked unavailable or blocked.",
+      "owner": "SEO/Platform/Business/Ecommerce/Analytics",
+      "phase_e_owner_task": "E-2/E-3/E-4"
+    },
+    {
+      "severity": "critical",
+      "title": "Revenue and conversion claims are blocked by missing owner definitions and reconciliation",
+      "evidence": "D-1/D-2 record missing business outcome, booking/order status, finance, margin, VAT, refund, retention, CAC, and server-correlation approvals.",
+      "owner": "Business/Operations/Ecommerce/Finance/Analytics",
+      "phase_e_owner_task": "E-2/E-5"
+    },
+    {
+      "severity": "warning",
+      "title": "KPI graph is schema-valid but metric quality remains unverified",
+      "evidence": "kpi_tree_audit.py passed with 0 blockers and 0 criticals, plus 10 metric-quality warnings and 2 weak-relationship advisories.",
+      "owner": "Analytics/Business",
+      "phase_e_owner_task": "E-4/E-5"
+    },
+    {
+      "severity": "warning",
+      "title": "Checkout accessibility warnings block checkout-impacting experiments",
+      "evidence": "D-4 recorded duplicate checkout submit controls and toast-level validation recovery instead of field-associated errors.",
+      "owner": "Frontend/Accessibility/QA",
+      "phase_e_owner_task": "E-3/E-5"
+    },
+    {
+      "severity": "advisory",
+      "title": "Draft experiments are preregistered but instrumentation is not verified",
+      "evidence": "experiment_guard.py passed with advisory instrumentation-unverified findings for all four draft experiments.",
+      "owner": "Growth/Analytics",
+      "phase_e_owner_task": "E-4"
+    }
+  ],
+  "phase_gate": {
+    "local_contract": "passed",
+    "live_growth_readiness": "blocked",
+    "no_guarantee": "Rankings, demand, conversion, revenue, and AI inclusion are not guaranteed by Phase D artifacts."
+  },
+  "next_task": "E-1 - Figma Make Patch-State Ledger"
+}

@@ -17,6 +17,73 @@ export const siteTranslations = {
   'nav.menuDescription': { fi: 'Navigoi sivustolla ja muuta asetuksia', en: 'Navigate the site and change settings' },
   'nav.cart': { fi: 'Ostoskori', en: 'Cart' },
 
+  // Routes
+  'route.home': { fi: '/', en: '/en' },
+  'route.services': { fi: '/palvelut', en: '/en/services' },
+  'route.catalog': { fi: '/catalog', en: '/en/catalog' },
+  'route.tireHotel': { fi: '/palvelut/rengashotelli', en: '/en/services/tire-hotel' },
+  'route.about': { fi: '/meista', en: '/en/about' },
+  'route.contact': { fi: '/yhteystiedot', en: '/en/contact' },
+  'route.helsinki': { fi: '/helsinki', en: '/en/helsinki' },
+
+  // SEO metadata
+  'seo.home.title': {
+    fi: 'Mitra Auto | Autohuolto, renkaat ja korjaamo Helsingissä',
+    en: 'Mitra Auto | Garage Services, Tyres and Booking in Helsinki',
+  },
+  'seo.home.description': {
+    fi: 'Mitra Auto on täyden palvelun autokorjaamo Helsingissä. Varaa autohuolto, rengastyöt, rengashotelli, vikadiagnostiikka tai autopesu.',
+    en: 'Mitra Auto is a full-service garage in Helsinki. Book car service, tire work, tire hotel, diagnostics or car wash.',
+  },
+  'seo.services.title': {
+    fi: 'Autohuolto ja rengaspalvelut Helsinki | Mitra Auto',
+    en: 'Garage and Tire Services in Helsinki | Mitra Auto',
+  },
+  'seo.services.description': {
+    fi: 'Katso Mitra Auton autohuolto-, rengas-, ilmastointi-, DPF-, diagnostiikka- ja autonhoitopalvelut Helsingissä ja varaa aika verkossa.',
+    en: 'View Mitra Auto garage, tire, AC, DPF, diagnostics and car care services in Helsinki and book an appointment online.',
+  },
+  'seo.contact.title': {
+    fi: 'Yhteystiedot | Mitra Auto Helsinki',
+    en: 'Contact Mitra Auto | Helsinki Garage',
+  },
+  'seo.contact.description': {
+    fi: 'Mitra Auto Oy sijaitsee osoitteessa Hankasuontie 5, 00390 Helsinki. Katso aukioloajat, puhelin, sähköposti, kartta ja ajanvaraus.',
+    en: 'Mitra Auto Oy is located at Hankasuontie 5, 00390 Helsinki. See opening hours, phone, email, map and booking options.',
+  },
+  'seo.helsinki.title': {
+    fi: 'Autokorjaamo Helsinki | Mitra Auto Hankasuontie',
+    en: 'Car Garage in Helsinki | Mitra Auto Hankasuontie',
+  },
+  'seo.helsinki.description': {
+    fi: 'Mitra Auto on autokorjaamo Helsingissä osoitteessa Hankasuontie 5. Huolto, rengastyöt, rengashotelli, vikadiagnostiikka ja ajanvaraus.',
+    en: 'Mitra Auto is a car garage in Helsinki at Hankasuontie 5. Book maintenance, tire services, tire hotel and diagnostics.',
+  },
+  'seo.notFound.title': {
+    fi: 'Sivua ei löytynyt | Mitra Auto',
+    en: 'Page not found | Mitra Auto',
+  },
+  'seo.notFound.description': {
+    fi: 'Pyytämääsi Mitra Auton sivua ei löytynyt. Palaa etusivulle tai ota yhteyttä.',
+    en: 'The Mitra Auto page you requested was not found. Return home or contact us.',
+  },
+  'productSeo.title': {
+    fi: '{{product}} | Mitra Auto',
+    en: '{{product}} | Mitra Auto',
+  },
+  'productSeo.tireDescription': {
+    fi: '{{product}} rengas Mitra Autolta. Hinta {{price}}, saatavuus ja toimitus tarkistetaan tilauksessa.',
+    en: '{{product}} tyre from Mitra Auto. Price {{price}}, availability and delivery are confirmed at checkout.',
+  },
+  'productSeo.rimDescription': {
+    fi: '{{product}} vanne Mitra Autolta. Hinta {{price}}, saatavuus ja toimitus tarkistetaan tilauksessa.',
+    en: '{{product}} rim from Mitra Auto. Price {{price}}, availability and delivery are confirmed at checkout.',
+  },
+  'productSeo.priceOnRequest': {
+    fi: 'kysy hinta',
+    en: 'price on request',
+  },
+
   // Hero
   'hero.headline': { fi: 'Mitra Auto - Ammattitaitoiset palvelut', en: 'Mitra Auto - Professional Services' },
   'hero.subheadline': { fi: 'Täyden palvelun korjaamo rengas-, huolto- ja korjauspalveluilla. Varaa aikasi verkossa.', en: 'Full-service garage with tire, maintenance and repair services. Book your appointment online.' },
@@ -211,13 +278,17 @@ export const siteTranslations = {
   'helsinki.why.experts.title': { fi: 'Paikalliset asiantuntijat', en: 'Local Experts' },
   'helsinki.why.experts.desc': { fi: 'Tiedämme Helsingin olosuhteet ja kuljettajien tarpeet', en: 'We know Helsinki conditions and drivers’ needs' },
   'helsinki.why.partner.title': { fi: 'Luotettu kumppani', en: 'Trusted Partner' },
-  'helsinki.why.partner.desc': { fi: 'Yli [TBD] tyytyväistä asiakasta Helsingissä', en: 'Over [TBD] satisfied customers in Helsinki' },
+  'helsinki.why.partner.desc': { fi: 'Korjaamo- ja rengaspalvelut yhdestä osoitteesta Helsingissä', en: 'Garage and tire services from one Helsinki address' },
   'helsinki.why.quality.title': { fi: 'Laadukas palvelu', en: 'Quality Service' },
   'helsinki.why.quality.desc': { fi: 'Sertifioidut asentajat ja modernit laitteet', en: 'Certified technicians and modern equipment' },
   'helsinki.stats.years': { fi: 'Vuotta Helsingissä', en: 'Years in Helsinki' },
   'helsinki.stats.customers': { fi: 'Tyytyväistä asiakasta', en: 'Happy Customers' },
   'helsinki.stats.rating': { fi: 'Keskiarvio', en: 'Average Rating' },
   'helsinki.stats.bookingTime': { fi: 'Varausaika', en: 'Booking Time' },
+  'helsinki.stats.location': { fi: 'Sijainti', en: 'Location' },
+  'helsinki.stats.weekdays': { fi: 'Arkisin', en: 'Weekdays' },
+  'helsinki.stats.phone': { fi: 'Puhelin', en: 'Phone' },
+  'helsinki.stats.languages': { fi: 'Palvelukielet', en: 'Service Languages' },
   'helsinki.faq.location.q': { fi: 'Missä te täsmälleen sijaitsette Helsingissä?', en: 'Where exactly are you located in Helsinki?' },
   'helsinki.faq.location.a': { fi: 'Olemme osoitteessa Hankasuontie 5, 00390 Helsinki. Helppo löytää autolla tai julkisilla kulkuneuvoilla.', en: 'We’re at Hankasuontie 5, 00390 Helsinki. Easy to find by car or public transport.' },
   'helsinki.faq.area.q': { fi: 'Palveletteko koko Helsingin aluetta?', en: 'Do you serve all of Helsinki?' },
@@ -225,7 +296,7 @@ export const siteTranslations = {
   'helsinki.faq.parking.q': { fi: 'Onko pysäköinti helppoa?', en: 'Is parking easy?' },
   'helsinki.faq.parking.a': { fi: 'Meillä on ilmainen pysäköinti paikan päällä asiakkaillemme. Ei stressiä pysäköinnistä!', en: 'We have free on-site parking for our customers. No parking stress!' },
   'helsinki.faq.appointment.q': { fi: 'Miten nopeasti saan aikaa?', en: 'How quickly can I get an appointment?' },
-  'helsinki.faq.appointment.a': { fi: 'Tyypillisesti voimme tarjota aikaa jo [TBD] päivän sisällä. Kiireellisissä tapauksissa soita meille.', en: 'Typically we can offer an appointment within [TBD] days. For urgent cases, call us directly.' },
+  'helsinki.faq.appointment.a': { fi: 'Aikoja voi varata verkossa. Kiireellisissä tapauksissa soita meille, niin tarkistamme lähimmän vapaan ajan.', en: 'Appointments can be booked online. For urgent cases, call us and we will check the nearest available time.' },
   'helsinki.faq.winter.q': { fi: 'Sopivatko palvelunne Helsingin talviolosuhteisiin?', en: 'Are your services suitable for Helsinki winter conditions?' },
   'helsinki.faq.winter.a': { fi: 'Ehdottomasti! Erikoistuimme talvirenkaisiin, talvihuoltoon ja Helsingin haastaviin talviolosuhteisiin.', en: 'Absolutely! We specialize in winter tires, winter maintenance, and Helsinki’s challenging winter conditions.' },
   'helsinki.breadcrumb.home': { fi: 'Etusivu', en: 'Home' },
@@ -267,8 +338,8 @@ export const siteTranslations = {
   'carServicePage.benefits.parts.desc': { fi: 'Laadukkaita osia luotettavilta toimittajilta', en: 'Quality parts from trusted suppliers' },
   'carServicePage.benefits.fast.title': { fi: 'Nopea palvelu', en: 'Fast Service' },
   'carServicePage.benefits.fast.desc': { fi: 'Tehokas läpimenoaika ilman laatutinkimistä', en: 'Efficient turnaround without compromising quality' },
-  'carServicePage.benefits.guarantee.title': { fi: 'Tyytyväisyystakuu', en: 'Satisfaction Guarantee' },
-  'carServicePage.benefits.guarantee.desc': { fi: '100% tyytyväisyys tai rahat takaisin', en: '100% satisfaction or money back' },
+  'carServicePage.benefits.guarantee.title': { fi: 'Selkeä hyväksyntä ennen lisätöitä', en: 'Clear approval before extra work' },
+  'carServicePage.benefits.guarantee.desc': { fi: 'Lisätyöt ja hinnat käydään läpi ennen työn jatkamista', en: 'Extra work and prices are reviewed before work continues' },
   'carServicePage.included.inspection': { fi: 'Täydellinen ajoneuvon tarkastus', en: 'Complete vehicle inspection' },
   'carServicePage.included.oilFilter': { fi: 'Öljynvaihto ja suodatinvaihto', en: 'Oil and filter change' },
   'carServicePage.included.fluids': { fi: 'Nesteiden täydennys', en: 'Fluid top-up' },
@@ -278,7 +349,7 @@ export const siteTranslations = {
   'carServicePage.included.battery': { fi: 'Akun testaus', en: 'Battery testing' },
   'carServicePage.included.report': { fi: 'Yksityiskohtainen huoltoraportti', en: 'Detailed service report' },
   'carServicePage.faq.frequency.q': { fi: 'Kuinka usein autoni tarvitsee huoltoa?', en: 'How often does my car need service?' },
-  'carServicePage.faq.frequency.a': { fi: 'Tyypillisesti perushuolto suositellaan joka [TBD] kuukausi tai [TBD] km välein, kumpi tulee ensin. Tarkista valmistajan suositukset.', en: 'Typically, basic service is recommended every [TBD] months or [TBD] km, whichever comes first. Check manufacturer recommendations.' },
+  'carServicePage.faq.frequency.a': { fi: 'Huoltoväli riippuu auton valmistajan huolto-ohjelmasta, ajomäärästä ja käyttöolosuhteista. Tarkistamme suosituksen auton tietojen perusteella.', en: 'The service interval depends on the manufacturer schedule, mileage and driving conditions. We check the recommendation from the vehicle details.' },
   'carServicePage.faq.warranty.q': { fi: 'Säilyykö takuu?', en: 'Will my warranty remain valid?' },
   'carServicePage.faq.warranty.a': { fi: 'Kyllä, käytämme valmistajan spesifikaatioiden mukaisia osia ja menetelmiä, joten takuusi pysyy voimassa.', en: 'Yes, we use manufacturer-spec parts and procedures, so your warranty remains valid.' },
   'carServicePage.faq.wait.q': { fi: 'Voinko odottaa huollon aikana?', en: 'Can I wait during the service?' },
@@ -312,13 +383,13 @@ export const siteTranslations = {
   'faqPage.booking.book.q': { fi: 'Miten voin varata ajan?', en: 'How can I book an appointment?' },
   'faqPage.booking.book.a': { fi: 'Voit varata ajan verkossa klikkaamalla "Varaa aika" -painiketta sivustomme yläosassa. Valitse palvelu, päivä ja kellonaika, ja saat välittömän vahvistuksen sähköpostitse.', en: 'You can book online by clicking the "Book Now" button at the top of our website. Choose your service, date, and time slot, and you’ll receive instant confirmation via email.' },
   'faqPage.booking.advance.q': { fi: 'Kuinka kauan etukäteen minun tulisi varata?', en: 'How far in advance should I book?' },
-  'faqPage.booking.advance.a': { fi: 'Suosittelemme varaamaan vähintään [TBD] päivää etukäteen varmistaaksesi haluamasi aikavälin saatavuuden. Kiireellisille palveluille voimme usein majoittaa lyhyemmällä varoitusajalla.', en: 'We recommend booking at least [TBD] days in advance to ensure your preferred time slot. For urgent services, we can often accommodate shorter notice.' },
+  'faqPage.booking.advance.a': { fi: 'Sesonkiaikoina kannattaa varata mahdollisimman aikaisin. Kiireellisissä tilanteissa ota yhteyttä, niin tarkistamme lähimmän vapaan ajan.', en: 'During busy seasons, book as early as possible. For urgent needs, contact us and we will check the nearest available time.' },
   'faqPage.booking.cancel.q': { fi: 'Voinko peruuttaa tai siirtää varaukseni?', en: 'Can I cancel or reschedule my booking?' },
-  'faqPage.booking.cancel.a': { fi: 'Kyllä, voit peruuttaa tai siirtää varauksesi verkossa [TBD] tuntia ennen varattua aikaa ilman lisäkustannuksia. Soita meille, jos tarvitset apua.', en: 'Yes, you can cancel or reschedule online up to [TBD] hours before your appointment with no charge. Call us if you need assistance.' },
+  'faqPage.booking.cancel.a': { fi: 'Kyllä. Varauksen siirto tai peruutus onnistuu verkkosivuston kautta tai ottamalla yhteyttä asiakaspalveluun.', en: 'Yes. You can reschedule or cancel through the website or by contacting customer support.' },
   'faqPage.services.offer.q': { fi: 'Mitä palveluita tarjoatte?', en: 'What services do you offer?' },
   'faqPage.services.offer.a': { fi: 'Tarjoamme kattavan valikoiman autohuoltopalveluita: autohuolto ja korjaus, renkaanvaihto ja tasapainotus, rengashotelli, vikadiagnostiikka ja autopesu. Katso kaikki palvelumme Palvelut-sivulta.', en: 'We offer a comprehensive range of car services: maintenance and repair, tire change and balancing, tire hotel storage, diagnostics, and car wash. See all services on our Services page.' },
   'faqPage.services.tireChange.q': { fi: 'Kuinka kauan renkaanvaihto kestää?', en: 'How long does a tire change take?' },
-  'faqPage.services.tireChange.a': { fi: 'Tyypillinen renkaanvaihto kestää noin [TBD] minuuttia. Tämä sisältää renkaiden vaihdon, tasapainotuksen ja ilmanpaineen tarkistuksen.', en: 'A typical tire change takes approximately [TBD] minutes. This includes changing the tires, balancing, and checking air pressure.' },
+  'faqPage.services.tireChange.a': { fi: 'Kesto riippuu ajoneuvosta, renkaista ja mahdollisista lisätöistä. Vahvistamme arvion varauksen yhteydessä.', en: 'Duration depends on the vehicle, tires and any additional work. We confirm the estimate during booking.' },
   'faqPage.services.parts.q': { fi: 'Käytättekö alkuperäisiä varaosia?', en: 'Do you use genuine parts?' },
   'faqPage.services.parts.a': { fi: 'Kyllä, käytämme alkuperäisiä varaosia tai laadukkaita vaihtoehtoisia osia luotettavilta toimittajilta. Keskustelemme kanssasi varaosavaihtoehdoista ennen huollon aloittamista.', en: 'Yes, we use genuine OEM parts or high-quality alternatives from trusted suppliers. We’ll discuss parts options with you before starting any work.' },
   'faqPage.pricing.how.q': { fi: 'Miten hinnoittelunne toimii?', en: 'How does your pricing work?' },
@@ -330,7 +401,7 @@ export const siteTranslations = {
   'faqPage.tireHotel.include.q': { fi: 'Mitä rengashotelli sisältää?', en: 'What does tire hotel include?' },
   'faqPage.tireHotel.include.a': { fi: 'Rengashotellipalvelumme sisältää: turvallisen sisäsäilytyksen, UV-suojatut olosuhteet, kosteudenhallinnan ja vapaan saatavuuden kausivaihdossa. Renkaasi säilytetään optimaalisissa olosuhteissa.', en: 'Our tire hotel service includes: secure indoor storage, UV-protected conditions, humidity control, and free access for seasonal changes. Your tires are stored in optimal conditions.' },
   'faqPage.tireHotel.cost.q': { fi: 'Miten paljon rengassäilytys maksaa?', en: 'How much does tire storage cost?' },
-  'faqPage.tireHotel.cost.a': { fi: 'Rengashotelli maksaa [TBD] €/kausi. Tämä sisältää kauden säilytyksen ja ilmaisen vaihtopalvelun seuraavassa kausivaihdossa.', en: 'Tire hotel costs [TBD] €/season. This includes seasonal storage and free mounting service at your next seasonal change.' },
+  'faqPage.tireHotel.cost.a': { fi: 'Hinta riippuu renkaista, säilytysjaksosta ja mahdollisista lisäpalveluista. Näet ajantasaisen hinnan varauksen yhteydessä tai ottamalla yhteyttä.', en: 'The price depends on the tires, storage period and any additional services. You can see the current price during booking or by contacting us.' },
   'faqPage.tireHotel.insured.q': { fi: 'Onko renkaat vakuutettu säilytyksen aikana?', en: 'Are tires insured during storage?' },
   'faqPage.tireHotel.insured.a': { fi: 'Kyllä, kaikki säilytetyt renkaat on katettu kattavalla vakuutuksella säilytyksen aikana.', en: 'Yes, all stored tires are covered by comprehensive insurance during storage.' },
   'faqPage.location.where.q': { fi: 'Missä te sijaitsette?', en: 'Where are you located?' },
@@ -350,7 +421,7 @@ export const siteTranslations = {
   'faqPage.contactLink': { fi: '/yhteystiedot', en: '/en/contact' },
   'faqPage.contactUs': { fi: 'Ota yhteyttä', en: 'Contact Us' },
   'faqPage.bookNow': { fi: 'Varaa aika', en: 'Book Now' },
-  'faqPage.phoneEmail': { fi: 'Puhelin: [TBD] | Sähköposti: [TBD]', en: 'Phone: [TBD] | Email: [TBD]' },
+  'faqPage.phoneEmail': { fi: 'Puhelin: +358 40 777 7163 | Sähköposti: contact@mitra-auto.fi', en: 'Phone: +358 40 777 7163 | Email: contact@mitra-auto.fi' },
 
   // Tire change page
   'tireChangePage.services.passenger.name': { fi: 'Henkilöauto', en: 'Passenger Car' },
@@ -546,8 +617,8 @@ export const siteTranslations = {
   'trustSignals.modernEquipmentDesc': { fi: 'Uusimmat diagnostiikka- ja korjauslaitteet', en: 'Latest diagnostic and repair tools' },
   'trustSignals.genuineParts': { fi: 'Aidot varaosat', en: 'Genuine Parts' },
   'trustSignals.genuinePartsDesc': { fi: 'Laadukkaita varaosia luotetuista lähteistä', en: 'Quality parts from trusted sources' },
-  'trustSignals.satisfaction': { fi: 'Tyytyväisyystakuu', en: 'Satisfaction Guarantee' },
-  'trustSignals.satisfactionDesc': { fi: '100% tyytyväisyystakuu kaikissa palveluissa', en: '100% satisfaction guarantee on all services' },
+  'trustSignals.satisfaction': { fi: 'Selkeä palveluprosessi', en: 'Clear Service Process' },
+  'trustSignals.satisfactionDesc': { fi: 'Työ ja lisätarpeet käydään läpi ennen etenemistä', en: 'Work and additional needs are reviewed before proceeding' },
   
   // Trust Signals (Tire Hotel Page)
   'trustSignals.secureStorage': { fi: 'Turvallinen säilytys', en: 'Secure Storage' },

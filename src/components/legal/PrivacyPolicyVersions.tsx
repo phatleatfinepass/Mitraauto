@@ -1,12 +1,11 @@
 import React from 'react';
 import { Card } from '../ui/card';
-import { legalContent } from './legalContent';
+import { legalContent, type LegalContentKey } from './legalContent';
 
 interface PrivacyPolicyContentProps {
   version: number;
   t: (key: string) => string;
 }
-
 
 // Version 1.0 - Initial Basic Version (Dec 2023)
 export function PrivacyPolicyV1({ t }: { t: (key: string) => string }) {
@@ -569,8 +568,17 @@ export function PrivacyPolicyV6({ t }: { t: (key: string) => string }) {
   return <PrivacyPolicyV5 t={t} />;
 }
 
-// Version 5.1 - Current privacy policy (May 2026)
-export function PrivacyPolicyV51({ t }: { t: (key: string) => string }) {
+function PrivacyPolicyV5x({
+  t,
+  currentVersionKey,
+  effectiveDateKey,
+  releaseNoteKey,
+}: {
+  t: (key: string) => string;
+  currentVersionKey: LegalContentKey;
+  effectiveDateKey: LegalContentKey;
+  releaseNoteKey?: LegalContentKey;
+}) {
   return (
     <Card className="border rounded-2xl p-8 lg:p-12">
       <div className="space-y-8 text-muted-foreground">
@@ -757,10 +765,38 @@ export function PrivacyPolicyV51({ t }: { t: (key: string) => string }) {
         <div>
           <h2 className="text-2xl text-foreground mb-4">{legalContent(t, 'privacy.0124')}</h2>
           <p className="mb-3">{legalContent(t, 'privacy.0125')}</p>
-          <p className="mt-3 font-semibold text-foreground">{legalContent(t, 'privacy.0126')}</p>
-          <p className="font-semibold text-foreground">{legalContent(t, 'privacy.0127')}</p>
+          {releaseNoteKey ? (
+            <p className="mb-3 rounded-md border border-[#FF6B35]/20 bg-[#FF6B35]/5 px-4 py-3 text-sm text-foreground">
+              {legalContent(t, releaseNoteKey)}
+            </p>
+          ) : null}
+          <p className="mt-3 font-semibold text-foreground">{legalContent(t, currentVersionKey)}</p>
+          <p className="font-semibold text-foreground">{legalContent(t, effectiveDateKey)}</p>
         </div>
       </div>
     </Card>
+  );
+}
+
+// Version 5.1 - Account & Customer privacy policy (May 2026)
+export function PrivacyPolicyV51({ t }: { t: (key: string) => string }) {
+  return (
+    <PrivacyPolicyV5x
+      t={t}
+      currentVersionKey="privacy.0126"
+      effectiveDateKey="privacy.0127"
+    />
+  );
+}
+
+// Version 6.1 - Microsoft Clarity and analytics consent release (June 2026)
+export function PrivacyPolicyV61({ t }: { t: (key: string) => string }) {
+  return (
+    <PrivacyPolicyV5x
+      t={t}
+      currentVersionKey="privacy.0128"
+      effectiveDateKey="privacy.0129"
+      releaseNoteKey="privacy.0130"
+    />
   );
 }

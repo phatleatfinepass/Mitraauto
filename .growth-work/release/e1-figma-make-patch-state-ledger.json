@@ -1,0 +1,139 @@
+{
+  "id": "E-1",
+  "name": "Figma Make Patch-State Ledger",
+  "recordedDate": "2026-06-22",
+  "status": "complete_with_blockers",
+  "lifecycleMode": "LAUNCH",
+  "evidenceStates": {
+    "localRepo": "EXECUTED_WITH_FINDINGS",
+    "githubRemote": "EXECUTED_WITH_FINDINGS",
+    "figmaMakePreview": "UNAVAILABLE",
+    "build": "EXECUTED_WITH_FINDINGS"
+  },
+  "githubSource": {
+    "remote": "https://github.com/phatleatfinepass/Mitraauto.git",
+    "branch": "codex/pwa-cloudflare",
+    "localHead": "168db5d",
+    "remoteHeadObserved": "168db5deeadf4cbe224250f181d5b2be0b292ed2",
+    "finding": "Remote branch matches local HEAD, but local Phase B-D source and report work remains uncommitted and is not yet represented in GitHub or Figma Make."
+  },
+  "figmaMakePatchPolicy": {
+    "include": "Only application source files that Figma Make must mirror under /Figma/src.",
+    "exclude": [
+      "src/public static deployment assets",
+      "supabase migrations and edge functions",
+      "scripts and generated sitemap/feed tooling",
+      ".growth-work and .seo-work reports",
+      ".playwright-mcp verification artifacts",
+      "dist build output"
+    ]
+  },
+  "mustPatchInFigmaMake": [
+    "src/SiteApp.tsx",
+    "src/main.tsx",
+    "src/components/catalog/CatalogPage.tsx",
+    "src/components/catalog/ProductDetailPage.tsx",
+    "src/components/catalog/RimCard.tsx",
+    "src/components/catalog/TireCard.tsx",
+    "src/components/legal/PrivacyPolicyVersions.tsx",
+    "src/components/legal/legalContent.ts",
+    "src/components/site/analytics/AnalyticsConsentBanner.tsx",
+    "src/components/site/booking/BookingModal.tsx",
+    "src/components/site/cart/CartDrawer.tsx",
+    "src/components/site/checkout/CheckoutPage.tsx",
+    "src/components/site/layout/Footer.tsx",
+    "src/components/site/layout/Navbar.tsx",
+    "src/components/site/modals/AuthModal.tsx",
+    "src/components/site/pages/AboutPage.tsx",
+    "src/components/site/pages/ContactPage.tsx",
+    "src/components/site/pages/HelsinkiPage.tsx",
+    "src/components/site/pages/LegalPage.tsx",
+    "src/components/site/pages/NotFoundPage.tsx",
+    "src/components/site/pages/ServiceDetailPage.tsx",
+    "src/components/site/pages/ServicesPage.tsx",
+    "src/components/site/pages/TireHotelPage.tsx",
+    "src/components/site/sections/ContactSection.tsx",
+    "src/config/businessProfile.ts",
+    "src/i18n/LanguageContext.tsx",
+    "src/i18n/dictionaries/catalog.ts",
+    "src/i18n/dictionaries/common.ts",
+    "src/i18n/dictionaries/legal.ts",
+    "src/i18n/dictionaries/serviceSeo.ts",
+    "src/i18n/dictionaries/site.ts",
+    "src/lib/clarity.ts",
+    "src/utils/catalogSeo.ts",
+    "src/utils/localSeo.ts",
+    "src/utils/openingHours.ts",
+    "src/utils/pricing.ts",
+    "src/utils/productCommerce.ts",
+    "src/utils/productsSearch.ts"
+  ],
+  "presenceGateFiles": [
+    "src/components/shared/Toaster.tsx",
+    "src/theme/ThemeContext.tsx",
+    "src/utils/etrtoFitment.ts",
+    "src/utils/etrtoFitmentClient.ts"
+  ],
+  "staleSymbolFindings": [
+    {
+      "symbol": "CONTACT_INFO",
+      "state": "absent_from_local_src",
+      "requiredAction": "Patch Figma Make ContactSection.tsx and add businessProfile.ts so Figma preview stops referencing CONTACT_INFO."
+    },
+    {
+      "symbol": "components/Toaster",
+      "state": "local_import_uses_components_shared_Toaster",
+      "requiredAction": "Ensure Figma Make uses src/components/shared/Toaster.tsx and no stale src/components/Toaster.tsx import."
+    },
+    {
+      "symbol": "LanguageContext",
+      "state": "local_file_present",
+      "requiredAction": "Patch Figma Make with the current LanguageContext.tsx and dictionaries."
+    },
+    {
+      "symbol": "ThemeContext",
+      "state": "local_file_present",
+      "requiredAction": "Ensure Figma Make retains src/theme/ThemeContext.tsx."
+    },
+    {
+      "symbol": "etrtoFitment",
+      "state": "local_file_present",
+      "requiredAction": "Ensure Figma Make retains src/utils/etrtoFitment.ts and src/utils/etrtoFitmentClient.ts."
+    }
+  ],
+  "excludedFromFigmaMakeSync": [
+    "src/public/_headers",
+    "src/public/_redirects",
+    "src/public/robots.txt",
+    "src/public/sitemap.xml",
+    "src/public/merchant-products.xml",
+    "src/public/sitemap-products.xml",
+    "src/public/sitemap-products-1.xml",
+    "src/public/sitemap-products-2.xml",
+    "supabase/functions/payments_create_paytrail/index.ts",
+    "supabase/migrations/20260621090000_catalog_slug_identifier_routes.sql",
+    "supabase/migrations/20260621204946_catalog_product_sitemap_source.sql",
+    "supabase/migrations/20260621205611_catalog_product_sitemap_pagination.sql",
+    "scripts/check_merchant_feed.mjs",
+    "scripts/check_product_commerce_contract.mjs",
+    "scripts/check_product_sitemaps.mjs",
+    "scripts/check_seo_redirects.mjs",
+    "scripts/generate_merchant_feed.mjs",
+    "scripts/generate_product_sitemaps.mjs"
+  ],
+  "verification": [
+    {
+      "command": "git ls-remote --heads origin codex/pwa-cloudflare main master",
+      "result": "passed"
+    },
+    {
+      "command": "rg -n \"from ['\\\"].*Toaster|components/Toaster|CONTACT_INFO|etrtoFitmentClient|from ['\\\"].*/etrtoFitment['\\\"]\" src/SiteApp.tsx src/main.tsx src/components src/i18n src/theme src/utils src/config src/lib package.json",
+      "result": "passed_with_expected_presence_hits"
+    },
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Run the Mitra Auto production build. Return only: pass/fail, warnings/errors grouped by file, and whether dist was generated. Do not include routine Vite transform progress.\" -- npm run build",
+      "result": "passed_with_large_chunk_warning"
+    }
+  ],
+  "nextTask": "E-2 - Supabase, Hosting, And Provider Ledger"
+}

@@ -67,6 +67,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "sitemap:products": "node scripts/generate_product_sitemaps.mjs",
+    "sitemap:check": "node scripts/check_product_sitemaps.mjs",
+    "feed:merchant": "node scripts/generate_merchant_feed.mjs",
+    "feed:check": "node scripts/check_merchant_feed.mjs",
+    "commerce:check": "node scripts/check_product_commerce_contract.mjs",
     "i18n:audit": "node scripts/check_i18n_pipeline.mjs",
     "fitment:generate": "python3 scripts/generate_etrto_runtime.py",
     "fitment:check": "deno check supabase/functions/fitment_recommendations/index.ts && deno check supabase/functions/etrto_recommend_tyres/index.ts && deno check supabase/functions/rim_fitment_profile/index.ts && deno check supabase/functions/vehicle_lookup/index.ts"

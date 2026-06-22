@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-06-22T14:42:26.372256+00:00",
+  "site_dir": "build",
+  "journeys": 5,
+  "pages": 1,
+  "summary": {
+    "blocker": 0,
+    "critical": 12,
+    "warning": 0,
+    "advisory": 0
+  },
+  "findings": [
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "service-booking",
+      "route": "/palvelut/autohuolto",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "service-booking",
+      "route": "/en/services/car-service",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "product-purchase",
+      "route": "/catalog/tire/accelera-651-sport-265-30-r19-93-w-summer",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "product-purchase",
+      "route": "/catalog",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "install-booking",
+      "route": "/booking/manage",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "install-booking",
+      "route": "/en/booking/manage",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "contact-local-action",
+      "route": "/yhteystiedot",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "contact-local-action",
+      "route": "/en/contact",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "contact-local-action",
+      "route": "/helsinki",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "contact-local-action",
+      "route": "/en/helsinki",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "tire-hotel-retention",
+      "route": "/palvelut/rengashotelli",
+      "message": "Entry page was not found in rendered HTML."
+    },
+    {
+      "severity": "critical",
+      "code": "entry-page-missing",
+      "journey": "tire-hotel-retention",
+      "route": "/en/services/tire-hotel",
+      "message": "Entry page was not found in rendered HTML."
+    }
+  ],
+  "manual_checks": [
+    "Visual hierarchy, focus order, keyboard operation, validation announcements, error recovery, mobile layout, consent, trust accuracy, completion receipts, and analytics require browser/platform review.",
+    "Text matching cannot prove that a declared action is the correct or usable action."
+  ]
+}

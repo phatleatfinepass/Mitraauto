@@ -11,11 +11,17 @@ import { RimCatalogLayout } from './RimCatalogLayout';
 import { Button } from '../ui/button';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react';
 import { fetchProductsSearch, type ProductSearchRow } from '../../utils/productsSearch';
+import {
+  getCatalogProductDetailPath,
+  getCatalogProductSeoIdentifier,
+  type CatalogRouteLanguage,
+} from '../../utils/catalogSeo';
 import { buildProductImageFallback } from '../../utils/productImage';
 import type { ProductPricingRules } from '../../utils/pricing';
 import { buildTyreLabelSectionData, type TyreLabelSectionData } from '../../utils/tyreLabel';
 import type { TyreFitmentCandidate, TyreFitmentRecommendation } from '../../utils/etrtoFitment';
 import type { VehicleTyreLookupResult } from '../../utils/vehicleFitmentLookup';
+import { businessProfile, getLocalBusinessSchema, localBusinessIds } from '../../config/businessProfile';
 
 type CatalogMode = 'tires' | 'rims';
 type SearchMode = 'license' | 'vehicle' | 'manual';
@@ -84,6 +90,8 @@ const CATALOG_STATE_STORAGE_KEY = 'catalog_state';
 const CATALOG_SNAPSHOT_STORAGE_KEY = 'catalog_snapshot';
 const CATALOG_SCROLL_POSITION_STORAGE_KEY = 'catalog_scroll_position';
 const CATALOG_SCROLL_TIMESTAMP_STORAGE_KEY = 'catalog_scroll_timestamp';
+const CATALOG_CANONICAL_PATHS = { fi: '/catalog', en: '/en/catalog' } as const;
+const HOME_CANONICAL_PATHS = { fi: '', en: '/en' } as const;
 
 function clearCatalogRestoreStorage() {
   if (typeof window === 'undefined') return;
@@ -141,12 +149,16 @@ function getFallbackImage(brand?: string, model?: string) {
   return buildProductImageFallback(brand, model);
 }
 
-function getCatalogProductHref(product: CatalogProduct) {
-  const identifier = product.seo_slug
-    ? product.seo_slug
-    : product.id;
+function getCatalogProductHref(product: CatalogProduct, language: CatalogRouteLanguage) {
+  return getCatalogProductDetailPath(
+    product.product_type,
+    getCatalogProductSeoIdentifier(product),
+    language,
+  );
+}
 
-  return `/catalog/${product.product_type}/${identifier}`;
+function hasSellableCatalogPrice(product: CatalogProduct) {
+  return typeof product.best_price_eur === 'number' && Number.isFinite(product.best_price_eur) && product.best_price_eur > 0;
 }
 
 function getUniqueFitmentCandidates(recommendation: TyreFitmentRecommendation) {
@@ -902,6 +914,148 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const productsGridRef = React.useRef<HTMLDivElement>(null);
   const restoreFetchStartedRef = React.useRef(Boolean(initialRestoreRef.current));
   const skipNextCatalogFetchRef = React.useRef(false);
+  const catalogCanonicalPath = CATALOG_CANONICAL_PATHS[language];
+  const catalogAlternatePaths = CATALOG_CANONICAL_PATHS;
+  const catalogSeoTitle = t('catalog.seoTitle');
+  const catalogSeoDescription = t('catalog.seoDescription');
+  const navHomeLabel = t('nav.home');
+  const navCatalogLabel = t('nav.catalog');
+  const canonicalBaseUrl = businessProfile.websiteUrl.replace(/\/+$/, '');
+  const categoryGuideItems = mode === 'tires'
+    ? [
+        { title: t('catalog.categoryGuideTireFitTitle'), body: t('catalog.categoryGuideTireFitBody') },
+        { title: t('catalog.categoryGuideTireSeasonTitle'), body: t('catalog.categoryGuideTireSeasonBody') },
+        { title: t('catalog.categoryGuideTireServiceTitle'), body: t('catalog.categoryGuideTireServiceBody') },
+      ]
+    : [
+        { title: t('catalog.categoryGuideRimFitTitle'), body: t('catalog.categoryGuideRimFitBody') },
+        { title: t('catalog.categoryGuideRimStyleTitle'), body: t('catalog.categoryGuideRimStyleBody') },
+        { title: t('catalog.categoryGuideRimServiceTitle'), body: t('catalog.categoryGuideRimServiceBody') },
+      ];
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    const previousLang = document.documentElement.lang;
+    document.title = catalogSeoTitle;
+    document.documentElement.lang = language;
+
+    let descriptionTag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const previousDescription = descriptionTag?.content ?? '';
+    const createdDescription = !descriptionTag;
+    if (!descriptionTag) {
+      descriptionTag = document.createElement('meta');
+      descriptionTag.name = 'description';
+      document.head.appendChild(descriptionTag);
+    }
+    descriptionTag.content = catalogSeoDescription;
+
+    let canonicalTag = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const previousCanonical = canonicalTag?.href ?? '';
+    const createdCanonical = !canonicalTag;
+    if (!canonicalTag) {
+      canonicalTag = document.createElement('link');
+      canonicalTag.rel = 'canonical';
+      document.head.appendChild(canonicalTag);
+    }
+    canonicalTag.href = `${canonicalBaseUrl}${catalogCanonicalPath}`;
+
+    const alternateLinks = [
+      { hreflang: 'fi', href: `${canonicalBaseUrl}${catalogAlternatePaths.fi}` },
+      { hreflang: 'en', href: `${canonicalBaseUrl}${catalogAlternatePaths.en}` },
+      { hreflang: 'x-default', href: `${canonicalBaseUrl}${catalogAlternatePaths.fi}` },
+    ].map(({ hreflang, href }) => {
+      let link = document.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${hreflang}"]`);
+      const previousHref = link?.href ?? '';
+      const created = !link;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'alternate';
+        link.hreflang = hreflang;
+        document.head.appendChild(link);
+      }
+      link.href = href;
+      return { link, previousHref, created };
+    });
+
+    let jsonLd = document.querySelector<HTMLScriptElement>('script[data-catalog-seo-jsonld]');
+    if (!jsonLd) {
+      jsonLd = document.createElement('script');
+      jsonLd.type = 'application/ld+json';
+      jsonLd.dataset.catalogSeoJsonld = 'true';
+      document.head.appendChild(jsonLd);
+    }
+
+    const canonicalUrl = `${canonicalBaseUrl}${catalogCanonicalPath}`;
+    jsonLd.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        getLocalBusinessSchema(),
+        {
+          '@type': 'WebSite',
+          '@id': localBusinessIds.website,
+          url: businessProfile.websiteUrl,
+          name: businessProfile.publicName,
+          publisher: { '@id': localBusinessIds.organization },
+          inLanguage: language,
+        },
+        {
+          '@type': 'CollectionPage',
+          '@id': `${canonicalUrl}#webpage`,
+          url: canonicalUrl,
+          name: catalogSeoTitle,
+          description: catalogSeoDescription,
+          isPartOf: { '@id': localBusinessIds.website },
+          about: { '@id': localBusinessIds.organization },
+          inLanguage: language,
+        },
+        {
+          '@type': 'BreadcrumbList',
+          '@id': `${canonicalUrl}#breadcrumb`,
+          itemListElement: [
+            {
+              '@type': 'ListItem',
+              position: 1,
+              name: navHomeLabel,
+              item: `${canonicalBaseUrl}${HOME_CANONICAL_PATHS[language]}`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: navCatalogLabel,
+              item: canonicalUrl,
+            },
+          ],
+        },
+      ],
+    });
+
+    return () => {
+      document.title = previousTitle;
+      document.documentElement.lang = previousLang;
+      if (descriptionTag) {
+        if (createdDescription) {
+          descriptionTag.remove();
+        } else {
+          descriptionTag.content = previousDescription;
+        }
+      }
+      if (canonicalTag) {
+        if (createdCanonical) {
+          canonicalTag.remove();
+        } else {
+          canonicalTag.href = previousCanonical;
+        }
+      }
+      alternateLinks.forEach(({ link, previousHref, created }) => {
+        if (created) {
+          link.remove();
+        } else {
+          link.href = previousHref;
+        }
+      });
+      jsonLd?.remove();
+    };
+  }, [canonicalBaseUrl, catalogCanonicalPath, catalogSeoDescription, catalogSeoTitle, language, navCatalogLabel, navHomeLabel]);
   
   const handleProductClick = useCallback(
     (product: CatalogProduct) => {
@@ -933,6 +1087,9 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const handleAddToCart = useCallback(
     (product: CatalogProduct, e: React.MouseEvent) => {
       e.stopPropagation();
+      if (!product.in_stock || !hasSellableCatalogPrice(product)) {
+        return;
+      }
       // Add 4 pieces (set of 4) by default for tires/rims
       const stockLimit = product.in_stock && typeof product.stock_qty === 'number' && product.stock_qty > 0
         ? Math.floor(product.stock_qty)
@@ -1228,6 +1385,27 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
         </div>
       </div>
 
+      <section className="container mx-auto max-w-7xl px-6 pt-8 lg:px-8">
+        <h2 className={`text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {t('catalog.categoryGuideTitle')}
+        </h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {categoryGuideItems.map((item) => (
+            <div
+              key={item.title}
+              className={`rounded-xl border p-5 ${
+                theme === 'dark'
+                  ? 'border-white/10 bg-white/[0.03]'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{item.title}</h3>
+              <p className={`mt-2 text-sm leading-6 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Header */}
       {mode === 'rims' ? (
         <RimCatalogLayout
@@ -1286,7 +1464,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 >
                   <RimCard
                       product={product}
-                      href={getCatalogProductHref(product)}
+                      href={getCatalogProductHref(product, language)}
                       index={index}
                       onClick={onProductSelect ? () => handleProductClick(product) : undefined}
                       onAddToCart={(e) => handleAddToCart(product, e)}
@@ -1596,7 +1774,7 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
                 >
                   <TireCard
                     product={product}
-                    href={getCatalogProductHref(product)}
+                    href={getCatalogProductHref(product, language)}
                     index={index}
                     onClick={onProductSelect ? () => handleProductClick(product) : undefined}
                     onAddToCart={(e) => handleAddToCart(product, e)}

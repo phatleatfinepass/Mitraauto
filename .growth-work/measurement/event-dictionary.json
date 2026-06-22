@@ -1,0 +1,461 @@
+{
+  "version": "2026-06-22.d1",
+  "project": "Mitra Auto",
+  "status": "draft_ready_for_owner_approval",
+  "created_at": "2026-06-22",
+  "privacy_rules": {
+    "default_consent_behavior": "analytics events must respect the approved consent model; current Clarity source applies denied analytics storage until consent is granted",
+    "prohibited_parameters": [
+      "name",
+      "email",
+      "phone",
+      "license_plate",
+      "address",
+      "raw_notes",
+      "payment_card_or_bank_details",
+      "tokens",
+      "private_manage_urls",
+      "auth_identifiers",
+      "free_text_customer_messages"
+    ],
+    "allowed_identifier_policy": "Use opaque non-secret IDs only when required for reconciliation and approved by privacy/analytics owners. Prefer server-side reconciliation tables over exposing raw IDs to third-party analytics."
+  },
+  "common_parameters": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "required": true,
+      "pii": false,
+      "description": "Client or server generated UUID for deduplication."
+    },
+    {
+      "name": "event_version",
+      "type": "string",
+      "required": true,
+      "pii": false,
+      "description": "Dictionary version used by the firing code."
+    },
+    {
+      "name": "occurred_at",
+      "type": "iso_datetime",
+      "required": true,
+      "pii": false,
+      "description": "Event timestamp in ISO-8601."
+    },
+    {
+      "name": "consent_state",
+      "type": "enum:granted|denied|unknown|not_applicable",
+      "required": true,
+      "pii": false,
+      "description": "Consent state at event time."
+    },
+    {
+      "name": "route",
+      "type": "string",
+      "required": true,
+      "pii": false,
+      "description": "Path without query string or fragment."
+    },
+    {
+      "name": "page_type",
+      "type": "string",
+      "required": true,
+      "pii": false,
+      "description": "Route/page contract type such as home, service_detail, product_detail, checkout, contact, local."
+    },
+    {
+      "name": "language",
+      "type": "enum:fi|en",
+      "required": true,
+      "pii": false,
+      "description": "Rendered language."
+    }
+  ],
+  "events": [
+    {
+      "name": "spa_page_view",
+      "current_source_state": "exists_clarity",
+      "recommended_platform_mapping": "page_view",
+      "key_event": false,
+      "fires_when": "A public SPA route view is rendered and not excluded by noindex/private app rules.",
+      "source_files": [
+        "src/lib/clarity.ts",
+        "src/SiteApp.tsx"
+      ],
+      "additional_parameters": [
+        "canonical_path"
+      ],
+      "reconciliation_source": "analytics only; compare to Search Console by route/date separately",
+      "data_quality_status": "source_exists_platform_readback_pending"
+    },
+    {
+      "name": "analytics_consent_granted",
+      "current_source_state": "exists_clarity",
+      "recommended_platform_mapping": "custom_event",
+      "key_event": false,
+      "fires_when": "User grants analytics consent.",
+      "source_files": [
+        "src/lib/clarity.ts",
+        "src/components/site/analytics/AnalyticsConsentBanner.tsx"
+      ],
+      "additional_parameters": [
+        "consent_category"
+      ],
+      "reconciliation_source": "consent storage and analytics debug",
+      "data_quality_status": "source_exists_legal_review_pending"
+    },
+    {
+      "name": "booking_start",
+      "current_source_state": "partial_as_booking_modal_opened",
+      "recommended_platform_mapping": "custom_event",
+      "key_event": false,
+      "fires_when": "Booking modal or booking entry flow opens for a public service/product install journey.",
+      "source_files": [
+        "src/SiteApp.tsx"
+      ],
+      "additional_parameters": [
+        "service_id",
+        "booking_source",
+        "install_prefill",
+        "entry_page_type"
+      ],
+      "reconciliation_source": "analytics only until server booking ID exists",
+      "data_quality_status": "source_event_exists_rename_or_alias_needed"
+    },
+    {
+      "name": "booking_step_view",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "custom_event",
+      "key_event": false,
+      "fires_when": "A booking step renders after a valid transition.",
+      "source_files": [
+        "src/components/site/booking/BookingModal.tsx"
+      ],
+      "additional_parameters": [
+        "step_id",
+        "service_count",
+        "has_slot_selected"
+      ],
+      "reconciliation_source": "analytics only",
+      "data_quality_status": "defined_not_implemented"
+    },
+    {
+      "name": "booking_submitted",
+      "current_source_state": "partial_as_booking_completed_after_success",
+      "recommended_platform_mapping": "generate_lead or custom_event",
+      "key_event": true,
+      "fires_when": "Booking insert or install booking function succeeds and a server booking ID exists.",
+      "source_files": [
+        "src/components/site/booking/BookingStep3.tsx",
+        "src/components/site/booking/BookingModal.tsx"
+      ],
+      "additional_parameters": [
+        "booking_event_id",
+        "service_count",
+        "service_id_or_group",
+        "booking_source",
+        "install_prefill"
+      ],
+      "reconciliation_source": "bookings.id or order_install_booking booking id",
+      "data_quality_status": "requires_d2_server_id_and_status_policy"
+    },
+    {
+      "name": "booking_accepted",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "offline_conversion_or_server_event",
+      "key_event": true,
+      "fires_when": "Operations marks a submitted booking as valid and accepted under approved rules.",
+      "source_files": [
+        "operations/status source pending D-2"
+      ],
+      "additional_parameters": [
+        "booking_event_id",
+        "service_id_or_group",
+        "status"
+      ],
+      "reconciliation_source": "bookings status or operations source",
+      "data_quality_status": "blocked_status_definition_missing"
+    },
+    {
+      "name": "booking_completed",
+      "current_source_state": "name_exists_but_currently_means_submit_success",
+      "recommended_platform_mapping": "offline_conversion_or_server_event",
+      "key_event": true,
+      "fires_when": "The booked service is actually completed, not merely submitted.",
+      "source_files": [
+        "operations/status source pending D-2"
+      ],
+      "additional_parameters": [
+        "booking_event_id",
+        "service_id_or_group",
+        "status"
+      ],
+      "reconciliation_source": "bookings/service operations",
+      "data_quality_status": "semantic_conflict_requires_rename_or_policy"
+    },
+    {
+      "name": "booking_cancelled",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "custom_or_server_event",
+      "key_event": false,
+      "fires_when": "A booking is cancelled by customer or operations.",
+      "source_files": [
+        "src/components/site/pages/CustomerBookingManagePage.tsx",
+        "operations/status source pending D-2"
+      ],
+      "additional_parameters": [
+        "booking_event_id",
+        "cancel_source",
+        "status"
+      ],
+      "reconciliation_source": "bookings status and cancellation events",
+      "data_quality_status": "defined_not_implemented"
+    },
+    {
+      "name": "contact_call_click",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "generate_lead or custom_event",
+      "key_event": false,
+      "fires_when": "User activates a visible public tel: link.",
+      "source_files": [
+        "src/components/site/pages/ContactPage.tsx",
+        "src/components/site/sections/ContactSection.tsx",
+        "src/components/site/layout/Footer.tsx"
+      ],
+      "additional_parameters": [
+        "location_id",
+        "link_context"
+      ],
+      "reconciliation_source": "analytics and GBP call data where available",
+      "data_quality_status": "defined_not_implemented"
+    },
+    {
+      "name": "contact_email_click",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "generate_lead or custom_event",
+      "key_event": false,
+      "fires_when": "User activates a visible public mailto: link.",
+      "source_files": [
+        "src/components/site/pages/ContactPage.tsx",
+        "src/components/site/sections/ContactSection.tsx",
+        "src/components/site/layout/Footer.tsx"
+      ],
+      "additional_parameters": [
+        "location_id",
+        "link_context"
+      ],
+      "reconciliation_source": "analytics only unless email system reconciliation is approved",
+      "data_quality_status": "defined_not_implemented"
+    },
+    {
+      "name": "directions_click",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "custom_event",
+      "key_event": false,
+      "fires_when": "User activates map/directions link.",
+      "source_files": [
+        "src/components/site/pages/ContactPage.tsx",
+        "src/components/site/sections/ContactSection.tsx"
+      ],
+      "additional_parameters": [
+        "location_id",
+        "map_provider",
+        "link_context"
+      ],
+      "reconciliation_source": "analytics and GBP directions where available",
+      "data_quality_status": "defined_not_implemented"
+    },
+    {
+      "name": "view_item",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "GA4 recommended ecommerce event",
+      "key_event": false,
+      "fires_when": "Product detail page renders a valid product.",
+      "source_files": [
+        "src/components/catalog/ProductDetailPage.tsx"
+      ],
+      "additional_parameters": [
+        "product_type",
+        "sku_or_variant_id",
+        "item_name",
+        "brand",
+        "currency",
+        "value",
+        "availability_state"
+      ],
+      "reconciliation_source": "catalog source and analytics",
+      "data_quality_status": "defined_not_implemented"
+    },
+    {
+      "name": "add_to_cart",
+      "current_source_state": "partial_as_cart_item_added",
+      "recommended_platform_mapping": "GA4 recommended ecommerce event",
+      "key_event": false,
+      "fires_when": "A valid sellable product is added to cart.",
+      "source_files": [
+        "src/SiteApp.tsx",
+        "src/components/catalog/ProductDetailPage.tsx"
+      ],
+      "additional_parameters": [
+        "product_type",
+        "sku_or_variant_id",
+        "quantity",
+        "currency",
+        "value"
+      ],
+      "reconciliation_source": "cart state and product commerce snapshot",
+      "data_quality_status": "source_event_exists_rename_or_alias_needed"
+    },
+    {
+      "name": "begin_checkout",
+      "current_source_state": "partial_as_checkout_payment_started",
+      "recommended_platform_mapping": "GA4 recommended ecommerce event",
+      "key_event": false,
+      "fires_when": "Checkout form passes client validation and Paytrail creation is requested.",
+      "source_files": [
+        "src/components/site/checkout/CheckoutPage.tsx"
+      ],
+      "additional_parameters": [
+        "cart_lines",
+        "cart_items",
+        "shipping_method",
+        "currency",
+        "value"
+      ],
+      "reconciliation_source": "analytics and orders pending creation",
+      "data_quality_status": "source_event_exists_rename_or_alias_needed"
+    },
+    {
+      "name": "payment_created",
+      "current_source_state": "server_source_exists_no_analytics_event",
+      "recommended_platform_mapping": "server_event",
+      "key_event": false,
+      "fires_when": "Paytrail payment creation succeeds and order has transaction/redirect data.",
+      "source_files": [
+        "supabase/functions/payments_create_paytrail/index.ts"
+      ],
+      "additional_parameters": [
+        "order_event_id",
+        "payment_provider",
+        "currency",
+        "value",
+        "item_count"
+      ],
+      "reconciliation_source": "orders",
+      "data_quality_status": "requires_d2_server_event_policy"
+    },
+    {
+      "name": "purchase",
+      "current_source_state": "server_source_exists_no_analytics_event",
+      "recommended_platform_mapping": "GA4 recommended ecommerce event or server/offline conversion",
+      "key_event": true,
+      "fires_when": "Paytrail webhook or approved payment source confirms paid/purchased status with valid signature/status policy.",
+      "source_files": [
+        "supabase/functions/payments_paytrail_webhook/index.ts"
+      ],
+      "additional_parameters": [
+        "order_event_id",
+        "payment_provider",
+        "currency",
+        "value",
+        "item_count",
+        "product_type_mix"
+      ],
+      "reconciliation_source": "orders, payment_events",
+      "data_quality_status": "requires_d2_server_id_and_status_policy"
+    },
+    {
+      "name": "payment_failed",
+      "current_source_state": "server_source_exists_no_analytics_event",
+      "recommended_platform_mapping": "custom_or_server_event",
+      "key_event": false,
+      "fires_when": "Payment webhook/source records failed/cancelled status under approved status policy.",
+      "source_files": [
+        "supabase/functions/payments_paytrail_webhook/index.ts",
+        "src/components/site/checkout/CheckoutCancelPage.tsx"
+      ],
+      "additional_parameters": [
+        "order_event_id",
+        "payment_provider",
+        "failure_stage"
+      ],
+      "reconciliation_source": "orders, payment_events",
+      "data_quality_status": "requires_d2_status_policy"
+    },
+    {
+      "name": "order_fulfilled",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "offline_conversion_or_server_event",
+      "key_event": true,
+      "fires_when": "Operations marks an order as fulfilled, delivered, or picked up under approved status policy.",
+      "source_files": [
+        "src/components/cms/orders/OrdersCMSPage.tsx",
+        "operations/status source pending D-2"
+      ],
+      "additional_parameters": [
+        "order_event_id",
+        "fulfillment_method",
+        "product_type_mix"
+      ],
+      "reconciliation_source": "orders fulfillment status",
+      "data_quality_status": "blocked_status_definition_missing"
+    },
+    {
+      "name": "account_setup_completed",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "sign_up or custom_event",
+      "key_event": false,
+      "fires_when": "Customer account setup completes for a legitimate customer account flow.",
+      "source_files": [
+        "src/components/site/pages/CustomerAccountPage.tsx"
+      ],
+      "additional_parameters": [
+        "account_source"
+      ],
+      "reconciliation_source": "Supabase auth/customer account source",
+      "data_quality_status": "defined_not_implemented"
+    },
+    {
+      "name": "retention_service_scheduled",
+      "current_source_state": "not_implemented",
+      "recommended_platform_mapping": "custom_or_server_event",
+      "key_event": true,
+      "fires_when": "Returning customer schedules a repeat/maintenance/storage-related service under approved retention rules.",
+      "source_files": [
+        "customer account, bookings, Tire Hotel/source pending D-2"
+      ],
+      "additional_parameters": [
+        "retention_program",
+        "service_id_or_group"
+      ],
+      "reconciliation_source": "customer account, bookings, Tire Hotel/storage",
+      "data_quality_status": "blocked_retention_definition_missing"
+    }
+  ],
+  "key_event_policy": {
+    "key_events": [
+      "booking_submitted",
+      "booking_accepted",
+      "booking_completed",
+      "purchase",
+      "order_fulfilled",
+      "retention_service_scheduled"
+    ],
+    "not_key_events": [
+      "spa_page_view",
+      "analytics_consent_granted",
+      "booking_start",
+      "booking_step_view",
+      "contact_call_click",
+      "contact_email_click",
+      "directions_click",
+      "view_item",
+      "add_to_cart",
+      "begin_checkout",
+      "payment_created",
+      "payment_failed",
+      "account_setup_completed"
+    ],
+    "rule": "A key event must represent an important business action and, where possible, reconcile to server-side booking, order, payment, fulfillment, or retention systems. Intent events are diagnostics unless owner-approved as lead-quality proxies."
+  }
+}

@@ -13,6 +13,7 @@ import { ContactSection } from './components/site/sections/ContactSection';
 import { AuthModal } from './components/site/modals/AuthModal';
 import { EmergencyTowModal } from './components/site/modals/EmergencyTowModal';
 import { BookingModal } from './components/site/booking/BookingModal';
+import { AnalyticsConsentBanner } from './components/site/analytics/AnalyticsConsentBanner';
 import { ServicesPage } from './components/site/pages/ServicesPage';
 import { TireHotelPage } from './components/site/pages/TireHotelPage';
 import { AboutPage } from './components/site/pages/AboutPage';
@@ -49,7 +50,14 @@ import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from './utils/supabase/client';
+import { trackClarityEvent, trackClarityPageView, upgradeClaritySession } from './lib/clarity';
 import { fetchProductSearchRowByIdentifier } from './utils/productsSearch';
+import { useLocalSeoHead } from './utils/localSeo';
+import {
+  getCatalogProductDetailPath,
+  getCatalogProductSeoIdentifier,
+  parseCatalogProductPath,
+} from './utils/catalogSeo';
 import { buildTyreLabelSectionData } from './utils/tyreLabel';
 import { 
   Wrench, 
@@ -58,7 +66,6 @@ import {
   ClipboardCheck,
   Shield,
   Calendar,
-  Star,
   CheckCircle2,
   ArrowRight,
   Award,
@@ -86,6 +93,19 @@ const heroImages = [
     alt: "Mitra Auto Workshop Garage"
   }
 ];
+
+const noindexAppPages = new Set([
+  'booking-manage',
+  'checkout',
+  'checkout-cancel',
+  'checkout-success',
+  'cms-beta',
+  'cms-tire-conflicts',
+  'cms-tire-storage',
+  'customer-account',
+  'pwa-cms',
+  'pwa-not-found',
+]);
 
 type ParsedTireSize = {
   width?: number;
@@ -202,16 +222,6 @@ function getCanonicalCmsRoute(pathname: string): string | null {
   return null;
 }
 
-function parseCatalogDetailPath(path: string): { productType: 'tire' | 'rim'; identifier: string } | null {
-  const normalizedPath = normalizeAppPath(path);
-  const match = normalizedPath.match(/^\/catalog\/(tire|rim)\/([^/]+)$/);
-  if (!match) return null;
-  return {
-    productType: match[1] as 'tire' | 'rim',
-    identifier: decodeURIComponent(match[2]),
-  };
-}
-
 const VALID_TIRE_SEASONS = new Set<DetailTireProduct['season']>(['summer', 'winter', 'all_season']);
 
 function parseTireSize(sizeText?: string): ParsedTireSize {
@@ -295,6 +305,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
     return {
       type: 'tire',
       id: product.id,
+      seo_slug: product.seo_slug,
       brand: product.brand,
       model: product.model,
       title: product.title,
@@ -357,10 +368,12 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
   return {
     type: 'rim',
     id: product.id,
+    seo_slug: product.seo_slug,
     brand: product.brand,
     model: product.model,
     title: product.title,
     subtitle: product.subtitle,
+    size_text: product.size_text,
     rim_width: product.rim_width,
     rim_diameter: product.rim_diameter,
     pcd: product.pcd,
@@ -372,6 +385,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
     weight: undefined,
     tags: product.tags,
     generated_tags: product.generated_tags,
+    ean: product.ean,
     best_price_eur: product.best_price_eur,
     best_image_url: product.best_image_url,
     images: detailImages,
@@ -391,6 +405,10 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
 function HomePage() {
   const { t, language } = useLanguage();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
+  const catalogHref = t('route.catalog');
+  const servicesHref = t('route.services');
+  const tireHotelHref = t('route.tireHotel');
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
@@ -402,23 +420,118 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms-beta' | 'cms-tire-conflicts' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms-beta' | 'cms-tire-conflicts' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'cookies' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [selectedServiceDetail, setSelectedServiceDetail] = useState<ResolvedServiceDetail>({ kind: 'bespoke', pageId: 'car-service', language: 'en' });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const requestedProtectedPathRef = useRef<string | null>(null);
+  const previousBookingOpenRef = useRef(false);
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
+
+  useLocalSeoHead({
+    enabled: currentPage === 'home',
+    language,
+    title: t('seo.home.title'),
+    description: t('seo.home.description'),
+    canonicalPath: t('route.home'),
+    alternatePaths: { fi: '/', en: '/en' },
+    pageType: 'WebPage',
+    breadcrumbs: [
+      { name: t('nav.home'), path: t('route.home') },
+    ],
+  });
+
+  useEffect(() => {
+    if (!noindexAppPages.has(currentPage)) {
+      return;
+    }
+
+    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    const previousRobots = robots?.content ?? '';
+    const createdRobots = !robots;
+    if (!robots) {
+      robots = document.createElement('meta');
+      robots.name = 'robots';
+      document.head.appendChild(robots);
+    }
+    robots.content = 'noindex, nofollow';
+
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const previousCanonical = canonical?.href ?? '';
+    canonical?.remove();
+
+    const alternateLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="alternate"]')).map(
+      (link) => {
+        const href = link.href;
+        const hreflang = link.hreflang;
+        link.remove();
+        return { href, hreflang };
+      },
+    );
+
+    return () => {
+      if (robots) {
+        if (createdRobots) {
+          robots.remove();
+        } else {
+          robots.content = previousRobots;
+        }
+      }
+      if (canonical) {
+        canonical.href = previousCanonical;
+        document.head.appendChild(canonical);
+      }
+      alternateLinks.forEach(({ href, hreflang }) => {
+        const link = document.createElement('link');
+        link.rel = 'alternate';
+        link.hreflang = hreflang;
+        link.href = href;
+        document.head.appendChild(link);
+      });
+    };
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (noindexAppPages.has(currentPage)) {
+      return;
+    }
+
+    trackClarityPageView({
+      page: currentPage,
+      path: window.location.pathname,
+      language,
+    });
+  }, [currentPage, language]);
+
+  useEffect(() => {
+    if (bookingModalOpen && !previousBookingOpenRef.current) {
+      trackClarityEvent('booking_modal_opened', {
+        page: currentPage,
+        service: preSelectedService || 'not_selected',
+      });
+      upgradeClaritySession('booking_intent');
+    }
+
+    previousBookingOpenRef.current = bookingModalOpen;
+  }, [bookingModalOpen, currentPage, preSelectedService]);
+
+  useEffect(() => {
+    if (currentPage === 'checkout-success') {
+      trackClarityEvent('checkout_success_viewed');
+      upgradeClaritySession('checkout_completed');
+    } else if (currentPage === 'checkout-cancel') {
+      trackClarityEvent('checkout_cancel_viewed');
+    }
+  }, [currentPage]);
 
   // Check auth state on mount
   useEffect(() => {
     let subscription: any = null;
     
     const checkAuth = async () => {
-      const { getSupabaseClient } = await import('./utils/supabase/client');
-      const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
@@ -580,6 +693,7 @@ function HomePage() {
       const normalizedPath = parsedRoute.pathname;
       const effectiveHash = parsedRoute.hash || (typeof window !== 'undefined' ? window.location.hash : '');
       const serviceDetail = resolveServiceDetailByPath(normalizedPath);
+      const catalogProductPath = parseCatalogProductPath(normalizedPath);
       const nextCmsTab =
         normalizedPath === '/cms' || normalizedPath === '/cms/password-setup'
           ? resolveCmsTabFromHash(effectiveHash)
@@ -673,6 +787,13 @@ function HomePage() {
       // Legal routes
       else if (normalizedPath === '/privacy' || normalizedPath === '/legal/privacy') {
         transitionNavigationState('privacy');
+      } else if (
+        normalizedPath === '/cookies' ||
+        normalizedPath === '/cookie-policy' ||
+        normalizedPath === '/legal/cookies' ||
+        normalizedPath === '/legal/cookie-policy'
+      ) {
+        transitionNavigationState('cookies');
       } else if (normalizedPath === '/terms' || normalizedPath === '/legal/terms') {
         transitionNavigationState('terms');
       } else if (normalizedPath === '/legal') {
@@ -680,9 +801,9 @@ function HomePage() {
       } 
       
       // Catalog routes
-      else if (normalizedPath === '/catalog' || normalizedPath === '/shop') {
+      else if (normalizedPath === '/catalog' || normalizedPath === '/shop' || normalizedPath === '/en/catalog' || normalizedPath === '/en/shop') {
         transitionNavigationState('catalog');
-      } else if (normalizedPath.startsWith('/catalog/')) {
+      } else if (catalogProductPath) {
         transitionNavigationState('catalog-detail', state?.selectedProduct ?? null);
       } 
       
@@ -729,11 +850,8 @@ function HomePage() {
       startTransition(() => {
         setSelectedProduct(detail);
       });
-      const detailIdentifier =
-        product.seo_slug
-          ? product.seo_slug
-          : product.id;
-      const detailPath = `/catalog/${product.product_type}/${detailIdentifier}`;
+      const detailIdentifier = getCatalogProductSeoIdentifier(product);
+      const detailPath = getCatalogProductDetailPath(product.product_type, detailIdentifier, language);
       navigate(detailPath, { state: { selectedProduct: detail } });
     },
     [language, navigate, setSelectedProduct]
@@ -753,14 +871,27 @@ function HomePage() {
     const loadCatalogDetailFromUrl = async () => {
       if (currentPage !== 'catalog-detail' || selectedProduct) return;
 
-      const parsed = parseCatalogDetailPath(window.location.pathname);
+      const parsed = parseCatalogProductPath(window.location.pathname);
       if (!parsed) return;
 
       try {
         const row = await fetchProductSearchRowByIdentifier(parsed.productType, parsed.identifier);
-        if (!active || !row) return;
+        if (!active) return;
+        if (!row) {
+          transitionNavigationState('not-found');
+          return;
+        }
         const catalogProduct = mapProductSearchRow(row, parsed.productType, language);
         const detail = mapCatalogProductToDetail(catalogProduct, language);
+        const canonicalPath = getCatalogProductDetailPath(
+          parsed.productType,
+          getCatalogProductSeoIdentifier(catalogProduct),
+          parsed.language,
+        );
+        const currentPath = normalizeAppPath(window.location.pathname);
+        if (currentPath !== canonicalPath) {
+          window.history.replaceState(window.history.state ?? {}, '', canonicalPath);
+        }
         startTransition(() => {
           setSelectedProduct(detail);
         });
@@ -774,7 +905,7 @@ function HomePage() {
     return () => {
       active = false;
     };
-  }, [currentPage, language, selectedProduct]);
+  }, [currentPage, language, selectedProduct, transitionNavigationState]);
 
   useEffect(() => {
     const handleNavigation = (event?: PopStateEvent) => {
@@ -855,7 +986,6 @@ function HomePage() {
     
     try {
       // Logout from Supabase
-      const supabase = await import('./utils/supabase/client').then(m => m.getSupabaseClient());
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       
       if (error) {
@@ -926,24 +1056,6 @@ function HomePage() {
     { icon: Wrench, key: 'hero.trust.quality' },
     { icon: Shield, key: 'hero.trust.reliability' },
     { icon: Zap, key: 'hero.trust.fast' },
-  ];
-
-  const reviews = [
-    {
-      name: 'Matti Virtanen',
-      rating: 5,
-      textKey: 'common.review.matti',
-    },
-    {
-      name: 'Anna Korhonen',
-      rating: 5,
-      textKey: 'common.review.anna',
-    },
-    {
-      name: 'Jukka Nieminen',
-      rating: 5,
-      textKey: 'common.review.jukka',
-    },
   ];
 
   const tireHotelBenefits = [
@@ -1161,6 +1273,12 @@ function HomePage() {
               product={selectedProduct}
               onAddToCart={(product, quantity) => {
                 addToCart(product, quantity);
+                trackClarityEvent('cart_item_added', {
+                  page: 'catalog_detail',
+                  product_type: product.type || 'product',
+                  quantity,
+                });
+                upgradeClaritySession('cart_intent');
                 toast.success(
                   t('toast.addedToCart', {
                     quantity,
@@ -1211,6 +1329,8 @@ function HomePage() {
           </CmsGuard>
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
+        ) : currentPage === 'cookies' ? (
+          <LegalPage initialSection="cookie" />
         ) : currentPage === 'terms' ? (
           <LegalPage initialSection="terms" />
         ) : currentPage === 'legal' ? (
@@ -1254,7 +1374,7 @@ function HomePage() {
                     className="h-12 px-8 rounded-full"
                     asChild
                   >
-                    <a href="/catalog">{t('hero.cta.secondary')}</a>
+                    <a href={catalogHref}>{t('hero.cta.secondary')}</a>
                   </Button>
                   <button 
                     className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-white h-12 px-8 transition-all duration-200 cursor-pointer font-semibold"
@@ -1341,9 +1461,9 @@ function HomePage() {
                     asChild
                   >
                     <a
-                      href="/services"
+                      href={servicesHref}
                       className="inline-flex items-center gap-1"
-                      onClick={(event) => handleInternalNavigation(event, '/services')}
+                      onClick={(event) => handleInternalNavigation(event, servicesHref)}
                     >
                       {t('services.cta')}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
@@ -1370,7 +1490,7 @@ function HomePage() {
                 className="h-10 rounded-full px-4 sm:h-11"
                 asChild
               >
-                <a href="/catalog" className="inline-flex items-center gap-2">
+                <a href={catalogHref} className="inline-flex items-center gap-2">
                   {t('catalog.viewAll')}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </a>
@@ -1497,94 +1617,11 @@ function HomePage() {
                   className="h-11 w-full rounded-full sm:w-auto"
                   asChild
                 >
-                  <a href="/tire-hotel" className="inline-flex items-center gap-2">
+                  <a href={tireHotelHref} className="inline-flex items-center gap-2">
                     {t('tireHotel.cta')}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </a>
                 </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Customer Reviews */}
-        <section className="py-16 lg:py-32 relative" aria-labelledby="reviews-heading">
-          <div className="container mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mb-8 text-center max-w-3xl mx-auto sm:mb-16">
-              <h2 id="reviews-heading" className="mb-3 text-3xl font-bold tracking-tight sm:mb-4 sm:text-4xl">
-                {t('reviews.title')}
-              </h2>
-              <p className="text-base text-muted-foreground sm:text-xl">
-                {t('common.reviewsSubtitle')}
-              </p>
-            </div>
-            
-            <div className="mb-8 grid gap-4 sm:mb-12 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
-              {reviews.map((review, idx) => (
-                <div 
-                  key={idx} 
-                  className={`${idx === 2 ? 'hidden lg:block' : ''} rounded-xl bg-secondary p-5 transition-all hover:bg-secondary/80 hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] sm:rounded-2xl sm:p-8`}
-                >
-                  <div className="mb-3 flex items-center gap-3 sm:mb-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 transition-all hover:bg-accent/15 hover:shadow-[0_0_20px_rgba(231,76,60,0.3)] sm:h-12 sm:w-12">
-                      <span className="text-sm font-semibold text-accent sm:text-base">
-                        {review.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold sm:text-base">{review.name}</div>
-                      <div className="flex gap-0.5" role="img" aria-label={`${review.rating} ${t('common.stars')}`}>
-                        {[...Array(review.rating)].map((_, i) => (
-                          <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent sm:h-4 sm:w-4" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:line-clamp-none sm:text-base">"{t(review.textKey)}"</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Overall Rating */}
-            <div className="text-center">
-              <div className="mx-auto w-full sm:w-auto">
-                <div className="grid grid-cols-2 gap-4 sm:gap-8">
-                  {/* Rating Card */}
-                  <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-accent/5 via-secondary to-secondary p-5 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(231,76,60,0.15)] sm:rounded-2xl sm:p-8">
-                    <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-accent/10 blur-3xl transition-transform group-hover:scale-150 sm:h-32 sm:w-32" />
-                    <div className="relative z-10 text-center">
-                      <div className="mb-2 flex items-baseline justify-center gap-1 sm:mb-3 sm:gap-2">
-                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">4.9</span>
-                        <span className="text-lg text-muted-foreground sm:text-2xl">/5</span>
-                      </div>
-                      <div className="mb-2 flex justify-center gap-0.5 sm:gap-1" role="img" aria-label={t('common.ratingAria')}>
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent drop-shadow-sm sm:h-5 sm:w-5" />
-                        ))}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {t('common.customerRating')}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Happy Customers Card */}
-                  <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 via-secondary to-secondary p-5 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,113,227,0.15)] sm:rounded-2xl sm:p-8">
-                    <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary/10 blur-3xl transition-transform group-hover:scale-150 sm:h-32 sm:w-32" />
-                    <div className="relative z-10 text-center">
-                      <div className="mb-2 flex items-baseline justify-center gap-1 sm:mb-3">
-                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">500</span>
-                        <span className="bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold text-transparent sm:text-6xl">+</span>
-                      </div>
-                      <div className="mb-2 flex justify-center gap-1" role="img" aria-label={t('common.happyCustomersAria')}>
-                        <Users className="h-4 w-4 fill-[#FF6B35] text-[#FF6B35] drop-shadow-sm sm:h-5 sm:w-5" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {t('common.happyCustomers')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -1656,6 +1693,7 @@ function HomePage() {
       </main>
 
       {!isPwaRoute ? <Footer onNavigate={navigate} /> : null}
+      {!isPwaRoute ? <AnalyticsConsentBanner /> : null}
     </div>
   );
 }

@@ -3,37 +3,53 @@ import { motion } from 'motion/react';
 import { MapPin, Phone, Mail, Clock, ArrowRight, MessageCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
+import { businessProfile } from '../../../config/businessProfile';
+import { useLocalSeoHead } from '../../../utils/localSeo';
 
 interface ContactPageProps {
   onBookingClick: () => void;
 }
 
 export function ContactPage({ onBookingClick }: ContactPageProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const canonicalPath = t('route.contact');
+
+  useLocalSeoHead({
+    language,
+    title: t('seo.contact.title'),
+    description: t('seo.contact.description'),
+    canonicalPath,
+    alternatePaths: { fi: '/yhteystiedot', en: '/en/contact' },
+    pageType: 'ContactPage',
+    breadcrumbs: [
+      { name: t('nav.home'), path: t('route.home') },
+      { name: t('contactPage.breadcrumb.contact'), path: canonicalPath },
+    ],
+  });
 
   const contactInfo = [
     {
       icon: MapPin,
       label: t('contact.address'),
-      value: 'Hankasuontie 5\n00390 Helsinki',
-      link: 'https://maps.google.com/?q=Hankasuontie+5,+00390+Helsinki',
+      value: `${businessProfile.address.streetAddress}\n${businessProfile.address.postalCode} ${businessProfile.address.addressLocality}`,
+      link: businessProfile.mapSearchUrl,
     },
     {
       icon: Phone,
       label: t('contact.phone'),
-      value: '[TBD]',
-      link: 'tel:[TBD]',
+      value: businessProfile.phoneDisplay,
+      link: `tel:${businessProfile.phoneE164}`,
     },
     {
       icon: Mail,
       label: t('contact.email'),
-      value: '[TBD]',
-      link: 'mailto:[TBD]',
+      value: businessProfile.email,
+      link: `mailto:${businessProfile.email}`,
     },
     {
       icon: Clock,
       label: t('contact.hours'),
-      value: t('contact.hoursValue'),
+      value: businessProfile.openingHoursText[language],
       link: null,
     },
   ];
@@ -136,7 +152,7 @@ export function ContactPage({ onBookingClick }: ContactPageProps) {
               className="aspect-video bg-muted rounded-lg overflow-hidden"
             >
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1983.4906905345447!2d24.9077!3d60.2055!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNjDCsDEyJzE5LjgiTiAyNMKwNTQnMjcuNyJF!5e0!3m2!1sen!2sfi!4v1234567890"
+                src={businessProfile.googleMapsEmbedUrl}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}

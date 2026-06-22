@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { BrokenCar404 } from '../../shared/BrokenCar404';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
@@ -8,7 +8,80 @@ interface NotFoundPageProps {
 }
 
 export function NotFoundPage({ path, onNavigateHome }: NotFoundPageProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const title = t('seo.notFound.title');
+  const description = t('seo.notFound.description');
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    const previousLang = document.documentElement.lang;
+
+    document.title = title;
+    document.documentElement.lang = language;
+
+    let descriptionTag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const previousDescription = descriptionTag?.content ?? '';
+    const createdDescription = !descriptionTag;
+    if (!descriptionTag) {
+      descriptionTag = document.createElement('meta');
+      descriptionTag.name = 'description';
+      document.head.appendChild(descriptionTag);
+    }
+    descriptionTag.content = description;
+
+    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    const previousRobots = robots?.content ?? '';
+    const createdRobots = !robots;
+    if (!robots) {
+      robots = document.createElement('meta');
+      robots.name = 'robots';
+      document.head.appendChild(robots);
+    }
+    robots.content = 'noindex, follow';
+
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const previousCanonical = canonical?.href ?? '';
+    canonical?.remove();
+
+    const alternateLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="alternate"]')).map(
+      (link) => {
+        const href = link.href;
+        const hreflang = link.hreflang;
+        link.remove();
+        return { href, hreflang };
+      },
+    );
+
+    return () => {
+      document.title = previousTitle;
+      document.documentElement.lang = previousLang;
+      if (descriptionTag) {
+        if (createdDescription) {
+          descriptionTag.remove();
+        } else {
+          descriptionTag.content = previousDescription;
+        }
+      }
+      if (robots) {
+        if (createdRobots) {
+          robots.remove();
+        } else {
+          robots.content = previousRobots;
+        }
+      }
+      if (canonical) {
+        canonical.href = previousCanonical;
+        document.head.appendChild(canonical);
+      }
+      alternateLinks.forEach(({ href, hreflang }) => {
+        const link = document.createElement('link');
+        link.rel = 'alternate';
+        link.hreflang = hreflang;
+        link.href = href;
+        document.head.appendChild(link);
+      });
+    };
+  }, [description, language, title]);
 
   return (
     <main className="min-h-[70vh] px-6 py-10 lg:px-8 lg:py-16">

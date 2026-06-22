@@ -1,0 +1,177 @@
+{
+  "version": "2026-06-22.d5",
+  "project": "Mitra Auto",
+  "status": "local_experiment_and_monitoring_contract_complete_with_platform_exceptions",
+  "created_at": "2026-06-22",
+  "scope": "Experiment registry, search-facing test guardrails, monitoring thresholds, incident runbook, and Phase D closeout.",
+  "evidence_used": [
+    ".growth-work/measurement/kpi-tree.json",
+    ".growth-work/measurement/event-dictionary.json",
+    ".growth-work/measurement/booking-order-reconciliation.json",
+    ".growth-work/measurement/platform-readback-d3.json",
+    ".growth-work/measurement/conversion-sxo-accessibility-d4.json",
+    ".seo-work/conversion/conversion-journeys.json",
+    ".seo-work/reports/conversion-audit.json",
+    ".seo-work/reports/CONVERSION-SXO-ACCESSIBILITY-QA-D4-2026-06-22.md"
+  ],
+  "evidence_unavailable": [
+    "Search Console authenticated property readback",
+    "Google Business Profile owner diagnostics and local action metrics",
+    "Merchant Center account/feed diagnostics",
+    "Analytics dashboard/API/debug readback",
+    "CrUX/PageSpeed field data",
+    "Server logs",
+    "Real booking/order/payment/fulfillment exports",
+    "Finance margin, refund, VAT, fee, CAC, and contribution definitions",
+    "Owner-approved status definitions for booking accepted/completed/cancelled/no-show and order fulfilled/refunded/returned"
+  ],
+  "experiment_policy": {
+    "default_status": "draft",
+    "no_launch_until": [
+      "D-1 KPI tree, event dictionary, consent behavior, and key-event policy are approved.",
+      "D-2 reconciliation rules and owner-approved statuses are available.",
+      "D-3 platform readback is available for Search Console, GBP, Merchant Center, and analytics as applicable.",
+      "D-4 critical journey accessibility warnings are fixed or explicitly outside the tested path.",
+      "Every test has a primary metric, guardrails, sample plan, stop rules, decision rule, owner, and rollback path."
+    ],
+    "search_controls": [
+      "No cloaking or user-agent-specific content.",
+      "Variants must preserve stable self-canonicals unless the test explicitly concerns canonical architecture and has SEO owner approval.",
+      "Variants must not create unstable redirect, noindex, robots, sitemap, hreflang, or schema behavior.",
+      "Search-facing page tests must have release annotations, tested URL groups, and rollback criteria.",
+      "Do not use search snippets, schema, feed facts, or local facts that differ from visible page truth."
+    ],
+    "quality_controls": [
+      "Accessibility, privacy, payment safety, booking/order reconciliation, stock/price truth, and local fact accuracy outrank conversion lift.",
+      "A click, booking start, add-to-cart, checkout-success view, contact click, or analytics key event is not revenue or fulfilled customer value by itself.",
+      "Before/after comparisons are observational unless exposure, timing, demand, seasonality, inventory, campaign, and tracking confounders are controlled."
+    ]
+  },
+  "monitoring_thresholds": [
+    {
+      "id": "robots_sitemap_asset_availability",
+      "surface": "technical_seo",
+      "signal": "Production robots.txt, sitemap.xml, product sitemaps, and merchant feed return expected status and content type.",
+      "threshold": "Blocker if robots.txt is 404 or a sitemap/feed URL serves HTML instead of XML/text for any launch check.",
+      "cadence": "per release and daily until fixed after launch",
+      "owner": "Engineering/SEO",
+      "source": "public HTTP fetch and Search Console sitemap readback",
+      "current_status": "blocked_by_d3_public_fetch_mismatch"
+    },
+    {
+      "id": "search_console_health",
+      "surface": "search_console",
+      "signal": "Manual actions, security issues, indexing, sitemap, enhancement, page experience, and performance segments.",
+      "threshold": "Blocker for manual action/security issue; critical for sudden indexable URL collapse/spike, sitemap errors, template-wide enhancement errors, or unexplained organic click/impression anomaly after data-delay window.",
+      "cadence": "weekly prelaunch, then monthly plus release and incident checks",
+      "owner": "SEO/Platform",
+      "source": "Google Search Console",
+      "current_status": "blocked_platform_access_unavailable"
+    },
+    {
+      "id": "merchant_center_feed_health",
+      "surface": "merchant_center",
+      "signal": "Feed fetch success, item disapprovals, price/availability mismatch, destination status, and product URL errors.",
+      "threshold": "Blocker if feed cannot fetch or public feed URL is not XML; critical if price/availability mismatch or disapproval affects a material product set.",
+      "cadence": "daily during feed launch, then weekly",
+      "owner": "Ecommerce/Catalog",
+      "source": "Merchant Center diagnostics and public feed fetch",
+      "current_status": "blocked_by_d3_public_feed_mismatch_and_platform_access"
+    },
+    {
+      "id": "google_business_profile_health",
+      "surface": "local_seo",
+      "signal": "Ownership, NAP, categories, hours/special hours, website URL, booking URL, reviews, calls, directions, and duplicate/suspension issues.",
+      "threshold": "Critical for owner loss, suspension, wrong NAP/hours/category, website URL mismatch, or unresolved duplicate; warning for review-response SLA breach.",
+      "cadence": "weekly during launch cleanup, then monthly plus special-hours changes",
+      "owner": "Business/Local SEO",
+      "source": "Google Business Profile dashboard/API",
+      "current_status": "blocked_platform_access_unavailable"
+    },
+    {
+      "id": "analytics_event_integrity",
+      "surface": "analytics",
+      "signal": "Approved events fire once at the correct state, with correct consent state, route, language, page type, and no prohibited parameters.",
+      "threshold": "Blocker for prohibited PII, firing outside approved consent, duplicate key event, or key event fired without server source; critical for missing primary journey events after implementation.",
+      "cadence": "per release, then weekly dashboard QA",
+      "owner": "Analytics/Engineering/Privacy",
+      "source": "analytics debug, event export, source review, and server reconciliation",
+      "current_status": "blocked_destination_and_readback_unavailable"
+    },
+    {
+      "id": "booking_order_reconciliation",
+      "surface": "business_outcomes",
+      "signal": "Analytics booking/order/payment events reconcile to bookings, orders, payment_events, invoice events, and operational statuses.",
+      "threshold": "Blocker if purchase is inferred from checkout-success page view; critical if daily key-event to server-record discrepancy exceeds owner-approved tolerance or payment webhook mismatch appears.",
+      "cadence": "daily during launch, then weekly",
+      "owner": "Analytics/Operations/Ecommerce/Finance",
+      "source": "Supabase/business exports and approved analytics platform",
+      "current_status": "blocked_owner_status_and_platform_readback_unavailable"
+    },
+    {
+      "id": "critical_journey_accessibility",
+      "surface": "sxo_accessibility",
+      "signal": "Booking, checkout, contact, product, account, and recovery journeys remain keyboard, screen-reader, mobile, and browser-agent operable.",
+      "threshold": "Blocker for inaccessible booking/checkout/contact completion; critical for duplicate high-impact controls, missing labels, missing field-associated errors, or focus traps.",
+      "cadence": "per release and before any conversion experiment",
+      "owner": "QA/Frontend/Accessibility",
+      "source": "browser smoke, accessibility tree, keyboard review, and issue tracker",
+      "current_status": "warning_open_from_d4"
+    },
+    {
+      "id": "core_web_vitals_and_runtime",
+      "surface": "performance",
+      "signal": "Field CWV and lab diagnostics for representative homepage, service, product, contact, cart, and checkout routes.",
+      "threshold": "Critical if field data or lab checks show a material regression on primary journeys after release; warning for non-critical lab regressions with no field data.",
+      "cadence": "per release for lab, monthly for field where available",
+      "owner": "Frontend/SEO",
+      "source": "CrUX/PageSpeed/Lighthouse with source envelopes",
+      "current_status": "field_data_unavailable"
+    }
+  ],
+  "release_annotations": [
+    "deployment date/time in Europe/Helsinki",
+    "commit or Figma Make version",
+    "affected routes/templates",
+    "content, metadata, schema, sitemap, redirect, feed, checkout, booking, analytics, consent, or accessibility changes",
+    "experiment id and variant policy when applicable",
+    "known exceptions, owners, rollback condition, and next readback date"
+  ],
+  "incident_runbook": [
+    {
+      "step": 1,
+      "action": "Verify data integrity first: tracking, consent, platform delays, filters, timezones, bot/internal traffic, and source-system exports."
+    },
+    {
+      "step": 2,
+      "action": "Scope the issue by route type, language, page group, device, market, platform, source, funnel stage, and date/time."
+    },
+    {
+      "step": 3,
+      "action": "Check production access, status, robots, noindex, canonical, redirects, sitemap/feed, schema, rendered content, and major deployment changes."
+    },
+    {
+      "step": 4,
+      "action": "Check Search Console, Merchant Center, GBP, analytics, CrUX/PageSpeed, payment/order/booking systems, and known platform incidents."
+    },
+    {
+      "step": 5,
+      "action": "Separate technical regression, tracking defect, inventory/capacity change, demand/seasonality, market/SERP change, and content/trust issue before assigning cause."
+    },
+    {
+      "step": 6,
+      "action": "Apply the smallest reversible fix, verify through the affected source, annotate the incident, update the board, and add a regression check."
+    }
+  ],
+  "phase_d_gate_result": {
+    "local_contract": "complete",
+    "live_growth_readiness": "blocked",
+    "primary_blockers": [
+      "Platform readback unavailable for Search Console, GBP, Merchant Center, analytics, CrUX/PageSpeed, and live business systems.",
+      "Production robots/sitemap/product sitemap/merchant feed mismatch remains unresolved from D-3.",
+      "Owner-approved business, finance, booking/order status, and privacy/analytics policies are not approved.",
+      "D-4 checkout accessibility warnings remain open."
+    ],
+    "next_required_phase": "Phase E - Release Closeout, Evidence Ledger, And Growth Handoff"
+  }
+}

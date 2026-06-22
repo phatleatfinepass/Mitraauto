@@ -40,6 +40,10 @@ function readPathLanguage(): Language | null {
   }
 
   const path = window.location.pathname.toLowerCase();
+  if (path === '/') {
+    return 'fi';
+  }
+
   if (path === '/en' || path.startsWith('/en/')) {
     return 'en';
   }
@@ -51,7 +55,10 @@ function readPathLanguage(): Language | null {
     path === '/ukk' ||
     path === '/meista' ||
     path === '/helsinki' ||
-    path.startsWith('/helsinki/')
+    path.startsWith('/helsinki/') ||
+    path === '/catalog' ||
+    path.startsWith('/catalog/') ||
+    path === '/shop'
   ) {
     return 'fi';
   }

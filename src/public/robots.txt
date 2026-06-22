@@ -10,3 +10,4 @@ Disallow: /booking/manage
 Disallow: /checkout
 
 Sitemap: https://www.mitra-auto.fi/sitemap.xml
+Sitemap: https://www.mitra-auto.fi/sitemap-products.xml

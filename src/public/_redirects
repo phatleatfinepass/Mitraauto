@@ -1,3 +1,20 @@
+/shop /catalog 301
+/en/shop /en/catalog 301
+/services /en/services 301
+/tire-hotel /en/services/tire-hotel 301
+/about /en/about 301
+/legal/privacy /privacy 301
+/legal/terms /terms 301
+
+/helsinki/autohuolto /palvelut/autohuolto 301
+/en/helsinki/car-service /en/services/car-service 301
+/helsinki/renkaanvaihto /palvelut/renkaanvaihto 301
+/en/helsinki/tire-change /en/services/tire-change 301
+/helsinki/rengashotelli /palvelut/rengashotelli 301
+/en/helsinki/tire-hotel /en/services/tire-hotel 301
+/palvelut/dpf-pesu /palvelut/dpf-huolto 301
+/en/services/dpf-cleaning /en/services/dpf-service 301
+
 /cms / 200
 /cms/* / 200
 

@@ -1,0 +1,315 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Siirry pääsisältöön" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - navigation [ref=e5]:
+      - generic [ref=e7]:
+        - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img "Mitra Auto" [ref=e9]
+          - generic [ref=e10]: Mitra Auto
+        - generic [ref=e11]:
+          - link "Etusivu" [ref=e12] [cursor=pointer]:
+            - /url: /
+          - link "Palvelut" [ref=e13] [cursor=pointer]:
+            - /url: /palvelut
+          - link "Katalogi" [ref=e14] [cursor=pointer]:
+            - /url: /catalog
+          - link "Rengashotelli" [ref=e15] [cursor=pointer]:
+            - /url: /palvelut/rengashotelli
+        - generic [ref=e16]:
+          - button "Vaihda teemaa" [ref=e17]:
+            - img [ref=e18]
+          - button "Vaihda kieltä" [ref=e20]:
+            - img [ref=e21]
+            - generic [ref=e24]: fi
+          - button "Ostoskori" [ref=e25]:
+            - img [ref=e26]
+          - button "Kirjaudu" [ref=e30]:
+            - img [ref=e31]
+    - main [ref=e34]:
+      - region "Mitra Auto - Ammattitaitoiset palvelut" [ref=e35]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - heading "Mitra Auto - Ammattitaitoiset palvelut" [level=1] [ref=e39]
+            - paragraph [ref=e40]: Täyden palvelun korjaamo rengas-, huolto- ja korjauspalveluilla. Varaa aikasi verkossa.
+            - generic [ref=e41]:
+              - button "Varaa huolto" [ref=e42]
+              - link "Selaa renkaita" [ref=e43] [cursor=pointer]:
+                - /url: /catalog
+              - button "Hätäapu 24/7" [ref=e44] [cursor=pointer]:
+                - img [ref=e45]
+                - text: Hätäapu 24/7
+            - generic [ref=e47]:
+              - generic [ref=e48]:
+                - img [ref=e50]
+                - generic [ref=e53]: Asiantuntemus
+              - generic [ref=e54]:
+                - img [ref=e56]
+                - generic [ref=e58]: Laatu
+              - generic [ref=e59]:
+                - img [ref=e61]
+                - generic [ref=e63]: Luotettavuus
+              - generic [ref=e64]:
+                - img [ref=e66]
+                - generic [ref=e68]: Nopeus
+          - img "Mitra Auto Waiting Area Interior" [ref=e72]
+      - region "Palvelumme" [ref=e73]:
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - heading "Palvelumme" [level=2] [ref=e76]
+            - paragraph [ref=e77]: Ammattitaitoista palvelua kaikille autoilijoille
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - img [ref=e81]
+              - heading "Autohuolto" [level=3] [ref=e83]
+              - paragraph [ref=e84]: Huolto ja korjaus
+              - link "Varaa" [ref=e85] [cursor=pointer]:
+                - /url: /palvelut
+                - text: Varaa
+                - img
+            - generic [ref=e86]:
+              - img [ref=e88]
+              - heading "Tasapainotus" [level=3] [ref=e92]
+              - paragraph [ref=e93]: Renkaiden tasapainotus
+              - link "Varaa" [ref=e94] [cursor=pointer]:
+                - /url: /palvelut
+                - text: Varaa
+                - img
+            - generic [ref=e95]:
+              - img [ref=e97]
+              - heading "Rengashotelli" [level=3] [ref=e100]
+              - paragraph [ref=e101]: Säilytys renkaille
+              - link "Varaa" [ref=e102] [cursor=pointer]:
+                - /url: /palvelut
+                - text: Varaa
+                - img
+            - generic [ref=e103]:
+              - img [ref=e105]
+              - heading "Tarkastus" [level=3] [ref=e109]
+              - paragraph [ref=e110]: Auton tarkastus
+              - link "Varaa" [ref=e111] [cursor=pointer]:
+                - /url: /palvelut
+                - text: Varaa
+                - img
+      - region "Rengaskatalogi" [ref=e112]:
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - heading "Rengaskatalogi" [level=2] [ref=e116]
+              - paragraph [ref=e117]: Löydä täydellinen rengas autoosi
+            - link "Näytä kaikki" [ref=e118] [cursor=pointer]:
+              - /url: /catalog
+              - text: Näytä kaikki
+              - img
+          - generic [ref=e119]:
+            - generic [ref=e120]:
+              - generic [ref=e121]:
+                - img "Dynamo STREET-H MH01 - 215/65 R17 99 T Kesä" [ref=e122]
+                - generic [ref=e123]: Kesä
+              - heading "Dynamo STREET-H MH01" [level=3] [ref=e124]
+              - paragraph [ref=e125]: 215/65 R17 99 T
+              - generic [ref=e126]:
+                - generic [ref=e127]: €39.91
+                - button "Osta" [ref=e128]
+            - generic [ref=e129]:
+              - generic [ref=e130]:
+                - img "Bridgestone Blizzak ICE - 235/45 R17 Talvi" [ref=e131]
+                - generic [ref=e132]: Talvi
+              - heading "Bridgestone Blizzak ICE" [level=3] [ref=e133]
+              - paragraph [ref=e134]: 235/45 R17
+              - generic [ref=e135]:
+                - generic [ref=e136]: €104.52
+                - button "Osta" [ref=e137]
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - img "Nankang Econex NA-1 - 165/70 R12 77 T Kesä" [ref=e140]
+                - generic [ref=e141]: Kesä
+              - heading "Nankang Econex NA-1" [level=3] [ref=e142]
+              - paragraph [ref=e143]: 165/70 R12 77 T
+              - generic [ref=e144]:
+                - generic [ref=e145]: €52.16
+                - button "Osta" [ref=e146]
+            - generic [ref=e147]:
+              - generic [ref=e148]:
+                - img "Continental WinterContact TS 870 P - 215/40 R18 Talvi" [ref=e149]
+                - generic [ref=e150]: Talvi
+              - heading "Continental WinterContact TS 870 P" [level=3] [ref=e151]
+              - paragraph [ref=e152]: 215/40 R18
+              - generic [ref=e153]:
+                - generic [ref=e154]: €134.10
+                - button "Osta" [ref=e155]
+      - region "Varaa huoltoaika verkossa" [ref=e156]:
+        - generic [ref=e158]:
+          - generic [ref=e159]:
+            - heading "Varaa huoltoaika verkossa" [level=2] [ref=e160]
+            - paragraph [ref=e161]: Helppoa ja nopeaa varaamista milloin tahansa
+            - list [ref=e162]:
+              - listitem [ref=e163]:
+                - img [ref=e165]
+                - generic [ref=e168]: Nopea varaus verkossa
+              - listitem [ref=e169]:
+                - img [ref=e171]
+                - generic [ref=e174]: Vahvistus sähköpostilla
+              - listitem [ref=e175]:
+                - img [ref=e177]
+                - generic [ref=e180]: Joustavat ajat
+            - generic [ref=e181]:
+              - img
+              - text: Varaa aika
+          - img "Professional mechanic working on vehicle service" [ref=e184]
+      - region "Rengashotelli – Huoletonta säilytystä" [ref=e185]:
+        - generic [ref=e187]:
+          - img "Professional tire storage warehouse" [ref=e190]
+          - generic [ref=e191]:
+            - heading "Rengashotelli – Huoletonta säilytystä" [level=2] [ref=e192]
+            - paragraph [ref=e193]: Säilytämme renkaasi turvallisesti ja ammattimaisesti. Ei enää vaivaa kotona!
+            - list [ref=e194]:
+              - listitem [ref=e195]:
+                - img [ref=e197]
+                - generic [ref=e200]: Optimaaliset säilytysolosuhteet
+              - listitem [ref=e201]:
+                - img [ref=e203]
+                - generic [ref=e206]: Helppo varaus verkossa
+              - listitem [ref=e207]:
+                - img [ref=e209]
+                - generic [ref=e212]: Kilpailukykyiset hinnat
+            - link "Lue lisää" [ref=e213] [cursor=pointer]:
+              - /url: /palvelut/rengashotelli
+              - text: Lue lisää
+              - img
+      - region "Why choose Mitra Auto" [ref=e214]:
+        - generic [ref=e216]:
+          - generic [ref=e217]:
+            - img [ref=e219]
+            - heading "Ammattilaisten palvelu" [level=3] [ref=e222]
+            - paragraph [ref=e223]: Sertifioidut asentajat ja modernit työkalut
+          - generic [ref=e224]:
+            - img [ref=e226]
+            - heading "Laatutuotteet" [level=3] [ref=e228]
+            - paragraph [ref=e229]: Tunnetut tuotemerkit ja takuu
+          - generic [ref=e230]:
+            - img [ref=e232]
+            - heading "Nopea huolto" [level=3] [ref=e235]
+            - paragraph [ref=e236]: Tehokas palvelu ja nopea läpimenoaika
+          - generic [ref=e237]:
+            - img [ref=e239]
+            - heading "Asiakas edellä" [level=3] [ref=e244]
+            - paragraph [ref=e245]: Yli 500 tyytyväistä asiakasta
+      - region "Ota yhteyttä" [ref=e246]:
+        - generic [ref=e247]:
+          - heading "Ota yhteyttä" [level=2] [ref=e249]
+          - generic [ref=e250]:
+            - link "Kartta palvelukeskuksestamme - Hankasuontie 5, 00390 Helsinki" [ref=e252] [cursor=pointer]:
+              - /url: https://www.google.com/maps/search/?api=1&query=Hankasuontie%205%2C%2000390%20Helsinki%2C%20Finland
+              - img "Map showing location at Hankasuontie 5, Helsinki" [ref=e255]
+              - generic:
+                - img
+            - generic [ref=e257]:
+              - heading "Yhteystiedot" [level=3] [ref=e258]
+              - paragraph [ref=e259]: Olemme täällä auttamassa — tavoita meidät koska tahansa.
+              - generic [ref=e260]:
+                - link "Osoite Hankasuontie 5, 00390 Helsinki" [ref=e261] [cursor=pointer]:
+                  - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                  - img [ref=e263]
+                  - generic [ref=e266]:
+                    - generic [ref=e267]: Osoite
+                    - generic [ref=e268]: Hankasuontie 5, 00390 Helsinki
+                - link "Puhelin +358 40 777 7163" [ref=e269] [cursor=pointer]:
+                  - /url: tel:+358407777163
+                  - img [ref=e271]
+                  - generic [ref=e273]:
+                    - generic [ref=e274]: Puhelin
+                    - generic [ref=e275]: +358 40 777 7163
+                - link "Sähköposti contact@mitra-auto.fi" [ref=e276] [cursor=pointer]:
+                  - /url: mailto:contact@mitra-auto.fi
+                  - img [ref=e278]
+                  - generic [ref=e281]:
+                    - generic [ref=e282]: Sähköposti
+                    - generic [ref=e283]: contact@mitra-auto.fi
+                - generic [ref=e284]:
+                  - img [ref=e286]
+                  - generic [ref=e289]:
+                    - generic [ref=e290]: Aukioloajat
+                    - generic [ref=e293]: Avoinna nyt, suljemme klo 18:00.
+                    - generic [ref=e294]: "Ma-Pe: 9:00-18:00 La: 10:00-17:00 Su: Suljettu"
+              - generic [ref=e295]:
+                - link "Hae reittiohjeet" [ref=e296] [cursor=pointer]:
+                  - /url: https://maps.apple.com/?address=Hankasuontie+5,+00390+Helsinki,+Finland
+                  - img
+                  - text: Hae reittiohjeet
+                - link "Ota yhteyttä" [ref=e297] [cursor=pointer]:
+                  - /url: mailto:contact@mitra-auto.fi
+                  - img
+                  - text: Ota yhteyttä
+    - contentinfo [ref=e298]:
+      - generic [ref=e299]:
+        - generic [ref=e301]:
+          - generic [ref=e302]:
+            - generic [ref=e303]:
+              - img "Mitra Auto" [ref=e304]
+              - generic [ref=e305]: Mitra Auto
+            - paragraph [ref=e306]: Täyden palvelun korjaamo, joka tarjoaa rengas-, huolto- ja korjauspalveluita.
+            - generic [ref=e307]:
+              - generic [ref=e308]: Mitra Auto Oy
+              - link "Hankasuontie 5, 00390 Helsinki" [ref=e309] [cursor=pointer]:
+                - /url: https://www.google.com/maps/search/?api=1&query=Hankasuontie%205%2C%2000390%20Helsinki%2C%20Finland
+              - link "+358 40 777 7163" [ref=e310] [cursor=pointer]:
+                - /url: tel:+358407777163
+              - link "contact@mitra-auto.fi" [ref=e311] [cursor=pointer]:
+                - /url: mailto:contact@mitra-auto.fi
+          - generic [ref=e312]:
+            - heading "Kauppa" [level=3] [ref=e313]
+            - list [ref=e314]:
+              - listitem [ref=e315]:
+                - link "Katalogi" [ref=e316] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=e317]:
+            - heading "Palvelut" [level=3] [ref=e318]
+            - list [ref=e319]:
+              - listitem [ref=e320]:
+                - link "Autonkorjaus" [ref=e321] [cursor=pointer]:
+                  - /url: /palvelut
+              - listitem [ref=e322]:
+                - link "Rengashotelli" [ref=e323] [cursor=pointer]:
+                  - /url: /palvelut/rengashotelli
+          - generic [ref=e324]:
+            - heading "Yritys" [level=3] [ref=e325]
+            - list [ref=e326]:
+              - listitem [ref=e327]:
+                - link "Tietoa meistä" [ref=e328] [cursor=pointer]:
+                  - /url: /meista
+              - listitem [ref=e329]:
+                - link "Yhteystiedot" [ref=e330] [cursor=pointer]:
+                  - /url: /yhteystiedot
+          - generic [ref=e331]:
+            - heading "Oikeudelliset" [level=3] [ref=e332]
+            - list [ref=e333]:
+              - listitem [ref=e334]:
+                - link "Tietosuoja" [ref=e335] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=e336]:
+                - link "Käyttöehdot" [ref=e337] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=e338]:
+                - link "Evästeasetukset" [ref=e339] [cursor=pointer]:
+                  - /url: "#analytics-consent"
+        - generic [ref=e341]:
+          - paragraph [ref=e342]: © Mitra Auto 2026
+          - generic [ref=e343]:
+            - link "Facebook" [ref=e344] [cursor=pointer]:
+              - /url: https://facebook.com
+              - img [ref=e345]
+            - link "Twitter" [ref=e347] [cursor=pointer]:
+              - /url: https://twitter.com
+              - img [ref=e348]
+            - link "Instagram" [ref=e350] [cursor=pointer]:
+              - /url: https://instagram.com
+              - img [ref=e351]
+            - link "LinkedIn" [ref=e354] [cursor=pointer]:
+              - /url: https://linkedin.com
+              - img [ref=e355]
+          - generic [ref=e359]:
+            - button "FI" [ref=e360]
+            - button "EN" [ref=e361]
+  - region "Notifications alt+T"

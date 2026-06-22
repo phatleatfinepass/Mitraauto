@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "project": "Mitra Auto",
+  "journeys": [
+    {
+      "id": "service-booking",
+      "audience": "Local service customer in Helsinki",
+      "entry_intent": "Decide whether Mitra Auto can perform the needed service and book an appointment.",
+      "entry_pages": [
+        "/palvelut/autohuolto",
+        "/en/services/car-service"
+      ],
+      "goal": "Submit a qualified service booking without confusing it with a completed service.",
+      "steps": [
+        {
+          "name": "Confirm service fit",
+          "user_question": "Is this the right service for my vehicle and need?",
+          "required_information": [
+            "service name",
+            "location",
+            "process",
+            "price or price method",
+            "limits and exclusions",
+            "related services"
+          ],
+          "action": "Book car service",
+          "trust_requirements": [
+            "visible business identity",
+            "address and contact paths",
+            "owner-reviewed service facts"
+          ],
+          "accessibility_requirements": [
+            "semantic heading",
+            "specific booking button",
+            "dialog role",
+            "labelled booking fields",
+            "keyboard-operable cancel and close"
+          ],
+          "failure_recovery": "Keep contact links visible and prevent booking continuation until required date, time, and plate inputs are present."
+        }
+      ],
+      "success_events": [
+        "booking_submitted"
+      ],
+      "guardrail_events": [
+        "booking_validation_error",
+        "booking_api_error",
+        "booking_duplicate_or_invalid",
+        "booking_cancelled"
+      ],
+      "owner": "Product/QA/Operations",
+      "experiment_eligibility": "conditional"
+    },
+    {
+      "id": "product-purchase",
+      "audience": "Tire or rim shopper comparing exact products",
+      "entry_intent": "Verify exact tire/rim variant, price, stock, delivery, fitment limits, and purchase safely.",
+      "entry_pages": [
+        "/catalog/tire/accelera-651-sport-265-30-r19-93-w-summer",
+        "/catalog"
+      ],
+      "goal": "Create a paid order only after product, price, quantity, VAT, delivery, terms, and customer information are reviewed.",
+      "steps": [
+        {
+          "name": "Verify exact product",
+          "user_question": "Is this the exact product and variant I want?",
+          "required_information": [
+            "brand and model",
+            "size and identifiers",
+            "price and VAT",
+            "stock quantity",
+            "delivery time",
+            "fitment limitation"
+          ],
+          "action": "Lisää ostoskoriin",
+          "trust_requirements": [
+            "visible seller identity",
+            "price and availability match cart and checkout",
+            "fitment caveat before purchase"
+          ],
+          "accessibility_requirements": [
+            "product H1",
+            "button accessible name",
+            "quantity controls expose state",
+            "cart dialog exposes subtotal and item identity"
+          ],
+          "failure_recovery": "Disable add-to-cart for missing price or stock and allow cart removal or return to shopping."
+        },
+        {
+          "name": "Review and checkout",
+          "user_question": "What am I paying for, and what information is required?",
+          "required_information": [
+            "cart item",
+            "quantity",
+            "subtotal",
+            "VAT",
+            "delivery method",
+            "terms",
+            "required contact fields"
+          ],
+          "action": "Vahvista tilaus",
+          "trust_requirements": [
+            "Paytrail payment disclosure",
+            "terms and privacy link",
+            "server-side price and stock validation"
+          ],
+          "accessibility_requirements": [
+            "visible labels",
+            "autocomplete tokens",
+            "field-associated validation where possible",
+            "no duplicate ambiguous submit controls in accessibility tree"
+          ],
+          "failure_recovery": "Preserve checkout draft, show validation errors, and do not create payment until required fields pass validation."
+        }
+      ],
+      "success_events": [
+        "payment_created",
+        "purchase"
+      ],
+      "guardrail_events": [
+        "checkout_validation_error",
+        "payment_failed",
+        "price_or_stock_mismatch",
+        "cart_quantity_limit"
+      ],
+      "owner": "Ecommerce/Payments/QA",
+      "experiment_eligibility": "conditional"
+    },
+    {
+      "id": "install-booking",
+      "audience": "Customer who bought tires/rims and needs installation",
+      "entry_intent": "Use the post-purchase install link to book a fitting appointment tied to the order.",
+      "entry_pages": [
+        "/booking/manage",
+        "/en/booking/manage"
+      ],
+      "goal": "Create one confirmed install booking for a paid order without exposing private tokens or allowing duplicate use.",
+      "steps": [
+        {
+          "name": "Open order install booking",
+          "user_question": "Can I book installation for my paid order?",
+          "required_information": [
+            "order context",
+            "eligible service",
+            "prefilled contact where safe",
+            "date and time",
+            "license plate"
+          ],
+          "action": "create install booking",
+          "trust_requirements": [
+            "paid order only",
+            "single-use install token",
+            "booking confirmation and manage path"
+          ],
+          "accessibility_requirements": [
+            "same booking form accessibility as service booking",
+            "clear error if token is missing, expired, or already used"
+          ],
+          "failure_recovery": "Reject used or invalid tokens and provide contact/support path."
+        }
+      ],
+      "success_events": [
+        "install_booking_submitted"
+      ],
+      "guardrail_events": [
+        "install_token_invalid",
+        "install_token_reused",
+        "install_booking_error"
+      ],
+      "owner": "Ecommerce/Operations/Engineering",
+      "experiment_eligibility": "no"
+    },
+    {
+      "id": "contact-local-action",
+      "audience": "Local customer validating location, hours, directions, phone, or email before contacting Mitra Auto.",
+      "entry_intent": "Find verified local contact facts and choose the right contact or booking action.",
+      "entry_pages": [
+        "/yhteystiedot",
+        "/en/contact",
+        "/helsinki",
+        "/en/helsinki"
+      ],
+      "goal": "Complete a local action such as call, email, directions, or booking start.",
+      "steps": [
+        {
+          "name": "Verify local facts",
+          "user_question": "Is this the right garage and how do I reach it?",
+          "required_information": [
+            "business name",
+            "address",
+            "phone",
+            "email",
+            "hours",
+            "map/directions",
+            "booking CTA"
+          ],
+          "action": "Varaa aika",
+          "trust_requirements": [
+            "businessProfile source of truth",
+            "owner-confirmed GBP/citation facts",
+            "no placeholder social/contact links"
+          ],
+          "accessibility_requirements": [
+            "tel and mailto links",
+            "map iframe named or alternative directions link",
+            "mobile-readable contact blocks"
+          ],
+          "failure_recovery": "Offer phone, email, map, and booking alternatives without requiring analytics consent."
+        }
+      ],
+      "success_events": [
+        "contact_call_click",
+        "contact_email_click",
+        "directions_click",
+        "booking_start"
+      ],
+      "guardrail_events": [
+        "contact_fact_mismatch",
+        "map_embed_failure",
+        "placeholder_social_link_click"
+      ],
+      "owner": "Local/Business/QA",
+      "experiment_eligibility": "conditional"
+    },
+    {
+      "id": "tire-hotel-retention",
+      "audience": "Seasonal tire customer who wants storage and recurring service support.",
+      "entry_intent": "Understand tire hotel storage terms, price, process, and book the service.",
+      "entry_pages": [
+        "/palvelut/rengashotelli",
+        "/en/services/tire-hotel"
+      ],
+      "goal": "Start a Tire Hotel booking or retention service conversation with clear price, limits, and next appointment context.",
+      "steps": [
+        {
+          "name": "Decide on storage",
+          "user_question": "What is included, what costs extra, and how does storage work?",
+          "required_information": [
+            "storage price",
+            "included service",
+            "separate terms",
+            "suitability",
+            "safety limits",
+            "related seasonal services"
+          ],
+          "action": "Varaa rengashotelli",
+          "trust_requirements": [
+            "visible price",
+            "business owner review",
+            "clear source/update notes"
+          ],
+          "accessibility_requirements": [
+            "specific CTA",
+            "semantic sections",
+            "related service links",
+            "mobile CTA visible"
+          ],
+          "failure_recovery": "Provide related tire change/balancing/wheel wash links and contact path when storage details need confirmation."
+        }
+      ],
+      "success_events": [
+        "retention_service_scheduled",
+        "booking_submitted"
+      ],
+      "guardrail_events": [
+        "retention_terms_mismatch",
+        "booking_validation_error",
+        "owner_review_missing"
+      ],
+      "owner": "Retention/Operations/QA",
+      "experiment_eligibility": "conditional"
+    }
+  ]
+}

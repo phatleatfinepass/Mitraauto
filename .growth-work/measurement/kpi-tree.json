@@ -1,0 +1,429 @@
+{
+  "version": 1,
+  "project": "Mitra Auto",
+  "as_of": "2026-06-22",
+  "north_star_metric_id": "fulfilled_profitable_customer_outcome",
+  "metrics": [
+    {
+      "id": "fulfilled_profitable_customer_outcome",
+      "name": "Fulfilled profitable customer outcome",
+      "type": "north-star",
+      "definition": "A customer outcome that is accepted by operations, fulfilled, and eligible for revenue or contribution analysis after cancellations, failed payments, refunds, returns, no-shows, and support issues are accounted for.",
+      "formula": "owner-approved fulfilled customer outcomes with revenue-quality eligibility after exclusions",
+      "source": "bookings, orders, payment_events, invoice_events, customer/account history, and approved analytics platform",
+      "owner": "Business/Analytics",
+      "cadence": "monthly",
+      "direction": "up",
+      "segmentations": [
+        "language",
+        "route",
+        "page_type",
+        "channel",
+        "service_id_or_name",
+        "product_type",
+        "customer_type_when_privacy_safe",
+        "device",
+        "market_or_country"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Requires owner-approved status definitions and privacy-safe reconciliation. Do not infer from clicks, booking starts, checkout success views, or platform conversions alone."
+    },
+    {
+      "id": "organic_qualified_visit_count",
+      "name": "Organic qualified visit count",
+      "type": "input",
+      "definition": "Consent-aware visits or Search Console clicks landing on qualifying public routes.",
+      "formula": "count of qualifying analytics visits or Search Console clicks by route/date; grains must remain separate",
+      "source": "approved analytics platform plus Google Search Console",
+      "owner": "Analytics/SEO",
+      "cadence": "weekly",
+      "direction": "up",
+      "segmentations": [
+        "route",
+        "page_type",
+        "language",
+        "channel",
+        "device",
+        "country"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Search Console clicks and analytics sessions are different grains and must not be merged as identical counts."
+    },
+    {
+      "id": "service_booking_start_count",
+      "name": "Service booking start count",
+      "type": "funnel",
+      "definition": "Visitor starts a public booking journey from a service, product install, or related entry point.",
+      "formula": "count(booking_start)",
+      "source": "approved analytics events",
+      "owner": "Analytics/Engineering",
+      "cadence": "weekly",
+      "direction": "up",
+      "segmentations": [
+        "route",
+        "language",
+        "service_id",
+        "booking_source"
+      ],
+      "quality_status": "partial",
+      "privacy_note": "A start is intent, not a submitted or accepted booking."
+    },
+    {
+      "id": "server_accepted_booking_count",
+      "name": "Server accepted booking count",
+      "type": "customer-outcome",
+      "definition": "Bookings with a server booking id that are eligible under owner-approved submitted or accepted rules.",
+      "formula": "count(distinct booking_id) where booking insert/function succeeds and status is eligible under owner-approved rules",
+      "source": "bookings and order_install_booking",
+      "owner": "Operations/Analytics",
+      "cadence": "daily",
+      "direction": "up",
+      "segmentations": [
+        "service_name",
+        "language",
+        "source",
+        "booking_type"
+      ],
+      "quality_status": "partial",
+      "privacy_note": "Confirmed booking is not completed service and may later cancel or no-show."
+    },
+    {
+      "id": "completed_service_count",
+      "name": "Completed service count",
+      "type": "customer-outcome",
+      "definition": "Bookings where owner-approved operational status indicates completed service.",
+      "formula": "count(distinct booking_id) where owner-approved status indicates completed service",
+      "source": "bookings or service operations",
+      "owner": "Operations",
+      "cadence": "weekly",
+      "direction": "up",
+      "segmentations": [
+        "service_name",
+        "customer_type_when_privacy_safe"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Requires operational status definition and cannot be inferred from analytics."
+    },
+    {
+      "id": "product_view_count",
+      "name": "Product view count",
+      "type": "diagnostic",
+      "definition": "Product detail page renders a valid product for a visitor.",
+      "formula": "count(view_item)",
+      "source": "approved analytics events and catalog source",
+      "owner": "Analytics/Engineering",
+      "cadence": "weekly",
+      "direction": "up",
+      "segmentations": [
+        "product_type",
+        "sku_or_variant_id",
+        "language",
+        "availability_state"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Product view does not prove product fit, stock, cart, or purchase."
+    },
+    {
+      "id": "checkout_started_count",
+      "name": "Checkout started count",
+      "type": "funnel",
+      "definition": "Checkout or payment-creation flow starts after cart and client validation state allows progression.",
+      "formula": "count(begin_checkout or payment_start)",
+      "source": "approved analytics events",
+      "owner": "Analytics/Engineering",
+      "cadence": "weekly",
+      "direction": "up",
+      "segmentations": [
+        "route",
+        "shipping_method",
+        "language",
+        "product_type"
+      ],
+      "quality_status": "partial",
+      "privacy_note": "Checkout start is not payment success or fulfilled order."
+    },
+    {
+      "id": "paid_order_count",
+      "name": "Paid order count",
+      "type": "business-outcome",
+      "definition": "Orders where signed Paytrail callback or approved payment source confirms paid status under owner-approved policy.",
+      "formula": "count(distinct order_id) where order/payment status is owner-approved paid status and signature/payment validation passes",
+      "source": "orders, payment_events, Paytrail webhook",
+      "owner": "Ecommerce/Payments/Analytics",
+      "cadence": "daily",
+      "direction": "up",
+      "segmentations": [
+        "product_type",
+        "payment_provider",
+        "language",
+        "fulfillment_method"
+      ],
+      "quality_status": "partial",
+      "privacy_note": "/checkout/success view is not purchase proof."
+    },
+    {
+      "id": "fulfilled_order_count",
+      "name": "Fulfilled order count",
+      "type": "customer-outcome",
+      "definition": "Orders where fulfillment status is owner-approved fulfilled, picked-up, or delivered.",
+      "formula": "count(distinct order_id) where fulfillment_status is owner-approved fulfilled/picked-up/delivered status",
+      "source": "orders and fulfillment status",
+      "owner": "Ecommerce/Operations",
+      "cadence": "weekly",
+      "direction": "up",
+      "segmentations": [
+        "product_type",
+        "fulfillment_method"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Paid order may still refund, return, fail stock, or fail fulfillment."
+    },
+    {
+      "id": "local_contact_action_count",
+      "name": "Local contact action count",
+      "type": "funnel",
+      "definition": "User activates public phone, email, or directions actions.",
+      "formula": "count(contact_call_click + contact_email_click + directions_click)",
+      "source": "approved analytics events and Google Business Profile actions where available",
+      "owner": "Local SEO/Analytics",
+      "cadence": "weekly",
+      "direction": "up",
+      "segmentations": [
+        "action_type",
+        "route",
+        "language",
+        "location_id"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Clicking phone, email, or directions is not a customer outcome."
+    },
+    {
+      "id": "retention_repeat_customer_count",
+      "name": "Retention repeat customer count",
+      "type": "customer-outcome",
+      "definition": "Customers with repeat booking/order or owner-approved retention milestone within a cohort window.",
+      "formula": "count(distinct customer_id) with repeat booking/order or owner-approved retention milestone within cohort window",
+      "source": "customer account, bookings, orders, Tire Hotel/storage, service history",
+      "owner": "Business/Analytics",
+      "cadence": "monthly",
+      "direction": "up",
+      "segmentations": [
+        "cohort_month",
+        "customer_type_when_privacy_safe",
+        "outcome_type"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Requires customer identity rules and privacy-safe cohort treatment."
+    },
+    {
+      "id": "revenue_eur",
+      "name": "Revenue EUR",
+      "type": "business-outcome",
+      "definition": "Owner-approved recognized revenue in EUR under approved treatment for VAT, fees, refunds, returns, and manual/cash flows.",
+      "formula": "sum(owner-approved recognized revenue in EUR excluding or including tax/fees only according to approved finance definition)",
+      "source": "orders, invoices, finance owner definition",
+      "owner": "Finance/Business",
+      "cadence": "monthly",
+      "direction": "up",
+      "segmentations": [
+        "order_or_booking_type",
+        "channel",
+        "cohort"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Do not report as audited revenue until recognition, VAT, refunds, fees, and reconciliation are approved."
+    },
+    {
+      "id": "gross_or_contribution_profit_eur",
+      "name": "Gross or contribution profit EUR",
+      "type": "business-outcome",
+      "definition": "Revenue minus approved cost of goods/service and approved variable fulfillment, payment, and support costs.",
+      "formula": "revenue_eur - approved cost_of_goods_or_service - approved variable fulfillment/payment/support costs",
+      "source": "finance inputs, orders, service costs",
+      "owner": "Finance/Business",
+      "cadence": "monthly",
+      "direction": "up",
+      "segmentations": [
+        "offer",
+        "product_type",
+        "channel"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Margin cannot be inferred from website or payment events alone."
+    },
+    {
+      "id": "cancellation_refund_return_rate",
+      "name": "Cancellation refund return rate",
+      "type": "guardrail",
+      "definition": "Cancelled bookings plus refunded or returned orders divided by server-accepted outcomes.",
+      "formula": "(cancelled_bookings + refunded_or_returned_orders) / server_accepted_outcomes",
+      "source": "bookings, orders, payment_events, operations",
+      "owner": "Operations/Finance/Analytics",
+      "cadence": "weekly",
+      "direction": "down",
+      "segmentations": [
+        "service_name",
+        "product_type",
+        "channel"
+      ],
+      "quality_status": "unverified",
+      "privacy_note": "Guardrail must move with primary outcome analysis; do not optimize starts if this worsens."
+    },
+    {
+      "id": "measurement_privacy_failure_count",
+      "name": "Measurement privacy failure count",
+      "type": "guardrail",
+      "definition": "Events, logs, reports, or exports containing prohibited PII or firing outside approved consent behavior.",
+      "formula": "count of privacy, consent, or prohibited-parameter incidents",
+      "source": "QA, code review, analytics debug, privacy review",
+      "owner": "Privacy/Engineering/Analytics",
+      "cadence": "ad-hoc",
+      "direction": "down",
+      "segmentations": [
+        "incident",
+        "surface",
+        "vendor"
+      ],
+      "quality_status": "partial",
+      "privacy_note": "Any material privacy failure blocks growth-ready measurement."
+    },
+    {
+      "id": "critical_journey_accessibility_failure_count",
+      "name": "Critical journey accessibility failure count",
+      "type": "guardrail",
+      "definition": "Blocker or critical accessibility failures in booking, checkout, contact, account, and recovery journeys.",
+      "formula": "count of blocker/critical accessibility failures in critical journeys",
+      "source": "D-4 accessibility/browser QA",
+      "owner": "QA/Engineering",
+      "cadence": "ad-hoc",
+      "direction": "down",
+      "segmentations": [
+        "route",
+        "journey",
+        "severity"
+      ],
+      "quality_status": "partial",
+      "privacy_note": "Conversion work cannot ship if it prevents task completion."
+    }
+  ],
+  "relationships": [
+    {
+      "from_metric_id": "organic_qualified_visit_count",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Qualified acquisition is necessary but not sufficient for fulfilled value."
+    },
+    {
+      "from_metric_id": "service_booking_start_count",
+      "to_metric_id": "server_accepted_booking_count",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Booking starts can contribute to submitted bookings only after form and server acceptance."
+    },
+    {
+      "from_metric_id": "server_accepted_booking_count",
+      "to_metric_id": "completed_service_count",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Server-accepted booking is an upstream state for completed service."
+    },
+    {
+      "from_metric_id": "completed_service_count",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Completed service is a candidate fulfilled customer outcome after exclusions."
+    },
+    {
+      "from_metric_id": "product_view_count",
+      "to_metric_id": "checkout_started_count",
+      "relationship": "diagnoses",
+      "evidence_status": "hypothesis",
+      "note": "Product views diagnose product decision engagement but do not prove purchase intent."
+    },
+    {
+      "from_metric_id": "checkout_started_count",
+      "to_metric_id": "paid_order_count",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Checkout start can lead to paid order only after server/payment success."
+    },
+    {
+      "from_metric_id": "paid_order_count",
+      "to_metric_id": "fulfilled_order_count",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Paid order is upstream of fulfillment but can still refund, return, or fail fulfillment."
+    },
+    {
+      "from_metric_id": "fulfilled_order_count",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Fulfilled order is a candidate fulfilled customer outcome after exclusions."
+    },
+    {
+      "from_metric_id": "local_contact_action_count",
+      "to_metric_id": "server_accepted_booking_count",
+      "relationship": "contributes-to",
+      "evidence_status": "hypothesis",
+      "note": "Contact actions may contribute to accepted bookings when operationally knowable."
+    },
+    {
+      "from_metric_id": "retention_repeat_customer_count",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "contributes-to",
+      "evidence_status": "business-logic",
+      "note": "Repeat/retention outcomes can indicate durable customer value after definitions are approved."
+    },
+    {
+      "from_metric_id": "revenue_eur",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "balances",
+      "evidence_status": "business-logic",
+      "note": "Revenue must be interpreted with fulfilled value and exclusions."
+    },
+    {
+      "from_metric_id": "gross_or_contribution_profit_eur",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "balances",
+      "evidence_status": "business-logic",
+      "note": "Profit/margin prevents optimizing gross revenue that harms business quality."
+    },
+    {
+      "from_metric_id": "cancellation_refund_return_rate",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "guards",
+      "evidence_status": "business-logic",
+      "note": "Growth that increases cancellations, refunds, or returns is not healthy."
+    },
+    {
+      "from_metric_id": "measurement_privacy_failure_count",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "guards",
+      "evidence_status": "business-logic",
+      "note": "Privacy or consent failure blocks trustworthy growth measurement."
+    },
+    {
+      "from_metric_id": "critical_journey_accessibility_failure_count",
+      "to_metric_id": "fulfilled_profitable_customer_outcome",
+      "relationship": "guards",
+      "evidence_status": "business-logic",
+      "note": "Critical journey accessibility failure invalidates conversion-quality claims."
+    }
+  ],
+  "owners": [
+    "Business",
+    "Analytics",
+    "SEO",
+    "Engineering",
+    "Operations",
+    "Ecommerce",
+    "Payments",
+    "Finance",
+    "Privacy",
+    "QA",
+    "Frontend"
+  ]
+}

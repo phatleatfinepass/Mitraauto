@@ -71,7 +71,7 @@ const legalContentEntries = {
   "privacy.0068": { fi: "9. Tietojen luovutukset ja käsittelijät", en: "9. Sharing and Processors" },
   "privacy.0069": { fi: "Emme myy henkilötietoja. Luovutamme tai annamme henkilötietoja käsiteltäväksi vain silloin, kun se on tarpeen palvelun, lain, turvallisuuden tai asiakkaan pyynnön toteuttamiseksi.", en: "We do not sell personal data. We disclose or make personal data available for processing only where needed for the service, law, security, or a customer request." },
   "privacy.0070": { fi: "maksunvälittäjät, pankit, kirjanpito ja laskutuspalvelut;", en: "payment providers, banks, accounting, and invoicing services;" },
-  "privacy.0071": { fi: "IT-, hosting-, tietokanta-, sähköposti-, tekstiviesti-, analytiikka- ja turvallisuuspalveluntarjoajat;", en: "IT, hosting, database, email, SMS, analytics, and security service providers;" },
+  "privacy.0071": { fi: "IT-, hosting-, tietokanta-, sähköposti-, tekstiviesti-, analytiikka- ja turvallisuuspalveluntarjoajat, mukaan lukien Microsoft Clarity suostumuksen perusteella;", en: "IT, hosting, database, email, SMS, analytics, and security service providers, including Microsoft Clarity based on consent;" },
   "privacy.0072": { fi: "varaosa-, rengas-, hinaus-, kuljetus-, tarkastus- ja muut palvelukumppanit siinä laajuudessa kuin palvelu edellyttää;", en: "parts, tire, towing, transport, inspection, and other service partners to the extent required by the service;" },
   "privacy.0073": { fi: "viranomaiset, vakuutusyhtiöt, kuluttajaneuvonta, perintäpalvelut tai tuomioistuimet, jos laki, oikeusvaade tai sopimus sitä edellyttää;", en: "authorities, insurance companies, consumer advice, debt collection services, or courts where required by law, legal claim, or contract;" },
   "privacy.0074": { fi: "yritys- ja fleet-asiakkaan nimetyt yhteyshenkilöt, kun käsittely koskee kyseisen asiakasryhmän ajoneuvoja tai palveluita.", en: "named contacts of a business or fleet customer where processing concerns that customer group vehicles or services." },
@@ -119,8 +119,8 @@ const legalContentEntries = {
   "privacy.0116": { fi: "tarvitaan palvelun tekniseen toimintaan ja turvallisuuteen.", en: "needed for technical operation and security of the service." },
   "privacy.0117": { fi: "Asetusevästeet", en: "Preference cookies" },
   "privacy.0118": { fi: "muistavat esimerkiksi kielen tai käyttöliittymän valinnat.", en: "remember choices such as language or interface settings." },
-  "privacy.0119": { fi: "Analytiikka ja markkinointi", en: "Analytics and marketing" },
-  "privacy.0120": { fi: "käytetään vain lainmukaisesti ja tarvittaessa suostumuksella.", en: "used only lawfully and with consent where required." },
+  "privacy.0119": { fi: "Analytiikka (Microsoft Clarity)", en: "Analytics (Microsoft Clarity)" },
+  "privacy.0120": { fi: "käytetään sivuston käytön, ajanvarauksen ja verkkokaupan käyttökokemuksen parantamiseen vain lainmukaisesti ja tarvittaessa suostumuksella.", en: "used to improve site usage, booking, and webshop experience only lawfully and with consent where required." },
   "privacy.0121": { fi: "Selaimen asetuksilla voi rajoittaa evästeitä, mutta välttämättömien evästeiden estäminen voi estää osan palveluista toimimasta.", en: "Browser settings may limit cookies, but blocking essential cookies may prevent some services from working." },
   "privacy.0122": { fi: "16. Lapset", en: "16. Children" },
   "privacy.0123": { fi: "Mitra Auton palvelut on tarkoitettu ensisijaisesti ajoneuvon omistajille, haltijoille, kuljettajille, yritysasiakkaille ja täysi-ikäisille asiakkaille. Emme tarkoituksellisesti kerää lasten henkilötietoja ilman huoltajan tai muun laillisen edustajan osallistumista.", en: "Mitra Auto services are intended mainly for vehicle owners, holders, drivers, business customers, and adults. We do not knowingly collect personal data of children without involvement of a guardian or other legal representative." },
@@ -128,6 +128,9 @@ const legalContentEntries = {
   "privacy.0125": { fi: "Voimme päivittää tätä tietosuojaselostetta, kun palvelut, järjestelmät, lainsäädäntö tai käsittelytavat muuttuvat. Julkaisemme ajantasaisen version verkkosivustolla ja säilytämme aiemmat versiot historiatietona.", en: "We may update this Privacy Policy when services, systems, law, or processing practices change. We publish the current version on the website and keep previous versions as version history." },
   "privacy.0126": { fi: "Nykyinen versio: Tietosuojaseloste v5.1", en: "Current version: Privacy Policy v5.1" },
   "privacy.0127": { fi: "Voimaantulopäivä: 1.5.2026", en: "Effective date: 1 May 2026" },
+  "privacy.0128": { fi: "Nykyinen versio: Tietosuojaseloste v6.1", en: "Current version: Privacy Policy v6.1" },
+  "privacy.0129": { fi: "Voimaantulopäivä: 22.6.2026", en: "Effective date: 22 June 2026" },
+  "privacy.0130": { fi: "Tämä julkaisu lisää Microsoft Clarity -analytiikan, evästesuostumuksen ja analytiikan käsittelijätiedot.", en: "This release adds Microsoft Clarity analytics, cookie consent, and analytics processor information." },
   "terms.0001": { fi: "1. Sopimus, soveltamisala ja palveluntarjoaja", en: "1. Agreement, Scope, and Service Provider" },
   "terms.0002": { fi: "Nämä käyttöehdot koskevat Mitra Auto Oy:n verkkosivustoa, ajanvarausta, korjaamo- ja rengaspalveluita, verkkokauppaa, maksamista, Rescue 24/7 -palvelua, asiakaspalvelua, asiakas-PWA:ta, asiakastiliä, digitaalista huoltokirjaa, muistutuksia ja asiakashyötyjä. Käyttämällä palveluita, tekemällä varauksen, ostamalla tuotteita, maksamalla laskun tai käyttämällä asiakastiliä hyväksyt nämä ehdot.", en: "These Terms apply to Mitra Auto Oy website, booking, workshop and tire services, webshop, payments, Rescue 24/7, customer support, customer PWA, customer account, digital service book, reminders, and customer benefits. By using the services, making a booking, buying products, paying an invoice, or using a customer account, you accept these Terms." },
   "terms.0003": { fi: "Palveluntarjoaja", en: "Service provider" },
@@ -726,12 +729,19 @@ const legalContentEntries = {
   "termsArchive.0257": { fi: "kuluttajariita.fi/en", en: "kuluttajariita.fi/en" },
 } as const;
 
-type LegalContentKey = keyof typeof legalContentEntries;
+export type LegalContentKey = keyof typeof legalContentEntries;
+type LegalContentEntry = { readonly fi: string; readonly en: string };
 
 function resolveLegalLanguage(t: (key: string) => string): Language {
   return t('legal.nav.privacy') === 'Tietosuojaseloste' || t('legal.nav.terms') === 'Käyttöehdot' ? 'fi' : 'en';
 }
 
-export function legalContent(t: (key: string) => string, key: LegalContentKey) {
-  return legalContentEntries[key][resolveLegalLanguage(t)];
+export function legalContent(t: (key: string) => string, key: LegalContentKey | string) {
+  const entry = legalContentEntries[key as LegalContentKey] as LegalContentEntry | undefined;
+  if (!entry) {
+    return key;
+  }
+
+  const language = resolveLegalLanguage(t);
+  return entry[language] ?? entry.en ?? entry.fi ?? key;
 }

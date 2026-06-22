@@ -547,7 +547,7 @@ export function AuthModal({ open, onOpenChange, defaultView = 'login', onSuccess
                 />
                 <label htmlFor="terms" className="text-sm text-muted-foreground">
                   {t('auth.signup.terms')}{' '}
-                  <a href="/legal/terms" className="text-primary hover:underline">
+                  <a href="/terms" className="text-primary hover:underline">
                     {t('auth.signup.termsLink')}
                   </a>
                 </label>

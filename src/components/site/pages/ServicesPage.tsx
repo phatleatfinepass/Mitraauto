@@ -7,6 +7,7 @@ import { ImageWithFallback } from '../../figma/ImageWithFallback';
 import { ContactSection } from '../sections/ContactSection';
 import { motion, AnimatePresence } from 'motion/react';
 import { getServiceDetailPathForServiceId } from '../../../i18n/dictionaries/serviceSeo';
+import { useLocalSeoHead } from '../../../utils/localSeo';
 import carWashService from 'figma:asset/cac46ce90efaaa69a5d5eac00cb56658fc7c8afa.png';
 import carMaintenanceService from 'figma:asset/23fb0673ef5da715efe16a47361607b6c4536093.png';
 import tireService from 'figma:asset/0c2e6e541f47a002ca898c5d5be58014ebf38e9d.png';
@@ -54,9 +55,24 @@ function getRouteLanguage(fallback: 'fi' | 'en') {
 }
 
 export function ServicesPage({ onBookingClick, onNavigate }: ServicesPageProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string>('car-care');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const routeLanguage = getRouteLanguage(language);
+  const servicesPath = { fi: '/palvelut', en: '/en/services' }[routeLanguage];
+
+  useLocalSeoHead({
+    language: routeLanguage,
+    title: t('seo.services.title'),
+    description: t('seo.services.description'),
+    canonicalPath: servicesPath,
+    alternatePaths: { fi: '/palvelut', en: '/en/services' },
+    pageType: 'CollectionPage',
+    breadcrumbs: [
+      { name: t('nav.home'), path: { fi: '/', en: '/en' }[routeLanguage] },
+      { name: t('nav.services'), path: servicesPath },
+    ],
+  });
 
   // Auto-rotate carousel every 30 seconds
   useEffect(() => {
@@ -273,7 +289,7 @@ export function ServicesPage({ onBookingClick, onNavigate }: ServicesPageProps) 
                     <button
                       key={category.id}
                       onClick={() => scrollToCategory(category.id)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
+                      className={`w-full whitespace-normal break-words text-left px-4 py-3 rounded-lg transition-all ${
                         activeCategory === category.id
                           ? 'bg-accent text-white'
                           : 'text-foreground/70 hover:bg-secondary hover:text-foreground'

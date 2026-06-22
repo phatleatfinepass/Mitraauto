@@ -35,9 +35,33 @@ type CheckoutItem = {
   sku?: unknown;
   name?: unknown;
   vatPercentage?: unknown;
+  product_type?: unknown;
+  gtin?: unknown;
+  mpn?: unknown;
   stock_qty?: unknown;
   delivery_days_min?: unknown;
   delivery_days_max?: unknown;
+};
+
+type CatalogProductRow = {
+  variant_id?: string;
+  product_type?: string;
+  brand?: string | null;
+  brand_display_name?: string | null;
+  model?: string | null;
+  card_title?: string | null;
+  title?: string | null;
+  price?: number | string | null;
+  final_price_eur?: number | string | null;
+  in_stock?: boolean | null;
+  stock_qty?: number | string | null;
+  ean?: string | null;
+  derived_ean?: string | null;
+  pricing_rules?: unknown;
+  best_image_url?: string | null;
+  hero_image_url?: string | null;
+  delivery_days_min?: number | string | null;
+  delivery_days_max?: number | string | null;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -81,6 +105,156 @@ function toCountryCode(value: unknown) {
 
 function normalizeLanguage(value: unknown) {
   return String(value ?? "").trim().toLowerCase() === "en" ? "en" : "fi";
+}
+
+function toNumberOrNull(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function normalizePricingTier(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const tier = value as Record<string, unknown>;
+  const mode = tier.mode === "percent_off" || tier.mode === "fixed_total" ? tier.mode : "none";
+  const percentOff = toNumberOrNull(tier.percent_off);
+  const fixedTotal = toNumberOrNull(tier.fixed_total_eur);
+
+  if (mode === "percent_off" && percentOff !== null && percentOff > 0) {
+    return { mode, percent_off: percentOff, fixed_total_eur: null };
+  }
+  if (mode === "fixed_total" && fixedTotal !== null && fixedTotal >= 0) {
+    return { mode, percent_off: null, fixed_total_eur: roundCurrency(fixedTotal) };
+  }
+  return null;
+}
+
+function normalizePricingRules(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const rules = value as Record<string, unknown>;
+  const qty2 = normalizePricingTier(rules.qty2);
+  const qty4 = normalizePricingTier(rules.qty4);
+  return qty2 || qty4 ? { qty2, qty4 } : null;
+}
+
+function calculateLinePricing(baseUnitPriceEur: number, quantity: number, rules: unknown) {
+  const safeQuantity = Math.max(1, Math.trunc(quantity || 1));
+  const safeBaseUnit = roundCurrency(Number.isFinite(baseUnitPriceEur) ? Math.max(0, baseUnitPriceEur) : 0);
+  const baseLineTotal = roundCurrency(safeBaseUnit * safeQuantity);
+  const normalizedRules = normalizePricingRules(rules);
+  const tier = safeQuantity === 2 ? normalizedRules?.qty2 : safeQuantity === 4 ? normalizedRules?.qty4 : null;
+
+  let lineTotal = baseLineTotal;
+  let effectiveUnit = safeBaseUnit;
+
+  if (tier?.mode === "percent_off" && tier.percent_off !== null) {
+    const discountFactor = Math.max(0, Math.min(100, tier.percent_off)) / 100;
+    lineTotal = roundCurrency(baseLineTotal * (1 - discountFactor));
+    effectiveUnit = roundCurrency(lineTotal / safeQuantity);
+  } else if (tier?.mode === "fixed_total" && tier.fixed_total_eur !== null) {
+    lineTotal = roundCurrency(Math.max(0, tier.fixed_total_eur));
+    effectiveUnit = roundCurrency(lineTotal / safeQuantity);
+  }
+
+  return { effectiveUnitPriceEur: effectiveUnit, lineTotalEur: lineTotal };
+}
+
+function normalizeGtin(value: unknown) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 14 ? digits : null;
+}
+
+function firstProductImage(row: CatalogProductRow) {
+  return cleanString(row.hero_image_url || row.best_image_url, 1000) || null;
+}
+
+async function getAuthoritativeCatalogProduct(item: CheckoutItem, index: number) {
+  const sku = cleanString(item.sku, 100);
+  const productType = cleanString(item.product_type, 20);
+  if (!sku || (productType !== "tire" && productType !== "rim")) {
+    throw new Error(`Missing product identity for cart item at index ${index}`);
+  }
+
+  const rpcName = productType === "rim"
+    ? "catalog_get_rim_by_identifier_v1"
+    : "catalog_get_tire_by_identifier_v1";
+  const { data, error } = await supabase.rpc(rpcName, { p_identifier: sku });
+  if (error) throw error;
+
+  const rows = Array.isArray(data) ? data : [];
+  const row = rows[0] as CatalogProductRow | undefined;
+  if (!row) {
+    throw new Error(`Product is no longer available: ${sku}`);
+  }
+
+  return {
+    ...row,
+    product_type: productType,
+  };
+}
+
+async function buildValidatedPaytrailItem(item: CheckoutItem, index: number) {
+  const units = asPositiveInteger(item.qty);
+  const clientUnitPrice = asPositiveInteger(item.client_unit_price_cents);
+  if (clientUnitPrice <= 0 || units <= 0) {
+    throw new Error(`Invalid cart item at index ${index}`);
+  }
+
+  const catalogProduct = await getAuthoritativeCatalogProduct(item, index);
+  if (catalogProduct.in_stock !== true) {
+    throw new Error(`Product is out of stock: ${cleanString(item.name || catalogProduct.card_title || catalogProduct.model || item.sku, 120)}`);
+  }
+
+  const stockQty = asPositiveInteger(catalogProduct.stock_qty, 0);
+  if (stockQty > 0 && units > stockQty) {
+    throw new Error(`Requested quantity exceeds available stock for ${cleanString(item.name || catalogProduct.card_title || catalogProduct.model || item.sku, 120)}. Available stock: ${stockQty}`);
+  }
+
+  const basePrice = toNumberOrNull(catalogProduct.final_price_eur) ?? toNumberOrNull(catalogProduct.price) ?? 0;
+  if (basePrice <= 0) {
+    throw new Error(`Product price is no longer available: ${cleanString(item.name || item.sku, 120)}`);
+  }
+
+  const linePricing = calculateLinePricing(basePrice, units, catalogProduct.pricing_rules);
+  const authoritativeUnitPrice = Math.round(linePricing.effectiveUnitPriceEur * 1.255 * 100);
+  const authoritativeLineTotal = Math.round(linePricing.lineTotalEur * 1.255 * 100);
+  if (clientUnitPrice !== authoritativeUnitPrice) {
+    throw new Error(`Cart price changed for ${cleanString(item.name || item.sku, 120)}. Refresh the cart before payment.`);
+  }
+
+  const brand = cleanString(catalogProduct.brand_display_name || catalogProduct.brand || (item as any).brand, 120) || null;
+  const model = cleanString(catalogProduct.model || (item as any).model, 160) || null;
+  const productType = cleanString(catalogProduct.product_type, 40);
+  const gtin = normalizeGtin(catalogProduct.ean || catalogProduct.derived_ean || item.gtin);
+  const description = cleanString(
+    item.name ||
+      catalogProduct.card_title ||
+      [brand, model].filter(Boolean).join(" ") ||
+      `Item ${index + 1}`,
+    1000,
+  );
+
+  return {
+    unitPrice: authoritativeUnitPrice,
+    units,
+    vatPercentage: Number(item.vatPercentage ?? 25.5),
+    productCode: cleanString(catalogProduct.variant_id || item.sku || `item-${index + 1}`, 100),
+    description,
+    imageUrl: firstProductImage(catalogProduct) || cleanString((item as any).image_url, 1000) || null,
+    brand,
+    model,
+    sizeText: cleanString((item as any).size_text, 120) || null,
+    productType: productType || null,
+    gtin,
+    mpn: model || cleanString(item.mpn, 120) || null,
+    stockQty: stockQty || null,
+    deliveryDaysMin: asPositiveInteger(catalogProduct.delivery_days_min ?? (item as any).delivery_days_min, 0) || null,
+    deliveryDaysMax: asPositiveInteger(catalogProduct.delivery_days_max ?? (item as any).delivery_days_max, 0) || null,
+    lineTotalCents: authoritativeLineTotal,
+  };
 }
 
 async function hmacHex(secret: string, payload: string) {
@@ -151,6 +325,9 @@ function buildOrderSnapshot(
       product_type: item.productType ?? null,
       delivery_days_min: item.deliveryDaysMin ?? null,
       delivery_days_max: item.deliveryDaysMax ?? null,
+      gtin: item.gtin ?? null,
+      mpn: item.mpn ?? null,
+      authoritative_stock_qty: item.stockQty ?? null,
     })),
   };
 }
@@ -216,32 +393,9 @@ serve(async (req) => {
       return jsonResponse({ error: "invalid_customer", message: "Valid customer email is required." }, 400);
     }
 
-    const paytrailItems = input.items.map((item: CheckoutItem, index: number) => {
-      const unitPrice = asPositiveInteger(item.client_unit_price_cents);
-      const units = asPositiveInteger(item.qty);
-      const stockQty = asPositiveInteger((item as any).stock_qty, 0);
-      if (unitPrice <= 0 || units <= 0) {
-        throw new Error(`Invalid cart item at index ${index}`);
-      }
-      if (stockQty > 0 && units > stockQty) {
-        throw new Error(`Requested quantity exceeds available stock for ${cleanString(item.name || item.sku || `item-${index + 1}`, 120)}. Available stock: ${stockQty}`);
-      }
-
-      return {
-        unitPrice,
-        units,
-        vatPercentage: Number(item.vatPercentage ?? 25.5),
-        productCode: cleanString(item.sku || `item-${index + 1}`, 100),
-        description: cleanString(item.name || `Item ${index + 1}`, 1000),
-        imageUrl: cleanString((item as any).image_url, 1000) || null,
-        brand: cleanString((item as any).brand, 120) || null,
-        model: cleanString((item as any).model, 160) || null,
-        sizeText: cleanString((item as any).size_text, 120) || null,
-        productType: cleanString((item as any).product_type, 40) || null,
-        deliveryDaysMin: asPositiveInteger((item as any).delivery_days_min, 0) || null,
-        deliveryDaysMax: asPositiveInteger((item as any).delivery_days_max, 0) || null,
-      };
-    });
+    const paytrailItems = await Promise.all(
+      input.items.map((item: CheckoutItem, index: number) => buildValidatedPaytrailItem(item, index)),
+    );
 
     const shippingCents = asPositiveInteger(input.shipping_cents, 0);
     if (shippingCents > 0) {

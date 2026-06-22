@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "project": "Mitra Auto",
+  "as_of": "2026-06-22",
+  "experiments": [
+    {
+      "id": "service_booking_decision_support",
+      "title": "Service booking decision support and booking-start quality",
+      "status": "draft",
+      "owner": "Growth/Analytics with Operations approval",
+      "hypothesis": "If service pages make price basis, process, eligibility, and the booking next step clearer before opening the booking modal, qualified visitors will start and submit bookings at a higher quality rate without increasing cancellations or accessibility failures.",
+      "audience": "Organic and local visitors landing on Finnish or English service pages such as car service, brake service, tire services, and Tire Hotel.",
+      "unit_of_randomization": "page",
+      "variants": [
+        "control: current service template",
+        "variant: strengthened decision-support and CTA copy using approved service facts"
+      ],
+      "primary_metric_id": "server_accepted_booking_count",
+      "guardrail_metric_ids": [
+        "cancellation_refund_return_rate",
+        "critical_journey_accessibility_failure_count",
+        "measurement_privacy_failure_count"
+      ],
+      "secondary_metric_ids": [
+        "service_booking_start_count",
+        "completed_service_count",
+        "organic_qualified_visit_count"
+      ],
+      "analysis_method": "Search-facing page-group test only after stable canonicals, sitemap membership, and instrumentation are verified; use page-level comparison with release annotations and no causal claim unless exposure and confounders are controlled.",
+      "sample_plan": "Hold until at least four complete weeks of baseline service-page visits, booking starts, server-accepted bookings, cancellations, and accessibility guardrails are available by page group and language.",
+      "minimum_detectable_effect": "Business owner must set a practically meaningful lift in server-accepted bookings that also preserves cancellation, no-show, and accessibility guardrails.",
+      "start_criteria": [
+        "D-1 KPI tree and event dictionary approved by business, analytics, privacy, and operations owners.",
+        "D-2 booking accepted/completed/cancelled/no-show status policy approved.",
+        "D-3 Search Console and analytics readback available for the tested page group.",
+        "All tested pages keep stable self-canonicals, indexability, sitemap membership, and visible content parity.",
+        "D-4 checkout and booking accessibility warnings are either fixed or explicitly outside the tested path."
+      ],
+      "stop_rules": [
+        "Stop if booking, checkout, or contact accessibility blocker appears.",
+        "Stop if duplicate bookings, cancellation/no-show rate, support complaints, or privacy failures increase beyond owner-approved thresholds.",
+        "Stop if canonicals, redirects, sitemap membership, or rendered service content diverge between variants.",
+        "Stop if analytics or server reconciliation fails for the primary metric."
+      ],
+      "decision_rule": "Ship only when the primary metric improves by the approved practical threshold and no guardrail deteriorates; otherwise iterate, rollback, or mark inconclusive.",
+      "instrumentation_status": "unverified",
+      "limitations": [
+        "No approved analytics destination or live event readback is available yet.",
+        "Current booking_completed naming conflict must be resolved before launch.",
+        "Search traffic, seasonality, local demand, and service capacity can confound page-group results."
+      ]
+    },
+    {
+      "id": "product_fitment_purchase_clarity",
+      "title": "Product detail fitment, availability, and purchase clarity",
+      "status": "draft",
+      "owner": "Ecommerce/Analytics with Catalog approval",
+      "hypothesis": "If product pages make fitment limits, stock, delivery time, VAT, and checkout obligation clearer near Add to cart, qualified product visitors will progress to checkout with fewer failed purchases, returns, and support contacts.",
+      "audience": "Organic and catalog visitors on tire, rim, and wheel package product detail pages.",
+      "unit_of_randomization": "page",
+      "variants": [
+        "control: current product detail layout",
+        "variant: clarified fitment, availability, delivery, and checkout obligation block"
+      ],
+      "primary_metric_id": "checkout_started_count",
+      "guardrail_metric_ids": [
+        "cancellation_refund_return_rate",
+        "critical_journey_accessibility_failure_count",
+        "measurement_privacy_failure_count"
+      ],
+      "secondary_metric_ids": [
+        "product_view_count",
+        "paid_order_count",
+        "fulfilled_order_count"
+      ],
+      "analysis_method": "Page-group or staged rollout with product and language segmentation; do not treat add-to-cart lift as success unless paid and fulfilled outcomes remain healthy.",
+      "sample_plan": "Hold until four complete weeks of product views, add-to-cart, checkout start, paid order, fulfillment, refund/return, stock mismatch, and payment-failure data are available by product type.",
+      "minimum_detectable_effect": "Ecommerce owner must approve a practically meaningful checkout-start or paid-order improvement after stock, price, and return guardrails are stable.",
+      "start_criteria": [
+        "Merchant feed and public product sitemap return XML on production.",
+        "Product price, availability, schema, feed, and checkout totals reconcile.",
+        "Purchase is measured only from signed Paytrail/server payment state, not checkout-success page view.",
+        "Product identifier, variant, value, currency, and consent-safe event IDs are available in analytics or server events.",
+        "D-4 duplicate checkout submit control warning is fixed before any checkout-impacting test."
+      ],
+      "stop_rules": [
+        "Stop if price, availability, VAT, delivery, schema, or feed facts diverge.",
+        "Stop if payment failure, refund/return, support burden, or stock mismatch increases beyond owner-approved thresholds.",
+        "Stop if duplicate high-impact checkout controls or field-validation accessibility issues appear.",
+        "Stop if Search Console or Merchant Center reports product indexing/feed errors for tested pages."
+      ],
+      "decision_rule": "Ship only when product progression improves and paid/fulfilled outcomes and product data guardrails remain within approved limits.",
+      "instrumentation_status": "unverified",
+      "limitations": [
+        "Authenticated Merchant Center, analytics, Search Console, and order reconciliation readback are unavailable.",
+        "The deployed product sitemap/feed mismatch from D-3 blocks production experiment readiness.",
+        "Inventory and product mix can confound product-page performance."
+      ]
+    },
+    {
+      "id": "checkout_recovery_accessibility",
+      "title": "Checkout recovery and accessibility remediation",
+      "status": "draft",
+      "owner": "Frontend/Accessibility with Ecommerce approval",
+      "hypothesis": "If checkout exposes one unambiguous submit control per viewport and ties validation errors to fields, more users and browser agents can recover from errors without increasing invalid orders, duplicate payment attempts, or privacy failures.",
+      "audience": "Users who reach checkout from cart with at least one sellable product.",
+      "unit_of_randomization": "none",
+      "variants": [
+        "remediation: single accessible submit target and field-associated validation",
+        "comparison: local QA baseline from D-4"
+      ],
+      "primary_metric_id": "critical_journey_accessibility_failure_count",
+      "guardrail_metric_ids": [
+        "measurement_privacy_failure_count",
+        "cancellation_refund_return_rate"
+      ],
+      "secondary_metric_ids": [
+        "begin_checkout",
+        "paid_order_count",
+        "payment_failed"
+      ],
+      "analysis_method": "Treat as remediation and release QA, not a conversion A/B test; validate through automated checks, keyboard/browser-agent smoke, and payment/order reconciliation after deployment.",
+      "sample_plan": "Run against every checkout release with desktop and mobile smoke, keyboard path, field-error path, empty-field validation, terms gate, payment-create prevention, and postdeployment event reconciliation.",
+      "minimum_detectable_effect": "Zero blocker or critical accessibility failures in the checkout journey; no increase in duplicate payment attempts or privacy failures.",
+      "start_criteria": [
+        "Frontend fix removes duplicate submit target from the accessibility tree.",
+        "Required-field errors are visible and programmatically associated with invalid controls.",
+        "Payment creation remains blocked until required fields and terms are valid.",
+        "No PII is added to analytics, logs, URLs, or reports.",
+        "QA has a safe test path that does not create unintended real payments."
+      ],
+      "stop_rules": [
+        "Stop release if a keyboard or screen-reader user cannot identify the required error and next action.",
+        "Stop release if duplicate payment creation, duplicate submit, or unsafe retry behavior appears.",
+        "Stop release if checkout event payloads include names, emails, phones, addresses, notes, payment details, tokens, or auth identifiers."
+      ],
+      "decision_rule": "Ship as a fix only after accessibility smoke passes and payment/order reconciliation remains stable; do not require a conversion lift to ship accessibility remediation.",
+      "instrumentation_status": "partial",
+      "limitations": [
+        "D-4 found warnings but did not complete a live payment.",
+        "No authenticated analytics or payment dashboard readback was available.",
+        "This is a quality gate, not a causal growth experiment."
+      ]
+    },
+    {
+      "id": "local_contact_action_quality",
+      "title": "Local contact action quality and trust cleanup",
+      "status": "draft",
+      "owner": "Local SEO/Analytics with Business approval",
+      "hypothesis": "If local contact routes use verified profile links, clearer call/email/directions actions, and consistent GBP/NAP facts, qualified local visitors will take more useful contact actions without weakening trust or creating low-quality leads.",
+      "audience": "Visitors on contact, homepage, local sections, and service pages with local intent.",
+      "unit_of_randomization": "page",
+      "variants": [
+        "control: current contact and footer local actions",
+        "variant: verified social/profile links and clearer contact-action grouping"
+      ],
+      "primary_metric_id": "local_contact_action_count",
+      "guardrail_metric_ids": [
+        "measurement_privacy_failure_count",
+        "critical_journey_accessibility_failure_count"
+      ],
+      "secondary_metric_ids": [
+        "organic_qualified_visit_count",
+        "server_accepted_booking_count"
+      ],
+      "analysis_method": "Use contact-action and GBP readback as observational evidence unless randomization and platform data are approved; compare by route, language, device, and local source.",
+      "sample_plan": "Hold until four complete weeks of contact clicks, GBP calls/directions/website actions, service booking starts, and local route visits are available with consent and route segmentation.",
+      "minimum_detectable_effect": "Business owner must define a useful local-action lift that does not increase low-quality contacts, wrong-location actions, or accessibility failures.",
+      "start_criteria": [
+        "GBP owner access and website/booking URL readback are available.",
+        "Verified Mitra social/profile links replace generic social platform homepages.",
+        "Call, email, map, and directions clicks have consent-safe events and no personal data payloads.",
+        "Local NAP and hours match the C-1 owner-approved fact source."
+      ],
+      "stop_rules": [
+        "Stop if local NAP, hours, map, website, or booking facts diverge from the approved source.",
+        "Stop if generic or unverified profile links remain in tested surfaces.",
+        "Stop if tracking captures phone numbers, email addresses, free text, or customer identifiers.",
+        "Stop if GBP shows ownership, suspension, duplicate, or profile-edit incidents."
+      ],
+      "decision_rule": "Ship only after verified local facts and contact-action quality improve without platform, privacy, or accessibility incidents.",
+      "instrumentation_status": "unverified",
+      "limitations": [
+        "GBP owner readback and local action metrics are unavailable.",
+        "C-1 fact-owner exceptions remain open.",
+        "Contact clicks are intent signals, not completed customer outcomes."
+      ]
+    }
+  ]
+}

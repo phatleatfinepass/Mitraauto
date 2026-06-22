@@ -1,0 +1,231 @@
+{
+  "version": "2026-06-22.d3",
+  "project": "Mitra Auto",
+  "status": "readback_protocol_complete_platform_access_blocked",
+  "created_at": "2026-06-22",
+  "scope": "Search Console, Google Business Profile, Merchant Center, analytics, and public production discovery readback.",
+  "public_origin": "https://www.mitra-auto.fi",
+  "failure_semantics": [
+    "SUCCESS_WITH_DATA",
+    "SUCCESS_EMPTY",
+    "PERMISSION_DENIED",
+    "AUTH_EXPIRED",
+    "QUOTA_OR_RATE_LIMIT",
+    "TRANSPORT_FAILURE",
+    "UNSUPPORTED_SCOPE",
+    "STALE_CACHE",
+    "UNAVAILABLE_NOT_REQUESTED"
+  ],
+  "platform_envelopes": [
+    {
+      "provider": "Google Search Console",
+      "dataset": "property ownership, sitemaps, URL Inspection samples, indexing, performance, enhancements, manual actions, security issues",
+      "property": "UNAVAILABLE",
+      "scope": {
+        "url_or_origin": "https://www.mitra-auto.fi",
+        "property_type": "domain property preferred; URL-prefix acceptable as secondary",
+        "country": "FI primary, all countries secondary",
+        "device": "desktop and mobile",
+        "search_type": "web; image/product/search appearance when available",
+        "locale": "fi and en"
+      },
+      "date_range": {
+        "start": "UNAVAILABLE",
+        "end": "UNAVAILABLE",
+        "timezone": "property timezone unavailable"
+      },
+      "aggregation": "query, page, country, device, date, search appearance, sitemap, URL inspection samples",
+      "retrieved_at": "UNAVAILABLE",
+      "freshness": "UNAVAILABLE",
+      "limitations": [
+        "No authenticated Search Console access was available in this task.",
+        "No property id, owner, backup owner, sitemap submission status, URL Inspection result, manual action, security issue, or enhancement report was read back.",
+        "Public production sitemap/robots fetch currently shows deployed asset mismatch and should be fixed before relying on Search Console diagnostics."
+      ],
+      "credential_source": "not recorded",
+      "status": "PERMISSION_DENIED"
+    },
+    {
+      "provider": "Google Business Profile",
+      "dataset": "profile ownership, categories, NAP, hours, special hours, website URL, booking URL, services/products, photos, reviews, calls, directions, messages, profile edits",
+      "property": "UNAVAILABLE",
+      "scope": {
+        "url_or_origin": "Mitra Auto Oy, Hankasuontie 5, 00390 Helsinki",
+        "country": "FI",
+        "device": "all",
+        "search_type": "local/profile",
+        "locale": "fi and en"
+      },
+      "date_range": {
+        "start": "UNAVAILABLE",
+        "end": "UNAVAILABLE",
+        "timezone": "Europe/Helsinki expected, not verified"
+      },
+      "aggregation": "profile-level diagnostics and local action metrics",
+      "retrieved_at": "UNAVAILABLE",
+      "freshness": "UNAVAILABLE",
+      "limitations": [
+        "No authenticated Google Business Profile owner access was available in this task.",
+        "Public search results show business/citation presence but do not prove ownership, category, diagnostics, review process, local action metrics, or profile health.",
+        "C-1 owner fact exceptions remain open."
+      ],
+      "credential_source": "not recorded",
+      "status": "PERMISSION_DENIED"
+    },
+    {
+      "provider": "Google Merchant Center",
+      "dataset": "account ownership, feed source, feed fetch status, item diagnostics, price/availability mismatch, policy issues, product visibility, destination status",
+      "property": "UNAVAILABLE",
+      "scope": {
+        "url_or_origin": "https://www.mitra-auto.fi/merchant-products.xml",
+        "country": "FI",
+        "device": "all",
+        "search_type": "merchant/product listings",
+        "locale": "fi and en"
+      },
+      "date_range": {
+        "start": "UNAVAILABLE",
+        "end": "UNAVAILABLE",
+        "timezone": "account timezone unavailable"
+      },
+      "aggregation": "feed-level and item-level diagnostics",
+      "retrieved_at": "UNAVAILABLE",
+      "freshness": "UNAVAILABLE",
+      "limitations": [
+        "No authenticated Merchant Center access was available in this task.",
+        "Local source has a generated Merchant feed, but public fetch of the deployed feed URL returned the Figma Make HTML shell, not RSS XML.",
+        "Merchant Center cannot be called ready until the public feed URL returns XML and account diagnostics are read back."
+      ],
+      "credential_source": "not recorded",
+      "status": "PERMISSION_DENIED"
+    },
+    {
+      "provider": "Analytics",
+      "dataset": "property ownership, consent behavior, events, conversions/key events, landing journeys, attribution, channel definitions, filters, retention, debug stream",
+      "property": "Microsoft Clarity source id xaxi6o0t5o is present in source; authenticated dashboard unavailable; GA4/GTM source not found",
+      "scope": {
+        "url_or_origin": "https://www.mitra-auto.fi",
+        "country": "FI primary",
+        "device": "desktop and mobile",
+        "search_type": "onsite behavior and conversion diagnostics",
+        "locale": "fi and en"
+      },
+      "date_range": {
+        "start": "UNAVAILABLE",
+        "end": "UNAVAILABLE",
+        "timezone": "analytics property timezone unavailable"
+      },
+      "aggregation": "events, sessions, landing routes, consent state, key-event candidates, source/medium if analytics platform supports it",
+      "retrieved_at": "UNAVAILABLE",
+      "freshness": "UNAVAILABLE",
+      "limitations": [
+        "No authenticated analytics dashboard/API access was available in this task.",
+        "Source contains consent-gated Microsoft Clarity helpers, but Clarity is not sufficient by itself for Search Console integration, ecommerce revenue, or booking/order reconciliation.",
+        "No GA4, GTM, or dataLayer implementation was found in reviewed source.",
+        "D-1 and D-2 contracts must be implemented before key-event reporting is trusted."
+      ],
+      "credential_source": "not recorded",
+      "status": "PERMISSION_DENIED"
+    },
+    {
+      "provider": "CrUX/PageSpeed Insights",
+      "dataset": "field Core Web Vitals, lab diagnostics, URL and origin samples",
+      "property": "UNAVAILABLE",
+      "scope": {
+        "url_or_origin": "https://www.mitra-auto.fi",
+        "country": "all",
+        "device": "mobile and desktop",
+        "search_type": "performance/user experience",
+        "locale": "not applicable"
+      },
+      "date_range": {
+        "start": "UNAVAILABLE",
+        "end": "UNAVAILABLE",
+        "timezone": "not applicable"
+      },
+      "aggregation": "origin and representative URL field/lab data",
+      "retrieved_at": "UNAVAILABLE",
+      "freshness": "UNAVAILABLE",
+      "limitations": [
+        "No PageSpeed or CrUX API/readback was run in this task.",
+        "Field data must not be inferred from Lighthouse, build, or local browser tests."
+      ],
+      "credential_source": "not recorded",
+      "status": "UNAVAILABLE_NOT_REQUESTED"
+    }
+  ],
+  "public_fetch_readback": [
+    {
+      "url": "https://www.mitra-auto.fi/robots.txt",
+      "expected": "200 text/plain robots rules pointing to sitemap URLs",
+      "observed": "HTTP 404 text/plain",
+      "severity": "critical",
+      "impact": "Search crawlers and Search Console cannot discover the declared sitemap from robots.txt."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap.xml",
+      "expected": "200 XML sitemap",
+      "observed": "HEAD returned 200 text/html Figma Make shell; body fetch returned 404 during one request",
+      "severity": "critical",
+      "impact": "Search Console sitemap submission and crawler sitemap parsing are not reliable."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "expected": "200 XML product sitemap index",
+      "observed": "HTTP 200 text/html Figma Make shell",
+      "severity": "critical",
+      "impact": "Product URL discovery through the deployed product sitemap is broken."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products-1.xml",
+      "expected": "200 XML product child sitemap",
+      "observed": "HTTP 200 text/html Figma Make shell",
+      "severity": "critical",
+      "impact": "Product sitemap children are not being served as XML."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/merchant-products.xml",
+      "expected": "200 RSS/XML Merchant product feed",
+      "observed": "HTTP 200 text/html Figma Make shell",
+      "severity": "critical",
+      "impact": "Merchant Center feed fetch will fail or ingest the wrong content."
+    }
+  ],
+  "required_owner_register": [
+    {
+      "platform": "Search Console",
+      "required_owner": "SEO/Platform owner",
+      "required_backup_owner": "Business/Engineering backup",
+      "minimum_access": "verified owner or full user with URL Inspection/API access",
+      "cadence": "weekly until launch, then monthly plus release/incident checks"
+    },
+    {
+      "platform": "Google Business Profile",
+      "required_owner": "Business/local owner",
+      "required_backup_owner": "SEO/Operations backup",
+      "minimum_access": "profile manager with edit and diagnostics access",
+      "cadence": "weekly during fact cleanup, then monthly plus hours/review checks"
+    },
+    {
+      "platform": "Merchant Center",
+      "required_owner": "Ecommerce/catalog owner",
+      "required_backup_owner": "Engineering/SEO backup",
+      "minimum_access": "standard access to feeds, diagnostics, products, destinations, account issues",
+      "cadence": "daily during feed launch, then weekly/monthly depending on item churn"
+    },
+    {
+      "platform": "Analytics",
+      "required_owner": "Analytics owner",
+      "required_backup_owner": "Engineering/Business backup",
+      "minimum_access": "admin/editor for property configuration and debug readback",
+      "cadence": "release QA, weekly during launch, monthly governance"
+    }
+  ],
+  "gate_result": {
+    "d3_local_contract": "complete",
+    "platform_readback_status": "blocked_by_missing_authenticated_access",
+    "production_static_asset_status": "critical_deployed_asset_mismatch",
+    "growth_ready_status": "blocked",
+    "next_required_task": "D-4 - Conversion, SXO, And Accessibility QA"
+  }
+}

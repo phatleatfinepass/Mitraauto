@@ -1,0 +1,44 @@
+{
+  "tool_version": "4.1.0",
+  "generated_at": "2026-06-22T14:58:41.962546+00:00",
+  "project": "Mitra Auto",
+  "experiments": 4,
+  "findings": [
+    {
+      "severity": "advisory",
+      "code": "instrumentation-unverified",
+      "experiment": "service_booking_decision_support",
+      "message": "Instrumentation still requires validation before this draft can become ready."
+    },
+    {
+      "severity": "advisory",
+      "code": "instrumentation-unverified",
+      "experiment": "product_fitment_purchase_clarity",
+      "message": "Instrumentation still requires validation before this draft can become ready."
+    },
+    {
+      "severity": "advisory",
+      "code": "instrumentation-unverified",
+      "experiment": "checkout_recovery_accessibility",
+      "message": "Instrumentation still requires validation before this draft can become ready."
+    },
+    {
+      "severity": "advisory",
+      "code": "instrumentation-unverified",
+      "experiment": "local_contact_action_quality",
+      "message": "Instrumentation still requires validation before this draft can become ready."
+    }
+  ],
+  "summary": {
+    "blocker": 0,
+    "critical": 0,
+    "warning": 0,
+    "advisory": 4
+  },
+  "governance": [
+    "Do not peek and stop merely when a desired result appears.",
+    "Do not switch the primary metric after observing results without marking the analysis exploratory.",
+    "Statistical significance does not guarantee practical value, durability, or acceptable guardrails.",
+    "When randomization is infeasible, label observational or staged-rollout conclusions appropriately."
+  ]
+}

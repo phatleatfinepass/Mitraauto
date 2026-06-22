@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Droplet,
+  ExternalLink,
   Gauge,
   Heart,
   Lock,
@@ -31,12 +32,15 @@ import { Separator } from '../ui/separator';
 import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { buildProductImageFallback } from '../../utils/productImage';
-import { calculateLinePricing, type ProductPricingRules } from '../../utils/pricing';
+import { calculateLinePricing, PRODUCT_VAT_MULTIPLIER, type ProductPricingRules } from '../../utils/pricing';
+import { getProductCommerceSnapshot } from '../../utils/productCommerce';
 import { fetchProductLocaleContent, type ProductLocaleContent } from '../../utils/productsSearch';
+import { getCatalogProductDetailPath, getCatalogProductSeoIdentifier } from '../../utils/catalogSeo';
 import type { TyreLabelSectionData } from '../../utils/tyreLabel';
+import { businessProfile, getLocalBusinessSchema, localBusinessIds } from '../../config/businessProfile';
 
-const VAT_RATE = 0.255;
-const VAT_MULTIPLIER = 1 + VAT_RATE;
+const LOCALIZED_HOME_PATHS = { fi: '/', en: '/en' } as const;
+const LOCALIZED_CATALOG_PATHS = { fi: '/catalog', en: '/en/catalog' } as const;
 
 export interface TireProduct {
   type: 'tire';
@@ -83,6 +87,7 @@ export interface TireProduct {
   warranty_years?: number;
   rating?: number;
   review_count?: number;
+  ean?: string;
 }
 
 export interface RimProduct {
@@ -92,6 +97,7 @@ export interface RimProduct {
   model: string;
   title?: string;
   subtitle?: string;
+  size_text?: string;
   rim_width?: number;
   rim_diameter?: number;
   pcd?: string;
@@ -124,6 +130,65 @@ export interface RimProduct {
 }
 
 export type Product = TireProduct | RimProduct;
+
+function hasSellableProductPrice(price?: number | null) {
+  return typeof price === 'number' && Number.isFinite(price) && price > 0;
+}
+
+function firstNonEmptyText(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const normalized = String(value ?? '').trim();
+    if (normalized) return normalized;
+  }
+
+  return '';
+}
+
+function getProductRouteSizeText(product: Product) {
+  if (product.type === 'tire') {
+    const size =
+      product.tire_width && product.aspect_ratio && product.rim_diameter
+        ? `${product.tire_width} / ${String(product.aspect_ratio).padStart(2, '0')} ${product.construction ?? 'R'}${String(product.rim_diameter).padStart(2, '0')}`
+        : null;
+
+    return [
+      size,
+      product.load_index,
+      product.speed_rating,
+    ].filter(Boolean).join(' ');
+  }
+
+  if (product.size_text) {
+    return product.size_text;
+  }
+
+  return product.rim_width && product.rim_diameter
+    ? `${product.rim_width}x${product.rim_diameter}`
+    : undefined;
+}
+
+function getProductDetailHref(product: Product, language: 'fi' | 'en') {
+  const sizeText = getProductRouteSizeText(product);
+  return getCatalogProductDetailPath(
+    product.type,
+    getCatalogProductSeoIdentifier({
+      id: product.id,
+      seo_slug: product.seo_slug,
+      type: product.type,
+      brand: product.brand,
+      model: product.model,
+      size_text: sizeText,
+      season: product.type === 'tire' ? product.season : undefined,
+      rim_width: product.type === 'rim' ? product.rim_width : undefined,
+      rim_diameter: product.type === 'rim' ? product.rim_diameter : undefined,
+      pcd: product.type === 'rim' ? product.pcd : undefined,
+      et_offset: product.type === 'rim' ? product.et_offset : undefined,
+      cb: product.type === 'rim' ? product.cb : undefined,
+      color: product.type === 'rim' ? product.color : undefined,
+    }),
+    language,
+  );
+}
 
 interface ProductDetailPageProps {
   product: Product;
@@ -511,10 +576,6 @@ export function ProductDetailPage({
     fi: localeContent?.long_description_fi ?? null,
     en: localeContent?.long_description_en ?? null,
   }[language];
-  const localizedSeoSlug = {
-    fi: localeContent?.seo_slug_fi ?? localeContent?.seo_slug_en ?? null,
-    en: localeContent?.seo_slug_en ?? localeContent?.seo_slug_fi ?? null,
-  }[language];
   const localizedSeoTitle = {
     fi: localeContent?.seo_title_fi ?? localeContent?.seo_title_en ?? null,
     en: localeContent?.seo_title_en ?? localeContent?.seo_title_fi ?? null,
@@ -536,11 +597,30 @@ export function ProductDetailPage({
       ? product.compatible_vehicles.filter((item): item is string => Boolean(item && String(item).trim()))
       : [];
   const hasReviewData = typeof product.rating === 'number' && typeof product.review_count === 'number' && product.review_count > 0;
-  const price = product.best_price_eur || 0;
+  const hasSellablePrice = hasSellableProductPrice(product.best_price_eur);
+  const price = hasSellablePrice ? product.best_price_eur ?? 0 : 0;
   const pricingForQuantity = calculateLinePricing(price, quantity, product.pricing_rules ?? null);
-  const displayUnitPrice = pricingForQuantity.effectiveUnitPriceEur * VAT_MULTIPLIER;
-  const totalPrice = pricingForQuantity.lineTotalEur * VAT_MULTIPLIER;
-  const hasTierDiscount = pricingForQuantity.savingsEur > 0;
+  const commerce = getProductCommerceSnapshot(product, { quantity, displayName });
+  const displayUnitPrice = commerce.unitPriceInclVatEur;
+  const totalPrice = commerce.lineTotalInclVatEur;
+  const hasTierDiscount = hasSellablePrice && pricingForQuantity.savingsEur > 0;
+  const homePath = LOCALIZED_HOME_PATHS[language];
+  const catalogPath = LOCALIZED_CATALOG_PATHS[language];
+  const homeLabel = t('nav.home');
+  const catalogLabel = t('nav.catalog');
+  const canonicalBaseUrl = businessProfile.websiteUrl.replace(/\/+$/, '');
+  const productImageListKey = images.join('|');
+  const productRouteSizeText = getProductRouteSizeText(product);
+  const productSeoLabel = [displayName, productRouteSizeText].filter(Boolean).join(' ');
+  const productSeoPrice = hasSellablePrice ? `${displayUnitPrice.toFixed(2)} EUR` : t('productSeo.priceOnRequest');
+  const fallbackSeoTitle = t('productSeo.title', { product: productSeoLabel || displayName });
+  const fallbackSeoDescription = t(
+    product.type === 'tire' ? 'productSeo.tireDescription' : 'productSeo.rimDescription',
+    {
+      product: productSeoLabel || displayName,
+      price: productSeoPrice,
+    },
+  );
 
   useEffect(() => {
     setQuantity(defaultQuantity);
@@ -572,15 +652,24 @@ export function ProductDetailPage({
   }, []);
 
   useEffect(() => {
+    const previousLang = document.documentElement.lang;
+    const previousTitle = document.title;
     document.documentElement.lang = language;
 
-    const title = String(localizedSeoTitle ?? displayName ?? '').trim();
+    const title = firstNonEmptyText(localizedSeoTitle, fallbackSeoTitle, displayName);
     if (title) {
       document.title = title;
     }
 
-    const description = String(localizedSeoDescription ?? shortDescription ?? detailDescription ?? '').trim();
-    let descriptionTag = document.querySelector('meta[name="description"]');
+    const description = firstNonEmptyText(
+      localizedSeoDescription,
+      shortDescription,
+      detailDescription,
+      fallbackSeoDescription,
+    );
+    let descriptionTag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const previousDescription = descriptionTag?.content ?? '';
+    const createdDescription = !descriptionTag;
     if (!descriptionTag) {
       descriptionTag = document.createElement('meta');
       descriptionTag.setAttribute('name', 'description');
@@ -588,22 +677,49 @@ export function ProductDetailPage({
     }
     descriptionTag.setAttribute('content', description);
 
-    const origin = window.location.origin;
-    const seoSlug = String(localizedSeoSlug ?? (product as any).seo_slug ?? '').trim();
-    const productPath = `/catalog/${product.type}/${seoSlug || product.id}`;
-    const currentPath = { fi: productPath, en: `/en${productPath}` }[language];
-    const alternatePath = { fi: `/en${productPath}`, en: productPath }[language];
+    const origin = canonicalBaseUrl;
+    const routeProduct = {
+      id: product.id,
+      seo_slug: product.seo_slug,
+      product_type: product.type,
+      brand: product.brand,
+      model: product.model,
+      size_text: productRouteSizeText,
+      season: product.type === 'tire' ? product.season : undefined,
+      rim_width: product.type === 'rim' ? product.rim_width : undefined,
+      rim_diameter: product.type === 'rim' ? product.rim_diameter : undefined,
+      pcd: product.type === 'rim' ? product.pcd : undefined,
+      et_offset: product.type === 'rim' ? product.et_offset : undefined,
+      cb: product.type === 'rim' ? product.cb : undefined,
+      color: product.type === 'rim' ? product.color : undefined,
+    };
+    const fiIdentifier = getCatalogProductSeoIdentifier(
+      routeProduct,
+      localeContent?.seo_slug_fi ?? localeContent?.seo_slug_en,
+    );
+    const enIdentifier = getCatalogProductSeoIdentifier(
+      routeProduct,
+      localeContent?.seo_slug_en ?? localeContent?.seo_slug_fi,
+    );
+    const fiPath = getCatalogProductDetailPath(product.type, fiIdentifier, 'fi');
+    const enPath = getCatalogProductDetailPath(product.type, enIdentifier, 'en');
+    const currentPath = { fi: fiPath, en: enPath }[language];
+    const canonicalUrl = `${origin}${currentPath}`;
 
-    let canonicalTag = document.querySelector('link[rel="canonical"]');
+    let canonicalTag = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const previousCanonical = canonicalTag?.href ?? '';
+    const createdCanonical = !canonicalTag;
     if (!canonicalTag) {
       canonicalTag = document.createElement('link');
       canonicalTag.setAttribute('rel', 'canonical');
       document.head.appendChild(canonicalTag);
     }
-    canonicalTag.setAttribute('href', `${origin}${currentPath}`);
+    canonicalTag.setAttribute('href', canonicalUrl);
 
     const updateAlternate = (hreflang: string, href: string) => {
-      let link = document.querySelector(`link[rel="alternate"][hreflang="${hreflang}"]`);
+      let link = document.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${hreflang}"]`);
+      const previousHref = link?.href ?? '';
+      const created = !link;
       if (!link) {
         link = document.createElement('link');
         link.setAttribute('rel', 'alternate');
@@ -611,20 +727,178 @@ export function ProductDetailPage({
         document.head.appendChild(link);
       }
       link.setAttribute('href', href);
+      return { link, previousHref, created };
     };
 
-    updateAlternate('fi', `${origin}/catalog/${product.type}/${seoSlug || product.id}`);
-    updateAlternate('en', `${origin}/en/catalog/${product.type}/${seoSlug || product.id}`);
-    updateAlternate('x-default', `${origin}${alternatePath}`);
+    const alternateLinks = [
+      updateAlternate('fi', `${origin}${fiPath}`),
+      updateAlternate('en', `${origin}${enPath}`),
+      updateAlternate('x-default', `${origin}${fiPath}`),
+    ];
+
+    const imageUrls = images
+      .map((src) => {
+        try {
+          return new URL(src, origin).href;
+        } catch {
+          return src;
+        }
+      })
+      .filter(Boolean);
+    const additionalProperties = (
+      product.type === 'tire'
+        ? [
+            { name: 'Season', value: product.season },
+            { name: 'Size', value: productRouteSizeText },
+            { name: 'Load index', value: product.load_index },
+            { name: 'Speed rating', value: product.speed_rating },
+            { name: 'Fuel efficiency', value: product.fuel_efficiency },
+            { name: 'Wet grip', value: product.wet_grip },
+            { name: 'Noise level', value: product.noise_level ? `${product.noise_level} dB` : undefined },
+            { name: 'Manufacture year', value: product.manufacture_year ? String(product.manufacture_year) : undefined },
+          ]
+        : [
+            { name: 'Size', value: productRouteSizeText },
+            { name: 'PCD', value: product.pcd },
+            { name: 'Offset', value: product.et_offset !== undefined ? `ET${product.et_offset}` : undefined },
+            { name: 'Center bore', value: product.cb ? `${product.cb} mm` : undefined },
+            { name: 'Material', value: product.material },
+            { name: 'Finish', value: product.finish },
+            { name: 'Color', value: product.color },
+          ]
+    )
+      .filter((property): property is { name: string; value: string } => Boolean(property.value))
+      .map((property) => ({
+        '@type': 'PropertyValue',
+        name: property.name,
+        value: property.value,
+      }));
+
+    let productJsonLd = document.querySelector<HTMLScriptElement>('script[data-product-seo-jsonld]');
+    if (!productJsonLd) {
+      productJsonLd = document.createElement('script');
+      productJsonLd.type = 'application/ld+json';
+      productJsonLd.dataset.productSeoJsonld = 'true';
+      document.head.appendChild(productJsonLd);
+    }
+    const commerceSchema = getProductCommerceSnapshot(product, {
+      quantity: 1,
+      displayName,
+    });
+    const stockQuantity = commerceSchema.stockQuantity ?? undefined;
+    const productSchema = {
+      '@type': 'Product',
+      '@id': `${canonicalUrl}#product`,
+      url: canonicalUrl,
+      name: displayName,
+      description,
+      image: imageUrls,
+      category: product.type === 'tire' ? 'Tires' : 'Rims',
+      brand: {
+        '@type': 'Brand',
+        name: product.brand,
+      },
+      sku: commerceSchema.sku || undefined,
+      gtin: commerceSchema.gtin || undefined,
+      mpn: commerceSchema.mpn || undefined,
+      additionalProperty: additionalProperties.length > 0 ? additionalProperties : undefined,
+      offers: commerceSchema.hasSellablePrice
+        ? {
+            '@type': 'Offer',
+            url: canonicalUrl,
+            priceCurrency: 'EUR',
+            price: commerceSchema.unitPriceInclVatEur.toFixed(2),
+            availability: commerceSchema.schemaAvailability,
+            itemCondition: 'https://schema.org/NewCondition',
+            inventoryLevel: stockQuantity !== undefined
+              ? {
+                  '@type': 'QuantitativeValue',
+                  value: stockQuantity,
+                }
+              : undefined,
+            seller: {
+              '@type': 'Organization',
+              '@id': localBusinessIds.organization,
+              name: businessProfile.publicName,
+            },
+          }
+        : undefined,
+    };
+    const breadcrumbSchema = {
+      '@type': 'BreadcrumbList',
+      '@id': `${canonicalUrl}#breadcrumb`,
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: homeLabel,
+          item: `${origin}${homePath === '/' ? '' : homePath}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: catalogLabel,
+          item: `${origin}${catalogPath}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: displayName,
+          item: canonicalUrl,
+        },
+      ],
+    };
+    productJsonLd.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [getLocalBusinessSchema(), productSchema, breadcrumbSchema],
+    });
+
+    return () => {
+      document.documentElement.lang = previousLang;
+      document.title = previousTitle;
+      if (descriptionTag) {
+        if (createdDescription) {
+          descriptionTag.remove();
+        } else {
+          descriptionTag.content = previousDescription;
+        }
+      }
+      if (canonicalTag) {
+        if (createdCanonical) {
+          canonicalTag.remove();
+        } else {
+          canonicalTag.href = previousCanonical;
+        }
+      }
+      alternateLinks.forEach(({ link, previousHref, created }) => {
+        if (created) {
+          link.remove();
+        } else {
+          link.href = previousHref;
+        }
+      });
+      productJsonLd?.remove();
+    };
   }, [
     detailDescription,
     displayName,
+    catalogLabel,
+    catalogPath,
+    canonicalBaseUrl,
+    fallbackSeoDescription,
+    fallbackSeoTitle,
+    homeLabel,
+    homePath,
+    hasSellablePrice,
     language,
+    localeContent?.seo_slug_en,
+    localeContent?.seo_slug_fi,
     localizedSeoDescription,
-    localizedSeoSlug,
     localizedSeoTitle,
-    product.id,
-    product.type,
+    price,
+    product,
+    productImageListKey,
+    productRouteSizeText,
     shortDescription,
   ]);
 
@@ -831,20 +1105,78 @@ export function ProductDetailPage({
       body: productText('returnsDesc'),
     },
   ];
+  const buyingGuideItems = product.type === 'tire'
+    ? [
+        {
+          title: productText('fitmentCheckTitle'),
+          body: productText('fitmentCheckTire'),
+        },
+        {
+          title: productText('productUseTitle'),
+          body: productText('productUseTire'),
+        },
+        {
+          title: productText('installationTitle'),
+          body: productText('installationBody'),
+        },
+        {
+          title: productText('lifecycleTitle'),
+          body: productText('lifecycleBody'),
+        },
+      ]
+    : [
+        {
+          title: productText('fitmentCheckTitle'),
+          body: productText('fitmentCheckRim'),
+        },
+        {
+          title: productText('productUseTitle'),
+          body: productText('productUseRim'),
+        },
+        {
+          title: productText('installationTitle'),
+          body: productText('installationBody'),
+        },
+        {
+          title: productText('lifecycleTitle'),
+          body: productText('lifecycleBody'),
+        },
+      ];
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#11141A]' : 'bg-white'}`}>
       <div className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-[#E2E8F0]'}`}>
         <div className="mx-auto max-w-[1280px] px-4 py-4 sm:px-6">
-          <button
-            onClick={handleBack}
-            className={`flex items-center gap-2 transition-colors ${
-              theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <ArrowLeft className="size-5" />
-            <span className="text-sm">{productText('backToSearch')}</span>
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <nav
+              aria-label={productText('breadcrumb')}
+              className={`flex min-w-0 flex-wrap items-center gap-2 text-sm ${
+                theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'
+              }`}
+            >
+              <a href={homePath} className={theme === 'dark' ? 'hover:text-white' : 'hover:text-[#0F172A]'}>
+                {homeLabel}
+              </a>
+              <span aria-hidden="true">/</span>
+              <a href={catalogPath} className={theme === 'dark' ? 'hover:text-white' : 'hover:text-[#0F172A]'}>
+                {catalogLabel}
+              </a>
+              <span aria-hidden="true">/</span>
+              <span className={`max-w-[min(34rem,80vw)] truncate ${theme === 'dark' ? 'text-gray-200' : 'text-[#0F172A]'}`}>
+                {displayName}
+              </span>
+            </nav>
+
+            <button
+              onClick={handleBack}
+              className={`flex items-center gap-2 transition-colors ${
+                theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-[#64748B] hover:text-[#0F172A]'
+              }`}
+            >
+              <ArrowLeft className="size-5" />
+              <span className="text-sm">{productText('backToSearch')}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1051,22 +1383,28 @@ export function ProductDetailPage({
               <Separator className={`my-6 ${theme === 'dark' ? 'bg-white/10' : 'bg-[#E2E8F0]'}`} />
 
               <div className="space-y-4">
-                <div className="flex items-end gap-3">
-                  <span className="text-4xl text-[#FF6B00]">€{displayUnitPrice.toFixed(2)}</span>
-                  <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {productText('perPcs')}</span>
-                </div>
+                {hasSellablePrice ? (
+                  <div className="flex items-end gap-3">
+                    <span className="text-4xl text-[#FF6B00]">€{displayUnitPrice.toFixed(2)}</span>
+                    <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {productText('perPcs')}</span>
+                  </div>
+                ) : (
+                  <p className="text-3xl text-[#FF6B00]">{productText('priceOnRequest')}</p>
+                )}
 
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
-                  {productText('vatIncluded')}
-                </p>
-
-                {hasTierDiscount && (
+                {hasSellablePrice && (
                   <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
-                    {productText('basePrice')}: €{(price * VAT_MULTIPLIER).toFixed(2)} / {productText('perPcs')}
+                    {productText('vatIncluded')}
                   </p>
                 )}
 
-                {quantity > 1 && (
+                {hasTierDiscount && (
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'}`}>
+                    {productText('basePrice')}: €{(price * PRODUCT_VAT_MULTIPLIER).toFixed(2)} / {productText('perPcs')}
+                  </p>
+                )}
+
+                {hasSellablePrice && quantity > 1 && (
                   <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
                     {productText('total')}: <span className={theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}>€{totalPrice.toFixed(2)}</span>
                   </p>
@@ -1128,11 +1466,15 @@ export function ProductDetailPage({
 
                 <Button
                   onClick={() => onAddToCart?.(product, quantity)}
-                  disabled={!product.in_stock}
+                  disabled={!product.in_stock || !hasSellablePrice}
                   className="h-12 w-full bg-[#FF6B00] text-white hover:bg-[#FF6B00]/90 disabled:opacity-50"
                 >
                   <Package className="mr-2 size-5" />
-                  {product.in_stock ? productText('addToCart') : productText('soldOut')}
+                  {product.in_stock
+                    ? hasSellablePrice
+                      ? productText('addToCart')
+                      : productText('priceOnRequest')
+                    : productText('soldOut')}
                 </Button>
 
                 <div className="flex flex-wrap gap-2">
@@ -1215,6 +1557,28 @@ export function ProductDetailPage({
               <div className="mt-6">
                 <SpecList theme={theme} rows={technicalRows} />
               </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('buyingGuide')}</h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {buyingGuideItems.map((item) => (
+                <div
+                  key={item.title}
+                  className={`rounded-3xl border p-6 ${
+                    theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-[#E2E8F0] bg-[#F8FAFC]'
+                  }`}
+                >
+                  <div className={`mb-4 inline-flex rounded-full p-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-white'}`}>
+                    <Check className={`size-5 ${theme === 'dark' ? 'text-gray-200' : 'text-[#FF6B00]'}`} />
+                  </div>
+                  <h3 className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{item.title}</h3>
+                  <p className={`mt-2 text-sm leading-6 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                    {item.body}
+                  </p>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -1304,15 +1668,18 @@ export function ProductDetailPage({
             <section className="pb-16">
               <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('youMayLike')}</h2>
               <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {relatedProducts.slice(0, 4).map((relatedProduct, index) => (
-                  <div key={relatedProduct.id}>
-                    {relatedProduct.type === 'tire' ? (
-                      <TireCard product={relatedProduct as any} index={index} />
-                    ) : (
-                      <RimCard product={relatedProduct as any} index={index} />
-                    )}
-                  </div>
-                ))}
+                {relatedProducts.slice(0, 4).map((relatedProduct, index) => {
+                  const relatedHref = getProductDetailHref(relatedProduct, language);
+                  return (
+                    <div key={relatedProduct.id}>
+                      {relatedProduct.type === 'tire' ? (
+                        <TireCard product={relatedProduct as any} href={relatedHref} index={index} />
+                      ) : (
+                        <RimCard product={relatedProduct as any} href={relatedHref} index={index} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -1333,15 +1700,23 @@ export function ProductDetailPage({
           >
             <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
               <div>
-                <p className="text-2xl text-[#FF6B00]">€{displayUnitPrice.toFixed(2)}</p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {productText('perPcs')}</p>
+                <p className="text-2xl text-[#FF6B00]">
+                  {hasSellablePrice ? `€${displayUnitPrice.toFixed(2)}` : productText('priceOnRequest')}
+                </p>
+                {hasSellablePrice && (
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>/ {productText('perPcs')}</p>
+                )}
               </div>
               <Button
                 onClick={() => onAddToCart?.(product, quantity)}
-                disabled={!product.in_stock}
+                disabled={!product.in_stock || !hasSellablePrice}
                 className="h-11 bg-[#FF6B00] px-6 text-white hover:bg-[#FF6B00]/90"
               >
-                {product.in_stock ? productText('addToCart') : productText('soldOut')}
+                {product.in_stock
+                  ? hasSellablePrice
+                    ? productText('addToCart')
+                    : productText('priceOnRequest')
+                  : productText('soldOut')}
               </Button>
             </div>
           </motion.div>

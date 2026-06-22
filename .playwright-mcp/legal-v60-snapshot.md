@@ -1,0 +1,127 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - navigation [ref=e5]:
+      - generic [ref=e7]:
+        - link "Mitra Auto Mitra Auto" [ref=e8] [cursor=pointer]:
+          - /url: /en
+          - img "Mitra Auto" [ref=e9]
+          - generic [ref=e10]: Mitra Auto
+        - generic [ref=e11]:
+          - link "Home" [ref=e12] [cursor=pointer]:
+            - /url: /en
+          - link "Services" [ref=e13] [cursor=pointer]:
+            - /url: /en/services
+          - link "Catalog" [ref=e14] [cursor=pointer]:
+            - /url: /en/catalog
+          - link "Tire Hotel" [ref=e15] [cursor=pointer]:
+            - /url: /en/services/tire-hotel
+        - generic [ref=e16]:
+          - button "Toggle theme" [ref=e17]:
+            - img [ref=e18]
+          - button "Toggle language" [ref=e20]:
+            - img [ref=e21]
+            - generic [ref=e24]: en
+          - button "Cart" [ref=e25]:
+            - img [ref=e26]
+          - button "Login" [ref=e30]:
+            - img [ref=e31]
+    - main [ref=e34]:
+      - generic [ref=e35]:
+        - generic [ref=e37]:
+          - heading "Document History" [level=3] [ref=e38]
+          - generic [ref=e40]:
+            - button "Previous version" [ref=e41]
+            - generic [ref=e46]
+            - button "Next version" [disabled] [ref=e59]
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - generic [ref=e66]
+            - paragraph [ref=e70]: How we collect, process and protect your personal data and vehicle information in accordance with GDPR and Finnish Data Protection Act.
+            - generic [ref=e71]
+          - generic [ref=e79]:
+            - generic [ref=e80]
+            - generic [ref=e97]
+            - generic [ref=e107]
+            - generic [ref=e122]
+            - generic [ref=e130]
+            - generic [ref=e143]
+            - generic [ref=e156]
+            - generic [ref=e164]
+            - generic [ref=e169]
+            - generic [ref=e179]
+            - generic [ref=e182]
+            - generic [ref=e191]
+            - generic [ref=e199]
+            - generic [ref=e203]
+            - generic [ref=e224]
+            - generic [ref=e235]
+            - generic [ref=e238]
+        - generic [ref=e246]:
+          - generic [ref=e247]:
+            - generic [ref=e248]
+            - paragraph [ref=e252]: General terms and conditions under which Mitra Auto Oy provides automotive service, tire services, inspection, and tire hotel services in Finland.
+            - generic [ref=e253]
+          - generic [ref=e261]:
+            - generic [ref=e262]
+            - generic [ref=e275]
+            - generic [ref=e286]
+            - generic [ref=e303]
+            - generic [ref=e310]
+            - generic [ref=e317]
+            - generic [ref=e324]
+            - generic [ref=e331]
+            - generic [ref=e338]
+            - generic [ref=e342]
+            - generic [ref=e349]
+            - generic [ref=e354]
+            - generic [ref=e361]
+            - generic [ref=e369]
+            - generic [ref=e377]
+            - generic [ref=e381]
+            - generic [ref=e385]
+            - generic [ref=e389]
+            - generic [ref=e399]
+        - generic [ref=e406]:
+          - generic [ref=e407]:
+            - heading "Payment Service Provider" [level=1] [ref=e408]
+            - paragraph [ref=e410]: Information about payment intermediation and payment service provider.
+            - generic [ref=e411]
+          - generic [ref=e417]:
+            - paragraph [ref=e418]: Paytrail Oyj is a collecting payment service provider and an authorized Payment Institution working in cooperation with Finnish banks and credit institutions. Paytrail Oyj will be shown as the recipient on your bank or credit card statement. Paytrail Oyj will forward the payment to the merchant. For complaints, please contact the website the payment was made to.
+            - generic [ref=e419]
+    - contentinfo [ref=e430]:
+      - generic [ref=e431]:
+        - generic [ref=e433]:
+          - generic [ref=e434]:
+            - generic [ref=e435]
+            - paragraph [ref=e438]: Full-service garage with tire, maintenance and repair services.
+            - generic [ref=e439]
+          - generic [ref=e444]:
+            - heading "Shop" [level=3] [ref=e445]
+            - list [ref=e446]
+          - generic [ref=e449]:
+            - heading "Services" [level=3] [ref=e450]
+            - list [ref=e451]
+          - generic [ref=e456]:
+            - heading "Company" [level=3] [ref=e457]
+            - list [ref=e458]
+          - generic [ref=e463]:
+            - heading "Legal" [level=3] [ref=e464]
+            - list [ref=e465]
+        - generic [ref=e473]:
+          - paragraph [ref=e474]: © Mitra Auto 2026
+          - generic [ref=e475]:
+            - link "Facebook" [ref=e476] [cursor=pointer]:
+              - /url: https://facebook.com
+            - link "Twitter" [ref=e479] [cursor=pointer]:
+              - /url: https://twitter.com
+            - link "Instagram" [ref=e482] [cursor=pointer]:
+              - /url: https://instagram.com
+            - link "LinkedIn" [ref=e486] [cursor=pointer]:
+              - /url: https://linkedin.com
+          - generic [ref=e491]:
+            - button "FI" [ref=e492]
+            - button "EN" [ref=e493]
+  - region "Notifications alt+T"

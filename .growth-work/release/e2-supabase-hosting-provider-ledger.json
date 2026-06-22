@@ -1,0 +1,147 @@
+{
+  "id": "E-2",
+  "name": "Supabase, Hosting, And Provider Ledger",
+  "recordedDate": "2026-06-22",
+  "status": "complete_with_provider_blockers",
+  "lifecycleMode": "LAUNCH",
+  "evidenceStates": {
+    "projectWrapper": "EXECUTED",
+    "supabaseMcp": "EXECUTED",
+    "supabaseDatabaseReadback": "EXECUTED",
+    "supabaseFunctionsReadback": "EXECUTED_WITH_FINDINGS",
+    "cloudflareAuthenticatedReadback": "UNAVAILABLE",
+    "publicHostingReadback": "EXECUTED_WITH_FINDINGS",
+    "secretHygiene": "EXECUTED_WITH_FINDINGS"
+  },
+  "projectIdentity": {
+    "projectDir": "/Users/chandler/code/Mitraauto-main",
+    "projectSlug": "mitraauto",
+    "supabaseProjectRef": "rcmmbwdebnmicrweoiyz",
+    "supabaseUrl": "https://rcmmbwdebnmicrweoiyz.supabase.co",
+    "supabaseMcpServer": "supabase-mitra",
+    "supabaseMcpUrl": "https://mcp.supabase.com/mcp?project_ref=rcmmbwdebnmicrweoiyz"
+  },
+  "secretStatus": {
+    "databasePasswordKeychain": "set",
+    "DATABASE_URL": "set",
+    "SUPABASE_TRANSACTION_POOLER_URL": "set",
+    "SUPABASE_SESSION_POOLER_URL": "set",
+    "CLOUDFLARE_API_TOKEN": "missing",
+    "CLOUDFLARE_ACCOUNT_ID": "missing",
+    "CLOUDFLARE_ZONE_ID": "missing",
+    "CLOUDFLARE_ZONE_NAME": "missing",
+    "CLOUDFLARE_PAGES_PROJECT": "missing",
+    "PUBLIC_BASE_URL": "missing"
+  },
+  "supabaseDatabaseReadback": {
+    "readStatus": "ok",
+    "database": "postgres",
+    "postgresVersion": "17.6",
+    "targetMigrationsApplied": [
+      "20260621090000",
+      "20260621204946",
+      "20260621205611"
+    ],
+    "targetRpcSignatures": [
+      "catalog_get_rim_by_identifier_v1(p_identifier text)",
+      "catalog_get_tire_by_identifier_v1(p_identifier text)",
+      "catalog_list_product_sitemap_rows_v1(p_limit integer, p_offset integer)",
+      "catalog_public_product_slug(p_product_type text, p_brand text, p_model text, p_size_string text, p_season text, p_width_in numeric, p_rim_diameter_in numeric, p_bolt_pattern text, p_et_offset_mm numeric, p_center_bore_mm numeric, p_color text)",
+      "catalog_slugify_public_path_segment(p_value text)"
+    ]
+  },
+  "supabaseFunctionReadback": {
+    "cliVersion": "2.84.2",
+    "cliLatestNotice": "2.107.0 available",
+    "observedActiveFunctions": [
+      "payments_create_paytrail",
+      "payments_paytrail_webhook",
+      "booking_manage",
+      "send_booking_confirmation",
+      "send_order_confirmation",
+      "fitment_recommendations",
+      "etrto_recommend_tyres",
+      "rim_fitment_profile",
+      "vehicle_lookup"
+    ],
+    "finding": "payments_create_paytrail is active remotely, but local source is modified and remote UPDATED_AT predates the current Phase B-D checkout revalidation work. Treat deployed checkout revalidation as unverified until function deployment/readback is performed."
+  },
+  "hostingReadback": {
+    "publicHost": "https://www.mitra-auto.fi",
+    "edgeProviderObserved": "Cloudflare public response headers observed server=cloudflare and cf-ray.",
+    "apexRedirect": {
+      "url": "https://mitra-auto.fi/",
+      "finalUrl": "https://www.mitra-auto.fi/",
+      "http": 200,
+      "redirects": 1
+    },
+    "wwwHome": {
+      "url": "https://www.mitra-auto.fi/",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0
+    },
+    "opaqueProductUrlSample": {
+      "url": "https://www.mitra-auto.fi/catalog/tire/1234567890123",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "finding": "Local Cloudflare Pages function should redirect opaque product identifiers, but this public sample did not redirect."
+    },
+    "staticSeoAssets": [
+      {
+        "url": "https://www.mitra-auto.fi/robots.txt",
+        "http": 404,
+        "contentType": "text/plain;charset=UTF-8",
+        "finding": "robots.txt not deployed at public host."
+      },
+      {
+        "url": "https://www.mitra-auto.fi/sitemap.xml",
+        "http": 404,
+        "contentType": "text/plain;charset=UTF-8",
+        "finding": "sitemap.xml not deployed at public host."
+      },
+      {
+        "url": "https://www.mitra-auto.fi/merchant-products.xml",
+        "http": 200,
+        "contentType": "text/html",
+        "finding": "Merchant feed URL serves HTML shell, not XML feed."
+      }
+    ]
+  },
+  "localProviderSource": {
+    "cloudflarePagesFunction": "functions/[[path]].ts",
+    "headersSource": "src/public/_headers",
+    "redirectsSource": "src/public/_redirects",
+    "generatedHeadersCopy": "build/_headers",
+    "generatedRedirectsCopy": "build/_redirects",
+    "supabaseConfig": "supabase/config.toml",
+    "checkoutFunction": "supabase/functions/payments_create_paytrail/index.ts",
+    "newMigrations": [
+      "supabase/migrations/20260621090000_catalog_slug_identifier_routes.sql",
+      "supabase/migrations/20260621204946_catalog_product_sitemap_source.sql",
+      "supabase/migrations/20260621205611_catalog_product_sitemap_pagination.sql"
+    ]
+  },
+  "secretHygieneFindings": [
+    {
+      "path": ".vercel/.env.preview.local",
+      "gitStatus": "ignored_or_untracked",
+      "finding": "Local provider env file is present and contains sensitive marker names. The value is not copied into artifacts. Owner should remove/rotate as appropriate."
+    },
+    {
+      "path": ".env.example",
+      "gitStatus": "tracked",
+      "finding": "Reviewed as a template; no secret values were recorded in this ledger."
+    }
+  ],
+  "blockers": [
+    "Cloudflare authenticated account/zone/pages readback is unavailable because Cloudflare project variables and token are missing.",
+    "Public robots.txt and sitemap.xml return 404.",
+    "Public merchant-products.xml returns the HTML shell instead of XML.",
+    "Public opaque product URL sample did not redirect to a human-readable slug.",
+    "payments_create_paytrail local source is modified; deployed function parity is unverified.",
+    "Local ignored .vercel preview env contains sensitive marker names and needs owner cleanup/rotation decision."
+  ],
+  "nextTask": "E-3 - Live Crawl And Browser Smoke Evidence"
+}

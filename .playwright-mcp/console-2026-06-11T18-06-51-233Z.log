@@ -1,3 +1,0 @@
-[  197113ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:5173/src/components/site/modals/EmergencyTowModal.tsx:37
-[  197114ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1781201191824:641
-[  197176ms] [LOG] Auth state changed: INITIAL_SESSION undefined @ http://127.0.0.1:5173/src/SiteApp.tsx?t=1781201191824:341

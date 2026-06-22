@@ -3,6 +3,7 @@ import SiteApp from "./SiteApp.tsx";
 import { mountCmsPwaApp } from "./CmsPwaApp.tsx";
 import "./index.css";
 import { isInstalledPwaDisplay, isStandalonePwaDeploy } from "./config/runtime";
+import { initClarityForCurrentRuntime } from "./lib/clarity";
 
 const root = document.getElementById("root");
 
@@ -25,6 +26,7 @@ function bootstrap() {
   if (isCmsPwaRuntimePath(path)) {
     mountCmsPwaApp(root);
   } else {
+    initClarityForCurrentRuntime();
     createRoot(root).render(<SiteApp />);
   }
 

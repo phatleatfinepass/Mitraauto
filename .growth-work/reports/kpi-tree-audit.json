@@ -1,0 +1,91 @@
+{
+  "tool_version": "4.1.0",
+  "generated_at": "2026-06-22T14:58:41.963845+00:00",
+  "project": "Mitra Auto",
+  "north_star_metric_id": "fulfilled_profitable_customer_outcome",
+  "metrics": 16,
+  "relationships": 15,
+  "guardrails": 3,
+  "findings": [
+    {
+      "severity": "advisory",
+      "code": "weak-relationship-evidence",
+      "message": "Relationship product_view_count -> checkout_started_count is hypothesis."
+    },
+    {
+      "severity": "advisory",
+      "code": "weak-relationship-evidence",
+      "message": "Relationship local_contact_action_count -> server_accepted_booking_count is hypothesis."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "fulfilled_profitable_customer_outcome",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "organic_qualified_visit_count",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "completed_service_count",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "product_view_count",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "fulfilled_order_count",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "local_contact_action_count",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "retention_repeat_customer_count",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "revenue_eur",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "gross_or_contribution_profit_eur",
+      "message": "Metric quality is unverified."
+    },
+    {
+      "severity": "warning",
+      "code": "metric-quality",
+      "metric": "cancellation_refund_return_rate",
+      "message": "Metric quality is unverified."
+    }
+  ],
+  "summary": {
+    "blocker": 0,
+    "critical": 0,
+    "warning": 10,
+    "advisory": 2
+  },
+  "limits": [
+    "A KPI graph expresses the team's decision model; graph structure does not prove causal relationships.",
+    "Metric formulas must be reconciled to source-system implementation and privacy requirements."
+  ]
+}

@@ -1149,8 +1149,6 @@ export async function fetchProductSearchRowByIdentifier(
   const trimmedIdentifier = String(identifier ?? '').trim();
   if (!trimmedIdentifier) return null;
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedIdentifier);
-
   if (productType === 'rim') {
     const { data, error } = await supabase.rpc('catalog_get_rim_by_identifier_v1', {
       p_identifier: trimmedIdentifier,
@@ -1161,19 +1159,12 @@ export async function fetchProductSearchRowByIdentifier(
   }
 
   if (productType === 'tire') {
-    let query = supabase
-      .from('webshop_items')
-      .select(WEBSHOP_TIRE_PUBLIC_SELECT)
-      .eq('product_type', 'tire')
-      .eq('is_visible', true)
-      .eq('publish_status', 'published')
-      .limit(1);
-
-    query = isUuid ? query.eq('variant_id', trimmedIdentifier) : query.eq('seo_slug', trimmedIdentifier);
-
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await supabase.rpc('catalog_get_tire_by_identifier_v1', {
+      p_identifier: trimmedIdentifier,
+    });
     if (error) throw error;
-    return data ? ({ ...(data as ProductSearchRow), pricing_rules: null, final_is_hidden: false }) : null;
+    const rows = Array.isArray(data) ? data : [];
+    return rows[0] ? ({ ...(rows[0] as ProductSearchRow), pricing_rules: null, final_is_hidden: false }) : null;
   }
 
   return null;

@@ -10,6 +10,7 @@ import {
   CircleDot,
   Warehouse
 } from 'lucide-react';
+import { businessProfile } from '../../../config/businessProfile';
 import workshop from 'figma:asset/d4d52a152eeb5a4243fd5af9c734372c01fc3fc6.png';
 
 interface AboutPageProps {
@@ -72,11 +73,11 @@ export function AboutPage({ onBookingClick, onNavigate }: AboutPageProps) {
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('about.businessInfo.businessId')}: </span>
-                    <span className="font-mono">3408833-8</span>
+                    <span className="font-mono">{businessProfile.businessId}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('contact.address')}: </span>
-                    <span>Hankasuontie 5, 00390 Helsinki</span>
+                    <span>{businessProfile.address.formatted}</span>
                   </div>
                 </div>
               </div>

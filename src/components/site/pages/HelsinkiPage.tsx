@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { MapPin, Clock, Phone, Wrench, ArrowRight, Award, Users, Shield } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
+import { businessProfile } from '../../../config/businessProfile';
+import { useLocalSeoHead } from '../../../utils/localSeo';
 
 interface HelsinkiPageProps {
   onBookingClick: () => void;
@@ -10,7 +12,21 @@ interface HelsinkiPageProps {
 }
 
 export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const canonicalPath = t('route.helsinki');
+
+  useLocalSeoHead({
+    language,
+    title: t('seo.helsinki.title'),
+    description: t('seo.helsinki.description'),
+    canonicalPath,
+    alternatePaths: { fi: '/helsinki', en: '/en/helsinki' },
+    pageType: 'WebPage',
+    breadcrumbs: [
+      { name: t('nav.home'), path: t('route.home') },
+      { name: 'Helsinki', path: canonicalPath },
+    ],
+  });
 
   const services = [
     {
@@ -64,20 +80,20 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
 
   const stats = [
     {
-      value: '[TBD]',
-      label: t('helsinki.stats.years'),
+      value: businessProfile.address.streetAddress,
+      label: t('helsinki.stats.location'),
     },
     {
-      value: '[TBD]+',
-      label: t('helsinki.stats.customers'),
+      value: businessProfile.openingHoursText[language].split('\n')[0],
+      label: t('helsinki.stats.weekdays'),
     },
     {
-      value: '4.8★',
-      label: t('helsinki.stats.rating'),
+      value: businessProfile.phoneDisplay,
+      label: t('helsinki.stats.phone'),
     },
     {
-      value: '<24h',
-      label: t('helsinki.stats.bookingTime'),
+      value: 'FI / EN',
+      label: t('helsinki.stats.languages'),
     },
   ];
 
@@ -163,7 +179,7 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="text-center"
               >
-                <div className="text-3xl md:text-4xl font-bold mb-2">{stat.value}</div>
+                <div className="text-xl font-bold leading-tight md:text-2xl">{stat.value}</div>
                 <div className="text-white/80 text-sm">{stat.label}</div>
               </motion.div>
             ))}
@@ -286,7 +302,7 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
               className="aspect-video bg-muted rounded-lg overflow-hidden mb-8"
             >
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1983.4906905345447!2d24.9077!3d60.2055!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNjDCsDEyJzE5LjgiTiAyNMKwNTQnMjcuNyJF!5e0!3m2!1sen!2sfi!4v1234567890"
+                src={businessProfile.googleMapsEmbedUrl}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -302,24 +318,32 @@ export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) 
                 <CardContent className="p-6 text-center">
                   <MapPin className="w-8 h-8 text-accent mx-auto mb-3" />
                   <h3 className="font-semibold mb-2">{t('helsinki.address')}</h3>
-                  <p className="text-muted-foreground text-sm">Hankasuontie 5<br />00390 Helsinki</p>
+                  <p className="text-muted-foreground text-sm">
+                    {businessProfile.address.streetAddress}<br />
+                    {businessProfile.address.postalCode} {businessProfile.address.addressLocality}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-6 text-center">
                   <Clock className="w-8 h-8 text-accent mx-auto mb-3" />
                   <h3 className="font-semibold mb-2">{t('helsinki.openingHours')}</h3>
-                  <p className="text-muted-foreground text-sm">
-                    {t('helsinki.weekdayHours')}<br />
-                    {t('helsinki.saturdayHours')}
-                  </p>
+                  <p className="text-muted-foreground text-sm whitespace-pre-line">{businessProfile.openingHoursText[language]}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-6 text-center">
                   <Phone className="w-8 h-8 text-accent mx-auto mb-3" />
                   <h3 className="font-semibold mb-2">{t('helsinki.contact')}</h3>
-                  <p className="text-muted-foreground text-sm">[TBD]<br />[TBD]</p>
+                  <p className="text-muted-foreground text-sm">
+                    <a href={`tel:${businessProfile.phoneE164}`} className="hover:text-foreground">
+                      {businessProfile.phoneDisplay}
+                    </a>
+                    <br />
+                    <a href={`mailto:${businessProfile.email}`} className="hover:text-foreground">
+                      {businessProfile.email}
+                    </a>
+                  </p>
                 </CardContent>
               </Card>
             </div>

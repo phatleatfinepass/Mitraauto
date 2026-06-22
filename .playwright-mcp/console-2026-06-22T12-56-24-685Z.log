@@ -1,0 +1,4 @@
+[     136ms] [LOG] 🔔 EmergencyTowModal state changed - open: false @ http://127.0.0.1:4173/assets/index-Bx3-tAXu.js:778
+[     138ms] [LOG] 📱 Emergency Modal State Changed: false @ http://127.0.0.1:4173/assets/index-Bx3-tAXu.js:850
+[     215ms] [LOG] Auth state changed: INITIAL_SESSION undefined @ http://127.0.0.1:4173/assets/index-Bx3-tAXu.js:850
+[  294011ms] [ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE @ https://o.clarity.ms/collect:0

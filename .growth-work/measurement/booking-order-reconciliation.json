@@ -1,0 +1,241 @@
+{
+  "version": "2026-06-22.d2",
+  "project": "Mitra Auto",
+  "status": "source_contract_complete_platform_and_owner_approval_pending",
+  "created_at": "2026-06-22",
+  "scope": "Booking, order, payment, invoice, fulfillment, and retention reconciliation for growth measurement.",
+  "source_boundaries": {
+    "local_source_reviewed": [
+      "src/components/site/booking/BookingModal.tsx",
+      "src/components/site/booking/BookingStep3.tsx",
+      "src/components/site/checkout/CheckoutPage.tsx",
+      "src/components/site/checkout/CheckoutSuccessPage.tsx",
+      "src/components/site/checkout/CheckoutCancelPage.tsx",
+      "src/components/cms/orders/OrdersCMSPage.tsx",
+      "src/components/cms/invoices/InvoicesCMSPage.tsx",
+      "supabase/functions/payments_create_paytrail/index.ts",
+      "supabase/functions/payments_paytrail_webhook/index.ts",
+      "supabase/functions/order_install_booking/index.ts",
+      "supabase/functions/_shared/order_email.ts",
+      "supabase/functions/booking_manage/index.ts",
+      "supabase/functions/_shared/booking.ts",
+      "supabase/migrations/20260414_booking_manage_and_ics.sql",
+      "supabase/migrations/20260430131129_invoice_document_foundation.sql",
+      "supabase/migrations/20260502024724_invoice_payment_links.sql",
+      "supabase/migrations/20260504023653_account_customer_cms_foundation.sql"
+    ],
+    "not_live_verified": [
+      "production Supabase schema",
+      "analytics property",
+      "Search Console",
+      "Google Business Profile",
+      "Merchant Center",
+      "Paytrail live dashboard",
+      "finance ledger"
+    ],
+    "schema_note": "The local migration history includes later booking, invoice, and customer structures. Base create migrations for bookings, orders, and payment_events were not found in the scanned local migration files, so those table contracts are inferred from application and Edge Function source until live schema readback is performed."
+  },
+  "identifier_policy": {
+    "current_state": "Client analytics does not persist a durable non-PII measurement_event_id into booking or order rows.",
+    "required_future_state": "Every server-reconciled key event must carry a generated event_id and a server-side correlation field or mapping record that avoids PII.",
+    "allowed_identifiers": [
+      "event_id",
+      "booking_event_id",
+      "order_event_id",
+      "payment_event_id",
+      "invoice_event_id",
+      "server_record_id when privacy owner approves destination use"
+    ],
+    "forbidden_identifiers": [
+      "customer name",
+      "email",
+      "phone",
+      "license plate",
+      "address",
+      "raw note",
+      "payment details",
+      "private manage token",
+      "auth/session token"
+    ]
+  },
+  "event_reconciliation": [
+    {
+      "canonical_event": "booking_submitted",
+      "current_source_event": "booking_completed",
+      "current_semantic_status": "rename_or_alias_required",
+      "fires_when": "Booking insert succeeds or order_install_booking returns a booking id.",
+      "server_truth": [
+        "bookings.id",
+        "bookings.status = confirmed at creation",
+        "order_install_booking response booking.id for install-linked booking"
+      ],
+      "primary_source_files": [
+        "src/components/site/booking/BookingStep3.tsx",
+        "src/components/site/booking/BookingModal.tsx",
+        "supabase/functions/order_install_booking/index.ts",
+        "supabase/functions/_shared/order_email.ts"
+      ],
+      "reconciliation_key": "future booking_event_id or server mapping; currently only approximate by timestamp/session and booking id returned to client",
+      "key_event_allowed": true,
+      "blocking_gap": "Current event name says completed even though it means submitted."
+    },
+    {
+      "canonical_event": "booking_accepted",
+      "current_source_event": "not_implemented",
+      "current_semantic_status": "operations_definition_required",
+      "fires_when": "Operations confirms the booking is real, serviceable, non-duplicate, and not spam/test.",
+      "server_truth": [
+        "bookings.status or operations status field",
+        "booking_email_events for communication trail when relevant",
+        "owner-approved invalid/duplicate/no-show policy"
+      ],
+      "primary_source_files": [
+        "src/components/admin/AdminSchedulePage.tsx",
+        "supabase/functions/booking_manage/index.ts",
+        "supabase/functions/_shared/booking.ts"
+      ],
+      "reconciliation_key": "booking_event_id linked to booking id",
+      "key_event_allowed": false,
+      "blocking_gap": "Accepted, no-show, duplicate, invalid, and completed status definitions are not owner-approved."
+    },
+    {
+      "canonical_event": "booking_completed",
+      "current_source_event": "name_conflict",
+      "current_semantic_status": "must_not_use_current_client_event",
+      "fires_when": "The booked service is actually fulfilled by operations.",
+      "server_truth": [
+        "bookings operational status after service",
+        "invoice/order/customer history when a completed service creates a document or account history item"
+      ],
+      "primary_source_files": [
+        "src/components/admin/AdminSchedulePage.tsx",
+        "supabase/functions/_shared/booking.ts",
+        "src/components/cms/account-customer/CustomerHistoryPanel.tsx"
+      ],
+      "reconciliation_key": "booking_event_id linked to booking id and operational completion timestamp",
+      "key_event_allowed": false,
+      "blocking_gap": "Current app does not expose a distinct fulfilled-service event contract."
+    },
+    {
+      "canonical_event": "payment_created",
+      "current_source_event": "checkout_payment_started",
+      "current_semantic_status": "server_event_required",
+      "fires_when": "payments_create_paytrail inserts an order and receives Paytrail redirect metadata.",
+      "server_truth": [
+        "orders.id",
+        "orders.status = pending_payment",
+        "orders.paytrail_status = pending or new",
+        "orders.paytrail_transaction_id when returned by Paytrail"
+      ],
+      "primary_source_files": [
+        "src/components/site/checkout/CheckoutPage.tsx",
+        "supabase/functions/payments_create_paytrail/index.ts"
+      ],
+      "reconciliation_key": "order_event_id linked to orders.id; current idempotency_key is sent by client but not persisted in reviewed source",
+      "key_event_allowed": false,
+      "blocking_gap": "Checkout start is not payment creation, and idempotency/correlation is not persisted."
+    },
+    {
+      "canonical_event": "purchase",
+      "current_source_event": "checkout_success_viewed",
+      "current_semantic_status": "server_or_callback_only",
+      "fires_when": "Signed Paytrail callback updates order to paid and records payment_ok.",
+      "server_truth": [
+        "payment_events.event_type = payment_ok with signature_valid = true",
+        "orders.status = paid",
+        "orders.paytrail_status = ok",
+        "orders.cart_snapshot.payment_status = purchased"
+      ],
+      "primary_source_files": [
+        "supabase/functions/payments_paytrail_webhook/index.ts",
+        "src/components/site/checkout/CheckoutSuccessPage.tsx"
+      ],
+      "reconciliation_key": "order_event_id or orders.id joined to payment_events.order_id",
+      "key_event_allowed": true,
+      "blocking_gap": "Checkout success page view alone must not count as purchase."
+    },
+    {
+      "canonical_event": "payment_failed",
+      "current_source_event": "checkout_cancel_viewed",
+      "current_semantic_status": "callback_or_order_status_required",
+      "fires_when": "Signed Paytrail callback records failed/cancelled status or order remains unresolved past SLA.",
+      "server_truth": [
+        "payment_events.event_type = payment_failed with signature_valid = true",
+        "orders.status = cancelled",
+        "orders.paytrail_status = failed or create_failed"
+      ],
+      "primary_source_files": [
+        "supabase/functions/payments_paytrail_webhook/index.ts",
+        "src/components/site/checkout/CheckoutCancelPage.tsx"
+      ],
+      "reconciliation_key": "order_event_id or orders.id joined to payment_events.order_id",
+      "key_event_allowed": false,
+      "blocking_gap": "Cancel page view is diagnostic, not definitive failure proof."
+    },
+    {
+      "canonical_event": "order_fulfilled",
+      "current_source_event": "not_implemented",
+      "current_semantic_status": "operations_status_required",
+      "fires_when": "CMS/order operations marks product order as delivered/done under approved workflow.",
+      "server_truth": [
+        "orders.cart_snapshot.fulfillment_status in delivered or done",
+        "orders.status fallback when enum permits",
+        "fulfillment_status_updated_at"
+      ],
+      "primary_source_files": [
+        "src/components/cms/orders/OrdersCMSPage.tsx"
+      ],
+      "reconciliation_key": "order_event_id linked to orders.id",
+      "key_event_allowed": false,
+      "blocking_gap": "Fulfillment status exists locally but owner must approve which statuses count as fulfilled value."
+    },
+    {
+      "canonical_event": "invoice_paid",
+      "current_source_event": "not_analytics_event",
+      "current_semantic_status": "server_truth_available",
+      "fires_when": "Invoice payment link or invoice document is marked paid.",
+      "server_truth": [
+        "invoice_events.event_type = payment_paid",
+        "invoice_payment_links.payment_status = paid",
+        "invoice_payment_details.payment_status = paid",
+        "invoice_documents.status = paid"
+      ],
+      "primary_source_files": [
+        "supabase/functions/invoice_start_payment/index.ts",
+        "supabase/functions/payments_paytrail_webhook/index.ts",
+        "src/components/cms/invoices/InvoicesCMSPage.tsx"
+      ],
+      "reconciliation_key": "invoice_event_id or invoice document id",
+      "key_event_allowed": true,
+      "blocking_gap": "Finance owner must decide whether invoice payments are ecommerce revenue, service revenue, or separate AR collection."
+    }
+  ],
+  "thresholds": {
+    "daily_booking_submitted": {
+      "warning": "Analytics booking_submitted differs from server bookings by more than 5 percent or 5 events after excluding consent-denied/server-only cases.",
+      "critical": "Difference exceeds 10 percent or 10 events, or any key-event event_id duplicates are found."
+    },
+    "daily_purchase": {
+      "warning": "Analytics purchase differs from signed paid orders by more than 3 percent or 3 events after excluding consent-denied/server-only cases.",
+      "critical": "Any analytics purchase lacks a matching paid order/payment_ok record, or difference exceeds 5 percent or 5 events."
+    },
+    "payment_callback_to_order": {
+      "warning": "Any payment_ok/payment_failed event remains unmatched to an order for more than 1 hour.",
+      "critical": "Any signed payment_ok callback fails to produce paid order state, or invalid signature appears in production."
+    },
+    "fulfillment": {
+      "warning": "Paid orders missing fulfillment status for more than owner-approved SLA.",
+      "critical": "Order marked fulfilled without paid/cash-approved payment state or approved exception."
+    },
+    "privacy": {
+      "warning": "Unexpected optional parameter or unapproved ID reaches analytics debug output.",
+      "critical": "Any prohibited PII or token reaches analytics/event payload."
+    }
+  },
+  "gate_result": {
+    "d2_local_contract": "complete",
+    "key_events_status": "candidate_only_until_implementation_and_platform_readback",
+    "growth_ready_status": "blocked",
+    "next_required_task": "D-3 - Search Console, GBP, Merchant Center, And Analytics Readback"
+  }
+}

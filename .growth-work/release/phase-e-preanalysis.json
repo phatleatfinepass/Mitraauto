@@ -1,0 +1,135 @@
+{
+  "version": "2026-06-22.phase-e-preanalysis",
+  "project": "Mitra Auto",
+  "phase": "Phase E - Release Closeout, Evidence Ledger, And Growth Handoff",
+  "status": "analysis_complete_before_implementation",
+  "created_at": "2026-06-22",
+  "mode": "Growth PLAN plus LAUNCH/VERIFY operations",
+  "board_progress": "80%",
+  "phase_progress": "0%",
+  "decision": "Phase E can begin with E-1, but Phase E cannot close and Mitra cannot be classified growth-ready until source parity, provider evidence, production HTTP behavior, live crawl/browser QA, drift baseline, platform readback, owner approvals, and remaining accessibility warnings are resolved or formally excepted.",
+  "archetypes": [
+    "local service business",
+    "booking/reservation",
+    "ecommerce/catalog checkout",
+    "multilingual FI/EN SPA",
+    "customer account/retention support"
+  ],
+  "evidence_modes": [
+    {
+      "mode": "REPO",
+      "state": "SUPPLIED_REVIEW_REQUIRED",
+      "required_in_phase_e": "E-1 and E-2 must reconcile local, GitHub, Figma Make, Supabase, hosting, functions, scripts, public assets, and generated reports without mixing scopes.",
+      "current_basis": "Local source and prior phase reports exist; final parity ledger is not yet complete."
+    },
+    {
+      "mode": "BUILD",
+      "state": "SUPPLIED_REVIEW_REQUIRED",
+      "required_in_phase_e": "E-1/E-3 must record final Figma Make preview/build and any local build used as evidence.",
+      "current_basis": "Prior local builds passed, but final release build/preview parity is not recorded."
+    },
+    {
+      "mode": "LIVE",
+      "state": "EXECUTED_WITH_FINDINGS",
+      "required_in_phase_e": "E-3 must run bounded production HTTP/live checks and resolve or record blockers.",
+      "current_basis": "D-3 found production robots/sitemap/product-sitemap/Merchant-feed static asset mismatch."
+    },
+    {
+      "mode": "BROWSER",
+      "state": "SUPPLIED_REVIEW_REQUIRED",
+      "required_in_phase_e": "E-3 must smoke-test production desktop/mobile journeys after source parity and provider evidence are reconciled.",
+      "current_basis": "Prior D-4 local browser smoke passed with warnings; production browser smoke is missing."
+    },
+    {
+      "mode": "PLATFORM",
+      "state": "UNAVAILABLE",
+      "required_in_phase_e": "E-2/E-3/E-4 must record Search Console, GBP, Merchant Center, analytics, CrUX/PageSpeed, server-log, and provider readback envelopes where access exists.",
+      "current_basis": "D-3 marked authenticated platform access unavailable."
+    },
+    {
+      "mode": "CONTENT",
+      "state": "SUPPLIED_REVIEW_REQUIRED",
+      "required_in_phase_e": "E-5 must reconcile owner/media/platform exceptions from Phase C before final readiness classification.",
+      "current_basis": "Phase C is locally complete with owner/platform exceptions."
+    },
+    {
+      "mode": "CONVERSION",
+      "state": "EXECUTED_WITH_FINDINGS",
+      "required_in_phase_e": "E-3/E-5 must verify checkout accessibility warnings and any provider-safe booking/checkout evidence before readiness classification.",
+      "current_basis": "D-4 found duplicate checkout submit controls, field-error recovery warnings, and placeholder social links."
+    },
+    {
+      "mode": "MIGRATION",
+      "state": "SUPPLIED_REVIEW_REQUIRED",
+      "required_in_phase_e": "E-3/E-4 must validate old product identifier redirects, sitemap/canonical behavior, not-found states, and drift baseline.",
+      "current_basis": "Phase B implemented slug/redirect/source logic locally; production redirect verification remains open."
+    },
+    {
+      "mode": "INCIDENT",
+      "state": "UNAVAILABLE",
+      "required_in_phase_e": "E-4 must define incident triggers and response owner; no time-series incident evidence is currently available.",
+      "current_basis": "No live incident or traffic-drop dataset has been supplied."
+    }
+  ],
+  "phase_e_layers": [
+    {
+      "layer": "E0 Evidence Authority Gate",
+      "purpose": "Separate executed, supplied, failed, unavailable, and owner-approved exception evidence before final classification.",
+      "must_not_do": "Do not turn local source, supplied reports, or missing platform access into a production pass."
+    },
+    {
+      "layer": "E1 Source Parity Gate",
+      "purpose": "Record local/GitHub/Figma Make file parity and stale source risks.",
+      "owner": "Docs/Frontend",
+      "task": "E-1"
+    },
+    {
+      "layer": "E2 Provider And Secret-Safe Ledger",
+      "purpose": "Record Supabase, hosting, functions, redirects, static assets, provider states, and secret status without exposing secrets.",
+      "owner": "Docs/Engineering/Supabase",
+      "task": "E-2"
+    },
+    {
+      "layer": "E3 Live Runtime Evidence",
+      "purpose": "Verify production crawl, HTTP, redirects, robots, sitemaps, feeds, browser journeys, checkout, and direct-route behavior.",
+      "owner": "QA/SEO/Engineering",
+      "task": "E-3"
+    },
+    {
+      "layer": "E4 Drift And Monitoring Handoff",
+      "purpose": "Create representative URL baseline, drift comparison rules, monitoring cadence, incident triggers, and owner handoff.",
+      "owner": "SEO/Analytics/Engineering",
+      "task": "E-4"
+    },
+    {
+      "layer": "E5 Final Readiness Classification",
+      "purpose": "Reconcile all phase wrap-ups, exceptions, live/platform evidence, unresolved risk, and final status.",
+      "owner": "Growth/Business",
+      "task": "E-5"
+    }
+  ],
+  "critical_preimplementation_rules": [
+    "E-1 must list only Figma Make source files that actually need manual Figma patching.",
+    "E-2 must use the project wrapper and project-specific Supabase guardrails before provider/backend readback or changes.",
+    "E-2 must record secrets only as set/missing and never write secrets to repo artifacts.",
+    "E-3 must treat production robots/sitemap/feed asset mismatch as a blocker until live fetch proves expected text/XML behavior.",
+    "E-3 must not run destructive checkout or booking actions; provider-safe smoke only.",
+    "E-4 must version only sanitized drift baselines and avoid raw customer/authenticated data.",
+    "E-5 must classify readiness as growth-ready, pilot-ready with limitations, blocked, or complete locally only; it must not use a generic SEO score as a ranking prediction."
+  ],
+  "known_blockers_entering_phase_e": [
+    "Figma Make final preview parity not verified.",
+    "Production redirect verification missing.",
+    "Product sitemap deployed fetch verification missing.",
+    "Merchant feed submission and deployed checkout validation not verified.",
+    "GBP owner evidence missing.",
+    "P1 service proof/content owner proof missing.",
+    "Authenticated platform readback and live reconciliation missing.",
+    "Deployed robots/sitemap/feed asset mismatch.",
+    "Checkout accessibility warnings.",
+    "Experiment launch readiness missing.",
+    "Live crawl/browser QA missing.",
+    "Figma Make source sync uncertain."
+  ],
+  "next_task": "E-1 - Figma Make Patch-State Ledger"
+}
