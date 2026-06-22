@@ -53,6 +53,7 @@ import { supabase } from './utils/supabase/client';
 import { trackClarityEvent, trackClarityPageView, upgradeClaritySession } from './lib/clarity';
 import { fetchProductSearchRowByIdentifier } from './utils/productsSearch';
 import { useLocalSeoHead } from './utils/localSeo';
+import { canServePrivateAppRoutes, shouldBlockPrivateAppRoute } from './utils/privateRoutePolicy';
 import {
   getCatalogProductDetailPath,
   getCatalogProductSeoIdentifier,
@@ -700,6 +701,12 @@ function HomePage() {
           : undefined;
       const canonicalCmsRoute = getCanonicalCmsRoute(normalizedPath);
 
+      if (shouldBlockPrivateAppRoute(normalizedPath)) {
+        requestedProtectedPathRef.current = null;
+        transitionNavigationState('not-found');
+        return;
+      }
+
       if (serviceDetail) {
         transitionNavigationState('service-detail', null, undefined, serviceDetail);
       } else if (normalizedPath === '/') {
@@ -966,6 +973,11 @@ function HomePage() {
     setIsLoggedIn(true);
     
     if (isAdmin) {
+      if (!canServePrivateAppRoutes()) {
+        requestedProtectedPathRef.current = null;
+        return;
+      }
+
       const currentPath = normalizeAppPath(window.location.pathname);
       const currentRoute = `${currentPath}${window.location.search}${window.location.hash}`;
       const targetPath = requestedProtectedPathRef.current ?? (
@@ -1020,6 +1032,11 @@ function HomePage() {
   };
 
   const handleLoginNeeded = () => {
+    if (!canServePrivateAppRoutes()) {
+      requestedProtectedPathRef.current = null;
+      return;
+    }
+
     const currentPath = normalizeAppPath(window.location.pathname);
     if (currentPath.startsWith('/cms') || currentPath.startsWith('/admin') || currentPath.startsWith('/pwa')) {
       requestedProtectedPathRef.current = `${currentPath}${window.location.search}${window.location.hash}`;
