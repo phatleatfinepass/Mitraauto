@@ -921,6 +921,17 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
   const navHomeLabel = t('nav.home');
   const navCatalogLabel = t('nav.catalog');
   const canonicalBaseUrl = businessProfile.websiteUrl.replace(/\/+$/, '');
+  const categoryGuideItems = mode === 'tires'
+    ? [
+        { title: t('catalog.categoryGuideTireFitTitle'), body: t('catalog.categoryGuideTireFitBody') },
+        { title: t('catalog.categoryGuideTireSeasonTitle'), body: t('catalog.categoryGuideTireSeasonBody') },
+        { title: t('catalog.categoryGuideTireServiceTitle'), body: t('catalog.categoryGuideTireServiceBody') },
+      ]
+    : [
+        { title: t('catalog.categoryGuideRimFitTitle'), body: t('catalog.categoryGuideRimFitBody') },
+        { title: t('catalog.categoryGuideRimStyleTitle'), body: t('catalog.categoryGuideRimStyleBody') },
+        { title: t('catalog.categoryGuideRimServiceTitle'), body: t('catalog.categoryGuideRimServiceBody') },
+      ];
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -1373,6 +1384,27 @@ export function CatalogPage({ onProductSelect }: CatalogPageProps) {
           </div>
         </div>
       </div>
+
+      <section className="container mx-auto max-w-7xl px-6 pt-8 lg:px-8">
+        <h2 className={`text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {t('catalog.categoryGuideTitle')}
+        </h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {categoryGuideItems.map((item) => (
+            <div
+              key={item.title}
+              className={`rounded-xl border p-5 ${
+                theme === 'dark'
+                  ? 'border-white/10 bg-white/[0.03]'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{item.title}</h3>
+              <p className={`mt-2 text-sm leading-6 ${theme === 'dark' ? 'text-[#B0B8C4]' : 'text-gray-600'}`}>{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Header */}
       {mode === 'rims' ? (

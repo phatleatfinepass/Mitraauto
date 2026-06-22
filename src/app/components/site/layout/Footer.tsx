@@ -2,6 +2,7 @@ import React from 'react';
 import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { businessProfile } from '../../../config/businessProfile';
+import { isClarityConfigured } from '../../../lib/clarity';
 import logo from 'figma:asset/afe29dcdd9b662431f5e9a02dfb69bc0f463496d.png';
 
 interface FooterProps {
@@ -21,12 +22,12 @@ interface FooterSection {
 
 export function Footer({ onNavigate }: FooterProps) {
   const { language, setLanguage, t } = useLanguage();
-  const homeHref = language === 'en' ? '/en' : '/';
-  const servicesHref = language === 'en' ? '/en/services' : '/palvelut';
-  const catalogHref = language === 'en' ? '/en/catalog' : '/catalog';
-  const tireHotelHref = language === 'en' ? '/en/services/tire-hotel' : '/palvelut/rengashotelli';
-  const aboutHref = language === 'en' ? '/en/about' : '/meista';
-  const contactHref = language === 'en' ? '/en/contact' : '/yhteystiedot';
+  const homeHref = t('route.home');
+  const servicesHref = t('route.services');
+  const catalogHref = t('route.catalog');
+  const tireHotelHref = t('route.tireHotel');
+  const aboutHref = t('route.about');
+  const contactHref = t('route.contact');
   const selectedLanguageClass = 'bg-secondary text-foreground';
   const inactiveLanguageClass = 'text-muted-foreground hover:text-foreground';
   const languageButtonClasses: Record<typeof language, string> = {
@@ -36,6 +37,12 @@ export function Footer({ onNavigate }: FooterProps) {
   languageButtonClasses[language] = selectedLanguageClass;
 
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string, sectionId?: string) => {
+    if (href === '#analytics-consent') {
+      event.preventDefault();
+      window.dispatchEvent(new Event('mitra:open-analytics-consent'));
+      return;
+    }
+
     // Handle navigation to Services page with section scroll
     if (href === servicesHref && sectionId && onNavigate) {
       event.preventDefault();
@@ -66,7 +73,7 @@ export function Footer({ onNavigate }: FooterProps) {
     
     if (
       onNavigate &&
-      [catalogHref, aboutHref, tireHotelHref, contactHref, '/privacy', '/terms'].includes(href)
+      [catalogHref, aboutHref, tireHotelHref, contactHref, '/privacy', '/cookies', '/terms'].includes(href)
     ) {
       event.preventDefault();
       onNavigate(href);
@@ -74,6 +81,16 @@ export function Footer({ onNavigate }: FooterProps) {
       return;
     }
   };
+
+  const legalLinks: FooterLink[] = [
+    { key: 'footer.privacy', href: '/privacy' },
+    { key: 'footer.cookiePolicy', href: '/cookies' },
+    { key: 'footer.terms', href: '/terms' },
+  ];
+
+  if (isClarityConfigured()) {
+    legalLinks.push({ key: 'footer.cookieSettings', href: '#analytics-consent' });
+  }
 
   const footerSections: FooterSection[] = [
     {
@@ -100,10 +117,7 @@ export function Footer({ onNavigate }: FooterProps) {
     },
     {
       titleKey: 'footer.legal',
-      links: [
-        { key: 'footer.privacy', href: '/privacy' },
-        { key: 'footer.terms', href: '/terms' },
-      ],
+      links: legalLinks,
     },
   ];
 

@@ -17,28 +17,9 @@ import {
 } from '../../ui/alert-dialog';
 import { X, Plus, Minus, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { calculateLinePricing } from '../../../utils/pricing';
+import { getProductCommerceSnapshot } from '../../../utils/productCommerce';
 
 const VAT_MULTIPLIER = 1.255;
-
-function resolveCartProductImage(product: any) {
-  const candidates = [
-    product?.image_url,
-    product?.hero_image_url,
-    product?.best_image_url,
-    product?.gallery_images?.[0],
-    product?.images?.[0],
-    product?.gallery?.[0],
-    product?.image,
-  ];
-
-  for (const candidate of candidates) {
-    const value = String(candidate ?? '').trim();
-    if (value) return value;
-  }
-
-  return '';
-}
 
 interface CartDrawerProps {
   onCheckout: () => void;
@@ -138,14 +119,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                   const stockLimit = stockLimitCandidates
                     .map((value) => Number(value))
                     .find((value) => Number.isFinite(value) && value > 0);
-                  const linePricing = calculateLinePricing(
-                    item.base_price ?? item.price ?? 0,
-                    item.quantity,
-                    item.pricing_rules ?? item.product?.pricing_rules ?? null,
-                  );
-                  const lineTotalWithVat = linePricing.lineTotalEur * VAT_MULTIPLIER;
-                  const unitPriceWithVat = linePricing.effectiveUnitPriceEur * VAT_MULTIPLIER;
-                  const productImage = resolveCartProductImage(item.product);
+                  const commerce = getProductCommerceSnapshot(item.product, {
+                    quantity: item.quantity,
+                    displayName: `${item.product.brand || ''} ${item.product.model || item.product.name || ''}`.trim(),
+                  });
+                  const productImage = commerce.primaryImageUrl;
 
                   return (
                   <motion.div
@@ -239,12 +217,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
 
                           <div className="text-right">
                             <p className="text-sm text-[#FF6B00]">
-                              €{lineTotalWithVat.toFixed(2)}
+                              €{commerce.lineTotalInclVatEur.toFixed(2)}
                             </p>
                             <p className={`text-xs ${
                               theme === 'dark' ? 'text-gray-500' : 'text-[#64748B]'
                             }`}>
-                              €{unitPriceWithVat.toFixed(2)} / {cartText('perPcs')}
+                              €{commerce.unitPriceInclVatEur.toFixed(2)} / {cartText('perPcs')}
                             </p>
                           </div>
                         </div>

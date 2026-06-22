@@ -9,6 +9,7 @@ type BreadcrumbItem = {
 };
 
 type UseLocalSeoHeadOptions = {
+  enabled?: boolean;
   language: LocalSeoLanguage;
   title: string;
   description: string;
@@ -23,6 +24,7 @@ function absoluteUrl(path: string) {
 }
 
 export function useLocalSeoHead({
+  enabled = true,
   language,
   title,
   description,
@@ -32,6 +34,10 @@ export function useLocalSeoHead({
   breadcrumbs = [],
 }: UseLocalSeoHeadOptions) {
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const previousTitle = document.title;
     const previousLang = document.documentElement.lang;
 
@@ -151,5 +157,5 @@ export function useLocalSeoHead({
       });
       jsonLd?.remove();
     };
-  }, [alternatePaths.en, alternatePaths.fi, breadcrumbs, canonicalPath, description, language, pageType, title]);
+  }, [alternatePaths.en, alternatePaths.fi, breadcrumbs, canonicalPath, description, enabled, language, pageType, title]);
 }

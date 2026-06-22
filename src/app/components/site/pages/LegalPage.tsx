@@ -4,11 +4,11 @@ import { useTheme } from '../../../theme/ThemeContext';
 import { Card } from '../../ui/card';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5, PrivacyPolicyV51 } from '../../legal/PrivacyPolicyVersions';
+import { PrivacyPolicyV1, PrivacyPolicyV2, PrivacyPolicyV3, PrivacyPolicyV4, PrivacyPolicyV5, PrivacyPolicyV51, PrivacyPolicyV60 } from '../../legal/PrivacyPolicyVersions';
 import { TermsV1, TermsV2, TermsV3, TermsV4, TermsV5, TermsV6, TermsV61 } from '../../legal/TermsVersions';
 
 interface LegalPageProps {
-  initialSection?: 'privacy' | 'terms';
+  initialSection?: 'privacy' | 'cookie' | 'terms';
 }
 
 interface LegalVersion {
@@ -55,6 +55,12 @@ const privacyVersions: LegalVersion[] = [
     dateKey: 'legal.timeline.v7.date',
     descriptionKey: 'legal.timeline.v7.privacyDescription'
   },
+  {
+    version: 'v6.0',
+    date: '2026-06-22',
+    dateKey: 'legal.timeline.v8.date',
+    descriptionKey: 'legal.timeline.v8.privacyDescription'
+  },
 ];
 
 const termsVersions: LegalVersion[] = [
@@ -79,7 +85,16 @@ const termsVersions: LegalVersion[] = [
   },
 ];
 
+const timelineVersions: LegalVersion[] = [
+  ...termsVersions,
+  privacyVersions[privacyVersions.length - 1],
+];
+
 const getPrivacyVersionIndexForDate = (date: string) => privacyVersions.reduce((matchedIndex, version, index) => (
+  version.date <= date ? index : matchedIndex
+), 0);
+
+const getTermsVersionIndexForDate = (date: string) => termsVersions.reduce((matchedIndex, version, index) => (
   version.date <= date ? index : matchedIndex
 ), 0);
 
@@ -87,45 +102,56 @@ export function LegalPage({ initialSection }: LegalPageProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const visibleTimelineCount = 4;
-  const [selectedTermsVersion, setSelectedTermsVersion] = useState<number>(termsVersions.length - 1);
+  const [selectedTimelineVersion, setSelectedTimelineVersion] = useState<number>(timelineVersions.length - 1);
   const [timelineStartIndex, setTimelineStartIndex] = useState<number>(
-    Math.max(0, termsVersions.length - visibleTimelineCount)
+    Math.max(0, timelineVersions.length - visibleTimelineCount)
   );
 
   useEffect(() => {
-    if (initialSection) {
-      setTimeout(() => {
-        const element = document.getElementById(initialSection);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-    }
-  }, [initialSection]);
-
-  const handleTermsVersionSelect = (index: number) => {
-    if (index === selectedTermsVersion) {
+    if (!initialSection) {
       return;
     }
 
-    const currentPrivacyVersionIndex = getPrivacyVersionIndexForDate(termsVersions[selectedTermsVersion].date);
-    const nextPrivacyVersionIndex = getPrivacyVersionIndexForDate(termsVersions[index].date);
+    const scrollToInitialSection = () => {
+      const element = document.getElementById(initialSection);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+    const timeouts = [100, 450, 900].map((delay) => window.setTimeout(scrollToInitialSection, delay));
+
+    return () => {
+      timeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [initialSection]);
+
+  const handleTimelineVersionSelect = (index: number) => {
+    if (index === selectedTimelineVersion) {
+      return;
+    }
+
+    const currentTimelineDate = timelineVersions[selectedTimelineVersion].date;
+    const nextTimelineDate = timelineVersions[index].date;
+    const currentPrivacyVersionIndex = getPrivacyVersionIndexForDate(currentTimelineDate);
+    const nextPrivacyVersionIndex = getPrivacyVersionIndexForDate(nextTimelineDate);
+    const currentTermsVersionIndex = getTermsVersionIndexForDate(currentTimelineDate);
+    const nextTermsVersionIndex = getTermsVersionIndexForDate(nextTimelineDate);
     const privacyChanged = currentPrivacyVersionIndex !== nextPrivacyVersionIndex;
-    const termsChanged = selectedTermsVersion !== index;
+    const termsChanged = currentTermsVersionIndex !== nextTermsVersionIndex;
     const scrollTargetId = privacyChanged && termsChanged
       ? 'privacy'
       : privacyChanged
         ? 'privacy'
         : 'terms';
 
-    setSelectedTermsVersion(index);
+    setSelectedTimelineVersion(index);
     setTimelineStartIndex((currentStart) => {
       if (index < currentStart) {
         return index;
       }
 
       if (index >= currentStart + visibleTimelineCount) {
-        return Math.min(index - visibleTimelineCount + 1, Math.max(0, termsVersions.length - visibleTimelineCount));
+        return Math.min(index - visibleTimelineCount + 1, Math.max(0, timelineVersions.length - visibleTimelineCount));
       }
 
       return currentStart;
@@ -142,19 +168,20 @@ export function LegalPage({ initialSection }: LegalPageProps) {
   };
 
   const handlePreviousTermsVersion = () => {
-    if (selectedTermsVersion > 0) {
-      handleTermsVersionSelect(selectedTermsVersion - 1);
+    if (selectedTimelineVersion > 0) {
+      handleTimelineVersionSelect(selectedTimelineVersion - 1);
     }
   };
 
   const handleNextTermsVersion = () => {
-    if (selectedTermsVersion < termsVersions.length - 1) {
-      handleTermsVersionSelect(selectedTermsVersion + 1);
+    if (selectedTimelineVersion < timelineVersions.length - 1) {
+      handleTimelineVersionSelect(selectedTimelineVersion + 1);
     }
   };
 
-  const selectedTimelineDate = termsVersions[selectedTermsVersion].date;
+  const selectedTimelineDate = timelineVersions[selectedTimelineVersion].date;
   const selectedPrivacyVersionIndex = getPrivacyVersionIndexForDate(selectedTimelineDate);
+  const selectedTermsVersionIndex = getTermsVersionIndexForDate(selectedTimelineDate);
 
   // Render the appropriate Privacy Policy version
   const renderPrivacyVersion = () => {
@@ -170,14 +197,16 @@ export function LegalPage({ initialSection }: LegalPageProps) {
       case 4:
         return <PrivacyPolicyV5 t={t} />;
       case 5:
-      default:
         return <PrivacyPolicyV51 t={t} />;
+      case 6:
+      default:
+        return <PrivacyPolicyV60 t={t} />;
     }
   };
 
   // Render the appropriate Terms version
   const renderTermsVersion = () => {
-    switch (selectedTermsVersion) {
+    switch (selectedTermsVersionIndex) {
       case 0:
         return <TermsV1 t={t} />;
       case 1:
@@ -198,11 +227,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
     }
   };
 
-  const shouldShowPaytrailSection = new Date(termsVersions[selectedTermsVersion].date) >= new Date('2025-11-27');
-  const isSelectedTermsArchived = selectedTermsVersion < termsVersions.length - 1;
+  const shouldShowPaytrailSection = new Date(selectedTimelineDate) >= new Date('2025-11-27');
+  const shouldShowCookiePolicySection = selectedPrivacyVersionIndex === privacyVersions.length - 1;
+  const isSelectedTermsArchived = selectedTermsVersionIndex < termsVersions.length - 1;
   const isSelectedPrivacyArchived = selectedPrivacyVersionIndex < privacyVersions.length - 1;
-  const visibleTimelineVersions = termsVersions.slice(timelineStartIndex, timelineStartIndex + visibleTimelineCount);
-  const selectedVisibleIndex = selectedTermsVersion - timelineStartIndex;
+  const visibleTimelineVersions = timelineVersions.slice(timelineStartIndex, timelineStartIndex + visibleTimelineCount);
+  const selectedVisibleIndex = selectedTimelineVersion - timelineStartIndex;
   const timelineProgress = selectedVisibleIndex >= 0 && visibleTimelineVersions.length > 1
     ? (selectedVisibleIndex / (visibleTimelineVersions.length - 1)) * 100
     : 0;
@@ -267,6 +297,35 @@ export function LegalPage({ initialSection }: LegalPageProps) {
     : privacyDocument;
   const framedPrivacyDocument = isSelectedPrivacyArchived ? renderArchivedDocumentFrame(decoratedPrivacyDocument) : decoratedPrivacyDocument;
   const framedTermsDocument = isSelectedTermsArchived ? renderArchivedDocumentFrame(decoratedTermsDocument) : decoratedTermsDocument;
+  const handleCookieSettingsClick = () => {
+    window.dispatchEvent(new Event('mitra:open-analytics-consent'));
+  };
+  const cookieRows = [
+    {
+      categoryKey: 'legal.cookie.table.necessary.category',
+      purposeKey: 'legal.cookie.table.necessary.purpose',
+      storageKey: 'legal.cookie.table.necessary.storage',
+      consentKey: 'legal.cookie.table.necessary.consent',
+      providerKey: 'legal.cookie.table.necessary.provider',
+      validityKey: 'legal.cookie.table.necessary.validity',
+    },
+    {
+      categoryKey: 'legal.cookie.table.preference.category',
+      purposeKey: 'legal.cookie.table.preference.purpose',
+      storageKey: 'legal.cookie.table.preference.storage',
+      consentKey: 'legal.cookie.table.preference.consent',
+      providerKey: 'legal.cookie.table.preference.provider',
+      validityKey: 'legal.cookie.table.preference.validity',
+    },
+    {
+      categoryKey: 'legal.cookie.table.analytics.category',
+      purposeKey: 'legal.cookie.table.analytics.purpose',
+      storageKey: 'legal.cookie.table.analytics.storage',
+      consentKey: 'legal.cookie.table.analytics.consent',
+      providerKey: 'legal.cookie.table.analytics.provider',
+      validityKey: 'legal.cookie.table.analytics.validity',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -284,11 +343,11 @@ export function LegalPage({ initialSection }: LegalPageProps) {
               {/* Left Chevron */}
               <button
                 onClick={handlePreviousTermsVersion}
-                disabled={selectedTermsVersion === 0}
+                disabled={selectedTimelineVersion === 0}
                 className={`
                   flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full 
                   flex items-center justify-center transition-all duration-300
-                  ${selectedTermsVersion === 0
+                  ${selectedTimelineVersion === 0
                     ? 'bg-muted/50 text-muted-foreground/30 cursor-not-allowed'
                     : 'bg-[#FF6B35]/10 text-[#FF6B35] hover:bg-[#FF6B35]/20 hover:scale-110 active:scale-95'
                   }
@@ -315,17 +374,17 @@ export function LegalPage({ initialSection }: LegalPageProps) {
 
                     return (
                     <button
-                      key={version.date}
-                      onClick={() => handleTermsVersionSelect(versionIndex)}
+                      key={`${version.date}-${version.version}`}
+                      onClick={() => handleTimelineVersionSelect(versionIndex)}
                       className="group relative flex flex-col items-center min-w-0 flex-1"
                     >
                       {/* Vertical Marker */}
                       <div 
                         className={`
                           w-px transition-all duration-300
-                          ${selectedTermsVersion === versionIndex 
+                          ${selectedTimelineVersion === versionIndex 
                             ? 'h-4 bg-[#FF6B35]' 
-                            : selectedTermsVersion > versionIndex
+                            : selectedTimelineVersion > versionIndex
                               ? 'h-2.5 bg-[#FF6B35]/40 group-hover:h-4 group-hover:bg-[#FF6B35]/60'
                               : 'h-2.5 bg-border/60 group-hover:h-4 group-hover:bg-[#FF6B35]/30'
                           }
@@ -336,7 +395,7 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                       <span 
                         className={`
                           mt-2 text-[10px] sm:text-xs transition-all duration-300 text-center px-1
-                          ${selectedTermsVersion === versionIndex 
+                          ${selectedTimelineVersion === versionIndex 
                             ? 'text-[#FF6B35]' 
                             : 'text-muted-foreground/70 group-hover:text-muted-foreground'
                           }
@@ -357,11 +416,11 @@ export function LegalPage({ initialSection }: LegalPageProps) {
               {/* Right Chevron */}
               <button
                 onClick={handleNextTermsVersion}
-                disabled={selectedTermsVersion === termsVersions.length - 1}
+                disabled={selectedTimelineVersion === timelineVersions.length - 1}
                 className={`
                   flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full 
                   flex items-center justify-center transition-all duration-300
-                  ${selectedTermsVersion === termsVersions.length - 1
+                  ${selectedTimelineVersion === timelineVersions.length - 1
                     ? 'bg-muted/50 text-muted-foreground/30 cursor-not-allowed'
                     : 'bg-[#FF6B35]/10 text-[#FF6B35] hover:bg-[#FF6B35]/20 hover:scale-110 active:scale-95'
                   }
@@ -424,6 +483,104 @@ export function LegalPage({ initialSection }: LegalPageProps) {
         </div>
       </section>
 
+      {shouldShowCookiePolicySection && (
+        <section id="cookie" className="py-24 lg:py-32 scroll-mt-16 bg-muted/30">
+          <div className="container mx-auto max-w-4xl px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="mb-12">
+                <div className="flex items-center gap-3 mb-4">
+                  <h1 className="text-4xl lg:text-5xl tracking-tight">
+                    {t('legal.cookie.title')}
+                  </h1>
+                  <motion.span
+                    key={selectedPrivacyVersionIndex}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
+                  >
+                    {privacyVersions[selectedPrivacyVersionIndex].version}
+                  </motion.span>
+                </div>
+                <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
+                <p className="text-lg text-muted-foreground mb-4">
+                  {t('legal.cookie.subtitle')}
+                </p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p><strong>{t('legal.privacy.effective')}:</strong> {t(privacyVersions[selectedPrivacyVersionIndex].dateKey)}</p>
+                  <p><strong>{t('legal.privacy.lastUpdated')}:</strong> {t(privacyVersions[selectedPrivacyVersionIndex].dateKey)}</p>
+                </div>
+              </div>
+
+              <Card className="border rounded-2xl p-8 lg:p-12">
+                <div className="space-y-8 text-muted-foreground">
+                  <div>
+                    <h2 className="text-2xl text-foreground mb-4">{t('legal.cookie.section1.title')}</h2>
+                    <p className="mb-3">{t('legal.cookie.section1.body')}</p>
+                    <p>{t('legal.cookie.section1.body2')}</p>
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl text-foreground mb-4">{t('legal.cookie.section2.title')}</h2>
+                    <ul className="space-y-3 ml-6 list-disc">
+                      <li>{t('legal.cookie.section2.item1')}</li>
+                      <li>{t('legal.cookie.section2.item2')}</li>
+                      <li>{t('legal.cookie.section2.item3')}</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl text-foreground mb-4">{t('legal.cookie.table.title')}</h2>
+                    <div className="overflow-x-auto rounded-xl border border-border">
+                      <table className="min-w-full divide-y divide-border text-left text-sm">
+                        <thead className="bg-muted/60 text-foreground">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 font-semibold">{t('legal.cookie.table.category')}</th>
+                            <th scope="col" className="px-4 py-3 font-semibold">{t('legal.cookie.table.purpose')}</th>
+                            <th scope="col" className="px-4 py-3 font-semibold">{t('legal.cookie.table.storage')}</th>
+                            <th scope="col" className="px-4 py-3 font-semibold">{t('legal.cookie.table.consent')}</th>
+                            <th scope="col" className="px-4 py-3 font-semibold">{t('legal.cookie.table.provider')}</th>
+                            <th scope="col" className="px-4 py-3 font-semibold">{t('legal.cookie.table.validity')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {cookieRows.map((row) => (
+                            <tr key={row.categoryKey}>
+                              <td className="px-4 py-4 align-top font-medium text-foreground">{t(row.categoryKey)}</td>
+                              <td className="px-4 py-4 align-top">{t(row.purposeKey)}</td>
+                              <td className="px-4 py-4 align-top">{t(row.storageKey)}</td>
+                              <td className="px-4 py-4 align-top">{t(row.consentKey)}</td>
+                              <td className="px-4 py-4 align-top">{t(row.providerKey)}</td>
+                              <td className="px-4 py-4 align-top">{t(row.validityKey)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl text-foreground mb-4">{t('legal.cookie.section3.title')}</h2>
+                    <p className="mb-4">{t('legal.cookie.section3.body')}</p>
+                    <button
+                      type="button"
+                      onClick={handleCookieSettingsClick}
+                      className="inline-flex items-center justify-center rounded-full bg-[#FF6B35] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#e55f2f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2"
+                    >
+                      {t('legal.cookie.settingsButton')}
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
       {/* Terms & Conditions Section */}
       <section id="terms" className="py-24 lg:py-32 scroll-mt-16">
         <div className="container mx-auto max-w-4xl px-6 lg:px-8">
@@ -439,12 +596,12 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                   {t('legal.terms.title')}
                 </h1>
                 <motion.span
-                  key={selectedTermsVersion}
+                  key={selectedTermsVersionIndex}
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-sm"
                 >
-                  {termsVersions[selectedTermsVersion].version}
+                  {termsVersions[selectedTermsVersionIndex].version}
                 </motion.span>
               </div>
               <div className="h-1 w-20 bg-[#FF6B35] rounded-full mb-6" />
@@ -452,15 +609,15 @@ export function LegalPage({ initialSection }: LegalPageProps) {
                 {t('legal.terms.subtitle')}
               </p>
               <motion.div
-                key={selectedTermsVersion}
+                key={selectedTermsVersionIndex}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-sm text-muted-foreground space-y-1"
               >
-                <p><strong>{t('legal.terms.effective')}:</strong> {t(termsVersions[selectedTermsVersion].dateKey)}</p>
-                <p><strong>{t('legal.terms.lastUpdated')}:</strong> {t(termsVersions[selectedTermsVersion].dateKey)}</p>
+                <p><strong>{t('legal.terms.effective')}:</strong> {t(termsVersions[selectedTermsVersionIndex].dateKey)}</p>
+                <p><strong>{t('legal.terms.lastUpdated')}:</strong> {t(termsVersions[selectedTermsVersionIndex].dateKey)}</p>
                 <p className="mt-3 text-xs italic text-[#FF6B35]">
-                  {t(termsVersions[selectedTermsVersion].descriptionKey)}
+                  {t(termsVersions[selectedTermsVersionIndex].descriptionKey)}
                 </p>
               </motion.div>
             </div>

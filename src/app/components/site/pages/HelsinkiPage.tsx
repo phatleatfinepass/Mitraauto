@@ -13,23 +13,17 @@ interface HelsinkiPageProps {
 
 export function HelsinkiPage({ onBookingClick, onNavigate }: HelsinkiPageProps) {
   const { language, t } = useLanguage();
-  const canonicalPath = language === 'en' ? '/en/helsinki' : '/helsinki';
+  const canonicalPath = t('route.helsinki');
 
   useLocalSeoHead({
     language,
-    title:
-      language === 'fi'
-        ? 'Autokorjaamo Helsinki | Mitra Auto Hankasuontie'
-        : 'Car Garage in Helsinki | Mitra Auto Hankasuontie',
-    description:
-      language === 'fi'
-        ? 'Mitra Auto on autokorjaamo Helsingissä osoitteessa Hankasuontie 5. Huolto, rengastyöt, rengashotelli, vikadiagnostiikka ja ajanvaraus.'
-        : 'Mitra Auto is a car garage in Helsinki at Hankasuontie 5. Book maintenance, tire services, tire hotel and diagnostics.',
+    title: t('seo.helsinki.title'),
+    description: t('seo.helsinki.description'),
     canonicalPath,
     alternatePaths: { fi: '/helsinki', en: '/en/helsinki' },
     pageType: 'WebPage',
     breadcrumbs: [
-      { name: language === 'fi' ? 'Etusivu' : 'Home', path: language === 'fi' ? '/' : '/en' },
+      { name: t('nav.home'), path: t('route.home') },
       { name: 'Helsinki', path: canonicalPath },
     ],
   });

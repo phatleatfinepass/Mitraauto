@@ -40,6 +40,10 @@ function readPathLanguage(): Language | null {
   }
 
   const path = window.location.pathname.toLowerCase();
+  if (path === '/') {
+    return 'fi';
+  }
+
   if (path === '/en' || path.startsWith('/en/')) {
     return 'en';
   }

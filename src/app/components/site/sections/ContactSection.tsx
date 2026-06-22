@@ -51,7 +51,7 @@ export function ContactSection() {
 
   return (
     <section 
-      className="py-16 md:py-24 lg:py-32 bg-background relative" 
+      className="relative overflow-hidden bg-background py-16 md:py-24 lg:py-32"
       aria-labelledby="contact-heading"
     >
       <div className="container mx-auto max-w-7xl px-6 lg:px-8">
@@ -66,7 +66,7 @@ export function ContactSection() {
         </div>
 
         {/* Two Column Layout */}
-         <div className="grid grid-cols-1 gap-8 md:gap-12 lg:grid-cols-[60%_40%] items-start">
+         <div className="grid grid-cols-1 items-start gap-8 md:gap-12 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           {/* Left Column - Map Placeholder */}
            <div className="order-1 w-full">
             <a

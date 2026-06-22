@@ -64,6 +64,14 @@ export function getCatalogProductRouteType(product: CatalogSeoProduct): CatalogP
   return (product.product_type ?? product.type ?? 'tire') === 'rim' ? 'rim' : 'tire';
 }
 
+function formatRimMetricForPublicSlug(value?: number | null) {
+  if (value === undefined || value === null || !Number.isFinite(Number(value))) {
+    return null;
+  }
+
+  return Number(value).toFixed(2);
+}
+
 export function buildCatalogProductSeoSlug(product: CatalogSeoProduct) {
   const productType = getCatalogProductRouteType(product);
   const commonParts = [product.brand, product.model];
@@ -82,8 +90,12 @@ export function buildCatalogProductSeoSlug(product: CatalogSeoProduct) {
               product.rim_diameter ? `${product.rim_diameter}in` : null,
             ].filter(Boolean).join('x'),
           product.pcd,
-          product.et_offset !== undefined && product.et_offset !== null ? `et-${product.et_offset}` : null,
-          product.cb !== undefined && product.cb !== null ? `cb-${product.cb}` : null,
+          formatRimMetricForPublicSlug(product.et_offset)
+            ? `et-${formatRimMetricForPublicSlug(product.et_offset)}`
+            : null,
+          formatRimMetricForPublicSlug(product.cb)
+            ? `cb-${formatRimMetricForPublicSlug(product.cb)}`
+            : null,
           product.color,
         ];
 

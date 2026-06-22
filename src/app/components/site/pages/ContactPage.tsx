@@ -12,24 +12,18 @@ interface ContactPageProps {
 
 export function ContactPage({ onBookingClick }: ContactPageProps) {
   const { language, t } = useLanguage();
-  const canonicalPath = language === 'en' ? '/en/contact' : '/yhteystiedot';
+  const canonicalPath = t('route.contact');
 
   useLocalSeoHead({
     language,
-    title:
-      language === 'fi'
-        ? 'Yhteystiedot | Mitra Auto Helsinki'
-        : 'Contact Mitra Auto | Helsinki Garage',
-    description:
-      language === 'fi'
-        ? 'Mitra Auto Oy sijaitsee osoitteessa Hankasuontie 5, 00390 Helsinki. Katso aukioloajat, puhelin, sähköposti, kartta ja ajanvaraus.'
-        : 'Mitra Auto Oy is located at Hankasuontie 5, 00390 Helsinki. See opening hours, phone, email, map and booking options.',
+    title: t('seo.contact.title'),
+    description: t('seo.contact.description'),
     canonicalPath,
     alternatePaths: { fi: '/yhteystiedot', en: '/en/contact' },
     pageType: 'ContactPage',
     breadcrumbs: [
-      { name: language === 'fi' ? 'Etusivu' : 'Home', path: language === 'fi' ? '/' : '/en' },
-      { name: language === 'fi' ? 'Yhteystiedot' : 'Contact', path: canonicalPath },
+      { name: t('nav.home'), path: t('route.home') },
+      { name: t('contactPage.breadcrumb.contact'), path: canonicalPath },
     ],
   });
 

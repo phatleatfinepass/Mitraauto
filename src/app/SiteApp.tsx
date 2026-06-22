@@ -13,6 +13,7 @@ import { ContactSection } from './components/site/sections/ContactSection';
 import { AuthModal } from './components/site/modals/AuthModal';
 import { EmergencyTowModal } from './components/site/modals/EmergencyTowModal';
 import { BookingModal } from './components/site/booking/BookingModal';
+import { AnalyticsConsentBanner } from './components/site/analytics/AnalyticsConsentBanner';
 import { ServicesPage } from './components/site/pages/ServicesPage';
 import { TireHotelPage } from './components/site/pages/TireHotelPage';
 import { AboutPage } from './components/site/pages/AboutPage';
@@ -49,6 +50,7 @@ import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from './utils/supabase/client';
+import { trackClarityEvent, trackClarityPageView, upgradeClaritySession } from './lib/clarity';
 import { fetchProductSearchRowByIdentifier } from './utils/productsSearch';
 import { useLocalSeoHead } from './utils/localSeo';
 import {
@@ -371,6 +373,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
     model: product.model,
     title: product.title,
     subtitle: product.subtitle,
+    size_text: product.size_text,
     rim_width: product.rim_width,
     rim_diameter: product.rim_diameter,
     pcd: product.pcd,
@@ -382,6 +385,7 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
     weight: undefined,
     tags: product.tags,
     generated_tags: product.generated_tags,
+    ean: product.ean,
     best_price_eur: product.best_price_eur,
     best_image_url: product.best_image_url,
     images: detailImages,
@@ -401,27 +405,9 @@ function mapCatalogProductToDetail(product: CatalogProduct, language: 'fi' | 'en
 function HomePage() {
   const { t, language } = useLanguage();
   const { addToCart, totalItems, setIsCartOpen } = useCart();
-  const catalogHref = language === 'en' ? '/en/catalog' : '/catalog';
-  const servicesHref = language === 'en' ? '/en/services' : '/palvelut';
-  const tireHotelHref = language === 'en' ? '/en/services/tire-hotel' : '/palvelut/rengashotelli';
-
-  useLocalSeoHead({
-    language,
-    title:
-      language === 'fi'
-        ? 'Mitra Auto | Autohuolto, renkaat ja korjaamo Helsingissä'
-        : 'Mitra Auto | Garage Services, Tyres and Booking in Helsinki',
-    description:
-      language === 'fi'
-        ? 'Mitra Auto on täyden palvelun autokorjaamo Helsingissä. Varaa autohuolto, rengastyöt, rengashotelli, vikadiagnostiikka tai autopesu.'
-        : 'Mitra Auto is a full-service garage in Helsinki. Book car service, tire work, tire hotel, diagnostics or car wash.',
-    canonicalPath: language === 'en' ? '/en' : '/',
-    alternatePaths: { fi: '/', en: '/en' },
-    pageType: 'WebPage',
-    breadcrumbs: [
-      { name: language === 'fi' ? 'Etusivu' : 'Home', path: language === 'fi' ? '/' : '/en' },
-    ],
-  });
+  const catalogHref = t('route.catalog');
+  const servicesHref = t('route.services');
+  const tireHotelHref = t('route.tireHotel');
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -434,15 +420,29 @@ function HomePage() {
     earliestDate?: string;
     contact?: { name?: string; phone?: string; email?: string };
   } | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms-beta' | 'cms-tire-conflicts' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'services' | 'service-detail' | 'tire-hotel' | 'catalog' | 'about' | 'legal' | 'product-detail' | 'checkout' | 'checkout-success' | 'checkout-cancel' | 'cms-beta' | 'cms-tire-conflicts' | 'cms-tire-storage' | 'catalog-detail' | 'privacy' | 'cookies' | 'terms' | 'contact' | 'faq' | 'helsinki' | 'car-service' | 'tire-change' | 'diagnostics' | 'car-wash' | 'booking-manage' | 'customer-account' | 'pwa-cms' | 'pwa-not-found' | 'not-found'>('home');
   const [cmsTab, setCmsTab] = useState<CmsTab>('rescue');
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [selectedServiceDetail, setSelectedServiceDetail] = useState<ResolvedServiceDetail>({ kind: 'bespoke', pageId: 'car-service', language: 'en' });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const requestedProtectedPathRef = useRef<string | null>(null);
+  const previousBookingOpenRef = useRef(false);
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
+
+  useLocalSeoHead({
+    enabled: currentPage === 'home',
+    language,
+    title: t('seo.home.title'),
+    description: t('seo.home.description'),
+    canonicalPath: t('route.home'),
+    alternatePaths: { fi: '/', en: '/en' },
+    pageType: 'WebPage',
+    breadcrumbs: [
+      { name: t('nav.home'), path: t('route.home') },
+    ],
+  });
 
   useEffect(() => {
     if (!noindexAppPages.has(currentPage)) {
@@ -494,13 +494,44 @@ function HomePage() {
     };
   }, [currentPage]);
 
+  useEffect(() => {
+    if (noindexAppPages.has(currentPage)) {
+      return;
+    }
+
+    trackClarityPageView({
+      page: currentPage,
+      path: window.location.pathname,
+      language,
+    });
+  }, [currentPage, language]);
+
+  useEffect(() => {
+    if (bookingModalOpen && !previousBookingOpenRef.current) {
+      trackClarityEvent('booking_modal_opened', {
+        page: currentPage,
+        service: preSelectedService || 'not_selected',
+      });
+      upgradeClaritySession('booking_intent');
+    }
+
+    previousBookingOpenRef.current = bookingModalOpen;
+  }, [bookingModalOpen, currentPage, preSelectedService]);
+
+  useEffect(() => {
+    if (currentPage === 'checkout-success') {
+      trackClarityEvent('checkout_success_viewed');
+      upgradeClaritySession('checkout_completed');
+    } else if (currentPage === 'checkout-cancel') {
+      trackClarityEvent('checkout_cancel_viewed');
+    }
+  }, [currentPage]);
+
   // Check auth state on mount
   useEffect(() => {
     let subscription: any = null;
     
     const checkAuth = async () => {
-      const { getSupabaseClient } = await import('./utils/supabase/client');
-      const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
@@ -756,6 +787,13 @@ function HomePage() {
       // Legal routes
       else if (normalizedPath === '/privacy' || normalizedPath === '/legal/privacy') {
         transitionNavigationState('privacy');
+      } else if (
+        normalizedPath === '/cookies' ||
+        normalizedPath === '/cookie-policy' ||
+        normalizedPath === '/legal/cookies' ||
+        normalizedPath === '/legal/cookie-policy'
+      ) {
+        transitionNavigationState('cookies');
       } else if (normalizedPath === '/terms' || normalizedPath === '/legal/terms') {
         transitionNavigationState('terms');
       } else if (normalizedPath === '/legal') {
@@ -838,7 +876,11 @@ function HomePage() {
 
       try {
         const row = await fetchProductSearchRowByIdentifier(parsed.productType, parsed.identifier);
-        if (!active || !row) return;
+        if (!active) return;
+        if (!row) {
+          transitionNavigationState('not-found');
+          return;
+        }
         const catalogProduct = mapProductSearchRow(row, parsed.productType, language);
         const detail = mapCatalogProductToDetail(catalogProduct, language);
         const canonicalPath = getCatalogProductDetailPath(
@@ -863,7 +905,7 @@ function HomePage() {
     return () => {
       active = false;
     };
-  }, [currentPage, language, selectedProduct]);
+  }, [currentPage, language, selectedProduct, transitionNavigationState]);
 
   useEffect(() => {
     const handleNavigation = (event?: PopStateEvent) => {
@@ -944,7 +986,6 @@ function HomePage() {
     
     try {
       // Logout from Supabase
-      const supabase = await import('./utils/supabase/client').then(m => m.getSupabaseClient());
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       
       if (error) {
@@ -1232,6 +1273,12 @@ function HomePage() {
               product={selectedProduct}
               onAddToCart={(product, quantity) => {
                 addToCart(product, quantity);
+                trackClarityEvent('cart_item_added', {
+                  page: 'catalog_detail',
+                  product_type: product.type || 'product',
+                  quantity,
+                });
+                upgradeClaritySession('cart_intent');
                 toast.success(
                   t('toast.addedToCart', {
                     quantity,
@@ -1282,6 +1329,8 @@ function HomePage() {
           </CmsGuard>
         ) : currentPage === 'privacy' ? (
           <LegalPage initialSection="privacy" />
+        ) : currentPage === 'cookies' ? (
+          <LegalPage initialSection="cookie" />
         ) : currentPage === 'terms' ? (
           <LegalPage initialSection="terms" />
         ) : currentPage === 'legal' ? (
@@ -1644,6 +1693,7 @@ function HomePage() {
       </main>
 
       {!isPwaRoute ? <Footer onNavigate={navigate} /> : null}
+      {!isPwaRoute ? <AnalyticsConsentBanner /> : null}
     </div>
   );
 }

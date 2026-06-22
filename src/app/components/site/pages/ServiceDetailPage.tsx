@@ -4,6 +4,7 @@ import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   buildGeneratedServiceSeoPage,
   getServiceDetailPathForServiceId,
+  serviceSeoEvidenceByPageId,
   serviceSeoPageById,
   type ServiceSeoPageId,
 } from '../../../i18n/dictionaries/serviceSeo';
@@ -53,6 +54,7 @@ export function ServiceDetailPage({ pageId, serviceId, routeLanguage, onBookingC
   }
 
   const copy = page.copy[effectiveLanguage];
+  const evidence = pageId ? serviceSeoEvidenceByPageId[pageId]?.[effectiveLanguage] : null;
   const heroImage = imageByKey[page.imageKey];
   const canonicalPath = getLocalizedPath(page.paths, effectiveLanguage);
   const canonicalUrl = `${businessProfile.websiteUrl}${canonicalPath}`;
@@ -318,6 +320,30 @@ export function ServiceDetailPage({ pageId, serviceId, routeLanguage, onBookingC
               </div>
             </div>
 
+            {evidence ? (
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  { title: evidence.notIncludedTitle, items: evidence.notIncluded },
+                  { title: evidence.eligibilityTitle, items: evidence.eligibility },
+                  { title: evidence.safetyTitle, items: evidence.safetyLimitations },
+                ].map((section) => (
+                  <Card key={section.title}>
+                    <CardContent className="p-5">
+                      <h2 className="font-semibold">{section.title}</h2>
+                      <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
+                        {section.items.map((item) => (
+                          <li key={item} className="flex gap-2">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : null}
+
             <div>
               <h2 className="text-3xl font-semibold tracking-tight">{copy.faqTitle}</h2>
               <div className="mt-6 space-y-4">
@@ -336,6 +362,37 @@ export function ServiceDetailPage({ pageId, serviceId, routeLanguage, onBookingC
                 ))}
               </div>
             </div>
+
+            {evidence ? (
+              <div className="space-y-4">
+                {[
+                  { title: evidence.aftercareTitle, items: evidence.aftercare },
+                  { title: evidence.evidenceTitle, items: evidence.evidence },
+                  { title: evidence.sourceNotesTitle, items: evidence.sourceNotes },
+                ].map((section) => (
+                  <Card key={section.title}>
+                    <CardContent className="p-5">
+                      <h2 className="font-semibold">{section.title}</h2>
+                      <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
+                        {section.items.map((item) => (
+                          <li key={item} className="flex gap-2">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                ))}
+                <Card>
+                  <CardContent className="p-5">
+                    <h2 className="font-semibold">{evidence.reviewTitle}</h2>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{evidence.reviewedBy}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{evidence.lastReviewed}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : null}
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -347,7 +404,7 @@ export function ServiceDetailPage({ pageId, serviceId, routeLanguage, onBookingC
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  {copy.durationLabel}
+                  <span>{evidence?.durationValue ?? copy.durationLabel}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4" />

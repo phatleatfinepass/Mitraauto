@@ -71,10 +71,10 @@ export function Navbar({
     return false;
   };
   
-  const homeHref = language === 'en' ? '/en' : '/';
-  const servicesHref = language === 'en' ? '/en/services' : '/palvelut';
-  const catalogHref = language === 'en' ? '/en/catalog' : '/catalog';
-  const tireHotelHref = language === 'en' ? '/en/services/tire-hotel' : '/palvelut/rengashotelli';
+  const homeHref = t('route.home');
+  const servicesHref = t('route.services');
+  const catalogHref = t('route.catalog');
+  const tireHotelHref = t('route.tireHotel');
 
   const navLinks = [
     { key: 'nav.home', href: homeHref },

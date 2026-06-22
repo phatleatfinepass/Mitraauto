@@ -17,6 +17,73 @@ export const siteTranslations = {
   'nav.menuDescription': { fi: 'Navigoi sivustolla ja muuta asetuksia', en: 'Navigate the site and change settings' },
   'nav.cart': { fi: 'Ostoskori', en: 'Cart' },
 
+  // Routes
+  'route.home': { fi: '/', en: '/en' },
+  'route.services': { fi: '/palvelut', en: '/en/services' },
+  'route.catalog': { fi: '/catalog', en: '/en/catalog' },
+  'route.tireHotel': { fi: '/palvelut/rengashotelli', en: '/en/services/tire-hotel' },
+  'route.about': { fi: '/meista', en: '/en/about' },
+  'route.contact': { fi: '/yhteystiedot', en: '/en/contact' },
+  'route.helsinki': { fi: '/helsinki', en: '/en/helsinki' },
+
+  // SEO metadata
+  'seo.home.title': {
+    fi: 'Mitra Auto | Autohuolto, renkaat ja korjaamo Helsingissä',
+    en: 'Mitra Auto | Garage Services, Tyres and Booking in Helsinki',
+  },
+  'seo.home.description': {
+    fi: 'Mitra Auto on täyden palvelun autokorjaamo Helsingissä. Varaa autohuolto, rengastyöt, rengashotelli, vikadiagnostiikka tai autopesu.',
+    en: 'Mitra Auto is a full-service garage in Helsinki. Book car service, tire work, tire hotel, diagnostics or car wash.',
+  },
+  'seo.services.title': {
+    fi: 'Autohuolto ja rengaspalvelut Helsinki | Mitra Auto',
+    en: 'Garage and Tire Services in Helsinki | Mitra Auto',
+  },
+  'seo.services.description': {
+    fi: 'Katso Mitra Auton autohuolto-, rengas-, ilmastointi-, DPF-, diagnostiikka- ja autonhoitopalvelut Helsingissä ja varaa aika verkossa.',
+    en: 'View Mitra Auto garage, tire, AC, DPF, diagnostics and car care services in Helsinki and book an appointment online.',
+  },
+  'seo.contact.title': {
+    fi: 'Yhteystiedot | Mitra Auto Helsinki',
+    en: 'Contact Mitra Auto | Helsinki Garage',
+  },
+  'seo.contact.description': {
+    fi: 'Mitra Auto Oy sijaitsee osoitteessa Hankasuontie 5, 00390 Helsinki. Katso aukioloajat, puhelin, sähköposti, kartta ja ajanvaraus.',
+    en: 'Mitra Auto Oy is located at Hankasuontie 5, 00390 Helsinki. See opening hours, phone, email, map and booking options.',
+  },
+  'seo.helsinki.title': {
+    fi: 'Autokorjaamo Helsinki | Mitra Auto Hankasuontie',
+    en: 'Car Garage in Helsinki | Mitra Auto Hankasuontie',
+  },
+  'seo.helsinki.description': {
+    fi: 'Mitra Auto on autokorjaamo Helsingissä osoitteessa Hankasuontie 5. Huolto, rengastyöt, rengashotelli, vikadiagnostiikka ja ajanvaraus.',
+    en: 'Mitra Auto is a car garage in Helsinki at Hankasuontie 5. Book maintenance, tire services, tire hotel and diagnostics.',
+  },
+  'seo.notFound.title': {
+    fi: 'Sivua ei löytynyt | Mitra Auto',
+    en: 'Page not found | Mitra Auto',
+  },
+  'seo.notFound.description': {
+    fi: 'Pyytämääsi Mitra Auton sivua ei löytynyt. Palaa etusivulle tai ota yhteyttä.',
+    en: 'The Mitra Auto page you requested was not found. Return home or contact us.',
+  },
+  'productSeo.title': {
+    fi: '{{product}} | Mitra Auto',
+    en: '{{product}} | Mitra Auto',
+  },
+  'productSeo.tireDescription': {
+    fi: '{{product}} rengas Mitra Autolta. Hinta {{price}}, saatavuus ja toimitus tarkistetaan tilauksessa.',
+    en: '{{product}} tyre from Mitra Auto. Price {{price}}, availability and delivery are confirmed at checkout.',
+  },
+  'productSeo.rimDescription': {
+    fi: '{{product}} vanne Mitra Autolta. Hinta {{price}}, saatavuus ja toimitus tarkistetaan tilauksessa.',
+    en: '{{product}} rim from Mitra Auto. Price {{price}}, availability and delivery are confirmed at checkout.',
+  },
+  'productSeo.priceOnRequest': {
+    fi: 'kysy hinta',
+    en: 'price on request',
+  },
+
   // Hero
   'hero.headline': { fi: 'Mitra Auto - Ammattitaitoiset palvelut', en: 'Mitra Auto - Professional Services' },
   'hero.subheadline': { fi: 'Täyden palvelun korjaamo rengas-, huolto- ja korjauspalveluilla. Varaa aikasi verkossa.', en: 'Full-service garage with tire, maintenance and repair services. Book your appointment online.' },
@@ -271,8 +338,8 @@ export const siteTranslations = {
   'carServicePage.benefits.parts.desc': { fi: 'Laadukkaita osia luotettavilta toimittajilta', en: 'Quality parts from trusted suppliers' },
   'carServicePage.benefits.fast.title': { fi: 'Nopea palvelu', en: 'Fast Service' },
   'carServicePage.benefits.fast.desc': { fi: 'Tehokas läpimenoaika ilman laatutinkimistä', en: 'Efficient turnaround without compromising quality' },
-  'carServicePage.benefits.guarantee.title': { fi: 'Tyytyväisyystakuu', en: 'Satisfaction Guarantee' },
-  'carServicePage.benefits.guarantee.desc': { fi: '100% tyytyväisyys tai rahat takaisin', en: '100% satisfaction or money back' },
+  'carServicePage.benefits.guarantee.title': { fi: 'Selkeä hyväksyntä ennen lisätöitä', en: 'Clear approval before extra work' },
+  'carServicePage.benefits.guarantee.desc': { fi: 'Lisätyöt ja hinnat käydään läpi ennen työn jatkamista', en: 'Extra work and prices are reviewed before work continues' },
   'carServicePage.included.inspection': { fi: 'Täydellinen ajoneuvon tarkastus', en: 'Complete vehicle inspection' },
   'carServicePage.included.oilFilter': { fi: 'Öljynvaihto ja suodatinvaihto', en: 'Oil and filter change' },
   'carServicePage.included.fluids': { fi: 'Nesteiden täydennys', en: 'Fluid top-up' },
@@ -550,8 +617,8 @@ export const siteTranslations = {
   'trustSignals.modernEquipmentDesc': { fi: 'Uusimmat diagnostiikka- ja korjauslaitteet', en: 'Latest diagnostic and repair tools' },
   'trustSignals.genuineParts': { fi: 'Aidot varaosat', en: 'Genuine Parts' },
   'trustSignals.genuinePartsDesc': { fi: 'Laadukkaita varaosia luotetuista lähteistä', en: 'Quality parts from trusted sources' },
-  'trustSignals.satisfaction': { fi: 'Tyytyväisyystakuu', en: 'Satisfaction Guarantee' },
-  'trustSignals.satisfactionDesc': { fi: '100% tyytyväisyystakuu kaikissa palveluissa', en: '100% satisfaction guarantee on all services' },
+  'trustSignals.satisfaction': { fi: 'Selkeä palveluprosessi', en: 'Clear Service Process' },
+  'trustSignals.satisfactionDesc': { fi: 'Työ ja lisätarpeet käydään läpi ennen etenemistä', en: 'Work and additional needs are reviewed before proceeding' },
   
   // Trust Signals (Tire Hotel Page)
   'trustSignals.secureStorage': { fi: 'Turvallinen säilytys', en: 'Secure Storage' },

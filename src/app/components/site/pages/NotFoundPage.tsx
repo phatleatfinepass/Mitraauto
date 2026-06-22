@@ -9,15 +9,12 @@ interface NotFoundPageProps {
 
 export function NotFoundPage({ path, onNavigateHome }: NotFoundPageProps) {
   const { language, t } = useLanguage();
+  const title = t('seo.notFound.title');
+  const description = t('seo.notFound.description');
 
   useEffect(() => {
     const previousTitle = document.title;
     const previousLang = document.documentElement.lang;
-    const title = language === 'fi' ? 'Sivua ei löytynyt | Mitra Auto' : 'Page not found | Mitra Auto';
-    const description =
-      language === 'fi'
-        ? 'Pyytämääsi Mitra Auton sivua ei löytynyt. Palaa etusivulle tai ota yhteyttä.'
-        : 'The Mitra Auto page you requested was not found. Return home or contact us.';
 
     document.title = title;
     document.documentElement.lang = language;
@@ -84,7 +81,7 @@ export function NotFoundPage({ path, onNavigateHome }: NotFoundPageProps) {
         document.head.appendChild(link);
       });
     };
-  }, [language]);
+  }, [description, language, title]);
 
   return (
     <main className="min-h-[70vh] px-6 py-10 lg:px-8 lg:py-16">

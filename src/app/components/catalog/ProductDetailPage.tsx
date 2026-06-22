@@ -33,6 +33,7 @@ import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { buildProductImageFallback } from '../../utils/productImage';
 import { calculateLinePricing, PRODUCT_VAT_MULTIPLIER, type ProductPricingRules } from '../../utils/pricing';
+import { getProductCommerceSnapshot } from '../../utils/productCommerce';
 import { fetchProductLocaleContent, type ProductLocaleContent } from '../../utils/productsSearch';
 import { getCatalogProductDetailPath, getCatalogProductSeoIdentifier } from '../../utils/catalogSeo';
 import type { TyreLabelSectionData } from '../../utils/tyreLabel';
@@ -86,6 +87,7 @@ export interface TireProduct {
   warranty_years?: number;
   rating?: number;
   review_count?: number;
+  ean?: string;
 }
 
 export interface RimProduct {
@@ -95,6 +97,7 @@ export interface RimProduct {
   model: string;
   title?: string;
   subtitle?: string;
+  size_text?: string;
   rim_width?: number;
   rim_diameter?: number;
   pcd?: string;
@@ -132,15 +135,31 @@ function hasSellableProductPrice(price?: number | null) {
   return typeof price === 'number' && Number.isFinite(price) && price > 0;
 }
 
+function firstNonEmptyText(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const normalized = String(value ?? '').trim();
+    if (normalized) return normalized;
+  }
+
+  return '';
+}
+
 function getProductRouteSizeText(product: Product) {
   if (product.type === 'tire') {
-    return [
+    const size =
       product.tire_width && product.aspect_ratio && product.rim_diameter
-        ? `${product.tire_width}/${product.aspect_ratio}${product.construction ?? 'R'}${product.rim_diameter}`
-        : null,
+        ? `${product.tire_width} / ${String(product.aspect_ratio).padStart(2, '0')} ${product.construction ?? 'R'}${String(product.rim_diameter).padStart(2, '0')}`
+        : null;
+
+    return [
+      size,
       product.load_index,
       product.speed_rating,
     ].filter(Boolean).join(' ');
+  }
+
+  if (product.size_text) {
+    return product.size_text;
   }
 
   return product.rim_width && product.rim_diameter
@@ -169,11 +188,6 @@ function getProductDetailHref(product: Product, language: 'fi' | 'en') {
     }),
     language,
   );
-}
-
-function normalizeGtin(value?: string | null) {
-  const digits = String(value ?? '').replace(/\D/g, '');
-  return digits.length >= 8 && digits.length <= 14 ? digits : undefined;
 }
 
 interface ProductDetailPageProps {
@@ -586,8 +600,9 @@ export function ProductDetailPage({
   const hasSellablePrice = hasSellableProductPrice(product.best_price_eur);
   const price = hasSellablePrice ? product.best_price_eur ?? 0 : 0;
   const pricingForQuantity = calculateLinePricing(price, quantity, product.pricing_rules ?? null);
-  const displayUnitPrice = pricingForQuantity.effectiveUnitPriceEur * PRODUCT_VAT_MULTIPLIER;
-  const totalPrice = pricingForQuantity.lineTotalEur * PRODUCT_VAT_MULTIPLIER;
+  const commerce = getProductCommerceSnapshot(product, { quantity, displayName });
+  const displayUnitPrice = commerce.unitPriceInclVatEur;
+  const totalPrice = commerce.lineTotalInclVatEur;
   const hasTierDiscount = hasSellablePrice && pricingForQuantity.savingsEur > 0;
   const homePath = LOCALIZED_HOME_PATHS[language];
   const catalogPath = LOCALIZED_CATALOG_PATHS[language];
@@ -595,6 +610,17 @@ export function ProductDetailPage({
   const catalogLabel = t('nav.catalog');
   const canonicalBaseUrl = businessProfile.websiteUrl.replace(/\/+$/, '');
   const productImageListKey = images.join('|');
+  const productRouteSizeText = getProductRouteSizeText(product);
+  const productSeoLabel = [displayName, productRouteSizeText].filter(Boolean).join(' ');
+  const productSeoPrice = hasSellablePrice ? `${displayUnitPrice.toFixed(2)} EUR` : t('productSeo.priceOnRequest');
+  const fallbackSeoTitle = t('productSeo.title', { product: productSeoLabel || displayName });
+  const fallbackSeoDescription = t(
+    product.type === 'tire' ? 'productSeo.tireDescription' : 'productSeo.rimDescription',
+    {
+      product: productSeoLabel || displayName,
+      price: productSeoPrice,
+    },
+  );
 
   useEffect(() => {
     setQuantity(defaultQuantity);
@@ -630,12 +656,17 @@ export function ProductDetailPage({
     const previousTitle = document.title;
     document.documentElement.lang = language;
 
-    const title = String(localizedSeoTitle ?? displayName ?? '').trim();
+    const title = firstNonEmptyText(localizedSeoTitle, fallbackSeoTitle, displayName);
     if (title) {
       document.title = title;
     }
 
-    const description = String(localizedSeoDescription ?? shortDescription ?? detailDescription ?? '').trim();
+    const description = firstNonEmptyText(
+      localizedSeoDescription,
+      shortDescription,
+      detailDescription,
+      fallbackSeoDescription,
+    );
     let descriptionTag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     const previousDescription = descriptionTag?.content ?? '';
     const createdDescription = !descriptionTag;
@@ -647,14 +678,13 @@ export function ProductDetailPage({
     descriptionTag.setAttribute('content', description);
 
     const origin = canonicalBaseUrl;
-    const productSizeText = getProductRouteSizeText(product);
     const routeProduct = {
       id: product.id,
       seo_slug: product.seo_slug,
       product_type: product.type,
       brand: product.brand,
       model: product.model,
-      size_text: productSizeText,
+      size_text: productRouteSizeText,
       season: product.type === 'tire' ? product.season : undefined,
       rim_width: product.type === 'rim' ? product.rim_width : undefined,
       rim_diameter: product.type === 'rim' ? product.rim_diameter : undefined,
@@ -719,7 +749,7 @@ export function ProductDetailPage({
       product.type === 'tire'
         ? [
             { name: 'Season', value: product.season },
-            { name: 'Size', value: productSizeText },
+            { name: 'Size', value: productRouteSizeText },
             { name: 'Load index', value: product.load_index },
             { name: 'Speed rating', value: product.speed_rating },
             { name: 'Fuel efficiency', value: product.fuel_efficiency },
@@ -728,7 +758,7 @@ export function ProductDetailPage({
             { name: 'Manufacture year', value: product.manufacture_year ? String(product.manufacture_year) : undefined },
           ]
         : [
-            { name: 'Size', value: productSizeText },
+            { name: 'Size', value: productRouteSizeText },
             { name: 'PCD', value: product.pcd },
             { name: 'Offset', value: product.et_offset !== undefined ? `ET${product.et_offset}` : undefined },
             { name: 'Center bore', value: product.cb ? `${product.cb} mm` : undefined },
@@ -751,9 +781,11 @@ export function ProductDetailPage({
       productJsonLd.dataset.productSeoJsonld = 'true';
       document.head.appendChild(productJsonLd);
     }
-    const stockQuantity = typeof product.stock_quantity === 'number' && Number.isFinite(product.stock_quantity)
-      ? Math.max(0, Math.floor(product.stock_quantity))
-      : undefined;
+    const commerceSchema = getProductCommerceSnapshot(product, {
+      quantity: 1,
+      displayName,
+    });
+    const stockQuantity = commerceSchema.stockQuantity ?? undefined;
     const productSchema = {
       '@type': 'Product',
       '@id': `${canonicalUrl}#product`,
@@ -766,24 +798,17 @@ export function ProductDetailPage({
         '@type': 'Brand',
         name: product.brand,
       },
-      sku: product.ean || undefined,
-      gtin: normalizeGtin(product.ean),
-      mpn: product.model || undefined,
+      sku: commerceSchema.sku || undefined,
+      gtin: commerceSchema.gtin || undefined,
+      mpn: commerceSchema.mpn || undefined,
       additionalProperty: additionalProperties.length > 0 ? additionalProperties : undefined,
-      aggregateRating: hasReviewData
-        ? {
-            '@type': 'AggregateRating',
-            ratingValue: product.rating,
-            reviewCount: product.review_count,
-          }
-        : undefined,
-      offers: hasSellablePrice
+      offers: commerceSchema.hasSellablePrice
         ? {
             '@type': 'Offer',
             url: canonicalUrl,
             priceCurrency: 'EUR',
-            price: (price * PRODUCT_VAT_MULTIPLIER).toFixed(2),
-            availability: product.in_stock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            price: commerceSchema.unitPriceInclVatEur.toFixed(2),
+            availability: commerceSchema.schemaAvailability,
             itemCondition: 'https://schema.org/NewCondition',
             inventoryLevel: stockQuantity !== undefined
               ? {
@@ -860,6 +885,8 @@ export function ProductDetailPage({
     catalogLabel,
     catalogPath,
     canonicalBaseUrl,
+    fallbackSeoDescription,
+    fallbackSeoTitle,
     homeLabel,
     homePath,
     hasSellablePrice,
@@ -871,6 +898,7 @@ export function ProductDetailPage({
     price,
     product,
     productImageListKey,
+    productRouteSizeText,
     shortDescription,
   ]);
 
@@ -1077,6 +1105,43 @@ export function ProductDetailPage({
       body: productText('returnsDesc'),
     },
   ];
+  const buyingGuideItems = product.type === 'tire'
+    ? [
+        {
+          title: productText('fitmentCheckTitle'),
+          body: productText('fitmentCheckTire'),
+        },
+        {
+          title: productText('productUseTitle'),
+          body: productText('productUseTire'),
+        },
+        {
+          title: productText('installationTitle'),
+          body: productText('installationBody'),
+        },
+        {
+          title: productText('lifecycleTitle'),
+          body: productText('lifecycleBody'),
+        },
+      ]
+    : [
+        {
+          title: productText('fitmentCheckTitle'),
+          body: productText('fitmentCheckRim'),
+        },
+        {
+          title: productText('productUseTitle'),
+          body: productText('productUseRim'),
+        },
+        {
+          title: productText('installationTitle'),
+          body: productText('installationBody'),
+        },
+        {
+          title: productText('lifecycleTitle'),
+          body: productText('lifecycleBody'),
+        },
+      ];
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#11141A]' : 'bg-white'}`}>
@@ -1492,6 +1557,28 @@ export function ProductDetailPage({
               <div className="mt-6">
                 <SpecList theme={theme} rows={technicalRows} />
               </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className={`text-2xl ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{productText('buyingGuide')}</h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {buyingGuideItems.map((item) => (
+                <div
+                  key={item.title}
+                  className={`rounded-3xl border p-6 ${
+                    theme === 'dark' ? 'border-white/10 bg-[#1C1C1E]' : 'border-[#E2E8F0] bg-[#F8FAFC]'
+                  }`}
+                >
+                  <div className={`mb-4 inline-flex rounded-full p-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-white'}`}>
+                    <Check className={`size-5 ${theme === 'dark' ? 'text-gray-200' : 'text-[#FF6B00]'}`} />
+                  </div>
+                  <h3 className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>{item.title}</h3>
+                  <p className={`mt-2 text-sm leading-6 ${theme === 'dark' ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                    {item.body}
+                  </p>
+                </div>
+              ))}
             </div>
           </section>
 
