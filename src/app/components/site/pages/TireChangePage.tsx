@@ -10,25 +10,26 @@ interface TireChangePageProps {
 
 export function TireChangePage({ onBookingClick }: TireChangePageProps) {
   const { t } = useLanguage();
+  const durationConfirmed = t('service.durationConfirmedInBooking');
 
   const services = [
     {
       name: t('tireChangePage.services.passenger.name'),
       desc: t('tireChangePage.services.passenger.desc'),
-      price: '[TBD]',
-      duration: '[TBD] min',
+      price: '30 €',
+      duration: durationConfirmed,
     },
     {
       name: t('tireChangePage.services.suv.name'),
       desc: t('tireChangePage.services.suv.desc'),
-      price: '[TBD]',
-      duration: '[TBD] min',
+      price: '35 €',
+      duration: durationConfirmed,
     },
     {
       name: t('tireChangePage.services.van.name'),
       desc: t('tireChangePage.services.van.desc'),
-      price: '[TBD]',
-      duration: '[TBD] min',
+      price: t('service.vehicleSpecificQuote'),
+      duration: durationConfirmed,
     },
   ];
 

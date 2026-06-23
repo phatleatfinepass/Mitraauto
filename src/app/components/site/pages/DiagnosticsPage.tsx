@@ -10,17 +10,18 @@ interface DiagnosticsPageProps {
 
 export function DiagnosticsPage({ onBookingClick }: DiagnosticsPageProps) {
   const { t } = useLanguage();
+  const priceConfirmed = t('service.vehicleSpecificQuote');
 
   const services = [
     {
       name: t('diagnosticsPage.services.codes.name'),
       desc: t('diagnosticsPage.services.codes.desc'),
-      price: '[TBD] €',
+      price: priceConfirmed,
     },
     {
       name: t('diagnosticsPage.services.comprehensive.name'),
       desc: t('diagnosticsPage.services.comprehensive.desc'),
-      price: '[TBD] €',
+      price: priceConfirmed,
     },
   ];
 
