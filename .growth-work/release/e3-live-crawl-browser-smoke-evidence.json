@@ -1,0 +1,171 @@
+{
+  "id": "E-3",
+  "name": "Live Crawl And Browser Smoke Evidence",
+  "recordedDate": "2026-06-22",
+  "status": "complete_with_live_release_blockers",
+  "lifecycleMode": "LAUNCH",
+  "scope": {
+    "baseOrigin": "https://www.mitra-auto.fi",
+    "networkMode": "public unauthenticated",
+    "browserMode": "public unauthenticated Playwright MCP",
+    "destructiveActions": "not run",
+    "checkoutSubmission": "not run",
+    "bookingSubmission": "not run"
+  },
+  "evidenceStates": {
+    "liveHttp": "EXECUTED_WITH_FINDINGS",
+    "browser": "EXECUTED_WITH_FINDINGS",
+    "migration": "EXECUTED_WITH_FINDINGS",
+    "conversion": "EXECUTED_WITH_FINDINGS",
+    "platform": "UNAVAILABLE"
+  },
+  "httpCrawlSummary": {
+    "apexRedirect": {
+      "url": "https://mitra-auto.fi/",
+      "finalUrl": "https://www.mitra-auto.fi/",
+      "http": 200,
+      "redirects": 1
+    },
+    "indexablePagesSampled": [
+      {
+        "url": "https://www.mitra-auto.fi/",
+        "http": 200,
+        "contentType": "text/html"
+      },
+      {
+        "url": "https://www.mitra-auto.fi/en/services",
+        "http": 200,
+        "contentType": "text/html"
+      },
+      {
+        "url": "https://www.mitra-auto.fi/palvelut/autohuolto",
+        "http": 200,
+        "contentType": "text/html"
+      },
+      {
+        "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+        "http": 200,
+        "contentType": "text/html"
+      }
+    ],
+    "redirectFailures": [
+      "https://www.mitra-auto.fi/shop returned HTTP 200 instead of redirecting to /catalog.",
+      "https://www.mitra-auto.fi/services returned HTTP 200 instead of redirecting to /en/services.",
+      "https://www.mitra-auto.fi/tire-hotel returned HTTP 200 instead of redirecting to /en/services/tire-hotel.",
+      "https://www.mitra-auto.fi/helsinki/autohuolto returned HTTP 200 instead of redirecting to /palvelut/autohuolto.",
+      "https://www.mitra-auto.fi/palvelut/dpf-pesu returned HTTP 200 instead of redirecting to /palvelut/dpf-huolto."
+    ],
+    "productMigrationFailure": {
+      "url": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "expected": "Permanent redirect to human-readable slug URL"
+    },
+    "staticAssetFailures": [
+      {
+        "url": "https://www.mitra-auto.fi/robots.txt",
+        "http": 404
+      },
+      {
+        "url": "https://www.mitra-auto.fi/sitemap.xml",
+        "http": 404
+      },
+      {
+        "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+        "http": 200,
+        "contentType": "text/html",
+        "expected": "application/xml"
+      },
+      {
+        "url": "https://www.mitra-auto.fi/merchant-products.xml",
+        "http": 200,
+        "contentType": "text/html",
+        "expected": "application/xml"
+      }
+    ],
+    "soft404Failures": [
+      {
+        "url": "https://www.mitra-auto.fi/this-route-should-not-exist-e3",
+        "http": 200,
+        "browserRenderedTitle": "Page not found | Mitra Auto",
+        "browserRobots": "noindex, follow",
+        "expectedHttp": "404 or 410"
+      },
+      {
+        "url": "https://www.mitra-auto.fi/contact",
+        "http": 200,
+        "browserRenderedTitle": "Page not found | Mitra Auto",
+        "browserRobots": "noindex, follow",
+        "expectedHttp": "404, 410, or redirect to /en/contact if intended"
+      }
+    ],
+    "rawHtmlFinding": "Sampled direct HTML responses have generic pre-hydration title/description, no canonical, and H1 text indicating JavaScript is required. Browser hydration fixes many indexable page heads, but raw HTML remains weak for search and crawler resilience."
+  },
+  "browserSmokeSummary": {
+    "passedSamples": [
+      {
+        "url": "https://www.mitra-auto.fi/",
+        "result": "Rendered Finnish homepage with route-specific title, H1, canonical, index/follow, service/catalog/contact actions."
+      },
+      {
+        "url": "https://www.mitra-auto.fi/palvelut/autohuolto",
+        "result": "Rendered Finnish service page with H1, canonical, index/follow, price/process/service sections, and booking actions."
+      },
+      {
+        "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+        "result": "Rendered product detail with product title, canonical, index/follow, stock, delivery, price text, and add-to-cart control."
+      },
+      {
+        "url": "https://www.mitra-auto.fi/en/services/car-service",
+        "result": "Rendered English mobile service page with English lang, H1, canonical, index/follow, and booking actions."
+      },
+      {
+        "url": "https://www.mitra-auto.fi/en/contact",
+        "result": "Rendered English contact page with H1, canonical, index/follow, address, phone, and email."
+      }
+    ],
+    "reversibleActions": [
+      {
+        "action": "Open booking modal from service page",
+        "result": "Booking step 1 modal opened with license plate and date fields; no booking submitted."
+      },
+      {
+        "action": "Add product to cart",
+        "result": "Cart opened with product item and checkout action; no payment or order submitted."
+      },
+      {
+        "action": "Open checkout start",
+        "result": "Checkout form rendered; no customer data entered and no payment submitted."
+      }
+    ],
+    "browserFindings": [
+      {
+        "severity": "BLOCKER",
+        "url": "https://www.mitra-auto.fi/cms",
+        "finding": "Public unauthenticated CMS control center rendered in browser. Sanitized pattern counts observed: phone-like=14, plate-like=8, email-like=1. Raw personal data was intentionally not copied to artifacts.",
+        "controls": ["TECH-004", "DISC-005", "ETH-003", "MULTI-008"]
+      },
+      {
+        "severity": "CRITICAL",
+        "url": "product detail after clicking checkout",
+        "finding": "Checkout content rendered while the browser URL remained on the product detail path; title became generic, canonical disappeared, and robots changed to noindex,nofollow.",
+        "controls": ["JS-004", "CONV-001", "COM-013"]
+      }
+    ]
+  },
+  "blockers": [
+    "Public /cms exposes an unauthenticated CMS control center with apparent private customer/vehicle/contact records.",
+    "Production robots.txt and sitemap.xml return 404.",
+    "Production product sitemap and Merchant feed URLs serve HTML instead of XML.",
+    "Legacy route redirects are not deployed on www host.",
+    "Opaque product identifier URL does not redirect to the human-readable slug URL.",
+    "Invalid routes and accidental route variants are soft-404s at HTTP 200.",
+    "Checkout start can render checkout content on a product URL after cart action."
+  ],
+  "cleanup": [
+    "Removed E-3 Playwright snapshot and console files generated from 2026-06-22T15:23 through 2026-06-22T15:27 because they could contain rendered private route evidence.",
+    "Trimmed E-3 websocket noise appended to the pre-existing .playwright-mcp/console-2026-06-22T14-39-17-906Z.log file."
+  ],
+  "nextTask": "E-4 - Drift Baseline And Monitoring Handoff"
+}

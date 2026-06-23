@@ -1,0 +1,173 @@
+{
+  "version": "2026-06-23.d5",
+  "project": "Mitra Auto",
+  "status": "source_public_claims_hardened_owner_proof_blockers_carried",
+  "created_at": "2026-06-23",
+  "scope": "Public content, service route promotion, reviews, ratings, customer counts, insurance, warranty, waiting-room, certification, equipment, media, guide backlog, and owner approval.",
+  "source_changes": [
+    {
+      "surface": "service_detail_pages",
+      "state": "hardened",
+      "change": "Removed public rendering and imported public dictionary fields for internal evidence, source notes, owner-review status, and growth-ready blocker copy.",
+      "files": [
+        "src/components/site/pages/ServiceDetailPage.tsx",
+        "src/i18n/dictionaries/serviceSeo.ts"
+      ]
+    },
+    {
+      "surface": "service_route_promotion",
+      "state": "hardened",
+      "change": "Added a service route registry and promoted-route helper so generated noindex service fallback pages are resolvable but not promoted from public service navigation or related-service links.",
+      "files": [
+        "src/i18n/dictionaries/serviceSeo.ts",
+        "src/components/site/pages/ServicesPage.tsx",
+        "src/components/site/pages/ServiceDetailPage.tsx"
+      ]
+    },
+    {
+      "surface": "public_claim_copy",
+      "state": "hardened",
+      "change": "Softened or removed unsupported claims for ratings, 500+ customers, certification, modern/latest equipment, blanket warranty, waiting-room amenities, premium delivery, and tire-hotel insurance.",
+      "files": [
+        "src/i18n/dictionaries/site.ts",
+        "src/i18n/dictionaries/common.ts",
+        "src/i18n/dictionaries/legal.ts"
+      ]
+    },
+    {
+      "surface": "legacy_service_pages",
+      "state": "hardened",
+      "change": "Replaced visible [TBD] placeholders with catalog prices where available or booking-confirmed price/duration language.",
+      "files": [
+        "src/components/site/pages/CarServicePage.tsx",
+        "src/components/site/pages/TireChangePage.tsx",
+        "src/components/site/pages/CarWashPage.tsx",
+        "src/components/site/pages/DiagnosticsPage.tsx",
+        "src/i18n/dictionaries/site.ts"
+      ]
+    },
+    {
+      "surface": "product_reviews",
+      "state": "hardened",
+      "change": "Product rating/review display now requires review_source=owner_verified in addition to numeric rating and review_count.",
+      "files": [
+        "src/components/catalog/ProductDetailPage.tsx"
+      ]
+    },
+    {
+      "surface": "content_claim_guard",
+      "state": "added",
+      "change": "Added npm run content:claims:check to fail on internal audit copy, [TBD] placeholders, fake-looking ratings/customer counts, certification, insurance, warranty, waiting-room, and premium-delivery proof phrases.",
+      "files": [
+        "scripts/check_public_content_claims.mjs",
+        "package.json"
+      ]
+    }
+  ],
+  "claim_register": [
+    {
+      "claim_type": "internal governance text",
+      "previous_risk": "Service detail pages rendered Content review, source notes, and Business/service owner review required before growth-ready classification.",
+      "d5_action": "Removed from public rendering and from imported service SEO evidence objects.",
+      "current_public_status": "not_public",
+      "owner_evidence_required": "Keep internal governance in board/reports, not public page dictionaries."
+    },
+    {
+      "claim_type": "reviews and ratings",
+      "previous_risk": "Public dictionaries included 4.8/4.9 rating copy and sample testimonial text; product pages could show rating/review_count without source approval.",
+      "d5_action": "Replaced generic review strings with review-policy copy and gated product review UI on owner_verified review source.",
+      "current_public_status": "blocked_until_verified",
+      "owner_evidence_required": "Approved review source, permission, policy, platform terms, and display rules."
+    },
+    {
+      "claim_type": "customer count",
+      "previous_risk": "Public trust copy claimed over 500 satisfied customers.",
+      "d5_action": "Replaced with clear booking/contact process copy.",
+      "current_public_status": "not_claimed",
+      "owner_evidence_required": "Owner-approved customer count source and calculation window before any customer-count claim returns."
+    },
+    {
+      "claim_type": "certified technicians",
+      "previous_risk": "Public copy claimed certified technicians without proof packet.",
+      "d5_action": "Replaced with service-team and vehicle-specific work-confirmation language.",
+      "current_public_status": "not_claimed",
+      "owner_evidence_required": "Named certifications, scope, dates, issuer, and reviewer approval."
+    },
+    {
+      "claim_type": "equipment",
+      "previous_risk": "Public copy claimed latest/modern diagnostic equipment.",
+      "d5_action": "Replaced with service-need-specific diagnostic and repair approach copy.",
+      "current_public_status": "softened",
+      "owner_evidence_required": "Equipment list, usage scope, photos, and service-owner approval before stronger claims."
+    },
+    {
+      "claim_type": "warranty",
+      "previous_risk": "Car service FAQ implied manufacturer warranty remains valid.",
+      "d5_action": "Replaced with warranty-depends-on-vehicle/parts/manufacturer terms language.",
+      "current_public_status": "conditional",
+      "owner_evidence_required": "Warranty policy, part/source policy, and legal/service-owner approval."
+    },
+    {
+      "claim_type": "waiting room",
+      "previous_risk": "Public FAQ claimed waiting area with free Wi-Fi, coffee, and entertainment.",
+      "d5_action": "Replaced with confirm waiting options before visit.",
+      "current_public_status": "conditional",
+      "owner_evidence_required": "Facility proof, hours/availability, amenities, photos, and owner approval."
+    },
+    {
+      "claim_type": "tire hotel insurance and liability",
+      "previous_risk": "Public tire-hotel copy claimed comprehensive insurance, full coverage, and premium free delivery.",
+      "d5_action": "Replaced with service terms, liability/compensation confirmation, and booking-specific pickup/install language.",
+      "current_public_status": "conditional",
+      "owner_evidence_required": "Signed storage terms, insurance/liability policy, delivery policy, and legal approval."
+    },
+    {
+      "claim_type": "placeholder content",
+      "previous_risk": "Legacy service pages and FAQs showed [TBD] prices and durations.",
+      "d5_action": "Replaced placeholders with catalog prices or booking-confirmed language.",
+      "current_public_status": "hardened",
+      "owner_evidence_required": "Service owner confirms final prices and durations before stronger exact claims."
+    },
+    {
+      "claim_type": "generated service pages",
+      "previous_risk": "Generated noindex service detail pages were promoted from public service navigation.",
+      "d5_action": "Added promoted route helper and registry. Public navigation now links only bespoke indexable service pages.",
+      "current_public_status": "hardened",
+      "owner_evidence_required": "Unique owner-approved content, reviewer, media, indexability, sitemap, and internal-link approval before promotion."
+    },
+    {
+      "claim_type": "guide and category expansion",
+      "previous_risk": "Growth plan recommends guides, but owner evidence/reviewer/source plan is not complete.",
+      "d5_action": "Kept guide/category content as backlog until source evidence, reviewer, purpose, internal links, update trigger, and safety classification exist.",
+      "current_public_status": "backlog",
+      "owner_evidence_required": "Guide briefs, sources, reviewer, media, date/update cadence, safety classification, and commercial next step."
+    }
+  ],
+  "route_policy": {
+    "promoted_indexable_service_pages": "Only service IDs with bespoke ServiceSeoPage mappings are promoted from service hub and related-service links.",
+    "generated_service_pages": "Generated fallback routes remain resolvable with noindex, follow for direct/legacy handling but are not promoted until they have owner-approved unique content.",
+    "sitemap_policy": "Only promoted bespoke service pages should be included in public sitemaps.",
+    "internal_link_policy": "Service hub and related-service cards use getPromotedServiceDetailPathForServiceId; booking buttons may still open the booking modal for catalog services."
+  },
+  "verification": [
+    "npm run content:claims:check",
+    "npm run i18n:audit",
+    "node --check scripts/check_public_content_claims.mjs",
+    "rg forbidden public governance and [TBD] scan"
+  ],
+  "blockers": [
+    "Owner proof for reviews, ratings, customer counts, facility amenities, certifications, equipment, warranty, insurance/liability, media, service reviewer identity, and service availability remains unavailable.",
+    "GBP/citation conflicts from D-2 remain unresolved.",
+    "Merchant/product policy owner approvals from D-3 remain unresolved.",
+    "Live production raw HTML and static asset blockers from Phase B/D-1 remain unresolved.",
+    "Guide/category expansion remains blocked until owner-reviewed source briefs exist."
+  ],
+  "gate_result": {
+    "d5_public_copy_safety": "passed_source_guard",
+    "d5_claim_register": "complete_with_owner_blockers_carried",
+    "d5_service_promotion_gate": "passed_source_guard",
+    "phase_d_status": "complete_with_blockers_carried",
+    "growth_ready_status": "blocked",
+    "next_required_task": "E-1 - Figma Make Preview Verification And Patch-State Ledger"
+  }
+}

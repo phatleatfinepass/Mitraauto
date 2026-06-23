@@ -15,8 +15,25 @@
 /palvelut/dpf-pesu /palvelut/dpf-huolto 301
 /en/services/dpf-cleaning /en/services/dpf-service 301
 
-/cms / 200
-/cms/* / 200
+/admin /404.html 404
+/admin/* /404.html 404
+/cms /404.html 404
+/cms/* /404.html 404
+/pwa /404.html 404
+/pwa/* /404.html 404
+/account /404.html 404
+/account/* /404.html 404
+/customer /404.html 404
+/customer/* /404.html 404
+/customer-account /404.html 404
+/booking/manage /404.html 404
+/booking/manage/* /404.html 404
+/en/account /404.html 404
+/en/account/* /404.html 404
+/en/customer /404.html 404
+/en/customer/* /404.html 404
+/en/booking/manage /404.html 404
+/en/booking/manage/* /404.html 404
 
 # Public single-page app fallback. Existing static assets still win before this
 # rewrite on hosts that support _redirects.

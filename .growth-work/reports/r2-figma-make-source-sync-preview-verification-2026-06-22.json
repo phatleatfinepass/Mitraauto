@@ -1,0 +1,135 @@
+{
+  "id": "R-2",
+  "name": "Figma Make Source Sync And Preview Verification",
+  "recordedDate": "2026-06-22",
+  "status": "complete_with_current_preview_url_blocker",
+  "progress": {
+    "bar": "[█████░░░░░░░░░░░░░░░]",
+    "percent": 25
+  },
+  "decision": "R-2 can close the local/Git/source-sync evidence gate, but independent Figma Make preview verification is blocked because the only Make proxy URL available from the original error now returns 404 JSON.",
+  "userClaim": {
+    "gitSync": "User reported Git sync pushed.",
+    "figmaMakeSync": "User reported Figma Make pushed."
+  },
+  "evidenceStates": {
+    "gitRemote": "EXECUTED_PASS_WITH_LOCAL_DIRTY_TREE_NOTE",
+    "localFigmaMakeInventory": "EXECUTED_PASS",
+    "localStaleSymbolScan": "EXECUTED_PASS",
+    "localQualityGates": "EXECUTED_PASS_WITH_KNOWN_BUILD_WARNING",
+    "oldFigmaMakeProxy": "EXECUTED_BLOCKED_404_JSON",
+    "currentFigmaMakePreview": "BLOCKED_CURRENT_URL_REQUIRED"
+  },
+  "gitSource": {
+    "remote": "https://github.com/phatleatfinepass/Mitraauto.git",
+    "branch": "codex/pwa-cloudflare",
+    "localHead": "89587c54e2025dba4a7419465e9963e96a7eab72",
+    "remoteHeadObserved": "89587c54e2025dba4a7419465e9963e96a7eab72",
+    "finding": "Remote branch codex/pwa-cloudflare matches local HEAD, but the checkout contains uncommitted R-1/report changes. Remote and Figma Make parity for those local changes is not independently proven by this Git check."
+  },
+  "figmaMakeSourceScope": {
+    "sourceOfTruth": ".growth-work/release/e1-figma-make-patch-state-ledger.json",
+    "localRequiredFileGate": {
+      "checked": 42,
+      "missing": []
+    },
+    "localSkeletonAvailable": false,
+    "finding": "No local Skeleton/src/app export is present to diff against. R-2 therefore validates the local E-1 source inventory and requires a current Figma Make preview URL for runtime proof."
+  },
+  "staleRuntimeFindings": [
+    {
+      "symbol": "CONTACT_INFO",
+      "localState": "absent",
+      "currentLocalReplacement": "src/components/site/sections/ContactSection.tsx imports src/config/businessProfile.ts",
+      "finding": "The original CONTACT_INFO runtime error is not present in local source."
+    },
+    {
+      "symbol": "components/Toaster",
+      "localState": "no disallowed stale import matches",
+      "finding": "Local source uses the shared Toaster path required by the current app structure."
+    },
+    {
+      "symbol": "LanguageContext/ThemeContext stale root imports",
+      "localState": "no disallowed stale import matches",
+      "finding": "Local source uses the current i18n and theme paths."
+    }
+  ],
+  "figmaPreviewProbe": {
+    "oldProxyRoot": "https://app-p7qp2tkrp3p2xfcdmpsvscuk75brzwojuiejcqf4salj3pfajpac.makeproxy-c.figma.site/",
+    "oldProxyRootResult": "HTTP 404 application/json with body {\"error\":\"not found\"}",
+    "oldContactSectionModule": "https://app-p7qp2tkrp3p2xfcdmpsvscuk75brzwojuiejcqf4salj3pfajpac.makeproxy-c.figma.site/src/app/components/site/sections/ContactSection.tsx?t=1782069383661",
+    "oldContactSectionModuleResult": "HTTP 404 application/json with body {\"error\":\"not found\"}",
+    "finding": "The old URL no longer reproduces the CONTACT_INFO error and cannot prove current preview health. A current Figma Make preview or figma.com/make URL is required."
+  },
+  "qualityGateResults": [
+    {
+      "command": "git status --short --branch",
+      "result": "passed_with_dirty_tree_finding"
+    },
+    {
+      "command": "git rev-parse --abbrev-ref HEAD && git rev-parse HEAD && git log -1 --pretty=format:'%H%n%ci%n%s' && git remote -v",
+      "result": "passed"
+    },
+    {
+      "command": "git ls-remote --heads origin codex/pwa-cloudflare main",
+      "result": "passed"
+    },
+    {
+      "command": "node - <<'NODE'\nconst fs = require('fs');\nconst path = require('path');\nconst ledger = JSON.parse(fs.readFileSync('.growth-work/release/e1-figma-make-patch-state-ledger.json','utf8'));\nconst files = [...new Set([...(ledger.mustPatchInFigmaMake || []), ...(ledger.presenceGateFiles || [])])];\nconst missing = files.filter((f) => !fs.existsSync(path.join(process.cwd(), f)));\nconsole.log(JSON.stringify({checked: files.length, missing}, null, 2));\nif (missing.length) process.exit(1);\nNODE",
+      "result": "passed"
+    },
+    {
+      "command": "rg -n \"CONTACT_INFO|from ['\\\"]\\.?\\.?/LanguageContext['\\\"]|from ['\\\"]\\.?\\.?/ThemeContext['\\\"]|from ['\\\"].*components/Toaster|components/Toaster\" src/SiteApp.tsx src/main.tsx src/components src/i18n src/theme src/utils src/config src/lib package.json --glob '!node_modules'",
+      "result": "passed_no_matches"
+    },
+    {
+      "command": "rg -n \"businessProfile|CONTACT_INFO\" src/components/site/sections/ContactSection.tsx src/config/businessProfile.ts",
+      "result": "passed_businessProfile_present_contact_info_absent"
+    },
+    {
+      "command": "npm run private-routes:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run i18n:audit",
+      "result": "passed"
+    },
+    {
+      "command": "npm run sitemap:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run feed:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed"
+    },
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Run the Mitra Auto production build for R-2. Return exactly: status passed/failed, generated output directory if any, warnings grouped by tool/file, and fatal errors if any. Do not include routine Vite transform progress.\" -- npm run build",
+      "result": "passed_with_large_chunk_warning"
+    },
+    {
+      "command": "curl -sSIL --max-time 20 'https://app-p7qp2tkrp3p2xfcdmpsvscuk75brzwojuiejcqf4salj3pfajpac.makeproxy-c.figma.site/' && printf '\\n--- body ---\\n' && curl -sS --max-time 20 'https://app-p7qp2tkrp3p2xfcdmpsvscuk75brzwojuiejcqf4salj3pfajpac.makeproxy-c.figma.site/'",
+      "result": "blocked_old_proxy_returns_404_json"
+    },
+    {
+      "command": "curl -sSIL --max-time 20 'https://app-p7qp2tkrp3p2xfcdmpsvscuk75brzwojuiejcqf4salj3pfajpac.makeproxy-c.figma.site/src/app/components/site/sections/ContactSection.tsx?t=1782069383661' && printf '\\n--- body ---\\n' && curl -sS --max-time 20 'https://app-p7qp2tkrp3p2xfcdmpsvscuk75brzwojuiejcqf4salj3pfajpac.makeproxy-c.figma.site/src/app/components/site/sections/ContactSection.tsx?t=1782069383661'",
+      "result": "blocked_old_proxy_module_returns_404_json"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "R2-BLOCKER-1",
+      "owner": "Figma Make/source sync owner",
+      "blocker": "Provide a current Figma Make preview URL or figma.com/make URL after the push so independent browser/MCP verification can prove the preview renders without CONTACT_INFO or stale import runtime errors."
+    },
+    {
+      "id": "R2-BLOCKER-2",
+      "owner": "Engineering/release owner",
+      "blocker": "Decide whether the uncommitted local R-1/report changes are intended to be part of the Git/Figma Make parity baseline before declaring the pushed source fully current."
+    }
+  ],
+  "nextTask": "R-3 - Production static SEO assets and Merchant feed deployment parity"
+}

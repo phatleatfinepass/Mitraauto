@@ -3,7 +3,7 @@ import { ArrowRight, Calendar, CheckCircle2, Clock, Euro, HelpCircle, MapPin, Wr
 import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   buildGeneratedServiceSeoPage,
-  getServiceDetailPathForServiceId,
+  getPromotedServiceDetailPathForServiceId,
   serviceSeoEvidenceByPageId,
   serviceSeoPageById,
   type ServiceSeoPageId,
@@ -68,7 +68,7 @@ export function ServiceDetailPage({ pageId, serviceId, routeLanguage, onBookingC
     return page.relatedServiceIds
       .map((serviceId) => {
         const serviceName = getLocalizedServiceNameById(serviceId, effectiveLanguage);
-        const href = getServiceDetailPathForServiceId(serviceId, effectiveLanguage);
+        const href = getPromotedServiceDetailPathForServiceId(serviceId, effectiveLanguage);
         return serviceName && href
           ? {
               id: serviceId,
@@ -365,30 +365,17 @@ export function ServiceDetailPage({ pageId, serviceId, routeLanguage, onBookingC
 
             {evidence ? (
               <div className="space-y-4">
-                {[
-                  { title: evidence.aftercareTitle, items: evidence.aftercare },
-                  { title: evidence.evidenceTitle, items: evidence.evidence },
-                  { title: evidence.sourceNotesTitle, items: evidence.sourceNotes },
-                ].map((section) => (
-                  <Card key={section.title}>
-                    <CardContent className="p-5">
-                      <h2 className="font-semibold">{section.title}</h2>
-                      <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
-                        {section.items.map((item) => (
-                          <li key={item} className="flex gap-2">
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                ))}
                 <Card>
                   <CardContent className="p-5">
-                    <h2 className="font-semibold">{evidence.reviewTitle}</h2>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{evidence.reviewedBy}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">{evidence.lastReviewed}</p>
+                    <h2 className="font-semibold">{evidence.aftercareTitle}</h2>
+                    <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
+                      {evidence.aftercare.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </CardContent>
                 </Card>
               </div>

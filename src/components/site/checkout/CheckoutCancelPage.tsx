@@ -46,17 +46,9 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
         const paramsObj = Object.fromEntries(params.entries());
         setPaytrailParams(paramsObj);
 
-        console.log('Paytrail cancel params:', paramsObj);
-
         const checkoutReference = params.get('checkout-reference');
-        const checkoutStatus = params.get('checkout-status');
         const checkoutTransactionId = params.get('checkout-transaction-id');
         const checkoutStamp = params.get('checkout-stamp');
-
-        console.log('=== CHECKOUT CANCEL DEBUG ===');
-        console.log('checkout-reference:', checkoutReference);
-        console.log('checkout-transaction-id:', checkoutTransactionId);
-        console.log('checkout-stamp:', checkoutStamp);
 
         const supabase = getSupabaseClient();
         let foundOrder = null;
@@ -72,7 +64,6 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
             .maybeSingle();
           
           if (data) {
-            console.log('Found order by transaction ID');
             foundOrder = data;
           }
         }
@@ -86,7 +77,6 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
             .maybeSingle();
           
           if (data) {
-            console.log('Found order by stamp');
             foundOrder = data;
           }
         }
@@ -104,23 +94,16 @@ export const CheckoutCancelPage: React.FC<CheckoutCancelPageProps> = ({
               .maybeSingle();
             
             if (data) {
-              console.log('Found order by ID from reference');
               foundOrder = data;
             }
           }
         }
 
         if (foundOrder) {
-          console.log('Loaded order for cancel page:', foundOrder.id);
           setOrder(foundOrder);
-        } else {
-          console.warn('Could not find order on cancel page (non-critical)');
         }
-
-        // IMPORTANT: Cart is NOT cleared on cancel page
-        console.log('Payment cancelled - cart preserved for retry');
       } catch (err) {
-        console.error('Error in fetchOrderInfo:', err);
+        console.error('Error in fetchOrderInfo');
         // Non-critical error, just log it
       }
     };

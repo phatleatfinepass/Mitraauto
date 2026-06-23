@@ -5,6 +5,8 @@ import { join } from 'node:path';
 const PUBLIC_DIR = 'src/public';
 const SITE_URL = 'https://www.mitra-auto.fi';
 const VAT_MULTIPLIER = 1.255;
+const HOME_DELIVERY_FEE_INCL_VAT_EUR = 50;
+const SHIPPING_COUNTRY = 'FI';
 const PAGE_SIZE = 5000;
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -259,6 +261,10 @@ function buildFeedXml(rows) {
       `      <g:availability>${availability}</g:availability>`,
       '      <g:condition>new</g:condition>',
       `      <g:price>${price} EUR</g:price>`,
+      '      <g:shipping>',
+      `        <g:country>${SHIPPING_COUNTRY}</g:country>`,
+      `        <g:price>${HOME_DELIVERY_FEE_INCL_VAT_EUR.toFixed(2)} EUR</g:price>`,
+      '      </g:shipping>',
       `      <g:brand>${escapeXml(row.brand)}</g:brand>`,
       gtin ? `      <g:gtin>${escapeXml(gtin)}</g:gtin>` : null,
       `      <g:mpn>${escapeXml(row.model)}</g:mpn>`,

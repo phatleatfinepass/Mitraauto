@@ -18,6 +18,10 @@ function values(xml, tag) {
   return [...xml.matchAll(new RegExp(`<${tag}>([^<]*)<\\/${tag}>`, 'g'))].map((match) => match[1]);
 }
 
+function topLevelItemValues(xml, tag) {
+  return [...xml.matchAll(new RegExp(`^      <${tag}>([^<]*)<\\/${tag}>$`, 'gm'))].map((match) => match[1]);
+}
+
 const headers = read(join(PUBLIC_DIR, '_headers'));
 if (!headers.includes('/merchant-products.xml')) {
   fail('_headers does not include merchant feed XML headers');
@@ -41,7 +45,6 @@ const requiredTags = [
   'g:image_link',
   'g:availability',
   'g:condition',
-  'g:price',
   'g:brand',
   'g:mpn',
 ];
@@ -53,13 +56,33 @@ for (const tag of requiredTags) {
   }
 }
 
+const itemPrices = topLevelItemValues(xml, 'g:price');
+if (itemPrices.length !== itemCount) {
+  fail('Merchant feed item price count mismatch', { count: itemPrices.length, itemCount });
+}
+
+const shippingCount = (xml.match(/<g:shipping>/g) ?? []).length;
+if (shippingCount !== itemCount) {
+  fail('Merchant feed shipping tag count mismatch', { shippingCount, itemCount });
+}
+
+const shippingCountryCount = (xml.match(/<g:country>FI<\/g:country>/g) ?? []).length;
+if (shippingCountryCount !== itemCount) {
+  fail('Merchant feed shipping country count mismatch', { shippingCountryCount, itemCount });
+}
+
+const shippingPolicyCount = (xml.match(/<g:shipping>\s*<g:country>FI<\/g:country>\s*<g:price>50\.00 EUR<\/g:price>\s*<\/g:shipping>/g) ?? []).length;
+if (shippingPolicyCount !== itemCount) {
+  fail('Merchant feed home-delivery policy count mismatch', { shippingPolicyCount, itemCount });
+}
+
 for (const link of values(xml, 'g:link')) {
   if (!PRODUCT_LINK_PATTERN.test(link)) {
     fail('Merchant feed link is not a canonical product URL', { link });
   }
 }
 
-for (const price of values(xml, 'g:price')) {
+for (const price of itemPrices) {
   if (!/^\d+\.\d{2} EUR$/.test(price)) {
     fail('Merchant feed price is not a VAT-inclusive EUR value', { price });
   }

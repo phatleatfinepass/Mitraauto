@@ -1,8 +1,9 @@
 {
-  "version": "2026-06-22.d2",
+  "version": "2026-06-23.d4",
   "project": "Mitra Auto",
-  "status": "source_contract_complete_platform_and_owner_approval_pending",
+  "status": "booking_submit_event_renamed_platform_and_owner_approval_pending",
   "created_at": "2026-06-22",
+  "updated_at": "2026-06-23",
   "scope": "Booking, order, payment, invoice, fulfillment, and retention reconciliation for growth measurement.",
   "source_boundaries": {
     "local_source_reviewed": [
@@ -61,8 +62,8 @@
   "event_reconciliation": [
     {
       "canonical_event": "booking_submitted",
-      "current_source_event": "booking_completed",
-      "current_semantic_status": "rename_or_alias_required",
+      "current_source_event": "booking_submitted",
+      "current_semantic_status": "source_event_name_aligned",
       "fires_when": "Booking insert succeeds or order_install_booking returns a booking id.",
       "server_truth": [
         "bookings.id",
@@ -77,7 +78,7 @@
       ],
       "reconciliation_key": "future booking_event_id or server mapping; currently only approximate by timestamp/session and booking id returned to client",
       "key_event_allowed": true,
-      "blocking_gap": "Current event name says completed even though it means submitted."
+      "blocking_gap": "Client event name is aligned, but durable non-PII server correlation and analytics platform readback are still missing."
     },
     {
       "canonical_event": "booking_accepted",
@@ -100,8 +101,8 @@
     },
     {
       "canonical_event": "booking_completed",
-      "current_source_event": "name_conflict",
-      "current_semantic_status": "must_not_use_current_client_event",
+      "current_source_event": "not_implemented",
+      "current_semantic_status": "reserved_for_fulfilled_service",
       "fires_when": "The booked service is actually fulfilled by operations.",
       "server_truth": [
         "bookings operational status after service",

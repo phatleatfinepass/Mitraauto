@@ -1,0 +1,286 @@
+{
+  "version": "2026-06-23.d2",
+  "project": "Mitra Auto",
+  "task": "D-2 - Google Business Profile, Citations, And Business Fact Approval",
+  "status": "complete_with_blockers_carried",
+  "recorded_at": "2026-06-23T09:50:00+03:00",
+  "public_origin": "https://www.mitra-auto.fi",
+  "evidence_states": {
+    "repo": "EXECUTED_WITH_FINDINGS",
+    "local_source": "EXECUTED",
+    "live": "EXECUTED_WITH_FINDINGS",
+    "platform": "UNAVAILABLE",
+    "owner_policy": "UNAVAILABLE",
+    "public_citations": "EXECUTED_WITH_FINDINGS",
+    "official_docs": "REVIEWED_2026_06_23"
+  },
+  "official_sources": [
+    {
+      "provider": "Google Business Profile Help",
+      "title": "Guidelines for representing your business on Google",
+      "url": "https://support.google.com/business/answer/3038177?hl=en",
+      "used_for": "GBP eligibility, real-world name, address/service-area, phone, hours, categories, duplicate profile, and hybrid service-area rules"
+    },
+    {
+      "provider": "Google Business Profile Help",
+      "title": "Edit your Business Profile",
+      "url": "https://support.google.com/business/answer/3039617?hl=en",
+      "used_for": "Required profile fields and verified profile edit/readback expectations"
+    }
+  ],
+  "repo_business_profile": {
+    "source_file": "src/config/businessProfile.ts",
+    "public_name": "Mitra Auto",
+    "legal_name": "Mitra Auto Oy",
+    "business_id": "3408833-8",
+    "website_url": "https://www.mitra-auto.fi",
+    "email": "contact@mitra-auto.fi",
+    "phone_e164": "+358407777163",
+    "phone_display": "+358 40 777 7163",
+    "address": "Hankasuontie 5, 00390 Helsinki, Finland",
+    "service_area": "Helsinki",
+    "opening_hours": [
+      "Monday-Friday 09:00-18:00",
+      "Saturday 10:00-17:00",
+      "Sunday closed"
+    ],
+    "schema_types": [
+      "AutoRepair",
+      "AutomotiveBusiness",
+      "LocalBusiness"
+    ],
+    "same_as_links": "none in LocalBusiness schema",
+    "owner_approval": "UNAVAILABLE"
+  },
+  "project_wrapper_status": {
+    "command": "source ~/.config/projects/bin/project && project mitraauto",
+    "project_slug": "mitraauto",
+    "project_dir": "/Users/chandler/code/Mitraauto-main",
+    "supabase_project_ref": "rcmmbwdebnmicrweoiyz",
+    "public_base_url": "missing",
+    "google_business_profile_account": "missing",
+    "google_business_profile_location": "missing",
+    "gbp_account_id": "missing",
+    "gbp_location_id": "missing",
+    "google_application_credentials": "missing"
+  },
+  "google_business_profile_envelope": {
+    "provider": "Google Business Profile",
+    "account_id": "UNAVAILABLE",
+    "location_id": "UNAVAILABLE",
+    "verified_owner": "UNAVAILABLE",
+    "backup_owner": "UNAVAILABLE",
+    "verification_status": "UNAVAILABLE",
+    "profile_name": "UNAVAILABLE",
+    "primary_category": "UNAVAILABLE",
+    "additional_categories": "UNAVAILABLE",
+    "address_and_pin": "UNAVAILABLE",
+    "service_area": "UNAVAILABLE",
+    "phone": "UNAVAILABLE",
+    "website_url": "UNAVAILABLE",
+    "appointment_url": "UNAVAILABLE",
+    "regular_hours": "UNAVAILABLE",
+    "special_hours": "UNAVAILABLE",
+    "services_or_products": "UNAVAILABLE",
+    "attributes": "UNAVAILABLE",
+    "photos": "UNAVAILABLE",
+    "reviews": "UNAVAILABLE",
+    "duplicate_or_suspension_status": "UNAVAILABLE",
+    "messaging_status": "UNAVAILABLE",
+    "status": "UNAVAILABLE",
+    "limitations": [
+      "No GBP account/location ID, owner evidence, dashboard screenshot/export, API credential, or sanitized profile export was available.",
+      "GBP facts cannot be treated as approved from website source values or public citation snippets.",
+      "Do not add LocalBusiness aggregateRating, review schema, sameAs links, extra locations, categories, or special hours until owner/platform evidence is supplied."
+    ]
+  },
+  "public_citation_matrix": [
+    {
+      "surface": "Mitra Auto public site snippets",
+      "url": "https://www.mitra-auto.fi/",
+      "corroborates": [
+        "public name",
+        "address",
+        "phone",
+        "weekday/weekend hours from snippet"
+      ],
+      "conflicts_or_limits": [
+        "Raw homepage HTML scan only exposed the Figma Make shell and did not expose NAP/hours before JavaScript rendering."
+      ],
+      "gate_result": "EXECUTED_WITH_FINDINGS"
+    },
+    {
+      "surface": "Mitra Auto terms/privacy snippets",
+      "url": "https://www.mitra-auto.fi/legal/terms",
+      "corroborates": [
+        "legal name",
+        "business ID",
+        "address",
+        "contact email",
+        "phone"
+      ],
+      "conflicts_or_limits": [
+        "Public snippets do not approve GBP fields, citations, categories, photos, services, reviews, or special hours."
+      ],
+      "gate_result": "EXECUTED_WITH_LIMITS"
+    },
+    {
+      "surface": "autokorjaamo.fi",
+      "url": "https://www.autokorjaamo.fi/korjaamot/mitra-auto-oy-177456",
+      "corroborates": [
+        "Mitra Auto Oy",
+        "Hankasuontie 5, 00390 Helsinki",
+        "0407777163"
+      ],
+      "conflicts_or_limits": [
+        "Email shown as info.mitra.auto@gmail.com instead of repo contact@mitra-auto.fi.",
+        "Weekday hours shown as 08:30-18:00 instead of repo 09:00-18:00.",
+        "Review count, AC permit, loan car, cafe/waiting-room, and warranty-like claims require owner proof before reuse."
+      ],
+      "gate_result": "CONFLICT_REQUIRES_OWNER_REVIEW"
+    },
+    {
+      "surface": "Rengasvertailu",
+      "url": "https://rengasvertailu.fi/asennuspisteet/mitra-auto-oy/",
+      "corroborates": [
+        "Mitra Auto Oy",
+        "business ID 3408833-8 from public snippet",
+        "Hankasuontie 5",
+        "phone 0407777163",
+        "Helsinki/Konala service context"
+      ],
+      "conflicts_or_limits": [
+        "Public snippet shows info.mitra.auto@gmail.com and weekday 08:30-18:00.",
+        "Staff count and service-area claims require owner confirmation."
+      ],
+      "gate_result": "CONFLICT_REQUIRES_OWNER_REVIEW"
+    },
+    {
+      "surface": "Taloustutka",
+      "url": "https://www.taloustutka.fi/company/3408833-8",
+      "corroborates": [
+        "business ID 3408833-8",
+        "Mitra Auto Oy",
+        "Hankasuontie 5, 00390 Helsinki",
+        "industry vehicle maintenance and repair",
+        "founded 2023-11-28"
+      ],
+      "conflicts_or_limits": [
+        "Other name/alias appears as Espoon rengas ja autohuolto and needs owner decision.",
+        "Registry-style source does not approve GBP operational fields or customer-facing hours."
+      ],
+      "gate_result": "ALIAS_REQUIRES_OWNER_REVIEW"
+    },
+    {
+      "surface": "Finder/Fonecta/Facebook/AutoJerry public snippets",
+      "url": "public search snippets reviewed 2026-06-23",
+      "corroborates": [
+        "name/address/phone/business ID on several surfaces"
+      ],
+      "conflicts_or_limits": [
+        "Several snippets show info.mitra.auto@gmail.com instead of contact@mitra-auto.fi.",
+        "AutoJerry path/alias references Espoon rengas ja autohuolto.",
+        "Snippet evidence is not an owner-approved citation export and must be verified before corrections are marked complete."
+      ],
+      "gate_result": "CONFLICT_REQUIRES_OWNER_REVIEW"
+    }
+  ],
+  "source_findings": [
+    {
+      "severity": "BLOCKER",
+      "title": "GBP owner/profile readback unavailable",
+      "evidence": "No GBP account/location metadata, owner evidence, verification status, categories, services/products, photos, reviews, duplicate/suspension status, or appointment URL was available.",
+      "impact": "Local SEO, GBP optimization, LocalBusiness schema expansion, review policy, and citation approval cannot be called ready.",
+      "owner": "Business/Local SEO owner",
+      "required_resolution": "Provide sanitized GBP dashboard/API evidence and owner approval."
+    },
+    {
+      "severity": "CRITICAL",
+      "title": "Public citation NAP conflicts remain unresolved",
+      "evidence": "Repo uses contact@mitra-auto.fi and 09:00 weekday opening; public citation surfaces show info.mitra.auto@gmail.com and 08:30 weekday opening.",
+      "impact": "Google may reconcile inconsistent business facts from the website, GBP, and citations; users may contact the wrong address or arrive at the wrong time.",
+      "owner": "Business owner",
+      "required_resolution": "Choose canonical public email and true customer-facing hours, then update website, GBP, and citations consistently."
+    },
+    {
+      "severity": "CRITICAL",
+      "title": "Alias/brand relationship is unresolved",
+      "evidence": "Taloustutka and AutoJerry-style public evidence references Espoon rengas ja autohuolto as an alias or path around business ID 3408833-8.",
+      "impact": "Brand/entity consistency and citation cleanup cannot pass until the owner decides whether this is historical, valid DBA, or stale citation data.",
+      "owner": "Business owner",
+      "required_resolution": "Approve naming policy and update or document citations."
+    },
+    {
+      "severity": "WARNING",
+      "title": "Raw production HTML still hides local business facts",
+      "evidence": "Live homepage curl body scan exposed Created in Figma Make and Mitra Auto, but did not expose address, phone, email, or hours in raw HTML.",
+      "impact": "Crawler and AI/local proof extraction depend on rendered JavaScript until production raw HTML/edge metadata parity is fixed.",
+      "owner": "Deployment/SEO engineering owner",
+      "required_resolution": "Serve route-specific raw HTML/metadata/schema/NAP or edge-injected content for launch-critical local pages."
+    },
+    {
+      "severity": "WARNING",
+      "title": "Footer social links are generic placeholders",
+      "evidence": "src/components/site/layout/Footer.tsx links to facebook.com, twitter.com, instagram.com, and linkedin.com without owner-approved profile URLs.",
+      "impact": "Generic social links weaken trust and must not be used as sameAs evidence.",
+      "owner": "Business/content owner",
+      "required_resolution": "Remove social links or replace only with owner-approved official profiles."
+    },
+    {
+      "severity": "CRITICAL",
+      "title": "Visible review/rating/customer-count claims remain unapproved",
+      "evidence": "src/i18n/dictionaries/common.ts and src/i18n/dictionaries/site.ts contain rating, review, and 500+ customer claims; LocalBusiness aggregateRating/review schema is not emitted, which is correct until proof exists.",
+      "impact": "Trust claims cannot be treated as local proof or promoted in schema until provenance and legal/content approval exist.",
+      "owner": "Business/content/legal owner",
+      "required_resolution": "Provide review/customer-count provenance or remove/soften claims in D-5."
+    }
+  ],
+  "owner_evidence_required": [
+    "Owner-approved public name, legal name, business ID, address, service area, phone, canonical email, website URL, booking URL, regular hours, and special-hours process.",
+    "GBP account ID, location ID, owner, backup owner, verification state, profile name, primary category, additional categories, address/pin, service area, phone, website, appointment URL, services/products, attributes, messaging, photos, reviews, duplicate/suspension status, and last update timestamp.",
+    "Citation cleanup evidence for Google, Apple Maps, Bing Places, Finder, Fonecta, AutoJerry, autokorjaamo.fi, Rengasvertailu, Facebook, and automotive/service directories.",
+    "Review request/response SOP with no gating, incentive, copied-review, or self-serving schema policy.",
+    "Official social profile URLs or owner decision to remove social links.",
+    "Decision on Espoon rengas ja autohuolto alias/history and how it should appear in citations."
+  ],
+  "implementation_policy": {
+    "source_code_changes_in_d2": "none",
+    "reason": "No NAP, schema, social, review, rating, hours, category, or citation corrections should be committed without owner-approved source facts.",
+    "files_to_change_after_owner_evidence": [
+      "src/config/businessProfile.ts",
+      "src/i18n/dictionaries/site.ts",
+      "src/i18n/dictionaries/common.ts",
+      "src/components/site/pages/ContactPage.tsx",
+      "src/components/site/pages/HelsinkiPage.tsx",
+      "src/components/site/sections/ContactSection.tsx",
+      "src/components/site/layout/Footer.tsx",
+      "src/utils/localSeo.ts"
+    ],
+    "non_repo_work_after_owner_evidence": [
+      "Google Business Profile",
+      "citation and directory profiles",
+      "Google/Apple/Bing map profiles",
+      "review request and response SOP",
+      "owned photo/media governance"
+    ]
+  },
+  "verification": [
+    {
+      "command": "source ~/.config/projects/bin/project && project mitraauto >/dev/null && if [ -n \"${GOOGLE_APPLICATION_CREDENTIALS:-}\" ]; then gac_status=set; else gac_status=missing; fi && printf 'PROJECT_SLUG=%s\\nPROJECT_DIR=%s\\nPUBLIC_BASE_URL=%s\\nGOOGLE_BUSINESS_PROFILE_ACCOUNT=%s\\nGOOGLE_BUSINESS_PROFILE_LOCATION=%s\\nGBP_ACCOUNT_ID=%s\\nGBP_LOCATION_ID=%s\\nGOOGLE_APPLICATION_CREDENTIALS=%s\\n' \"$PROJECT_SLUG\" \"$PROJECT_DIR\" \"${PUBLIC_BASE_URL:-missing}\" \"${GOOGLE_BUSINESS_PROFILE_ACCOUNT:-missing}\" \"${GOOGLE_BUSINESS_PROFILE_LOCATION:-missing}\" \"${GBP_ACCOUNT_ID:-missing}\" \"${GBP_LOCATION_ID:-missing}\" \"$gac_status\"",
+      "status": "passed_with_missing_provider_metadata",
+      "notes": "Project wrapper loaded the Mitra project but GBP and Google credential metadata were missing."
+    },
+    {
+      "command": "curl -sS --max-time 20 https://www.mitra-auto.fi/ | tr '\\n' ' ' | rg -o 'Mitra Auto|Hankasuontie 5|00390 Helsinki|contact@mitra-auto\\.fi|info\\.mitra\\.auto@gmail\\.com|\\+358 40 777 7163|040 777 7163|09:00|08:30|Created in Figma Make' | sort | uniq -c",
+      "status": "passed_with_findings",
+      "notes": "Raw homepage HTML exposed Figma Make shell and brand text, but not address, email, phone, or hours."
+    },
+    {
+      "command": "rg -n 'contact@mitra-auto\\.fi|info\\.mitra\\.auto@gmail\\.com|4\\.8|4\\.9|500\\+|facebook\\.com|twitter\\.com|instagram\\.com|linkedin\\.com' src/config src/components src/i18n src/utils --glob '!node_modules'",
+      "status": "passed_with_findings",
+      "notes": "Repo uses contact@mitra-auto.fi, has no old Gmail source value, and still contains proof-sensitive review/rating/customer-count/social-placeholder findings."
+    }
+  ],
+  "decision": "D-2 is complete as a GBP/citation/business-fact evidence gate. It is not a local SEO pass. Local readiness remains blocked until owner-approved GBP evidence, citation corrections, canonical NAP/hours/email decisions, review/social proof, and production raw HTML/local schema parity are supplied and reconciled.",
+  "next_required_task": "D-3 - Merchant Center Feed Diagnostics And Product Policy Approval"
+}

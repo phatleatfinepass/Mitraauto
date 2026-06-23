@@ -1,0 +1,1396 @@
+{
+  "schemaVersion": "mitra.growth.e2.live-http-matrix.v1",
+  "generatedAt": "2026-06-23T10:03:55.027Z",
+  "sourceClass": "DIRECT_OBSERVATION",
+  "baseUrl": "https://www.mitra-auto.fi",
+  "executionMode": "LIVE_HTTP_BOUNDED_MATRIX",
+  "limits": {
+    "maxUrls": 22,
+    "timeoutMs": 20000,
+    "maxBodyBytesSampled": 350000,
+    "method": "GET",
+    "redirects": "manual",
+    "allowedOrigin": "https://www.mitra-auto.fi"
+  },
+  "evidenceStates": {
+    "LIVE": "EXECUTED_WITH_FINDINGS"
+  },
+  "summary": {
+    "total": 22,
+    "passed": 0,
+    "failed": 22,
+    "blockers": [
+      {
+        "id": "home_fi",
+        "path": "/",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "home_en",
+        "path": "/en",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "services_hub_fi",
+        "path": "/palvelut",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "service_dpf_fi",
+        "path": "/palvelut/dpf-huolto",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "service_dpf_en",
+        "path": "/en/services/dpf-service",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "location_helsinki",
+        "path": "/helsinki",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "contact_fi",
+        "path": "/yhteystiedot",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "catalog_fi",
+        "path": "/catalog",
+        "type": "public",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "product_canonical_rim",
+        "path": "/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+        "type": "product",
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "product_legacy_uuid",
+        "path": "/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+        "type": "redirect",
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "product_legacy_gtin",
+        "path": "/catalog/rim/4250996326059",
+        "type": "redirect",
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "legacy_shop",
+        "path": "/shop",
+        "type": "redirect",
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "legacy_service_alias",
+        "path": "/palvelut/dpf-pesu",
+        "type": "redirect",
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "checkout",
+        "path": "/checkout",
+        "type": "utility",
+        "findings": [
+          "noindex/error/private status expected for non-indexable route"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "cms_private",
+        "path": "/cms",
+        "type": "private",
+        "findings": [
+          "status expected 401/403/404 got 200",
+          "noindex/error/private status expected for non-indexable route"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "unknown_route",
+        "path": "/this-route-should-not-exist-e2",
+        "type": "error",
+        "findings": [
+          "status expected 404/410 got 200",
+          "noindex/error/private status expected for non-indexable route"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "unknown_product",
+        "path": "/catalog/rim/does-not-exist-product-e2",
+        "type": "error",
+        "findings": [
+          "status expected 404/410 got 200",
+          "noindex/error/private status expected for non-indexable route"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "robots",
+        "path": "/robots.txt",
+        "type": "static",
+        "findings": [
+          "status expected 200 got 404",
+          "body missing Sitemap: https://www.mitra-auto.fi/sitemap.xml"
+        ],
+        "status": 404,
+        "contentType": "text/plain;charset=UTF-8",
+        "location": null
+      },
+      {
+        "id": "sitemap_primary",
+        "path": "/sitemap.xml",
+        "type": "static",
+        "findings": [
+          "status expected 200 got 404",
+          "content-type expected application/xml or text/xml got text/plain;charset=UTF-8",
+          "body missing <urlset"
+        ],
+        "status": 404,
+        "contentType": "text/plain;charset=UTF-8",
+        "location": null
+      },
+      {
+        "id": "sitemap_products_index",
+        "path": "/sitemap-products.xml",
+        "type": "static",
+        "findings": [
+          "content-type expected application/xml or text/xml got text/html",
+          "body missing <sitemapindex"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "sitemap_products_child",
+        "path": "/sitemap-products-1.xml",
+        "type": "static",
+        "findings": [
+          "content-type expected application/xml or text/xml got text/html",
+          "body missing <urlset"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      },
+      {
+        "id": "merchant_feed",
+        "path": "/merchant-products.xml",
+        "type": "static",
+        "findings": [
+          "content-type expected application/xml or text/xml got text/html",
+          "body missing <rss"
+        ],
+        "status": 200,
+        "contentType": "text/html",
+        "location": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "home_fi",
+      "type": "public",
+      "path": "/",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 264,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "home_en",
+      "type": "public",
+      "path": "/en",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/en",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1289,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "services_hub_fi",
+      "type": "public",
+      "path": "/palvelut",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/palvelut",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1333,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "service_dpf_fi",
+      "type": "public",
+      "path": "/palvelut/dpf-huolto",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/palvelut/dpf-huolto",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1140,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "service_dpf_en",
+      "type": "public",
+      "path": "/en/services/dpf-service",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/en/services/dpf-service",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1315,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "location_helsinki",
+      "type": "public",
+      "path": "/helsinki",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/helsinki",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1333,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "contact_fi",
+      "type": "public",
+      "path": "/yhteystiedot",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/yhteystiedot",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1256,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "catalog_fi",
+      "type": "public",
+      "path": "/catalog",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/catalog",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 893,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "product_canonical_rim",
+      "type": "product",
+      "path": "/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": true
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1333,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "raw canonical missing",
+          "raw HTML requires JavaScript placeholder"
+        ]
+      }
+    },
+    {
+      "id": "product_legacy_uuid",
+      "type": "redirect",
+      "path": "/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "expect": {
+        "redirect": true,
+        "targetPath": "/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10"
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1331,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ]
+      }
+    },
+    {
+      "id": "product_legacy_gtin",
+      "type": "redirect",
+      "path": "/catalog/rim/4250996326059",
+      "expect": {
+        "redirect": true,
+        "targetPath": "/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10"
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/catalog/rim/4250996326059",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 519,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ]
+      }
+    },
+    {
+      "id": "legacy_shop",
+      "type": "redirect",
+      "path": "/shop",
+      "expect": {
+        "redirect": true,
+        "targetPath": "/catalog"
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/shop",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1323,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ]
+      }
+    },
+    {
+      "id": "legacy_service_alias",
+      "type": "redirect",
+      "path": "/palvelut/dpf-pesu",
+      "expect": {
+        "redirect": true,
+        "targetPath": "/palvelut/dpf-huolto"
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/palvelut/dpf-pesu",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1233,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "redirect expected got status 200",
+          "redirect target missing"
+        ]
+      }
+    },
+    {
+      "id": "checkout",
+      "type": "utility",
+      "path": "/checkout",
+      "expect": {
+        "status": 200,
+        "html": true,
+        "indexable": false
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/checkout",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1180,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "noindex/error/private status expected for non-indexable route"
+        ]
+      }
+    },
+    {
+      "id": "cms_private",
+      "type": "private",
+      "path": "/cms",
+      "expect": {
+        "status": [
+          401,
+          403,
+          404
+        ],
+        "indexable": false
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/cms",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1374,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "status expected 401/403/404 got 200",
+          "noindex/error/private status expected for non-indexable route"
+        ]
+      }
+    },
+    {
+      "id": "unknown_route",
+      "type": "error",
+      "path": "/this-route-should-not-exist-e2",
+      "expect": {
+        "status": [
+          404,
+          410
+        ],
+        "indexable": false
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/this-route-should-not-exist-e2",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1331,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "status expected 404/410 got 200",
+          "noindex/error/private status expected for non-indexable route"
+        ]
+      }
+    },
+    {
+      "id": "unknown_product",
+      "type": "error",
+      "path": "/catalog/rim/does-not-exist-product-e2",
+      "expect": {
+        "status": [
+          404,
+          410
+        ],
+        "indexable": false
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/catalog/rim/does-not-exist-product-e2",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1232,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "status expected 404/410 got 200",
+          "noindex/error/private status expected for non-indexable route"
+        ]
+      }
+    },
+    {
+      "id": "robots",
+      "type": "static",
+      "path": "/robots.txt",
+      "expect": {
+        "status": 200,
+        "contentTypeIncludes": [
+          "text/plain"
+        ],
+        "contains": [
+          "Sitemap: https://www.mitra-auto.fi/sitemap.xml"
+        ]
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/robots.txt",
+        "status": 404,
+        "location": null,
+        "contentType": "text/plain;charset=UTF-8",
+        "xRobotsTag": null,
+        "cacheControl": null,
+        "cfCacheStatus": "BYPASS",
+        "server": "cloudflare",
+        "bytesSampled": 9,
+        "ms": 1222,
+        "bodySampleStart": "Not Found",
+        "rawHtml": null,
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": false,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "status expected 200 got 404",
+          "body missing Sitemap: https://www.mitra-auto.fi/sitemap.xml"
+        ]
+      }
+    },
+    {
+      "id": "sitemap_primary",
+      "type": "static",
+      "path": "/sitemap.xml",
+      "expect": {
+        "status": 200,
+        "contentTypeIncludes": [
+          "application/xml",
+          "text/xml"
+        ],
+        "contains": [
+          "<urlset"
+        ]
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/sitemap.xml",
+        "status": 404,
+        "location": null,
+        "contentType": "text/plain;charset=UTF-8",
+        "xRobotsTag": null,
+        "cacheControl": null,
+        "cfCacheStatus": "BYPASS",
+        "server": "cloudflare",
+        "bytesSampled": 9,
+        "ms": 2458,
+        "bodySampleStart": "Not Found",
+        "rawHtml": null,
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": false,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "status expected 200 got 404",
+          "content-type expected application/xml or text/xml got text/plain;charset=UTF-8",
+          "body missing <urlset"
+        ]
+      }
+    },
+    {
+      "id": "sitemap_products_index",
+      "type": "static",
+      "path": "/sitemap-products.xml",
+      "expect": {
+        "status": 200,
+        "contentTypeIncludes": [
+          "application/xml",
+          "text/xml"
+        ],
+        "contains": [
+          "<sitemapindex"
+        ]
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/sitemap-products.xml",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1279,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "content-type expected application/xml or text/xml got text/html",
+          "body missing <sitemapindex"
+        ]
+      }
+    },
+    {
+      "id": "sitemap_products_child",
+      "type": "static",
+      "path": "/sitemap-products-1.xml",
+      "expect": {
+        "status": 200,
+        "contentTypeIncludes": [
+          "application/xml",
+          "text/xml"
+        ],
+        "contains": [
+          "<urlset"
+        ]
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/sitemap-products-1.xml",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1247,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "content-type expected application/xml or text/xml got text/html",
+          "body missing <urlset"
+        ]
+      }
+    },
+    {
+      "id": "merchant_feed",
+      "type": "static",
+      "path": "/merchant-products.xml",
+      "expect": {
+        "status": 200,
+        "contentTypeIncludes": [
+          "application/xml",
+          "text/xml"
+        ],
+        "contains": [
+          "<rss"
+        ]
+      },
+      "result": {
+        "requestedUrl": "https://www.mitra-auto.fi/merchant-products.xml",
+        "status": 200,
+        "location": null,
+        "contentType": "text/html",
+        "xRobotsTag": null,
+        "cacheControl": "public, max-age=10",
+        "cfCacheStatus": "HIT",
+        "server": "cloudflare",
+        "bytesSampled": 12862,
+        "ms": 1135,
+        "bodySampleStart": "<!doctype html> <!-- Created in Figma Make --> <html lang=\"fi\"> <head> <meta charset=\"utf-8\" /> <noscript> <style> #container { display: none;",
+        "rawHtml": {
+          "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+          "description": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki. We offer professional tire changes, wheel services, maintenance, and repairs — all in one place.",
+          "canonical": null,
+          "robots": "index,follow",
+          "h1": [
+            "This site requires JavaScript"
+          ],
+          "jsonLd": [],
+          "jsRequiredText": true,
+          "anchorCount": 0
+        },
+        "bodyChecks": {
+          "hasUrlset": false,
+          "hasSitemapIndex": false,
+          "hasRss": false,
+          "hasHtml": true,
+          "hasRobotsSitemap": false,
+          "hasProductSitemapDeclaration": false
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "findings": [
+          "content-type expected application/xml or text/xml got text/html",
+          "body missing <rss"
+        ]
+      }
+    }
+  ]
+}

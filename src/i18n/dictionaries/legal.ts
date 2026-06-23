@@ -422,7 +422,7 @@ export const legalTranslations = {
   'legal.terms.tireHotel.payment': { fi: 'Maksu', en: 'Payment' },
   'legal.terms.tireHotel.paymentDesc': { fi: 'Säilytysmaksut on maksettava etukäteen tai laskun ehtojen mukaisesti', en: 'Storage fees must be paid in advance or as per the invoice terms' },
   'legal.terms.tireHotel.insurance': { fi: 'Vakuutus', en: 'Insurance' },
-  'legal.terms.tireHotel.insuranceDesc': { fi: 'Renkaat säilytetään asiakkaan omalla vastuulla. Valinnainen vakuutusturva on saatavilla', en: 'Tires are stored at customer\'s risk. Optional insurance coverage is available' },
+  'legal.terms.tireHotel.insuranceDesc': { fi: 'Renkaat säilytetään palveluehtojen mukaisesti. Mahdollinen lisäturva vahvistetaan erikseen kirjallisesti', en: 'Tires are stored under the service terms. Any optional extra coverage is confirmed separately in writing' },
   'legal.terms.tireHotel.inspection': { fi: 'Kuntotarkastus', en: 'Condition inspection' },
   'legal.terms.tireHotel.inspectionDesc': { fi: 'Tarkastamme renkaat vastaanottaessamme ja ilmoitamme mahdollisista vaurioista tai liiallisesta kulumisesta', en: 'We inspect tires upon receipt and will notify you of any damage or excessive wear' },
   'legal.terms.tireHotel.unclaimed': { fi: 'Noutamattomat renkaat', en: 'Unclaimed property' },

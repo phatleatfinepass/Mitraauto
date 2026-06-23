@@ -1,0 +1,108 @@
+{
+  "id": "R-8",
+  "name": "Post-remediation live crawl, browser smoke, and drift rerun",
+  "recorded": "2026-06-22",
+  "status": "complete_with_live_release_blockers_unchanged",
+  "progress": {
+    "bar": "[████████████████████]",
+    "percent": 100
+  },
+  "decision": "R-8 is complete as a post-remediation verification rerun. The browser-rendered public pages still hydrate with route-specific SEO/content/schema markers, and local source gates pass after rebuild. Production is not release-ready because the live HTTP/static/redirect/private-boundary layer still reflects the old SPA fallback behavior from E-3/E-4/R-3/R-4/R-6.",
+  "lifecycleModes": ["VERIFY", "LAUNCH", "MONITOR", "MIGRATE"],
+  "archetypes": ["local_service_business", "ecommerce_catalog", "booking_checkout", "multilingual_spa"],
+  "evidenceStates": {
+    "liveHttpMatrix": "EXECUTED_WITH_FINDINGS",
+    "liveStaticAssetParity": "EXECUTED_WITH_FINDINGS",
+    "localStaticAssetParity": "EXECUTED",
+    "localRouteMigrationGate": "EXECUTED",
+    "localCheckoutGate": "EXECUTED",
+    "rawHtmlMetadata": "EXECUTED_WITH_FINDINGS",
+    "renderedBrowserSmoke": "EXECUTED_WITH_FINDINGS",
+    "driftComparison": "EXECUTED_WITH_FINDINGS",
+    "platformReadback": "UNAVAILABLE"
+  },
+  "artifacts": {
+    "crawlDriftRerun": ".seo-work/crawl/r8-live-drift-rerun-2026-06-22.json",
+    "closeoutReport": ".seo-work/reports/R8-POST-REMEDIATION-LIVE-CRAWL-BROWSER-SMOKE-DRIFT-RERUN-2026-06-22.md"
+  },
+  "releaseDecision": {
+    "classification": "NO_GO",
+    "reason": "Production deployment parity blockers remain unchanged at the HTTP/static/redirect/private-boundary layer.",
+    "canContinueGrowthContentWork": false,
+    "canApproveRelease": false
+  },
+  "confirmedRenderedPositives": [
+    "Homepage renders Finnish title, lang, H1, canonical, robots index/follow, crawlable anchors, and LocalBusiness/WebSite/WebPage/Breadcrumb JSON-LD.",
+    "Finnish service detail renders route-specific title, H1, canonical, robots index/follow, service content, and Service/Breadcrumb JSON-LD.",
+    "Product slug page renders title, H1, canonical slug URL, robots index/follow, price, stock, and Product/Breadcrumb JSON-LD.",
+    "Checkout renders on /checkout with no canonical and robots noindex,nofollow.",
+    "English mobile service page renders lang en, English title, H1, canonical, and Service/Breadcrumb JSON-LD.",
+    "English contact page renders NAP/contact markers, canonical, robots index/follow, ContactPage/Breadcrumb JSON-LD.",
+    "Invalid route renders a noindex 404 UI in-browser."
+  ],
+  "remainingBlockers": [
+    {
+      "severity": "BLOCKER",
+      "finding": "Production static SEO assets and Merchant feed are still not deployed or routed correctly.",
+      "evidence": "robots.txt and sitemap.xml return 404; sitemap-products.xml and merchant-products.xml return text/html.",
+      "owner": "Hosting/deployment owner",
+      "verification": "node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi"
+    },
+    {
+      "severity": "BLOCKER",
+      "finding": "Private/admin routes still return public HTTP 200 at the edge.",
+      "evidence": "/cms and /customer-account return HTTP 200 text/html.",
+      "owner": "Engineering/security plus hosting/provider owner",
+      "verification": "Unauthenticated private/admin routes return 401, 403, or safe 404 and render no private content."
+    },
+    {
+      "severity": "CRITICAL",
+      "finding": "Legacy redirects and product identifier redirects remain inactive on production.",
+      "evidence": "Legacy route and product UUID samples return 200 with zero redirects.",
+      "owner": "Hosting/edge routing owner",
+      "verification": "Live curl matrix returns one-hop 301/308 redirects to canonical destinations."
+    },
+    {
+      "severity": "CRITICAL",
+      "finding": "Invalid and noncanonical routes remain HTTP soft-404s.",
+      "evidence": "/this-route-should-not-exist-r8 and /contact return HTTP 200.",
+      "owner": "Hosting/edge routing owner",
+      "verification": "Invalid routes return 404 or 410 at HTTP level."
+    },
+    {
+      "severity": "WARNING",
+      "finding": "Raw HTML remains a generic JavaScript shell.",
+      "evidence": "Sampled raw HTML has generic title, empty canonical, no JSON-LD, zero anchors, and H1 'This site requires JavaScript'.",
+      "owner": "Frontend/SEO architecture owner",
+      "verification": "Evaluate SSR/prerender/static route snapshots or maintain rendered validation as a known SPA limitation."
+    }
+  ],
+  "commands": {
+    "liveHttpMatrix": "while IFS= read -r url; do curl -sSIL -o /dev/null --max-time 20 -w '%{url_effective}|http=%{http_code}|content_type=%{content_type}|redirects=%{num_redirects}|time=%{time_total}\\n' \"$url\"; done < <(node -e \"const b=JSON.parse(require('fs').readFileSync('.seo-work/crawl/e4-drift-baseline-2026-06-22.json','utf8')); for (const r of b.representativeUrls) console.log(r.url)\")",
+    "build": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Run the Mitra Auto Vite production build for R-8 verification. Return exactly: status passed/failed, output directory, key warnings grouped by source, fatal errors, and whether public static assets were copied. Do not include routine transform progress.\" -- npm run build",
+    "localStaticAssets": "node scripts/check_static_deployment_assets.mjs --build-dir build",
+    "liveStaticAssets": "node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi",
+    "routeMigration": "npm run route-migration:check",
+    "checkout": "npm run checkout:check",
+    "rawHtmlSnapshot": "node raw HTML metadata snapshot for homepage, service detail, product slug, and invalid route",
+    "browserSmoke": "mcp__playwright browser smoke for homepage, service detail, product slug, checkout, English mobile service, English contact, invalid route"
+  },
+  "cleanup": [
+    "build",
+    ".playwright-mcp/console-2026-06-22T18-29-42-528Z.log",
+    ".playwright-mcp/console-2026-06-22T18-29-54-931Z.log",
+    ".playwright-mcp/console-2026-06-22T18-30-08-192Z.log",
+    ".playwright-mcp/console-2026-06-22T18-30-23-872Z.log",
+    ".playwright-mcp/console-2026-06-22T18-30-41-254Z.log",
+    ".playwright-mcp/console-2026-06-22T18-30-54-106Z.log",
+    ".playwright-mcp/console-2026-06-22T18-31-08-159Z.log",
+    ".playwright-mcp/page-2026-06-22T18-29-42-903Z.yml",
+    ".playwright-mcp/page-2026-06-22T18-29-56-332Z.yml",
+    ".playwright-mcp/page-2026-06-22T18-30-09-504Z.yml",
+    ".playwright-mcp/page-2026-06-22T18-30-24-826Z.yml",
+    ".playwright-mcp/page-2026-06-22T18-30-42-162Z.yml",
+    ".playwright-mcp/page-2026-06-22T18-30-55-428Z.yml",
+    ".playwright-mcp/page-2026-06-22T18-31-09-039Z.yml"
+  ],
+  "next": "Resolve production deployment/provider parity blockers from R-3, R-4, R-5, and R-6 before another growth-readiness rerun."
+}

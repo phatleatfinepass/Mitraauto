@@ -1,0 +1,242 @@
+{
+  "schemaVersion": "mitra.growth.next-work-scan.v1",
+  "id": "GROWTH-READINESS-NEXT-WORK-SCAN-2026-06-22",
+  "recordedDate": "2026-06-22",
+  "status": "complete",
+  "progress": "[█████] 100%",
+  "scope": {
+    "project": "Mitra Auto",
+    "repository": "/Users/chandler/code/Mitraauto-main",
+    "board": ".growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md",
+    "lifecycleStage": "prelaunch_live_release_blocked",
+    "modes": ["AUDIT", "VERIFY", "LAUNCH", "MONITOR", "GROW"],
+    "archetypes": ["local_service", "commerce_catalog", "booking_checkout", "multilingual_spa"]
+  },
+  "decision": "The board remains complete locally and release no-go. Local source checks pass, but Mitra is not release-ready or growth-ready until P0/P1 live, provider, Figma Make, platform, and owner blockers are remediated and verified.",
+  "localScanFindings": [
+    {
+      "type": "positive",
+      "title": "Local build and deterministic source checks pass",
+      "evidence": "npm run build, i18n:audit, sitemap:check, feed:check, and commerce:check passed.",
+      "impact": "The remaining blocker pattern is not a broad local compile/source failure."
+    },
+    {
+      "type": "positive",
+      "title": "Vite build copies SEO static assets into the release output",
+      "evidence": "vite.config.ts uses publicDir src/public and outDir build; local build produced robots.txt, sitemap.xml, product sitemaps, merchant-products.xml, _headers, and _redirects in build.",
+      "impact": "Production asset mismatch is likely deployment target, cache, hosting, or Figma Make/provider routing, not missing local files."
+    },
+    {
+      "type": "blocker",
+      "title": "CMS route is still a public SPA route at the source/edge contract level",
+      "evidence": "src/public/_redirects contains /cms / 200 and /cms/* / 200, while src/public/robots.txt only disallows crawling. SiteApp routes /cms, /admin aliases, and /pwa into client-rendered protected screens.",
+      "impact": "Robots/noindex cannot protect private content. The route needs edge/app authorization before any private interface can render."
+    },
+    {
+      "type": "critical",
+      "title": "Checkout URL/canonical bug has a direct local source owner",
+      "evidence": "CartDrawer onCheckout only calls setCurrentPage('checkout') from SiteApp, without navigate('/checkout').",
+      "impact": "Checkout can render while the browser URL remains a product URL, corrupting product SEO state and user trust."
+    },
+    {
+      "type": "critical",
+      "title": "Legacy/product-ID redirect behavior needs a real HTTP layer",
+      "evidence": "Client-side product identifier canonicalization uses history.replaceState after loading the item. HTTP requests still depend on SPA fallback unless an edge redirect layer handles old IDs and legacy route aliases.",
+      "impact": "Search engines and crawlers can see HTTP 200 soft states instead of durable one-hop 301 redirects."
+    }
+  ],
+  "evidenceCoverage": {
+    "repository": "EXECUTED",
+    "board": "EXECUTED",
+    "build": "EXECUTED",
+    "source_scripts": "EXECUTED",
+    "supabase_wrapper": "EXECUTED_REDACTED",
+    "supabase_mcp_config": "EXECUTED",
+    "live_http_refresh": "NOT_RERUN_USED_E3_E4_CACHE",
+    "browser_refresh": "NOT_RERUN_USED_E3_CACHE",
+    "figma_make_preview": "UNAVAILABLE",
+    "cloudflare_authenticated_readback": "UNAVAILABLE",
+    "search_console_gbp_merchant_analytics_logs_field_cwv": "UNAVAILABLE"
+  },
+  "nextWorkBacklog": [
+    {
+      "id": "R-1",
+      "name": "Public/private boundary and CMS route protection",
+      "priority": "P0",
+      "owner": "Engineering/security plus hosting/provider owner",
+      "controls": ["TECH-004", "DISC-005", "MULTI-008", "ETH-003"],
+      "whyNow": "This is the highest-risk blocker because public/private boundary failures stop release regardless of SEO improvements.",
+      "implementationFiles": [
+        "src/public/_redirects",
+        "src/public/manifest.webmanifest",
+        "src/public/sw.js",
+        "src/SiteApp.tsx",
+        "src/components/cms/core/CmsGuard.tsx",
+        "provider edge/Cloudflare Access configuration"
+      ],
+      "acceptance": [
+        "Unauthenticated /cms, /cms/*, /admin/*, /pwa/*, account/private routes return 401, 403, or safe 404 before private content renders.",
+        "No private records or staff UI render to unauthenticated browser sessions.",
+        "Robots.txt is retained only as crawler guidance, not as security.",
+        "Any confirmed exposed private data has owner cleanup/rotation decision."
+      ]
+    },
+    {
+      "id": "R-2",
+      "name": "Figma Make source sync and preview verification",
+      "priority": "P0",
+      "owner": "Figma Make/source sync owner",
+      "controls": ["GROW-008", "OPS-005"],
+      "whyNow": "The production/Figma surface can reintroduce stale runtime errors even though local source builds.",
+      "implementationFiles": [
+        "E-1 /Figma/src file list",
+        "src/components/site/sections/ContactSection.tsx",
+        "src/config/businessProfile.ts",
+        "src/i18n/dictionaries/site.ts",
+        "source files listed in .seo-work/reports/FIGMA-MAKE-PATCH-STATE-LEDGER-E1-2026-06-22.md"
+      ],
+      "acceptance": [
+        "Figma Make is patched from the E-1 list.",
+        "Preview no longer throws CONTACT_INFO or stale import/runtime errors.",
+        "Only Figma Make source files are listed in Figma sync closeouts."
+      ]
+    },
+    {
+      "id": "R-3",
+      "name": "Production static SEO assets and Merchant feed deployment parity",
+      "priority": "P0",
+      "owner": "Hosting/engineering/Figma Make deployment owner",
+      "controls": ["TECH-009", "COM-004", "MON-001", "MON-008"],
+      "whyNow": "Local build includes the assets, but production evidence shows robots/sitemap/feed mismatches.",
+      "implementationFiles": [
+        "vite.config.ts",
+        "src/public/_headers",
+        "src/public/_redirects",
+        "src/public/robots.txt",
+        "src/public/sitemap.xml",
+        "src/public/sitemap-products.xml",
+        "src/public/sitemap-products-1.xml",
+        "src/public/sitemap-products-2.xml",
+        "src/public/merchant-products.xml",
+        "hosting/deployment output directory configuration"
+      ],
+      "acceptance": [
+        "Production robots.txt returns 200 text/plain.",
+        "Production sitemap.xml and product sitemaps return 200 XML, not the SPA shell.",
+        "Production merchant-products.xml returns 200 XML and is fetchable by Merchant Center.",
+        "Search Console and Merchant Center readback confirm submitted/fetched assets."
+      ]
+    },
+    {
+      "id": "R-4",
+      "name": "HTTP redirect, product ID migration, and soft-404 remediation",
+      "priority": "P1",
+      "owner": "Frontend/edge routing owner plus hosting/engineering",
+      "controls": ["TECH-007", "TECH-008", "TECH-011", "TECH-018", "JS-005"],
+      "whyNow": "Client-side route correction is not enough for migration, crawl, or canonical policy.",
+      "implementationFiles": [
+        "src/public/_redirects",
+        "src/SiteApp.tsx",
+        "src/utils/catalogSeo.ts",
+        "scripts/check_seo_redirects.mjs",
+        "new provider edge function or Worker for dynamic product ID-to-slug redirects"
+      ],
+      "acceptance": [
+        "Legacy service/category samples 301 one hop to canonical URLs.",
+        "Product UUID/SKU/code URLs 301 one hop to canonical slug URLs.",
+        "Unknown routes return real 404 or 410 with safe noindex content.",
+        "Redirect checks run before the SPA fallback in deployed provider behavior."
+      ]
+    },
+    {
+      "id": "R-5",
+      "name": "Checkout URL, canonical, and deployed Paytrail parity",
+      "priority": "P1",
+      "owner": "Frontend/commerce plus Supabase/commerce owner",
+      "controls": ["COM-002", "COM-003", "COM-013", "CONV-005", "AGENT-006"],
+      "whyNow": "Product SEO and commerce trust require URL, cart, checkout, stock, price, and payment state to agree.",
+      "implementationFiles": [
+        "src/SiteApp.tsx",
+        "src/components/site/cart/CartDrawer.tsx",
+        "src/components/site/checkout/CheckoutPage.tsx",
+        "supabase/functions/payments_create_paytrail/index.ts"
+      ],
+      "acceptance": [
+        "Cart checkout action navigates to /checkout.",
+        "Checkout remains noindex and cannot corrupt product canonical state.",
+        "Deployed payments_create_paytrail revalidates product identity, price, availability, and stock from authoritative data.",
+        "Browser smoke verifies product add-to-cart, checkout start, Paytrail handoff path, and cancel/success recovery."
+      ]
+    },
+    {
+      "id": "R-6",
+      "name": "Authenticated provider and platform readback",
+      "priority": "P1",
+      "owner": "Provider, SEO, analytics, local, merchant, and business owners",
+      "controls": ["MON-001", "MON-002", "MON-008", "KPI-005", "OPS-004"],
+      "whyNow": "Unavailable platform evidence cannot be counted as pass or growth readiness.",
+      "implementationFiles": [
+        "project wrapper/keychain only for secrets",
+        ".growth-work/measurement/*",
+        ".growth-work/release/e2-supabase-hosting-provider-ledger.json",
+        ".growth-work/release/e4-drift-baseline-monitoring-handoff.json"
+      ],
+      "acceptance": [
+        "Cloudflare account/zone/project/routes/headers/redirects/deployment state are read back without secrets.",
+        "Search Console ownership, sitemap submission, URL inspections, manual actions, security issues, enhancements, and performance are captured.",
+        "GBP, Merchant Center, analytics, logs, and field CWV evidence are captured or explicitly owner-excepted."
+      ]
+    },
+    {
+      "id": "R-7",
+      "name": "Business/local/content owner evidence package",
+      "priority": "P1",
+      "owner": "Business/local SEO/content owner",
+      "controls": ["GOV-001", "GOV-002", "LOCAL-002", "CONTENT-003", "OFFER-001"],
+      "whyNow": "Local/service/product content can be structurally improved but still not growth-ready without owner-approved facts.",
+      "implementationFiles": [
+        "src/config/businessProfile.ts",
+        "src/utils/serviceCatalog.ts",
+        "src/i18n/dictionaries/serviceSeo.ts",
+        ".seo-work/reports/GOOGLE-BUSINESS-PROFILE-CITATION-FACT-GATE-C1-2026-06-22.md",
+        ".seo-work/reports/SERVICE-TEMPLATE-P1-REWRITE-C2-2026-06-22.md"
+      ],
+      "acceptance": [
+        "GBP ownership, categories, hours, service area, website URL, booking URL, reviews process, and citation facts are owner-approved.",
+        "Service prices, durations, constraints, safety claims, warranties, and local proof are approved or omitted.",
+        "No invented claims, reviews, credentials, or unsupported comparison language are published."
+      ]
+    },
+    {
+      "id": "R-8",
+      "name": "Post-remediation live crawl, browser smoke, and drift rerun",
+      "priority": "P1",
+      "owner": "SEO QA/engineering/release owner",
+      "controls": ["OPS-006", "MON-009", "GROW-006"],
+      "whyNow": "The release decision can only reopen after fixes are verified on the deployed site.",
+      "implementationFiles": [
+        ".seo-work/crawl/e4-drift-baseline-2026-06-22.json",
+        ".seo-work/reports/DRIFT-BASELINE-MONITORING-HANDOFF-E4-2026-06-22.md",
+        "new post-fix crawl/browser evidence artifacts"
+      ],
+      "acceptance": [
+        "Rerun representative live HTTP checks.",
+        "Rerun browser smoke for homepage, services, product, cart, checkout, contact, invalid route, and protected routes.",
+        "Compare against E-4 drift baseline and record deltas.",
+        "Reopen Gate D/Gate E only after acceptance evidence is attached."
+      ]
+    }
+  ],
+  "recommendedSequence": ["R-1", "R-2", "R-3", "R-4", "R-5", "R-6", "R-7", "R-8"],
+  "commandsRun": [
+    "source ~/.config/projects/bin/project && project mitraauto",
+    "codex mcp get supabase-mitra",
+    "npm run build",
+    "npm run i18n:audit",
+    "npm run sitemap:check",
+    "npm run feed:check",
+    "npm run commerce:check"
+  ],
+  "cleanup": ["build removed after local build verification"],
+  "noGuarantee": "This scan prioritizes implementation, release, and growth-readiness work. It does not guarantee crawling, indexing, selected canonicals, rankings, rich results, local-pack visibility, Merchant Center approval, traffic, conversions, revenue, or AI inclusion."
+}

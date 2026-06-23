@@ -23,5 +23,46 @@
   Content-Type: application/xml; charset=utf-8
   Cache-Control: public, max-age=3600
 
+/404.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/admin*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/cms*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/pwa*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/account*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/customer*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/booking/manage*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/en/account*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/en/customer*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/en/booking/manage*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
 /icons/*
   Cache-Control: public, max-age=31536000, immutable

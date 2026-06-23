@@ -10,31 +10,33 @@ interface CarServicePageProps {
 
 export function CarServicePage({ onBookingClick }: CarServicePageProps) {
   const { t } = useLanguage();
+  const priceConfirmed = t('service.vehicleSpecificQuote');
+  const durationConfirmed = t('service.durationConfirmedInBooking');
 
   const services = [
     {
       name: t('carServicePage.services.basic.name'),
       desc: t('carServicePage.services.basic.desc'),
-      price: '[TBD]',
-      duration: '[TBD] min',
+      price: priceConfirmed,
+      duration: durationConfirmed,
     },
     {
       name: t('carServicePage.services.major.name'),
       desc: t('carServicePage.services.major.desc'),
-      price: '[TBD]',
-      duration: '[TBD] min',
+      price: priceConfirmed,
+      duration: durationConfirmed,
     },
     {
       name: t('carServicePage.services.seasonal.name'),
       desc: t('carServicePage.services.seasonal.desc'),
-      price: '[TBD]',
-      duration: '[TBD] min',
+      price: priceConfirmed,
+      duration: durationConfirmed,
     },
     {
       name: t('carServicePage.services.ac.name'),
       desc: t('carServicePage.services.ac.desc'),
-      price: '[TBD]',
-      duration: '[TBD] min',
+      price: priceConfirmed,
+      duration: durationConfirmed,
     },
   ];
 

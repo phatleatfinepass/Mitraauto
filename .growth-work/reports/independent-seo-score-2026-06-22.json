@@ -1,0 +1,256 @@
+{
+  "task": "Independent SEO score evaluation",
+  "project": "Mitra Auto",
+  "recordedAt": "2026-06-22",
+  "scoreBoundary": "Internal implementation score. Not a Google score and not a ranking prediction.",
+  "decision": "NO_GO",
+  "headlineScores": {
+    "liveProductionSeoScore": 38,
+    "liveRawWeightedScoreBeforeBlockerCap": 46,
+    "localSourceFoundationScore": 74,
+    "growthReadinessScore": 31
+  },
+  "scoreScale": {
+    "0_20": "Not SEO-ready; major crawl/index/business-risk blockers.",
+    "21_40": "Release-blocked; some source foundations exist but live search eligibility is unsafe.",
+    "41_60": "Partially ready; core templates exist but production/measurement gaps remain.",
+    "61_80": "Implementation foundation is strong but needs launch evidence and monitoring.",
+    "81_100": "Release-ready from an implementation perspective, still not a ranking guarantee."
+  },
+  "scoringModel": [
+    {
+      "dimension": "Access, indexability, canonicalization",
+      "weight": 20,
+      "liveScore": 3,
+      "localSourceScore": 13,
+      "basis": "Production robots.txt and sitemap.xml are 404, product sitemap/feed URLs serve HTML, opaque product identifier URL returns 200 without redirect, invalid route returns 200, and private/admin-style routes return 200. Local source contains robots/sitemap/feed files and slug helpers."
+    },
+    {
+      "dimension": "Rendering and architecture",
+      "weight": 15,
+      "liveScore": 7,
+      "localSourceScore": 11,
+      "basis": "Hydrated SPA can route public pages, but raw HTML is a JavaScript-required shell and production HTTP status handling is weak. Local Vite build passes."
+    },
+    {
+      "dimension": "Content quality and evidence",
+      "weight": 20,
+      "liveScore": 12,
+      "localSourceScore": 15,
+      "basis": "Service and product content systems exist, but GBP/citation/business owner evidence and live platform validation remain unavailable."
+    },
+    {
+      "dimension": "Metadata and search appearance",
+      "weight": 10,
+      "liveScore": 5,
+      "localSourceScore": 8,
+      "basis": "Local head management exists, but plain crawler view and production asset issues reduce confidence in live metadata/canonical behavior."
+    },
+    {
+      "dimension": "Structured data",
+      "weight": 10,
+      "liveScore": 6,
+      "localSourceScore": 8,
+      "basis": "Schema policy/source work exists and commerce contract passes locally. Live schema parity and platform enhancement readback remain unavailable."
+    },
+    {
+      "dimension": "Experience, accessibility, and SXO",
+      "weight": 10,
+      "liveScore": 5,
+      "localSourceScore": 7,
+      "basis": "Core journeys exist, but checkout can render by state without URL navigation and D-4 accessibility/SXO findings are not closed live."
+    },
+    {
+      "dimension": "Local, ecommerce, and international",
+      "weight": 10,
+      "liveScore": 6,
+      "localSourceScore": 8,
+      "basis": "i18n audit, product sitemap, Merchant feed, and commerce contract pass locally. Live Merchant feed is HTML, Search Console/GBP/Merchant Center readback is unavailable, and production product URL migration fails."
+    },
+    {
+      "dimension": "Monitoring and governance",
+      "weight": 5,
+      "liveScore": 2,
+      "localSourceScore": 4,
+      "basis": "Board/governance is strong, but authenticated Search Console, GBP, Merchant Center, analytics, logs, field CWV, and provider readbacks remain unavailable."
+    }
+  ],
+  "blockerCap": {
+    "applied": true,
+    "capReason": "P0/P1 production blockers prevent the raw weighted live score from representing actual release readiness.",
+    "capResult": 38,
+    "blockers": [
+      {
+        "priority": "P0",
+        "title": "Public/private route boundary is unsafe",
+        "owner": "Engineering/security",
+        "acceptance": "Unauthenticated private/admin/account routes return 401, 403, or safe 404 before any private interface renders."
+      },
+      {
+        "priority": "P0",
+        "title": "Production SEO static assets and Merchant feed are not deployed correctly",
+        "owner": "Hosting/engineering/Figma Make deployment owner",
+        "acceptance": "robots.txt returns 200 text/plain; sitemap.xml, product sitemap, and Merchant feed return XML with expected bodies."
+      },
+      {
+        "priority": "P0",
+        "title": "Figma Make source and preview parity remain unverified",
+        "owner": "Figma Make/source sync owner",
+        "acceptance": "Figma Make source is patched from local source of truth and preview no longer throws stale import/runtime errors."
+      },
+      {
+        "priority": "P1",
+        "title": "Legacy redirects, product identifier redirects, and soft-404 handling are not active on production",
+        "owner": "Frontend/edge routing plus hosting/engineering",
+        "acceptance": "Legacy service/catalog/product identifier routes permanently redirect one hop to canonical URLs, while invalid routes return 404 or 410."
+      },
+      {
+        "priority": "P1",
+        "title": "Checkout URL/canonical state and deployed commerce parity remain open",
+        "owner": "Frontend/commerce plus Supabase/commerce owner",
+        "acceptance": "Cart checkout navigates to /checkout, checkout stays noindex, and deployed Paytrail price/stock revalidation is read back."
+      },
+      {
+        "priority": "P1",
+        "title": "Platform readback is unavailable",
+        "owner": "Provider, SEO, local, merchant, and analytics owners",
+        "acceptance": "Search Console, GBP, Merchant Center, analytics, logs, field CWV, Cloudflare, and provider state are read back without secrets."
+      }
+    ]
+  },
+  "currentLiveHttpEvidence": [
+    {
+      "url": "https://www.mitra-auto.fi/",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "interpretation": "Homepage is reachable, but raw crawler view is a JavaScript shell."
+    },
+    {
+      "url": "https://mitra-auto.fi/",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 1,
+      "interpretation": "Apex host redirects to canonical www host."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "interpretation": "Opaque product identifier URL does not HTTP redirect to a slug URL."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-score",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "interpretation": "Invalid route is a production soft-404 risk."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/cms",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "interpretation": "Admin/private-style route is publicly reachable and must be protected at HTTP/runtime boundary."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/robots.txt",
+      "http": 404,
+      "contentType": "text/plain",
+      "redirects": 0,
+      "interpretation": "Robots file is not deployed at production URL."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap.xml",
+      "http": 404,
+      "contentType": "text/plain",
+      "redirects": 0,
+      "interpretation": "Primary sitemap is not deployed at production URL."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "interpretation": "Product sitemap route serves HTML instead of XML."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/merchant-products.xml",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "interpretation": "Merchant feed route serves HTML instead of XML."
+    }
+  ],
+  "currentLocalVerification": [
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Return only: pass/fail, build output directory, warnings/errors count, and any fatal error lines for the Mitra Auto Vite build. Do not include repetitive chunk lists.\" -- npm run build",
+      "result": "passed",
+      "note": "Build passed with one large chunk warning."
+    },
+    {
+      "command": "npm run i18n:audit",
+      "result": "passed",
+      "note": "i18n audit passed."
+    },
+    {
+      "command": "npm run sitemap:check",
+      "result": "passed",
+      "note": "Product sitemap check passed: 60918 URLs across 2 files."
+    },
+    {
+      "command": "npm run feed:check",
+      "result": "passed",
+      "note": "Merchant feed check passed: 31575 items."
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed",
+      "note": "Schema, cart, checkout, and product mapping use shared commerce snapshot."
+    },
+    {
+      "command": "source ~/.config/projects/bin/project && project mitraauto >/tmp/mitraauto_project_wrapper_check.log && printf 'PROJECT_SLUG=%s\\nPROJECT_DIR=%s\\nSUPABASE_PROJECT_REF=%s\\nSUPABASE_URL=%s\\nDATABASE_URL=%s\\n' \"$PROJECT_SLUG\" \"$PROJECT_DIR\" \"$SUPABASE_PROJECT_REF\" \"$SUPABASE_URL\" \"${DATABASE_URL:+set}\"",
+      "result": "passed",
+      "note": "Non-secret project metadata confirmed; database URL presence reported as set only."
+    },
+    {
+      "command": "codex mcp get supabase-mitra",
+      "result": "passed",
+      "note": "Project-specific Supabase MCP points at rcmmbwdebnmicrweoiyz."
+    }
+  ],
+  "fastestScoreLifts": [
+    {
+      "workId": "R-1",
+      "title": "Public/private boundary and CMS route protection",
+      "expectedScoreLift": "10-15 points",
+      "why": "Removes P0 public/private risk and lets private route status policy pass."
+    },
+    {
+      "workId": "R-3",
+      "title": "Production static SEO assets and Merchant feed deployment parity",
+      "expectedScoreLift": "12-18 points",
+      "why": "Restores robots, sitemap discovery, product sitemap, and Merchant Center feed eligibility."
+    },
+    {
+      "workId": "R-4",
+      "title": "HTTP redirect, product ID migration, and soft-404 remediation",
+      "expectedScoreLift": "8-12 points",
+      "why": "Makes slug migration real at HTTP level and removes duplicate/soft-404 crawl waste."
+    },
+    {
+      "workId": "R-5",
+      "title": "Checkout URL, canonical, and deployed Paytrail parity",
+      "expectedScoreLift": "4-8 points",
+      "why": "Improves commerce trust and product SEO consistency."
+    },
+    {
+      "workId": "R-6",
+      "title": "Authenticated provider and platform readback",
+      "expectedScoreLift": "8-12 points",
+      "why": "Turns unavailable Search Console, GBP, Merchant Center, analytics, logs, and provider evidence into audited facts."
+    }
+  ],
+  "nextRecommendedWork": "Continue with R-1 - Public/private boundary and CMS route protection."
+}

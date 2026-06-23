@@ -1,0 +1,162 @@
+{
+  "id": "R-4",
+  "name": "HTTP Redirect, Product ID Migration, And Soft-404 Remediation",
+  "recordedDate": "2026-06-22",
+  "status": "complete_locally_with_production_deployment_blocker",
+  "progress": {
+    "bar": "[██████████░░░░░░░░░░]",
+    "percent": 50
+  },
+  "decision": "R-4 HTTP route policy is implemented and verified locally in the Pages function surface. Live production still serves the old SPA fallback behavior and remains blocked until the updated function/build is deployed and hosting provider readback is available.",
+  "evidenceStates": {
+    "repo": "EXECUTED",
+    "build": "EXECUTED",
+    "routeFunctionUnit": "EXECUTED",
+    "databaseSampleRead": "EXECUTED",
+    "liveWww": "EXECUTED_WITH_FINDINGS",
+    "providerReadback": "UNAVAILABLE"
+  },
+  "implemented": [
+    {
+      "file": "functions/[[path]].ts",
+      "summary": "Adds HTTP-level route policy for legacy redirects, trailing-slash redirects, product identifier redirects, protected-route 404s, generated service allowlisting, and unknown-route 404s."
+    },
+    {
+      "file": "scripts/check_http_route_migration.mjs",
+      "summary": "Adds regression coverage for legacy redirects, product UUID/GTIN redirects, canonical product routes, generated service routes, invalid service/product routes, protected routes, and soft-404 candidates."
+    },
+    {
+      "file": "package.json",
+      "summary": "Adds npm run route-migration:check."
+    }
+  ],
+  "routePolicy": {
+    "legacyRedirects": {
+      "status": 301,
+      "examples": {
+        "/shop": "/catalog",
+        "/palvelut/dpf-pesu": "/palvelut/dpf-huolto",
+        "/en/services/dpf-cleaning": "/en/services/dpf-service"
+      }
+    },
+    "productIdentifierRedirects": {
+      "status": 308,
+      "identifierTypes": [
+        "UUID",
+        "GTIN/EAN",
+        "long hex ID",
+        "supplier-code-like ID"
+      ],
+      "sample": {
+        "from": "/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+        "to": "/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10"
+      }
+    },
+    "soft404Remediation": {
+      "unknownRoutes": "HTTP 404 with X-Robots-Tag: noindex, follow",
+      "unknownServiceRoutes": "HTTP 404 with X-Robots-Tag: noindex, follow",
+      "unknownProductRoutes": "HTTP 404 with X-Robots-Tag: noindex, follow",
+      "protectedRoutes": "HTTP 404 with X-Robots-Tag: noindex, nofollow, noarchive and Cache-Control: no-store"
+    },
+    "allowedPublicRoutes": {
+      "staticAssets": "robots, sitemaps, product sitemap children, merchant feed, manifest, service worker, icons, and Vite assets",
+      "spaRoutes": "homepage, locale home, service hubs, service details, generated service detail IDs, catalog hubs, product detail routes, local/contact/about/legal/trust pages, and checkout utility routes"
+    }
+  },
+  "databaseSample": {
+    "projectWrapper": "source ~/.config/projects/bin/project && project mitraauto",
+    "projectSlug": "mitraauto",
+    "supabaseProjectRef": "rcmmbwdebnmicrweoiyz",
+    "sample": {
+      "productType": "rim",
+      "variantId": "00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "canonicalSlug": "rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10"
+    }
+  },
+  "liveWwwFailures": [
+    {
+      "url": "https://www.mitra-auto.fi/shop",
+      "expected": "301 to /catalog",
+      "observed": "200 text/html with 0 redirects"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/palvelut/dpf-pesu",
+      "expected": "301 to /palvelut/dpf-huolto",
+      "observed": "200 text/html with 0 redirects"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "expected": "308 to canonical product slug",
+      "observed": "200 text/html with 0 redirects"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/does-not-exist-product",
+      "expected": "404",
+      "observed": "200 text/html"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/contact",
+      "expected": "404",
+      "observed": "200 text/html"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-r4",
+      "expected": "404",
+      "observed": "200 text/html"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/cms",
+      "expected": "404 or equivalent protected-route denial",
+      "observed": "200 text/html"
+    }
+  ],
+  "providerBlocker": {
+    "cloudflareZoneId": "missing",
+    "cloudflareAccountId": "missing",
+    "supabaseAnonKeyStatus": "missing in current shell",
+    "finding": "The local function can be verified with a mocked Supabase REST response and database sample, but production cannot be changed or authenticated-readback verified until provider metadata and secrets are supplied through the project wrapper/Keychain workflow."
+  },
+  "verification": [
+    {
+      "command": "npm run route-migration:check",
+      "result": "passed"
+    },
+    {
+      "command": "node scripts/check_seo_redirects.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "npm run private-routes:check",
+      "result": "passed"
+    },
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Run the Mitra Auto production build after R-4 route function changes. Return exactly: status passed/failed, generated output directory, warnings grouped by tool/file, and fatal errors. Do not include routine Vite transform progress.\" -- npm run build",
+      "result": "passed_with_large_chunk_warning"
+    },
+    {
+      "command": "node scripts/check_static_deployment_assets.mjs --build-dir build",
+      "result": "passed"
+    },
+    {
+      "command": "npm run i18n:audit",
+      "result": "passed"
+    },
+    {
+      "command": "npm run sitemap:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run feed:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed"
+    },
+    {
+      "command": "live R-4 curl matrix for /shop, /palvelut/dpf-pesu, product UUID, canonical product slug, unknown product, /contact, random invalid route, and /cms",
+      "result": "failed_live_www_not_deployed"
+    }
+  ],
+  "nextTask": "R-5 - Checkout URL, canonical, and deployed Paytrail parity"
+}

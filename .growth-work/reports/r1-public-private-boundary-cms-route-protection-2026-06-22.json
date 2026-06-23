@@ -1,0 +1,112 @@
+{
+  "task": "R-1 - Public/private boundary and CMS route protection",
+  "recordedAt": "2026-06-22",
+  "status": "COMPLETE_LOCAL_DEPLOYMENT_VERIFICATION_PENDING",
+  "decision": "R-1 source implementation complete; production verification still required after deploy.",
+  "securityInvariant": "Public-site builds must not mount CMS, admin, PWA, account, customer, or booking-management private interfaces for unauthenticated public routes. Protected routes must resolve to a safe not-found state or host-level 404 before private UI renders.",
+  "implementation": {
+    "routePolicy": {
+      "file": "src/utils/privateRoutePolicy.ts",
+      "summary": "Centralizes private route detection and production public-site blocking. Dev, standalone PWA deploys, and explicit VITE_ENABLE_PRIVATE_APP_ROUTES=true builds can serve private app routes."
+    },
+    "siteRouter": {
+      "file": "src/SiteApp.tsx",
+      "summary": "Checks shouldBlockPrivateAppRoute before CMS/PWA/account/customer route dispatch and sends blocked paths to the safe not-found state."
+    },
+    "bootstrap": {
+      "file": "src/main.tsx",
+      "summary": "Prevents /pwa and installed-PWA CMS bootstrap from mounting the CMS PWA runtime unless private routes are explicitly allowed."
+    },
+    "hostRules": {
+      "files": [
+        "src/public/_redirects",
+        "src/public/_headers",
+        "src/public/404.html"
+      ],
+      "summary": "Adds explicit protected-route safe-404 rules before SPA fallback, no-store/noindex/noarchive headers, and a static noindex 404 page."
+    },
+    "verificationScript": {
+      "file": "scripts/check_private_route_boundary.mjs",
+      "summary": "Verifies protected route rules, header blocks, static 404 metadata, app route dispatch guard, and PWA bootstrap guard."
+    }
+  },
+  "protectedRouteFamilies": [
+    "/admin",
+    "/cms",
+    "/pwa",
+    "/account",
+    "/customer",
+    "/customer-account",
+    "/booking/manage",
+    "/en/account",
+    "/en/customer",
+    "/en/booking/manage"
+  ],
+  "localBrowserSmoke": [
+    {
+      "url": "http://127.0.0.1:4173/cms",
+      "result": "passed",
+      "evidence": "Rendered not-found page; title Sivua ei loytynyt | Mitra Auto; no CMS login/admin/PWA text detected."
+    },
+    {
+      "url": "http://127.0.0.1:4173/pwa",
+      "result": "passed",
+      "evidence": "Rendered not-found page; no CMS PWA login text detected after bootstrap guard."
+    },
+    {
+      "url": "http://127.0.0.1:4173/customer-account",
+      "result": "passed",
+      "evidence": "Rendered not-found page; no private customer/account UI detected."
+    },
+    {
+      "url": "http://127.0.0.1:4173/palvelut/autohuolto",
+      "result": "passed",
+      "evidence": "Public service route still rendered with expected service title."
+    }
+  ],
+  "verification": [
+    {
+      "command": "npm run private-routes:check",
+      "result": "passed"
+    },
+    {
+      "command": "node scripts/check_seo_redirects.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "npm run i18n:audit",
+      "result": "passed"
+    },
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Return only: pass/fail, build output directory, warnings/errors count, and any fatal error lines for the Mitra Auto Vite build after the R-1 bootstrap guard patch. Do not include repetitive chunk lists.\" -- npm run build",
+      "result": "passed_with_existing_warning",
+      "note": "Build passed with the existing large-chunk warning."
+    },
+    {
+      "command": "npm run sitemap:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run feed:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed"
+    },
+    {
+      "command": "test -f build/404.html && test -f build/_redirects && test -f build/_headers && rg -n \"^/cms /404\\.html 404|^/pwa /404\\.html 404|^/customer-account /404\\.html 404|X-Robots-Tag: noindex, nofollow, noarchive\" build/_redirects build/_headers build/404.html",
+      "result": "passed"
+    },
+    {
+      "command": "npx vite preview --host 127.0.0.1 --port 4173 plus Playwright browser smoke for /cms, /pwa, /customer-account, and /palvelut/autohuolto",
+      "result": "passed"
+    }
+  ],
+  "remainingProofGaps": [
+    "Production deployment has not been updated in this run.",
+    "Live www status still needs post-deploy verification for protected routes returning 401, 403, or safe 404.",
+    "Hosting provider must honor the protected-route rules or enforce equivalent Cloudflare Access/Worker/provider routing before the SPA fallback."
+  ],
+  "nextRecommendedWork": "Continue with R-2 - Figma Make source sync and preview verification, then R-3 - Production static SEO assets and Merchant feed deployment parity."
+}

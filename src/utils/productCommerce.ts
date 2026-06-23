@@ -6,6 +6,10 @@ import {
 
 export type CommerceProductType = 'tire' | 'rim';
 
+export const PRODUCT_HOME_DELIVERY_FEE_INCL_VAT_EUR = 50;
+export const PRODUCT_RETURN_WINDOW_DAYS = 14;
+export const PRODUCT_POLICY_COUNTRY = 'FI';
+
 export interface ProductCommerceInput {
   id?: string | null;
   type?: CommerceProductType | null;

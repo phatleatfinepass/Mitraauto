@@ -1,0 +1,187 @@
+{
+  "id": "R-3",
+  "name": "Production Static SEO Assets And Merchant Feed Deployment Parity",
+  "recordedDate": "2026-06-22",
+  "status": "complete_locally_with_production_deployment_blocker",
+  "progress": {
+    "bar": "[████████░░░░░░░░░░░░]",
+    "percent": 38
+  },
+  "decision": "R-3 local source, build output, and local preview static asset parity are complete. Live www deployment still fails static SEO asset parity and must be fixed at the hosting/deployment layer before release.",
+  "evidenceStates": {
+    "repo": "EXECUTED_WITH_FINDINGS",
+    "build": "EXECUTED",
+    "localPreview": "EXECUTED",
+    "liveWww": "EXECUTED_WITH_FINDINGS",
+    "providerReadback": "UNAVAILABLE",
+    "platformReadback": "UNAVAILABLE"
+  },
+  "implemented": [
+    {
+      "file": "scripts/check_static_deployment_assets.mjs",
+      "summary": "Adds a deterministic R-3 gate for source/build static SEO assets and optional live host parity."
+    },
+    {
+      "file": "package.json",
+      "summary": "Adds npm run static-assets:check."
+    }
+  ],
+  "removed": [
+    {
+      "file": "src/public/.DS_Store",
+      "summary": "Removed generated macOS metadata from the public deployment source directory."
+    }
+  ],
+  "localStaticAssets": {
+    "sourceRoot": "src/public",
+    "buildRoot": "build",
+    "requiredFiles": [
+      "robots.txt",
+      "sitemap.xml",
+      "sitemap-products.xml",
+      "sitemap-products-1.xml",
+      "sitemap-products-2.xml",
+      "merchant-products.xml",
+      "_headers",
+      "_redirects"
+    ],
+    "sourceSizesBytes": {
+      "robots.txt": 274,
+      "sitemap.xml": 6379,
+      "sitemap-products.xml": 368,
+      "merchant-products.xml": 32988117,
+      "_headers": 1589,
+      "_redirects": 1233
+    },
+    "buildSizesBytes": {
+      "robots.txt": 274,
+      "sitemap.xml": 6379,
+      "sitemap-products.xml": 368,
+      "sitemap-products-1.xml": 10829537,
+      "sitemap-products-2.xml": 3645325,
+      "merchant-products.xml": 32988117,
+      "_headers": 1589,
+      "_redirects": 1233
+    },
+    "productSitemapUrls": 60918,
+    "productSitemapFiles": 2,
+    "merchantFeedItems": 31575,
+    "finding": "Local source and build output contain the required static SEO assets and Merchant feed. Build output is the correct deployment artifact directory for this repo."
+  },
+  "localPreview": [
+    {
+      "url": "http://127.0.0.1:4174/robots.txt",
+      "status": 200,
+      "contentType": "text/plain"
+    },
+    {
+      "url": "http://127.0.0.1:4174/sitemap.xml",
+      "status": 200,
+      "contentType": "text/xml"
+    },
+    {
+      "url": "http://127.0.0.1:4174/sitemap-products.xml",
+      "status": 200,
+      "contentType": "text/xml"
+    },
+    {
+      "url": "http://127.0.0.1:4174/merchant-products.xml",
+      "status": 200,
+      "contentType": "text/xml"
+    }
+  ],
+  "liveWwwFailures": [
+    {
+      "url": "https://www.mitra-auto.fi/robots.txt",
+      "expected": "HTTP 200 text/plain",
+      "observed": "HTTP 404 text/plain;charset=utf-8"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap.xml",
+      "expected": "HTTP 200 application/xml or text/xml",
+      "observed": "HTTP 404 text/plain;charset=utf-8"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "expected": "HTTP 200 application/xml or text/xml",
+      "observed": "HTTP 200 text/html"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/merchant-products.xml",
+      "expected": "HTTP 200 application/xml, text/xml, or application/rss+xml",
+      "observed": "HTTP 200 text/html"
+    }
+  ],
+  "providerReadback": {
+    "projectWrapper": "source ~/.config/projects/bin/project && project mitraauto",
+    "projectSlug": "mitraauto",
+    "projectDir": "/Users/chandler/code/Mitraauto-main",
+    "supabaseProjectRef": "rcmmbwdebnmicrweoiyz",
+    "cloudflareZoneId": "missing",
+    "cloudflareAccountId": "missing",
+    "publicBaseUrl": "missing",
+    "cloudflareTokenStatus": "missing",
+    "finding": "Provider readback and hosting writes are unavailable from the current project wrapper state."
+  },
+  "ownerActions": [
+    {
+      "owner": "Hosting/deployment owner",
+      "action": "Deploy the current build output directory build to the production www host."
+    },
+    {
+      "owner": "Hosting/deployment owner",
+      "action": "Ensure static files are served before the SPA fallback for robots.txt, sitemap.xml, sitemap-products.xml, sitemap-products-*.xml, and merchant-products.xml."
+    },
+    {
+      "owner": "Hosting/deployment owner",
+      "action": "Ensure production honors the _headers content-type rules or equivalent provider-level MIME rules."
+    },
+    {
+      "owner": "Provider owner",
+      "action": "Add non-secret Cloudflare zone/account/public URL metadata to the Mitra project wrapper and load API tokens only through Keychain-backed helpers before any provider write."
+    }
+  ],
+  "verification": [
+    {
+      "command": "npm run static-assets:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run sitemap:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run feed:check",
+      "result": "passed"
+    },
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Run the Mitra Auto production build for R-3. Return exactly: status passed/failed, generated output directory, whether static public assets were copied if reported, warnings grouped by tool/file, and fatal errors. Do not include routine Vite transform progress.\" -- npm run build",
+      "result": "passed_with_distill_output_directory_correction_to_build"
+    },
+    {
+      "command": "node scripts/check_static_deployment_assets.mjs --build-dir build",
+      "result": "passed"
+    },
+    {
+      "command": "node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi",
+      "result": "failed_live_www_static_asset_parity"
+    },
+    {
+      "command": "for url in http://127.0.0.1:4174/robots.txt http://127.0.0.1:4174/sitemap.xml http://127.0.0.1:4174/sitemap-products.xml http://127.0.0.1:4174/merchant-products.xml; do curl -sSIL -o /dev/null --max-time 20 -w '%{url_effective}|http=%{http_code}|content_type=%{content_type}|redirects=%{num_redirects}|size_download=%{size_download}\\n' \"$url\"; done",
+      "result": "passed"
+    },
+    {
+      "command": "npm run private-routes:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run i18n:audit",
+      "result": "passed"
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed"
+    }
+  ],
+  "nextTask": "R-4 - HTTP redirect, product ID migration, and soft-404 remediation"
+}

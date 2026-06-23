@@ -12,6 +12,7 @@ declare global {
 
 const CLARITY_CONSENT_STORAGE_KEY = 'mitra-auto-clarity-consent-v1';
 const DEFAULT_CLARITY_PROJECT_ID = 'xaxi6o0t5o';
+const ANALYTICS_EVENT_VERSION = '2026-06-23.d4';
 const MAX_TAG_VALUE_LENGTH = 120;
 
 let clarityInitialized = false;
@@ -101,6 +102,28 @@ function normalizeTagValue(value: TagValue): string | string[] {
   return String(value).slice(0, MAX_TAG_VALUE_LENGTH);
 }
 
+function createEventId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `evt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getCommonEventTags(): Record<string, TagValue> {
+  const route = canUseBrowserApis()
+    ? window.location.pathname.split('?')[0]?.split('#')[0] || '/'
+    : 'unknown';
+
+  return {
+    event_id: createEventId(),
+    event_version: ANALYTICS_EVENT_VERSION,
+    occurred_at: new Date().toISOString(),
+    consent_state: readClarityConsent() ?? 'unknown',
+    route,
+  };
+}
+
 export function isClarityConfigured() {
   return Boolean(getProjectId());
 }
@@ -182,11 +205,15 @@ export function trackClarityEvent(eventName: string, tags?: Record<string, TagVa
   }
 
   safeClarityCall(() => {
-    if (tags) {
-      for (const [key, value] of Object.entries(tags)) {
-        window.clarity?.('set', key, normalizeTagValue(value));
-      }
+    const eventTags = {
+      ...(tags || {}),
+      ...getCommonEventTags(),
+    };
+
+    for (const [key, value] of Object.entries(eventTags)) {
+      window.clarity?.('set', key, normalizeTagValue(value));
     }
+
     window.clarity?.('event', eventName);
   });
 }

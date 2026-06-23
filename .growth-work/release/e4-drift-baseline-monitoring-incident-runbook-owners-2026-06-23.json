@@ -1,0 +1,364 @@
+{
+  "task": "E-4",
+  "name": "Drift Baseline, Monitoring, Incident Runbook, And Owners",
+  "recorded": "2026-06-23",
+  "releaseAnnotation": {
+    "localTime": "2026-06-23 13:21:49 EEST +0300",
+    "utc": "2026-06-23T10:21:49Z",
+    "timezone": "Europe/Helsinki",
+    "scope": "Post E-1/E-2/E-3 release verification baseline and monitoring handoff for https://www.mitra-auto.fi",
+    "affectedSurfaces": [
+      "production HTTP routing",
+      "raw HTML metadata",
+      "static SEO assets",
+      "product sitemap and Merchant feed",
+      "legacy redirects and product identifier redirects",
+      "private, checkout, account, and error routes",
+      "rendered booking, contact, catalog, product, cart, checkout, and accessibility journeys from E-3"
+    ]
+  },
+  "status": "complete_with_blockers_carried",
+  "progress": {
+    "phaseE": "[████░] 80%",
+    "board": "[███████████████████░] 96%"
+  },
+  "evidenceStates": {
+    "REPO": "EXECUTED_WITH_FINDINGS",
+    "LOCAL_GATES": "EXECUTED",
+    "LIVE": "EXECUTED_WITH_FINDINGS",
+    "BROWSER": "SUPPLIED_REVIEW_REQUIRED_FROM_E3",
+    "MIGRATION": "EXECUTED_WITH_FINDINGS",
+    "PLATFORM": "UNAVAILABLE",
+    "FIELD_PERFORMANCE": "UNAVAILABLE",
+    "INCIDENT": "EXECUTED"
+  },
+  "artifacts": {
+    "baseline": ".seo-work/crawl/e4-drift-baseline-2026-06-23.json",
+    "report": ".seo-work/reports/DRIFT-BASELINE-MONITORING-INCIDENT-RUNBOOK-OWNERS-E4-2026-06-23.md",
+    "sourceLiveMatrix": ".seo-work/crawl/e2-production-http-matrix-2026-06-23.json",
+    "sourceRenderedJourney": ".growth-work/release/e3-accessibility-sxo-checkout-customer-journey-smoke-2026-06-23.json",
+    "sourceBoard": ".growth-work/boards/MITRA_GROWTH_READINESS_IMPLEMENTATION_BOARD_2026-06-22.md"
+  },
+  "currentBaselineDecision": "E-4 can close as an operating baseline and handoff, not as launch approval. The monitored baseline records known production failures so remediation can be verified and future drift can be detected.",
+  "blockersCarriedForward": [
+    {
+      "severity": "BLOCKER",
+      "owner": "Hosting/Cloudflare/engineering owner",
+      "blocker": "Production static SEO assets are not served correctly: /robots.txt and /sitemap.xml return 404; product sitemap and Merchant feed URLs return HTML.",
+      "verification": "Live HTTP matrix shows correct 200 XML/text assets with expected content type and body, and Search Console/Merchant Center readback confirms fetchability when platform access is available."
+    },
+    {
+      "severity": "BLOCKER",
+      "owner": "Hosting/Cloudflare/engineering owner",
+      "blocker": "Production public routes serve generic raw SPA shell without route-specific canonical/schema; rendered pages hydrate later but raw HTTP remains weak for release policy.",
+      "verification": "Raw curl and rendered browser parity both show route-specific title, description, canonical, robots, hreflang where applicable, H1, crawlable links, and JSON-LD."
+    },
+    {
+      "severity": "BLOCKER",
+      "owner": "Engineering/security owner",
+      "blocker": "Private/admin/account routes still return public HTTP 200 shell at the edge.",
+      "verification": "Unauthenticated /cms, account, admin, and customer routes return safe 401/403/404 or protected noindex policy with no private content."
+    },
+    {
+      "severity": "CRITICAL",
+      "owner": "Engineering/SEO migration owner",
+      "blocker": "Legacy service/catalog routes and opaque product identifier URLs do not perform permanent one-hop redirects in production.",
+      "verification": "Redirect sample returns 301/308 to the nearest canonical slug URL with no chain and all internal links point to canonical URLs."
+    },
+    {
+      "severity": "CRITICAL",
+      "owner": "Engineering/SEO owner",
+      "blocker": "Unknown routes and unknown products return HTTP 200 soft-404 shell responses.",
+      "verification": "Unknown URLs return real 404/410 with safe noindex content and no misleading canonical or Product schema."
+    },
+    {
+      "severity": "CRITICAL",
+      "owner": "Frontend/accessibility/commerce owners",
+      "blocker": "E-3 accessibility and SXO findings remain open for unnamed header button, checkout checkbox labels, catalog input labels, generic product buttons, product gallery controls, and mobile evidence.",
+      "verification": "Rendered accessibility and customer journey smoke passes on desktop and mobile with stable labels, focus, states, and no ambiguous high-impact actions."
+    },
+    {
+      "severity": "BLOCKER",
+      "owner": "Platform/business owners",
+      "blocker": "Cloudflare, Search Console, GBP, Merchant Center, GA4/analytics, server logs, field Core Web Vitals, and owner evidence are unavailable.",
+      "verification": "Authenticated least-privilege readbacks confirm properties/accounts, submitted assets, diagnostics, alerts, field data, and evidence ownership."
+    }
+  ],
+  "monitoringCadence": {
+    "eachRelease": [
+      "Run local gates: static-assets:check, sitemap:check, feed:check, route-migration:check, private-routes:check, checkout:check, commerce:check.",
+      "Run bounded live HTTP matrix for homepage, service hub, service detail, contact, location, catalog, product slug, product legacy identifiers, legacy service/catalog aliases, checkout, private routes, unknown routes, robots, sitemap, product sitemap, and Merchant feed.",
+      "Run rendered browser smoke for homepage, service booking, contact, catalog, product, cart, checkout, private route, and unknown route.",
+      "Annotate release date/time, branch/commit, affected templates, Cloudflare/Figma Make deployment, static assets, redirect changes, schema/feed changes, provider deployments, and exceptions."
+    ],
+    "weekly": [
+      "Check critical production asset URLs and redirect samples.",
+      "Review Search Console manual actions, security issues, indexing, sitemap, page experience, and enhancement reports when access exists.",
+      "Review Merchant Center diagnostics, Business Profile edits/suspension/hours, booking/order/checkout failures, and private-route alerts."
+    ],
+    "monthly": [
+      "Segment Search Console and analytics by page type, locale, device, country, query intent, product/service family, inventory state, and qualified outcome.",
+      "Review product/feed stock and price drift, local facts, content freshness, service claim evidence, accessibility regression queue, field Core Web Vitals, and conversion quality.",
+      "Refresh representative URL set when a new page type, language route, product state, service state, or provider integration ships."
+    ],
+    "quarterly": [
+      "Recheck structured data feature status, Merchant Center policy, GBP policy, crawler/AI policy, schema support, and documentation freshness.",
+      "Review route architecture, stale redirects, content portfolio, owner evidence, experiment decisions, privacy/accessibility/legal boundaries, and source freshness."
+    ]
+  },
+  "owners": [
+    {
+      "area": "Production host, Cloudflare Pages/Functions, redirects, status policy, static assets",
+      "owner": "Hosting/Cloudflare/engineering owner",
+      "backupOwner": "SEO/growth ops owner",
+      "alertTriggers": [
+        "static SEO asset 404 or HTML",
+        "legacy redirect returns 200 or wrong target",
+        "public canonical route raw metadata missing",
+        "unknown route returns public 200"
+      ],
+      "verification": "Public HTTP matrix and provider readback pass."
+    },
+    {
+      "area": "Public/private route boundary, account/CMS/admin access, security/privacy",
+      "owner": "Engineering/security owner",
+      "backupOwner": "Privacy/legal reviewer",
+      "alertTriggers": [
+        "private route public 200",
+        "private data visible unauthenticated",
+        "auth or consent bypass",
+        "security issue/manual action"
+      ],
+      "verification": "Unauthenticated route probes and security review pass."
+    },
+    {
+      "area": "Search Console, indexing, sitemap submission, URL inspection, traffic anomaly diagnosis",
+      "owner": "SEO/growth ops owner",
+      "backupOwner": "Analytics owner",
+      "alertTriggers": [
+        "manual action",
+        "security issue",
+        "sitemap fetch failure",
+        "indexable URL collapse or spike",
+        "template-level traffic/indexing anomaly"
+      ],
+      "verification": "Search Console readback and release annotation are recorded."
+    },
+    {
+      "area": "Merchant feed, product facts, price, stock, schema/feed/cart/checkout parity",
+      "owner": "Commerce/PIM owner",
+      "backupOwner": "Engineering owner",
+      "alertTriggers": [
+        "Merchant feed fetch failure",
+        "item disapproval spike",
+        "price or availability mismatch",
+        "product schema/feed/checkout divergence"
+      ],
+      "verification": "Feed diagnostics, product samples, and checkout reconciliation pass."
+    },
+    {
+      "area": "Analytics, events, consent, booking/order/revenue reconciliation",
+      "owner": "Analytics/revenue owner",
+      "backupOwner": "Growth ops owner",
+      "alertTriggers": [
+        "event collection break",
+        "consent mode change",
+        "booking/order discrepancy",
+        "purchase event not server-confirmed",
+        "revenue or margin reconciliation gap"
+      ],
+      "verification": "Analytics and business-system reconciliation pass with limitations documented."
+    },
+    {
+      "area": "Local facts, GBP, citations, service evidence, reviews, media, legal and policy claims",
+      "owner": "Business/local/content owner",
+      "backupOwner": "Legal/privacy reviewer",
+      "alertTriggers": [
+        "GBP suspension or unauthorized edit",
+        "hours/NAP mismatch",
+        "unsupported claim found",
+        "review/rating/media evidence gap",
+        "policy or warranty mismatch"
+      ],
+      "verification": "Owner-approved evidence package is current."
+    },
+    {
+      "area": "Accessibility, SXO, mobile customer journeys, browser-agent operability",
+      "owner": "Frontend/accessibility owner",
+      "backupOwner": "QA/growth owner",
+      "alertTriggers": [
+        "unnamed controls",
+        "unlabeled fields",
+        "checkout or booking focus failure",
+        "mobile journey failure",
+        "ambiguous high-impact action"
+      ],
+      "verification": "Browser/accessibility matrix passes on desktop and mobile."
+    }
+  ],
+  "incidentRunbook": [
+    {
+      "trigger": "Private/admin/account route exposes public 200 shell or private data",
+      "severity": "P0/BLOCKER",
+      "owner": "Engineering/security owner",
+      "first15Minutes": [
+        "Freeze deployments and preserve sanitized evidence.",
+        "Confirm unauthenticated reproduction in private/incognito context.",
+        "Disable or protect route at edge if private content is visible."
+      ],
+      "firstHour": [
+        "Read recent deployment and route-policy changes.",
+        "Patch Cloudflare/status/auth policy or rollback to last safe build.",
+        "If data exposure is confirmed, escalate to privacy/legal and follow incident obligations."
+      ],
+      "verification": "Unauthenticated routes return 401/403/safe 404, no private content, noindex where applicable.",
+      "rollbackCriteria": "Any confirmed private data exposure or unauthenticated admin surface."
+    },
+    {
+      "trigger": "robots.txt, sitemap.xml, product sitemap, or Merchant feed missing, HTML, blocked, or wrong content type",
+      "severity": "P0/BLOCKER",
+      "owner": "Hosting/Cloudflare/engineering owner",
+      "first15Minutes": [
+        "Confirm live HTTP status/content type from the canonical host.",
+        "Compare repo src/public assets and build output.",
+        "Check deployment target, static asset routing, cache, and edge fallback order."
+      ],
+      "firstHour": [
+        "Deploy the correct static asset/routing fix or rollback to last known good deployment.",
+        "Purge relevant CDN cache if safe.",
+        "Submit/retry sitemap/feed fetch in platform tools when access exists."
+      ],
+      "verification": "Assets return expected status, content type, and body; local and live checks agree.",
+      "rollbackCriteria": "Canonical production cannot serve critical static SEO assets within the incident window."
+    },
+    {
+      "trigger": "Material drop in organic clicks/impressions/indexed pages or template-level visibility",
+      "severity": "P1/CRITICAL",
+      "owner": "SEO/growth ops owner",
+      "first15Minutes": [
+        "Check analytics/Search Console data freshness, timezone, filters, consent, and tracking changes.",
+        "Scope decline by page type, query intent, country, device, language, and search appearance.",
+        "Correlate with release annotations and production drift baseline."
+      ],
+      "firstHour": [
+        "Check robots, noindex, canonical, redirects, raw/rendered HTML, sitemaps, manual actions, security issues, and platform status.",
+        "Separate demand, SERP, competitor, content, inventory, and measurement explanations before broad edits.",
+        "Patch only confirmed root cause or document hypothesis and next checkpoint."
+      ],
+      "verification": "Segmented report shows affected scope, ruled-out causes, confirmed cause or open hypotheses, and next measurement checkpoint.",
+      "rollbackCriteria": "A release-introduced blocker/critical technical regression aligns with the decline."
+    },
+    {
+      "trigger": "Merchant Center disapproval spike, feed fetch failure, or price/availability mismatch",
+      "severity": "P1/CRITICAL",
+      "owner": "Commerce/PIM owner",
+      "first15Minutes": [
+        "Check feed URL status/content type and latest generated feed timestamp.",
+        "Sample affected item IDs across website page, Product schema, feed, cart, and checkout.",
+        "Identify whether mismatch is product source, feed generation, deploy, cache, or checkout pricing."
+      ],
+      "firstHour": [
+        "Regenerate/redeploy feed or fix source contract.",
+        "Pause affected promotion/scaling if product terms are unreliable.",
+        "Record Merchant Center diagnostics when access exists."
+      ],
+      "verification": "Sampled items reconcile across feed, page, schema, cart, checkout, and provider diagnostics.",
+      "rollbackCriteria": "False price, false availability, unsupported fitment, or checkout-term mismatch is live."
+    },
+    {
+      "trigger": "Booking, cart, checkout, or Paytrail callback journey fails or records misleading revenue/conversion data",
+      "severity": "P1/CRITICAL",
+      "owner": "Commerce/analytics/engineering owners",
+      "first15Minutes": [
+        "Confirm whether the issue is UI, provider, edge function, analytics event, or business-system reconciliation.",
+        "Avoid test payments or destructive submissions unless explicitly approved.",
+        "Check noindex/canonical status and customer-facing recovery messaging."
+      ],
+      "firstHour": [
+        "Fix or rollback the failing journey, provider function, or event mapping.",
+        "Annotate revenue/analytics data-quality gap.",
+        "Reconcile server-confirmed Paytrail state before reporting purchase outcomes."
+      ],
+      "verification": "Checkout/browser smoke and server/provider readback pass; events use booking_submitted and server-confirmed purchase semantics.",
+      "rollbackCriteria": "Customers cannot complete purchase/booking or revenue events become materially misleading."
+    },
+    {
+      "trigger": "Accessibility or mobile journey regression blocks booking, contact, product selection, cart, or checkout",
+      "severity": "P1/CRITICAL",
+      "owner": "Frontend/accessibility owner",
+      "first15Minutes": [
+        "Reproduce on affected route/device with keyboard and browser accessibility tree.",
+        "Identify whether a shared component, modal, form control, or route chunk changed.",
+        "Confirm no high-impact action is ambiguous or irreversible."
+      ],
+      "firstHour": [
+        "Patch accessible name/label/focus/state or rollback shared component change.",
+        "Run desktop and mobile browser smoke.",
+        "Record any temporary exception with owner, mitigation, and expiry."
+      ],
+      "verification": "All visible controls have stable accessible names, fields have labels/errors/autocomplete where applicable, and primary journey completes safely.",
+      "rollbackCriteria": "Booking, contact, product/cart, or checkout cannot be operated by keyboard or clear accessible controls."
+    }
+  ],
+  "rollbackAndCommunication": {
+    "freezeTrigger": "Any P0/BLOCKER or confirmed release-introduced P1/CRITICAL regression affecting crawl access, private route protection, product/checkout truth, or customer task completion.",
+    "defaultRollbackPath": [
+      "Freeze new changes.",
+      "Preserve sanitized evidence and exact timestamps.",
+      "Identify last known good deployment/source state.",
+      "Rollback or patch the smallest edge/runtime/source change required.",
+      "Re-run local gates, live HTTP matrix, and affected browser/platform checks.",
+      "Annotate the incident and update the baseline, tests, and owner register."
+    ],
+    "communicationPath": [
+      "Incident owner opens the decision log with timestamp, severity, affected scope, and evidence.",
+      "Engineering owner handles technical mitigation and rollback.",
+      "SEO/growth ops owner records Search Console/platform implications and release annotation.",
+      "Business/local/commerce owner approves any public fact, price, policy, or claim exception.",
+      "Privacy/security/legal reviewer is pulled in for private data, consent, payment, legal, or unsupported-claim risk."
+    ]
+  },
+  "nextReviewTriggers": [
+    "Production host changes from Figma-hosted runtime to Cloudflare Pages/repo build output.",
+    "Cloudflare, Search Console, GBP, Merchant Center, GA4, server logs, or field CWV access becomes available.",
+    "Static SEO assets, edge redirects, private route policy, or raw metadata injection changes.",
+    "Product feed, product schema, checkout, Paytrail, booking, service content, local facts, or legal/policy copy changes.",
+    "Before paid acquisition, guide/content scaling, SEO experiments, or local/product growth campaigns begin."
+  ],
+  "verification": [
+    {
+      "command": "node --input-type=module <<'NODE' ... E-4 live HTTP bounded baseline ... NODE",
+      "result": "passed_with_findings"
+    },
+    {
+      "command": "npm run static-assets:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run sitemap:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run feed:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run route-migration:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run private-routes:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run checkout:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed"
+    }
+  ],
+  "next": "E-5 - Final Growth Readiness Classification And Board Wrap-Up",
+  "noGuarantee": "This monitoring system improves implementation quality, regression detection, and incident discipline. It does not guarantee crawling, indexing, selected canonicals, rankings, rich results, local-pack visibility, Merchant Center approval, traffic, conversions, revenue, ROI, or AI inclusion."
+}

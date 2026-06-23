@@ -4,10 +4,15 @@ import { mountCmsPwaApp } from "./CmsPwaApp.tsx";
 import "./index.css";
 import { isInstalledPwaDisplay, isStandalonePwaDeploy } from "./config/runtime";
 import { initClarityForCurrentRuntime } from "./lib/clarity";
+import { canServePrivateAppRoutes } from "./utils/privateRoutePolicy";
 
 const root = document.getElementById("root");
 
 function isCmsPwaRuntimePath(path: string) {
+  if (!canServePrivateAppRoutes()) {
+    return false;
+  }
+
   return (
     isStandalonePwaDeploy ||
     path === '/pwa' ||

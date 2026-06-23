@@ -90,8 +90,6 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
 
   useEffect(() => {
     const info = parseCheckoutParams(window.location.search);
-    console.log('=== CHECKOUT SUCCESS DEBUG ===');
-    console.log('Paytrail redirect params:', info.rawParams);
     setCheckoutInfo(info);
     
     // Fetch order details immediately
@@ -128,16 +126,15 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
           method: 'GET',
         });
 
-        const payload = await response.json().catch(() => null);
-        console.log('Paytrail finalize response:', response.status, payload);
+        await response.json().catch(() => null);
 
         if (!response.ok) {
-          console.error('Failed to finalize Paytrail payment on success page', payload);
+          console.error('Failed to finalize Paytrail payment on success page');
         } else if (checkoutInfo.orderId) {
           await fetchOrderDetails(checkoutInfo.orderId, checkoutInfo.transactionId);
         }
       } catch (error) {
-        console.error('Paytrail success finalization failed:', error);
+        console.error('Paytrail success finalization failed');
       } finally {
         setFinalizingPayment(false);
       }
@@ -173,12 +170,12 @@ export const CheckoutSuccessPage: React.FC<CheckoutSuccessPageProps> = ({
       }
 
       if (error) {
-        console.error('Error fetching order:', error);
+        console.error('Error fetching order');
       } else if (orderData) {
         setOrder(orderData);
       }
     } catch (err) {
-      console.error('Error fetching order:', err);
+      console.error('Error fetching order');
     } finally {
       setLoadingOrder(false);
     }

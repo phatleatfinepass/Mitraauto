@@ -1,0 +1,161 @@
+{
+  "id": "growth-readiness-reevaluation-2026-06-22",
+  "name": "Growth readiness re-evaluation after R-8",
+  "recorded": "2026-06-22",
+  "status": "complete_no_go_live_blockers_unchanged",
+  "progress": {
+    "bar": "[████████████████████]",
+    "percent": 100
+  },
+  "scoreBoundary": "Internal implementation score. Not a Google score and not a ranking prediction.",
+  "mode": ["AUDIT", "VERIFY", "LAUNCH", "MONITOR", "GROW"],
+  "lifecycleStage": "prelaunch_remediation",
+  "archetypes": ["local_service_business", "ecommerce_catalog", "booking_checkout", "multilingual_spa"],
+  "decision": "The renewed Growth evaluation remains NO-GO. Local/source gates pass and browser-rendered public pages have improved, but production still fails release-level HTTP/static/redirect/private-boundary checks and authenticated platform/owner evidence remains unavailable.",
+  "scores": {
+    "liveProductionSeoScore": {
+      "value": 38,
+      "rawBeforeBlockerCap": 49,
+      "decision": "NO_GO",
+      "reason": "P0/P1 live blockers cap the usable score."
+    },
+    "localSourceFoundationScore": {
+      "value": 78,
+      "decision": "IMPROVED_NOT_RELEASE_READY",
+      "reason": "Local source gates, build, static assets, route migration, checkout, i18n, feed, sitemap, and commerce checks pass."
+    },
+    "growthReadinessScore": {
+      "value": 34,
+      "decision": "NOT_GROWTH_READY",
+      "reason": "Platform, owner, measurement, production deployment, and business evidence blockers remain."
+    }
+  },
+  "scorecard": [
+    {
+      "dimension": "Access, indexability, canonicalization",
+      "weight": 20,
+      "liveScore": 3,
+      "localSourceScore": 15,
+      "evaluation": "Live robots, sitemap, feed, legacy redirects, product ID redirects, private routes, and soft-404s are blocking. Local route/static policies exist."
+    },
+    {
+      "dimension": "Rendering and architecture",
+      "weight": 15,
+      "liveScore": 8,
+      "localSourceScore": 12,
+      "evaluation": "Rendered browser output works on sampled pages, but raw HTML is still a JavaScript shell with no canonical, links, or schema."
+    },
+    {
+      "dimension": "Content quality and evidence",
+      "weight": 20,
+      "liveScore": 12,
+      "localSourceScore": 15,
+      "evaluation": "Service/product content systems improved; owner proof for GBP, citations, claims, reviews, policies, and media remains unavailable."
+    },
+    {
+      "dimension": "Metadata and search appearance",
+      "weight": 10,
+      "liveScore": 5,
+      "localSourceScore": 8,
+      "evaluation": "Rendered titles/canonicals improve live samples, but raw direct HTML remains generic and production static assets fail."
+    },
+    {
+      "dimension": "Structured data",
+      "weight": 10,
+      "liveScore": 6,
+      "localSourceScore": 8,
+      "evaluation": "Rendered JSON-LD appears on sampled public pages; platform/rich-result validation and owner proof remain unavailable."
+    },
+    {
+      "dimension": "Experience, accessibility, and SXO",
+      "weight": 10,
+      "liveScore": 6,
+      "localSourceScore": 8,
+      "evaluation": "Checkout renders as noindex on /checkout and public page browser smoke passed; full accessibility, booking, payment, and field evidence remain incomplete."
+    },
+    {
+      "dimension": "Local, ecommerce, international",
+      "weight": 10,
+      "liveScore": 6,
+      "localSourceScore": 8,
+      "evaluation": "i18n, product/feed/sitemap checks pass locally; live feed/sitemap and GBP/Merchant Center evidence block readiness."
+    },
+    {
+      "dimension": "Monitoring and governance",
+      "weight": 5,
+      "liveScore": 3,
+      "localSourceScore": 4,
+      "evaluation": "Board/report governance is strong; Search Console, analytics, Cloudflare, logs, GBP, Merchant Center, and field performance remain unavailable."
+    }
+  ],
+  "evidenceStates": {
+    "repo": "EXECUTED_WITH_FINDINGS",
+    "build": "EXECUTED",
+    "live": "EXECUTED_WITH_FINDINGS",
+    "browser": "SUPPLIED_FROM_R8_EXECUTED_WITH_FINDINGS",
+    "platform": "UNAVAILABLE",
+    "market": "UNAVAILABLE",
+    "content": "EXECUTED_WITH_OWNER_EXCEPTIONS",
+    "conversion": "EXECUTED_LOCAL_PROTOCOL_ONLY",
+    "migration": "EXECUTED_WITH_FINDINGS",
+    "incident": "NOT_APPLICABLE"
+  },
+  "freshChecks": {
+    "liveCurlMatrix": "EXECUTED_WITH_FINDINGS",
+    "localSourceGates": "EXECUTED",
+    "viteBuild": "EXECUTED",
+    "localStaticAssets": "EXECUTED",
+    "liveStaticAssets": "EXECUTED_WITH_FINDINGS",
+    "jsonIntegrity": "EXECUTED"
+  },
+  "liveFindings": [
+    "robots.txt returns 404.",
+    "sitemap.xml returns 404.",
+    "sitemap-products.xml returns text/html instead of XML.",
+    "merchant-products.xml returns text/html instead of XML/RSS.",
+    "Product UUID URL returns 200 with zero redirects instead of redirecting to the slug URL.",
+    "Invalid route returns HTTP 200.",
+    "/cms and /customer-account return HTTP 200.",
+    "Legacy route samples return 200 with zero redirects."
+  ],
+  "localPositiveFindings": [
+    "Local source SEO gates passed: i18n, sitemap, feed, commerce, route migration, checkout, and private route checks.",
+    "Vite production build passed.",
+    "Local source/build static SEO assets passed; Merchant feed contains 31575 items.",
+    "R-8 browser evidence confirms rendered public samples expose route-specific title, H1, canonical, robots, and JSON-LD markers."
+  ],
+  "blockers": [
+    {
+      "priority": "P0",
+      "finding": "Production static SEO assets and Merchant feed are not deployed correctly.",
+      "owner": "Hosting/deployment owner",
+      "verification": "node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi"
+    },
+    {
+      "priority": "P0",
+      "finding": "Public/private boundary remains unsafe at HTTP level.",
+      "owner": "Engineering/security plus hosting/provider owner",
+      "verification": "Unauthenticated private/admin/account routes return 401, 403, or safe 404 with no private interface rendered."
+    },
+    {
+      "priority": "P1",
+      "finding": "Legacy redirects and product identifier redirects are inactive on production.",
+      "owner": "Hosting/edge routing owner",
+      "verification": "Legacy route samples and opaque product identifier URLs permanently redirect one hop to canonical destinations."
+    },
+    {
+      "priority": "P1",
+      "finding": "Invalid and noncanonical routes remain HTTP soft-404s.",
+      "owner": "Hosting/edge routing owner",
+      "verification": "Unknown routes return HTTP 404/410; intentional variants redirect to canonical equivalents."
+    },
+    {
+      "priority": "P1",
+      "finding": "Authenticated platform, provider, and owner evidence remains unavailable.",
+      "owner": "Provider/SEO/analytics/business owners",
+      "verification": "Search Console, Cloudflare, GBP, Merchant Center, analytics, logs, field performance, Paytrail, and owner proof are captured with secret-safe envelopes."
+    }
+  ],
+  "nextAction": "Resolve production deployment/provider parity blockers before rerunning live evaluation or starting growth scaling.",
+  "noGuaranteeBoundary": "This evaluation does not guarantee crawling, indexing, selected canonicals, rankings, rich results, local-pack visibility, Merchant Center approval, traffic, conversions, revenue, or AI inclusion."
+}

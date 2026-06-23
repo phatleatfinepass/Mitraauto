@@ -1,0 +1,241 @@
+{
+  "task": "E-2",
+  "name": "Production Crawl, Rendered Head, Schema, And Browser Matrix",
+  "recorded": "2026-06-23",
+  "status": "complete_with_blockers_carried",
+  "progress": {
+    "phaseE": "[██░░░] 40%",
+    "board": "[██████████████████░░] 88%"
+  },
+  "scope": {
+    "baseUrl": "https://www.mitra-auto.fi",
+    "sourceClass": "DIRECT_OBSERVATION",
+    "liveHttpArtifact": ".seo-work/crawl/e2-production-http-matrix-2026-06-23.json",
+    "sampledRouteCount": 22,
+    "sampledRouteTypes": [
+      "homepage",
+      "locale home",
+      "service hub",
+      "service detail",
+      "location page",
+      "contact page",
+      "catalog",
+      "product detail",
+      "legacy redirect",
+      "checkout",
+      "private CMS",
+      "unknown route",
+      "unknown product",
+      "robots",
+      "sitemap",
+      "product sitemap",
+      "merchant feed"
+    ]
+  },
+  "evidenceStates": {
+    "LIVE": "EXECUTED_WITH_FINDINGS",
+    "BROWSER": "EXECUTED_WITH_FINDINGS",
+    "SCHEMA": "EXECUTED_WITH_FINDINGS",
+    "MIGRATION": "EXECUTED_WITH_FINDINGS",
+    "PLATFORM": "UNAVAILABLE",
+    "FIELD_PERFORMANCE": "UNAVAILABLE"
+  },
+  "liveHttpSummary": {
+    "total": 22,
+    "passed": 0,
+    "failed": 22,
+    "rootCause": "Production is serving a Figma Make generic SPA shell and is not serving the repo static SEO assets, edge redirects, protected route policy, or real error statuses."
+  },
+  "browserRenderedMatrix": [
+    {
+      "id": "home_fi",
+      "url": "https://www.mitra-auto.fi/",
+      "status": "rendered_with_release_blocker",
+      "rendered": {
+        "title": "Mitra Auto | Autohuolto, renkaat ja korjaamo Helsingissa",
+        "lang": "fi",
+        "description": "Route-specific Finnish homepage description rendered.",
+        "canonical": "https://www.mitra-auto.fi/",
+        "robots": "index,follow",
+        "h1": "Mitra Auto - Ammattitaitoiset palvelut",
+        "jsonLdTypes": [
+          "AutoRepair",
+          "AutomotiveBusiness",
+          "LocalBusiness",
+          "WebSite",
+          "WebPage",
+          "BreadcrumbList"
+        ]
+      },
+      "releaseBlocker": "Raw HTTP has no canonical and serves a JavaScript-required shell."
+    },
+    {
+      "id": "service_dpf_fi",
+      "url": "https://www.mitra-auto.fi/palvelut/dpf-huolto",
+      "status": "rendered_with_release_blocker",
+      "rendered": {
+        "title": "DPF-pesu Helsinki | Pakkopoltto ja hiukkassuodatin | Mitra Auto",
+        "lang": "fi",
+        "canonical": "https://www.mitra-auto.fi/palvelut/dpf-huolto",
+        "robots": "index,follow",
+        "h1": "DPF-huolto ja hiukkassuodattimen pesu Helsingissa",
+        "jsonLdTypes": [
+          "AutoRepair",
+          "AutomotiveBusiness",
+          "LocalBusiness",
+          "Service",
+          "BreadcrumbList"
+        ],
+        "internalReviewTextFound": false
+      },
+      "releaseBlocker": "Raw HTTP has no canonical and serves a JavaScript-required shell."
+    },
+    {
+      "id": "product_canonical_rim",
+      "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "status": "rendered_with_release_blocker",
+      "rendered": {
+        "title": "Rautamo Netto BROCK RC32 Titanium Full Pol 7x17 5x110 ET40 | Mitra Auto",
+        "lang": "fi",
+        "canonical": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+        "robots": "index,follow",
+        "h1": "Rautamo Netto BROCK RC32 Titanium Full Pol",
+        "jsonLdTypes": [
+          "AutoRepair",
+          "AutomotiveBusiness",
+          "LocalBusiness",
+          "Product",
+          "BreadcrumbList"
+        ],
+        "productOffer": {
+          "sku": "00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+          "gtin": "4250996326059",
+          "price": "174.48",
+          "currency": "EUR",
+          "availability": "https://schema.org/InStock"
+        }
+      },
+      "releaseBlocker": "Raw HTTP has no canonical/schema and legacy product identifiers do not redirect server-side."
+    },
+    {
+      "id": "cms_private",
+      "url": "https://www.mitra-auto.fi/cms",
+      "status": "rendered_soft_404_but_http_failed",
+      "rendered": {
+        "title": "Sivua ei loytynyt | Mitra Auto",
+        "robots": "noindex, follow",
+        "h1": "Tama auto taisi ajaa vaaraan risteykseen.",
+        "jsonLdCount": 0
+      },
+      "releaseBlocker": "HTTP response is 200 with index,follow in raw HTML. Private routes need edge status/header policy, not only client-side not-found UI."
+    },
+    {
+      "id": "unknown_route",
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-e2",
+      "status": "rendered_soft_404_but_http_failed",
+      "rendered": {
+        "title": "Sivua ei loytynyt | Mitra Auto",
+        "robots": "noindex, follow",
+        "h1": "Tama auto taisi ajaa vaaraan risteykseen.",
+        "jsonLdCount": 0
+      },
+      "releaseBlocker": "HTTP response is 200 instead of 404 or 410."
+    }
+  ],
+  "console": {
+    "errors": 0,
+    "warnings": 1,
+    "warningSummary": "Repeated preload warning for https://www.mitra-auto.fi/_json/.../_index.json not used shortly after load."
+  },
+  "findings": [
+    {
+      "severity": "blocker",
+      "confidence": "confirmed",
+      "title": "Production static SEO assets and Merchant feed are not deployed or routed correctly.",
+      "evidence": "robots.txt and sitemap.xml return 404; sitemap-products.xml, sitemap-products-1.xml, and merchant-products.xml return text/html SPA shell instead of XML/RSS.",
+      "affected": [
+        "/robots.txt",
+        "/sitemap.xml",
+        "/sitemap-products.xml",
+        "/sitemap-products-1.xml",
+        "/merchant-products.xml"
+      ],
+      "owner": "Hosting/deployment owner",
+      "verification": "Fetch each URL and require expected status, MIME, and body root element."
+    },
+    {
+      "severity": "blocker",
+      "confidence": "confirmed",
+      "title": "Public raw HTML is a generic JavaScript shell.",
+      "evidence": "Sampled indexable pages return a generic Figma Make title, no raw canonical, no raw page-specific JSON-LD, and a noscript JavaScript-required state.",
+      "affected": [
+        "/",
+        "/en",
+        "/palvelut",
+        "/palvelut/dpf-huolto",
+        "/en/services/dpf-service",
+        "/helsinki",
+        "/yhteystiedot",
+        "/catalog",
+        "/catalog/rim/{slug}"
+      ],
+      "owner": "Frontend/hosting SEO owner",
+      "verification": "curl raw HTML and parse title, description, canonical, robots, hreflang, H1 marker, anchors, and JSON-LD before hydration."
+    },
+    {
+      "severity": "blocker",
+      "confidence": "confirmed",
+      "title": "Private, checkout, and error routes are wrong at HTTP/indexability layer.",
+      "evidence": "/cms, /checkout, random unknown route, and unknown product route return HTTP 200 generic raw HTML with index,follow instead of noindex/error/private policy.",
+      "affected": [
+        "/cms",
+        "/checkout",
+        "/this-route-should-not-exist-e2",
+        "/catalog/rim/does-not-exist-product-e2"
+      ],
+      "owner": "Edge routing/security owner",
+      "verification": "curl status and X-Robots/meta robots before browser hydration."
+    },
+    {
+      "severity": "critical",
+      "confidence": "confirmed",
+      "title": "Legacy redirects and product identifier redirects are inactive on production.",
+      "evidence": "/shop, /palvelut/dpf-pesu, product UUID, and product GTIN samples return 200 with no Location header.",
+      "affected": [
+        "/shop",
+        "/palvelut/dpf-pesu",
+        "/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+        "/catalog/rim/4250996326059"
+      ],
+      "owner": "Edge routing/catalog owner",
+      "verification": "curl with redirects disabled and require one-hop permanent redirect to canonical slug or route."
+    },
+    {
+      "severity": "warning",
+      "confidence": "confirmed",
+      "title": "Rendered pages hydrate with route-specific metadata and schema, but this does not clear raw HTTP blockers.",
+      "evidence": "Playwright rendered homepage, DPF service page, and product slug page with route-specific head data and JSON-LD; console showed no errors and one preload warning class.",
+      "affected": [
+        "rendered browser state"
+      ],
+      "owner": "Frontend/SEO owner",
+      "verification": "Keep browser matrix, but require raw HTTP parity before release-ready classification."
+    }
+  ],
+  "localGateComparison": {
+    "staticAssetsCheck": "passed",
+    "routeMigrationCheck": "passed",
+    "privateRoutesCheck": "passed",
+    "interpretation": "Local repo contracts exist. Production does not appear to be serving the repo build plus route policy."
+  },
+  "driftComparison": {
+    "baseline": [
+      ".seo-work/crawl/r8-live-drift-rerun-2026-06-22.json",
+      ".seo-work/reports/R8-POST-REMEDIATION-LIVE-CRAWL-BROWSER-SMOKE-DRIFT-RERUN-2026-06-22.md",
+      ".seo-work/reports/LIVE-CRAWL-BROWSER-SMOKE-EVIDENCE-E3-2026-06-22.md"
+    ],
+    "result": "No meaningful remediation observed. The same production classes remain: missing static SEO assets, HTML sitemaps/feed, inactive redirects, HTTP 200 private/error routes, and generic raw SPA shell."
+  },
+  "next": "E-3 - Accessibility, SXO, Checkout, And Customer Journey Smoke",
+  "releaseDecision": "E-2 is complete as evidence collection. Mitra Auto remains not release-ready and not growth-ready until production serves repo static assets, edge redirects, route status policy, private route boundary, and raw SEO metadata/schema."
+}

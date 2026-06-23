@@ -1,0 +1,153 @@
+{
+  "task": "E-3",
+  "name": "Accessibility, SXO, Checkout, And Customer Journey Smoke",
+  "recorded": "2026-06-23",
+  "status": "complete_with_blockers_carried",
+  "progress": {
+    "phaseE": "[███░░] 60%",
+    "board": "[██████████████████░] 92%"
+  },
+  "scope": {
+    "productionUrl": "https://www.mitra-auto.fi",
+    "viewportObserved": {
+      "width": 1517,
+      "height": 935,
+      "mode": "desktop"
+    },
+    "routes": [
+      "/",
+      "/palvelut/dpf-huolto",
+      "/catalog",
+      "/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "/checkout",
+      "/yhteystiedot"
+    ],
+    "safetyBoundary": "No booking, checkout payment, order submission, contact form submission, login, account action, provider write, or private data action was submitted."
+  },
+  "evidenceStates": {
+    "BROWSER": "EXECUTED_WITH_FINDINGS",
+    "ACCESSIBILITY": "EXECUTED_WITH_FINDINGS",
+    "CONVERSION": "EXECUTED_WITH_FINDINGS",
+    "COMMERCE": "EXECUTED",
+    "MOBILE": "UNAVAILABLE",
+    "FIELD_PERFORMANCE": "UNAVAILABLE",
+    "PLATFORM": "UNAVAILABLE"
+  },
+  "positiveEvidence": [
+    {
+      "surface": "homepage",
+      "evidence": "Rendered homepage has skip link, main/nav/footer landmarks, crawlable core links, focusable controls, and visible address, phone, email, booking, and catalog paths."
+    },
+    {
+      "surface": "service booking",
+      "evidence": "Rendered DPF page confirms service, location, pricing/quote context, process/duration context, and no internal review text. Booking modal opens with focus in the license-plate field, dialog role, visible label, cancel/close controls, and disabled next step until selections are made."
+    },
+    {
+      "surface": "product page",
+      "evidence": "Rendered product page exposes exact brand/model, variant dimensions, price, availability, seller, delivery/terms context, Product JSON-LD, and add-to-cart action."
+    },
+    {
+      "surface": "cart and checkout",
+      "evidence": "Add-to-cart opens a cart state with product and price. Checkout action navigates to /checkout, removes canonical, sets robots noindex,nofollow, preserves product and price, shows terms/payment context, and keeps the submit button disabled before required data."
+    },
+    {
+      "surface": "contact",
+      "evidence": "Contact page renders indexable contact content with address, phone, email, hours, and actionable tel/mailto/maps links."
+    },
+    {
+      "surface": "local source gates",
+      "evidence": "npm run checkout:check and npm run commerce:check passed."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "critical",
+      "confidence": "confirmed",
+      "title": "Global header exposes a visible unnamed button.",
+      "evidence": "Homepage, DPF service, product, catalog, checkout, and contact route audits found a visible button with no accessible name in the top navigation area.",
+      "impact": "Screen-reader users and browser agents cannot determine the control purpose. This is a shared accessibility and agent-operability defect.",
+      "owner": "Frontend/accessibility owner",
+      "verification": "Rendered DOM/accessibility-tree audit shows every visible button has a stable accessible name."
+    },
+    {
+      "severity": "critical",
+      "confidence": "confirmed",
+      "title": "Checkout contains unlabeled checkbox inputs and ambiguous toggle names.",
+      "evidence": "Checkout start rendered two visible checkbox inputs with no label or aria-label; checkout buttons also exposed ambiguous names such as 'on'.",
+      "impact": "High-impact purchase flow is not fully accessible or agent-operable because users cannot reliably understand agreement/selection controls before order confirmation.",
+      "owner": "Commerce/frontend accessibility owner",
+      "verification": "Checkout form audit shows all inputs/toggles have visible and programmatic labels, required state, and clear selected state."
+    },
+    {
+      "severity": "critical",
+      "confidence": "confirmed",
+      "title": "Catalog search and product-list actions are not sufficiently labelled.",
+      "evidence": "Catalog license plate input has placeholder 'ABC-123' but no visible/programmatic label. Repeated product-list buttons are generically named 'Lisää' without product-specific accessible names.",
+      "impact": "Vehicle lookup and product add actions are ambiguous for assistive technology and browser agents.",
+      "owner": "Catalog/frontend accessibility owner",
+      "verification": "Catalog audit shows plate input label, useful autocomplete/format hints, and product-specific Add buttons such as 'Add [product name] to cart'."
+    },
+    {
+      "severity": "warning",
+      "confidence": "confirmed",
+      "title": "Product media/gallery controls include unnamed buttons.",
+      "evidence": "Product detail page exposed two visible unnamed product media buttons near the product image area.",
+      "impact": "Product media exploration is harder for keyboard/screen-reader users and browser agents.",
+      "owner": "Catalog/frontend accessibility owner",
+      "verification": "All product gallery controls have accessible names such as open image, previous image, next image, or select thumbnail."
+    },
+    {
+      "severity": "warning",
+      "confidence": "confirmed",
+      "title": "Rendered route console shows repeated unused preload warning.",
+      "evidence": "Browser console reported repeated warnings for a preloaded /_json/.../_index.json resource not used shortly after load.",
+      "impact": "Performance hygiene issue; no JavaScript errors were observed in E-3 smoke.",
+      "owner": "Frontend/performance owner",
+      "verification": "Console smoke has zero errors and no recurring preload warnings after route changes."
+    },
+    {
+      "severity": "blocker",
+      "confidence": "unknown",
+      "title": "Mobile viewport customer journey evidence is unavailable in E-3.",
+      "evidence": "Available browser MCP tools in this run did not expose viewport resize/device emulation. Desktop rendered viewport was 1517x935.",
+      "impact": "Release cannot claim mobile journey parity from this E-3 run.",
+      "owner": "QA/accessibility owner",
+      "verification": "Run mobile viewport/device smoke for homepage, service booking, catalog, product/cart, checkout, and contact."
+    }
+  ],
+  "journeyResults": {
+    "homepageToServiceOrCatalog": "passed_with_findings",
+    "serviceToBookingModal": "passed_with_findings",
+    "contactDiscovery": "passed_with_findings",
+    "catalogToProductDiscovery": "passed_with_findings",
+    "productToCart": "passed_with_findings",
+    "cartToCheckout": "passed_with_findings",
+    "checkoutSubmission": "not_run_by_design",
+    "bookingSubmission": "not_run_by_design",
+    "mobileJourney": "not_run_unavailable"
+  },
+  "commands": [
+    {
+      "command": "mcp__playwright.browser_navigate/evaluate rendered smoke for homepage, DPF service, booking modal, catalog, product, cart, checkout, and contact",
+      "result": "passed_with_findings"
+    },
+    {
+      "command": "mcp__playwright.browser_console_messages level=warning all=true",
+      "result": "passed_with_findings"
+    },
+    {
+      "command": "npm run checkout:check",
+      "result": "passed"
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed"
+    }
+  ],
+  "remainingReleaseBlockersFromPriorTasks": [
+    "E-1 Figma Make source still needs four service placeholder patches and preview smoke.",
+    "E-2 production still fails HTTP/static/redirect/private/error/raw-head policy."
+  ],
+  "next": "E-4 - Drift Baseline, Monitoring, Incident Runbook, And Owners",
+  "releaseDecision": "E-3 can close as rendered customer-journey evidence. It does not make the site release-ready because E-2 production blockers remain and E-3 accessibility/mobile findings require remediation or owner-approved exception."
+}

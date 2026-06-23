@@ -1,0 +1,270 @@
+{
+  "id": "R-7",
+  "name": "Business/local/content owner evidence package",
+  "recorded": "2026-06-22",
+  "status": "complete_as_owner_evidence_package_with_business_evidence_blockers",
+  "progress": {
+    "bar": "[██████████████████░░]",
+    "percent": 88
+  },
+  "decision": "R-7 converts the remaining local, service, product, review, media, and policy evidence gaps into an owner-facing evidence package. The repo has a centralized businessProfile source and improved service/product content scaffolding, but Mitra is not local/content growth-ready until accountable owners provide GBP, citation, service, product, review, media, and legal/policy proof or approve removing unsupported claims.",
+  "lifecycle_modes": [
+    "VERIFY",
+    "LAUNCH",
+    "GROW",
+    "MONITOR"
+  ],
+  "archetypes": [
+    "local_service_business",
+    "ecommerce_catalog",
+    "booking_checkout",
+    "multilingual_spa"
+  ],
+  "evidence_states": {
+    "repo_business_profile_source": "EXECUTED_WITH_FINDINGS",
+    "prior_phase_c_reports": "SUPPLIED_REVIEW_REQUIRED",
+    "google_business_profile_owner_evidence": "UNAVAILABLE",
+    "citation_owner_evidence": "UNAVAILABLE",
+    "service_owner_review": "UNAVAILABLE",
+    "product_policy_owner_review": "UNAVAILABLE",
+    "legal_policy_owner_review": "UNAVAILABLE",
+    "review_testimonial_provenance": "UNAVAILABLE",
+    "original_media_evidence": "UNAVAILABLE",
+    "customer_research_evidence": "UNAVAILABLE",
+    "search_console_gbp_merchant_query_evidence": "UNAVAILABLE",
+    "schema_policy": "EXECUTED_WITH_FINDINGS"
+  },
+  "source_inputs_reviewed": [
+    "src/config/businessProfile.ts",
+    "src/utils/localSeo.ts",
+    "src/i18n/dictionaries/serviceSeo.ts",
+    "src/utils/serviceCatalog.ts",
+    "src/components/site/pages/ServiceDetailPage.tsx",
+    "src/components/site/pages/ServicesPage.tsx",
+    "src/components/site/pages/ContactPage.tsx",
+    "src/components/site/pages/TireHotelPage.tsx",
+    "src/components/site/pages/CarServicePage.tsx",
+    "src/components/site/pages/FAQPage.tsx",
+    "src/i18n/dictionaries/site.ts",
+    "src/i18n/dictionaries/common.ts",
+    "src/i18n/dictionaries/catalog.ts",
+    "src/i18n/dictionaries/legal.ts",
+    ".seo-work/reports/GOOGLE-BUSINESS-PROFILE-CITATION-FACT-GATE-C1-2026-06-22.md",
+    ".seo-work/reports/SERVICE-TEMPLATE-P1-REWRITE-C2-2026-06-22.md",
+    ".seo-work/reports/PRODUCT-CATEGORY-CONTENT-ENRICHMENT-C3-2026-06-22.md",
+    ".seo-work/reports/SCHEMA-VISIBLE-CONTENT-VALIDATION-C4-2026-06-22.md",
+    ".seo-work/reports/LOCAL-CONTENT-BROWSER-VERIFICATION-C5-2026-06-22.md",
+    ".growth-work/reports/r6-authenticated-provider-platform-readback-2026-06-22.json"
+  ],
+  "current_source_truth": {
+    "public_name": "Mitra Auto",
+    "legal_name": "Mitra Auto Oy",
+    "business_id": "3408833-8",
+    "canonical_domain": "https://www.mitra-auto.fi",
+    "email": "contact@mitra-auto.fi",
+    "phone": "+358 40 777 7163",
+    "address": "Hankasuontie 5, 00390 Helsinki, Finland",
+    "regular_hours": "Mon-Fri 09:00-18:00, Sat 10:00-17:00, Sun closed",
+    "service_area": "Helsinki",
+    "source_file": "src/config/businessProfile.ts",
+    "owner_status": "source_present_owner_confirmation_required"
+  },
+  "owner_packets": [
+    {
+      "packet": "Business identity and NAP",
+      "owner": "Business owner",
+      "required_evidence": [
+        "Signed or owner-approved fact record for public name, legal name, Y-tunnus, address, phone, email, website URL, service area, regular hours, and special-hours process.",
+        "Decision on canonical customer email because public snippets previously showed old Gmail addresses.",
+        "Decision on one canonical public booking URL and UTM policy."
+      ],
+      "acceptance": "Website, footer, contact page, LocalBusiness schema, GBP, and citations match the owner-approved facts or recorded platform formatting differences.",
+      "implementation_files_if_changed": [
+        "src/config/businessProfile.ts",
+        "src/i18n/dictionaries/site.ts",
+        "src/components/site/pages/ContactPage.tsx",
+        "src/components/site/pages/HelsinkiPage.tsx",
+        "src/components/site/sections/ContactSection.tsx",
+        "src/components/site/layout/Footer.tsx",
+        "src/utils/localSeo.ts"
+      ],
+      "state": "UNAVAILABLE"
+    },
+    {
+      "packet": "Google Business Profile and citations",
+      "owner": "Local SEO/business owner",
+      "required_evidence": [
+        "GBP ownership and verification status.",
+        "GBP business information: profile name, primary category, additional categories, address, service area, phone, website URL, regular hours, special hours, services/products, attributes, booking link, messaging state, photos, reviews, duplicate/suspension status.",
+        "Citation correction proof for Finder, Fonecta, Proff or equivalent, AutoJerry, autokorjaamo.fi, Facebook, Apple Maps, Bing Places, and active Finnish automotive directories."
+      ],
+      "acceptance": "C-1 blocked GBP/citation items are reconciled and no profile uses keyword-stuffed names, fake locations, copied reviews, or stale contact data.",
+      "implementation_files_if_changed": [
+        "src/config/businessProfile.ts",
+        "src/i18n/dictionaries/site.ts",
+        "src/components/site/pages/ContactPage.tsx",
+        "src/components/site/pages/HelsinkiPage.tsx",
+        "src/utils/localSeo.ts"
+      ],
+      "state": "UNAVAILABLE"
+    },
+    {
+      "packet": "Service content owner review",
+      "owner": "Business/service owner plus subject-matter reviewer",
+      "required_evidence": [
+        "Named reviewer for safety-sensitive automotive pages.",
+        "Owner-approved service availability, prices, duration ranges, inclusions, exclusions, aftercare, warranty/complaint terms, and escalation limits.",
+        "Original process/workshop media or explicit decision to remove proof claims that cannot be supported."
+      ],
+      "covered_pages": [
+        "car-service",
+        "tire-change",
+        "tire-hotel",
+        "diagnostics",
+        "ac-service",
+        "dpf-service",
+        "tire-repair"
+      ],
+      "acceptance": "Every P1 service page has owner-approved proof, reviewer, update trigger, and no unsupported safety, warranty, roadworthiness, refrigerant, emissions, or repair-standard claim.",
+      "implementation_files_if_changed": [
+        "src/i18n/dictionaries/serviceSeo.ts",
+        "src/components/site/pages/ServiceDetailPage.tsx",
+        "src/i18n/dictionaries/site.ts",
+        "src/components/site/pages/CarServicePage.tsx",
+        "src/components/site/pages/TireHotelPage.tsx",
+        "src/components/site/pages/FAQPage.tsx"
+      ],
+      "state": "UNAVAILABLE"
+    },
+    {
+      "packet": "Product/category commerce policy proof",
+      "owner": "Product/ecommerce owner plus legal/policy owner",
+      "required_evidence": [
+        "Shipping, pickup, installation, returns, warranty, used-condition, supplier-stock, delivery-time, and cancellation policies.",
+        "Fitment authority and escalation process for tire/rim compatibility.",
+        "Product owner review of category landing candidates before any indexable category expansion."
+      ],
+      "acceptance": "Product page, Product/Offer schema, Merchant feed, cart, checkout, and policy pages agree; no richer shipping/return/review schema is added before policy proof exists.",
+      "implementation_files_if_changed": [
+        "src/i18n/dictionaries/catalog.ts",
+        "src/components/catalog/ProductDetailPage.tsx",
+        "src/components/catalog/CatalogPage.tsx",
+        "src/i18n/dictionaries/legal.ts",
+        "src/components/legal/TermsVersions.tsx"
+      ],
+      "state": "UNAVAILABLE"
+    },
+    {
+      "packet": "Reviews, testimonials, ratings, and trust claims",
+      "owner": "Business/content/legal owner",
+      "required_evidence": [
+        "Review source, permission, moderation, date, and eligibility record for any visible review or testimonial.",
+        "Proof for visible trust claims such as ratings, customer counts, certified technicians, modern equipment, waiting room amenities, and insurance coverage.",
+        "Review-request and response SOP with no incentives, gating, or selective suppression."
+      ],
+      "acceptance": "Unsupported visible ratings/testimonials/trust claims are either supported with owner evidence and compliant display rules or removed/rewritten. LocalBusiness review/rating schema remains absent unless eligibility is proven.",
+      "implementation_files_if_changed": [
+        "src/i18n/dictionaries/common.ts",
+        "src/i18n/dictionaries/site.ts",
+        "src/components/catalog/ProductDetailPage.tsx",
+        "src/components/site/pages/TireHotelPage.tsx",
+        "src/components/site/pages/CarServicePage.tsx",
+        "src/components/site/pages/FAQPage.tsx"
+      ],
+      "state": "UNAVAILABLE"
+    },
+    {
+      "packet": "Original media and local proof",
+      "owner": "Business/content owner",
+      "required_evidence": [
+        "Owned or licensed workshop, exterior, interior, team, equipment, tire hotel, product, and service-process images/videos.",
+        "Consent and rights record for people, vehicles, license plates, customer data, and supplier/product media.",
+        "Mapping of each media asset to pages, alt text intent, and refresh trigger."
+      ],
+      "acceptance": "Local/service/product pages use real representative media where proof is claimed; stock-like or generic media is not treated as first-party evidence.",
+      "implementation_files_if_changed": [
+        "src/SiteApp.tsx",
+        "src/components/site/pages/ServiceDetailPage.tsx",
+        "src/components/site/pages/TireHotelPage.tsx",
+        "src/components/site/pages/ContactPage.tsx",
+        "src/components/catalog/ProductDetailPage.tsx",
+        "src/i18n/dictionaries/serviceSeo.ts"
+      ],
+      "state": "UNAVAILABLE"
+    },
+    {
+      "packet": "Customer/search/content research",
+      "owner": "SEO/content/business owner",
+      "required_evidence": [
+        "Search Console query/page evidence when access exists.",
+        "GBP calls, directions, website clicks, service/product interactions, and review themes.",
+        "Booking, phone, support, site-search, and sales questions grouped by service/product intent.",
+        "Owner-approved priorities for guides and category landing pages."
+      ],
+      "acceptance": "New guides, city/service-area pages, and category landings are created only from distinct user need, business capacity, and original evidence; no doorway or keyword-permutation pages.",
+      "implementation_files_if_changed": [
+        "src/i18n/dictionaries/serviceSeo.ts",
+        "src/i18n/dictionaries/catalog.ts",
+        "src/components/site/pages/ServicesPage.tsx",
+        "src/components/catalog/CatalogPage.tsx",
+        "src/public/sitemap.xml"
+      ],
+      "state": "UNAVAILABLE"
+    }
+  ],
+  "proof_sensitive_source_findings": [
+    {
+      "finding": "P1 service pages already show owner-review caveats and source notes, but owner review has not been supplied.",
+      "evidence": "src/i18n/dictionaries/serviceSeo.ts contains 14 Business/service owner review markers.",
+      "severity": "WARNING",
+      "owner": "Business/service owner"
+    },
+    {
+      "finding": "Visible site/trust dictionaries include review/rating and customer-count claims that need provenance or removal before growth-ready classification.",
+      "evidence": "src/i18n/dictionaries/site.ts and src/i18n/dictionaries/common.ts contain reviews.rating, common.review.*, and Over 500 satisfied customers text.",
+      "severity": "CRITICAL",
+      "owner": "Business/content/legal owner"
+    },
+    {
+      "finding": "Tire hotel insurance and liability claims conflict in source and require owner/legal proof before being used as public trust evidence.",
+      "evidence": "src/i18n/dictionaries/site.ts claims comprehensive included insurance; src/i18n/dictionaries/legal.ts also includes optional/customer-risk wording.",
+      "severity": "CRITICAL",
+      "owner": "Business/legal owner"
+    },
+    {
+      "finding": "Warranty, waiting-room, certified technician, modern equipment, and similar trust claims require owner evidence.",
+      "evidence": "src/i18n/dictionaries/site.ts, src/components/site/pages/CarServicePage.tsx, src/components/site/pages/FAQPage.tsx, and ServicesPage trust-signal usage.",
+      "severity": "WARNING",
+      "owner": "Business/content owner"
+    },
+    {
+      "finding": "Product review schema remains disabled correctly, but visible product review fields may still render when product data contains ratings.",
+      "evidence": "C-4 report and src/components/catalog/ProductDetailPage.tsx review UI references.",
+      "severity": "WARNING",
+      "owner": "Product/content owner"
+    }
+  ],
+  "blockers": [
+    {
+      "blocker": "GBP and citation owner evidence remains unavailable.",
+      "owner": "Business/local SEO owner",
+      "required_resolution": "Provide the C-1 GBP/citation evidence package and reconcile source facts, profile facts, and directory facts."
+    },
+    {
+      "blocker": "Service-owner and subject-matter review remains unavailable for safety-sensitive service pages.",
+      "owner": "Business/service owner",
+      "required_resolution": "Approve or revise P1 service content, provide reviewer identity/update trigger, and supply original process evidence or remove unsupported claims."
+    },
+    {
+      "blocker": "Product, policy, review, and trust-claim proof remains unavailable.",
+      "owner": "Product/legal/business owner",
+      "required_resolution": "Approve commerce policies, review/testimonial provenance, insurance/warranty claims, customer-count claims, and product/category evidence before richer schema or growth claims."
+    },
+    {
+      "blocker": "Search Console, GBP, Merchant Center, analytics, and customer-research evidence remains unavailable.",
+      "owner": "SEO/platform/business owners",
+      "required_resolution": "Provide platform readback or sanitized exports so content priorities are evidence-led rather than assumed."
+    }
+  ],
+  "next": "R-8 - Post-remediation live crawl, browser smoke, and drift rerun"
+}

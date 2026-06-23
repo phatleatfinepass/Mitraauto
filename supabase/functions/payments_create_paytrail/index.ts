@@ -13,8 +13,8 @@ const PAYTRAIL_SECRET_KEY =
   Deno.env.get("PAYTRAIL_MERCHANT_SECRET") ??
   Deno.env.get("PAYTRAIL_SECRET") ??
   "";
-const FRONTEND_SUCCESS_URL = Deno.env.get("FRONTEND_SUCCESS_URL") ?? "https://mitra-auto.fi/checkout/success";
-const FRONTEND_CANCEL_URL = Deno.env.get("FRONTEND_CANCEL_URL") ?? "https://mitra-auto.fi/checkout/cancel";
+const FRONTEND_SUCCESS_URL = Deno.env.get("FRONTEND_SUCCESS_URL") ?? "https://www.mitra-auto.fi/checkout/success";
+const FRONTEND_CANCEL_URL = Deno.env.get("FRONTEND_CANCEL_URL") ?? "https://www.mitra-auto.fi/checkout/cancel";
 const PAYTRAIL_WEBHOOK_URL =
   Deno.env.get("PAYTRAIL_WEBHOOK_URL") ??
   (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/payments_paytrail_webhook` : "");
@@ -105,6 +105,71 @@ function toCountryCode(value: unknown) {
 
 function normalizeLanguage(value: unknown) {
   return String(value ?? "").trim().toLowerCase() === "en" ? "en" : "fi";
+}
+
+function normalizeOrigin(value: unknown) {
+  const raw = cleanString(value, 500);
+  if (!raw) return null;
+
+  try {
+    return new URL(raw).origin;
+  } catch {
+    try {
+      return new URL(`https://${raw.replace(/^\/+/, "")}`).origin;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function buildFrontendAllowedOrigins() {
+  const configuredOrigins = cleanString(Deno.env.get("FRONTEND_ALLOWED_ORIGINS"), 2000)
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const originCandidates = [
+    ...configuredOrigins,
+    Deno.env.get("FRONTEND_SITE_URL"),
+    Deno.env.get("PUBLIC_SITE_URL"),
+    FRONTEND_SUCCESS_URL,
+    FRONTEND_CANCEL_URL,
+    "https://www.mitra-auto.fi",
+  ];
+
+  return new Set(originCandidates.map(normalizeOrigin).filter((origin): origin is string => Boolean(origin)));
+}
+
+const FRONTEND_ALLOWED_ORIGINS = buildFrontendAllowedOrigins();
+const CHECKOUT_SUCCESS_PATHS = new Set(["/checkout/success"]);
+const CHECKOUT_CANCEL_PATHS = new Set(["/checkout/cancel"]);
+
+function normalizeFrontendRedirectUrl(value: unknown, fallback: string, allowedPathnames: Set<string>) {
+  const raw = cleanString(value, 500);
+  if (!raw) return fallback;
+
+  try {
+    const parsed = new URL(raw);
+    if (!FRONTEND_ALLOWED_ORIGINS.has(parsed.origin)) return fallback;
+    if (!allowedPathnames.has(parsed.pathname)) return fallback;
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return fallback;
+  }
+}
+
+function resolveSuccessUrl(input: Record<string, unknown>, legacyReturnUrl: string) {
+  const explicitSuccessUrl = normalizeFrontendRedirectUrl(input.success_url, FRONTEND_SUCCESS_URL, CHECKOUT_SUCCESS_PATHS);
+  if (explicitSuccessUrl !== FRONTEND_SUCCESS_URL || cleanString(input.success_url, 500)) {
+    return explicitSuccessUrl;
+  }
+
+  if (legacyReturnUrl.includes("/checkout/result")) {
+    return FRONTEND_SUCCESS_URL;
+  }
+
+  return normalizeFrontendRedirectUrl(legacyReturnUrl, FRONTEND_SUCCESS_URL, CHECKOUT_SUCCESS_PATHS);
 }
 
 function toNumberOrNull(value: unknown) {
@@ -417,11 +482,8 @@ serve(async (req) => {
     const stamp = orderId;
     const reference = `ORDER-${orderId}`;
     const legacyReturnUrl = cleanString(input.return_url, 300);
-    const successUrl =
-      cleanString(input.success_url, 300) ||
-      (legacyReturnUrl.includes("/checkout/result") ? FRONTEND_SUCCESS_URL : legacyReturnUrl) ||
-      FRONTEND_SUCCESS_URL;
-    const cancelUrl = cleanString(input.cancel_url, 300) || FRONTEND_CANCEL_URL;
+    const successUrl = resolveSuccessUrl(input, legacyReturnUrl);
+    const cancelUrl = normalizeFrontendRedirectUrl(input.cancel_url, FRONTEND_CANCEL_URL, CHECKOUT_CANCEL_PATHS);
 
     const deliveryAddress = input.shipping_address
       ? {

@@ -1,0 +1,163 @@
+{
+  "id": "R-5",
+  "name": "Checkout URL, canonical, and deployed Paytrail parity",
+  "recorded": "2026-06-22",
+  "status": "complete_locally_with_deployed_paytrail_parity_blocker",
+  "progress": {
+    "bar": "[█████████████░░░░░░░]",
+    "percent": 63
+  },
+  "decision": "R-5 local source remediation is complete. Checkout now uses URL navigation, checkout utility pages remain noindex/no-canonical, client Paytrail callbacks use the canonical public site URL, and the Paytrail Edge Function locally allowlists checkout success/cancel callback URLs. Deployed Paytrail parity remains blocked because the active Supabase function source differs from local and does not contain the new allowlist/default-canonical callback policy.",
+  "implemented": [
+    {
+      "file": "src/SiteApp.tsx",
+      "purpose": "Routes cart checkout through navigate('/checkout') so the visible checkout state cannot render on a stale product or catalog URL."
+    },
+    {
+      "file": "src/components/site/checkout/CheckoutPage.tsx",
+      "purpose": "Sends Paytrail success/cancel URLs from publicSiteUrl instead of window.location.origin."
+    },
+    {
+      "file": "supabase/functions/payments_create_paytrail/index.ts",
+      "purpose": "Defaults Paytrail callbacks to the canonical www host and normalizes client-provided success/cancel URLs through an allowed-origin and allowed-path policy."
+    },
+    {
+      "file": "scripts/check_checkout_runtime_parity.mjs",
+      "purpose": "Adds a regression check for checkout URL navigation, checkout noindex/no-canonical policy, edge checkout route allowance, Paytrail callback allowlisting, and server-side price/stock validation contract."
+    },
+    {
+      "file": "package.json",
+      "purpose": "Adds npm run checkout:check."
+    }
+  ],
+  "figma_make_sync_files": [
+    "/Figma/src/SiteApp.tsx",
+    "/Figma/src/components/site/checkout/CheckoutPage.tsx"
+  ],
+  "local_browser_evidence": [
+    {
+      "url": "http://127.0.0.1:4175/checkout",
+      "robots": "noindex, nofollow",
+      "canonical": null,
+      "alternates": 0,
+      "heading": "Kassa",
+      "result": "passed"
+    },
+    {
+      "url": "http://127.0.0.1:4175/checkout/success",
+      "robots": "noindex, nofollow",
+      "canonical": null,
+      "alternates": 0,
+      "heading": "Emme voineet vahvistaa tilaustasi",
+      "result": "passed"
+    },
+    {
+      "url": "http://127.0.0.1:4175/checkout/cancel",
+      "robots": "noindex, nofollow",
+      "canonical": null,
+      "alternates": 0,
+      "heading": "Maksu keskeytettiin",
+      "result": "passed"
+    }
+  ],
+  "live_evidence": {
+    "checkout_urls": [
+      {
+        "url": "https://www.mitra-auto.fi/checkout",
+        "http": 200,
+        "content_type": "text/html",
+        "redirects": 0,
+        "rendered_robots": "noindex, nofollow",
+        "rendered_canonical": null,
+        "result": "passed_for_direct_route_head"
+      },
+      {
+        "url": "https://www.mitra-auto.fi/checkout/success",
+        "http": 200,
+        "content_type": "text/html",
+        "redirects": 0,
+        "result": "reachable"
+      },
+      {
+        "url": "https://www.mitra-auto.fi/checkout/cancel",
+        "http": 200,
+        "content_type": "text/html",
+        "redirects": 0,
+        "result": "reachable"
+      }
+    ],
+    "supabase_function": {
+      "project_ref": "rcmmbwdebnmicrweoiyz",
+      "slug": "payments_create_paytrail",
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "version": 23,
+      "updated_at": "2026-05-02 05:35:57 EEST",
+      "source_parity": "different",
+      "remote_has_www_default": false,
+      "remote_has_callback_allowlist": false,
+      "local_sha256": "d4dab0876a4e2e46b0363171c4781ab5a205ca38d48b5ae3963172fc0658f10f",
+      "remote_sha256": "d1718de79e728e12a6e08c4d3709955eb700b601e8a827384e513e50125a43ef"
+    }
+  },
+  "blockers": [
+    {
+      "blocker": "Deployed payments_create_paytrail source does not match local R-5 source and lacks callback allowlist/canonical www default.",
+      "owner": "Supabase/commerce deployment owner",
+      "required_resolution": "Deploy supabase/functions/payments_create_paytrail/index.ts to project rcmmbwdebnmicrweoiyz, then redownload and verify source parity plus provider-safe callback env."
+    },
+    {
+      "blocker": "Paytrail merchant credential and callback env values were not loaded into the local shell, so secret state and live payment creation were not verified.",
+      "owner": "Commerce/provider owner",
+      "required_resolution": "Verify Paytrail secrets and FRONTEND_SUCCESS_URL/FRONTEND_CANCEL_URL/FRONTEND_ALLOWED_ORIGINS through secret-safe provider readback; do not print secret values."
+    },
+    {
+      "blocker": "The local cart-to-checkout URL navigation fix is not proven on production until current app source is deployed.",
+      "owner": "Frontend/hosting owner",
+      "required_resolution": "Deploy current app build and run a live cart-to-checkout browser smoke verifying the URL changes to /checkout."
+    }
+  ],
+  "verification": [
+    {
+      "command": "npm run checkout:check",
+      "result": "passed"
+    },
+    {
+      "command": "deno check supabase/functions/payments_create_paytrail/index.ts",
+      "result": "passed"
+    },
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Run the Vite production build for Mitra Auto. Return only: pass/fail, any errors, and any warnings that affect release quality. Do not include repetitive bundling output.\" -- npm run build",
+      "result": "passed"
+    },
+    {
+      "command": "npm run commerce:check",
+      "result": "passed"
+    },
+    {
+      "command": "source ~/.config/projects/bin/project && project mitraauto && supabase functions list --project-ref \"$SUPABASE_PROJECT_REF\" -o json",
+      "result": "passed"
+    },
+    {
+      "command": "supabase functions download payments_create_paytrail --project-ref \"$SUPABASE_PROJECT_REF\" --use-api",
+      "result": "passed_with_findings_source_parity_different"
+    },
+    {
+      "command": "Playwright MCP rendered local checkout utility routes on http://127.0.0.1:4175",
+      "result": "passed"
+    },
+    {
+      "command": "curl -sSIL https://www.mitra-auto.fi/checkout https://www.mitra-auto.fi/checkout/success https://www.mitra-auto.fi/checkout/cancel",
+      "result": "passed_for_reachability"
+    },
+    {
+      "command": "Playwright MCP rendered https://www.mitra-auto.fi/checkout",
+      "result": "passed_for_direct_route_head"
+    },
+    {
+      "command": "git diff --check -- src/SiteApp.tsx src/components/site/checkout/CheckoutPage.tsx supabase/functions/payments_create_paytrail/index.ts scripts/check_checkout_runtime_parity.mjs package.json",
+      "result": "passed"
+    }
+  ],
+  "next": "R-6 - Authenticated provider and platform readback"
+}

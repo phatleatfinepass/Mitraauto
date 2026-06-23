@@ -136,12 +136,12 @@ export function BookingModal({ open, onOpenChange, preSelectedService, prefill }
   };
 
   const handleConfirm = () => {
-    trackClarityEvent('booking_completed', {
+    trackClarityEvent('booking_submitted', {
       service_count: selectedServiceIds.length || 1,
       has_install_prefill: Boolean(prefill?.installToken),
       language,
     });
-    upgradeClaritySession('booking_completed');
+    upgradeClaritySession('booking_submitted');
     setCurrentStep('success');
   };
 

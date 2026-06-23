@@ -3,6 +3,143 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const HEX_ID_PATTERN = /^[0-9a-f]{16,}$/i;
 const GTIN_PATTERN = /^\d{8,14}$/;
 const SUPPLIER_CODE_PATTERN = /^(rd|vt|ean|sku|id)[-_]?[a-z0-9]*\d+[a-z0-9-]*$/i;
+const PRODUCT_SITEMAP_PATTERN = /^\/sitemap-products-\d+\.xml$/;
+
+const LEGACY_REDIRECTS: Record<string, string> = {
+  '/shop': '/catalog',
+  '/en/shop': '/en/catalog',
+  '/services': '/en/services',
+  '/tire-hotel': '/en/services/tire-hotel',
+  '/about': '/en/about',
+  '/legal/privacy': '/privacy',
+  '/legal/terms': '/terms',
+  '/helsinki/autohuolto': '/palvelut/autohuolto',
+  '/en/helsinki/car-service': '/en/services/car-service',
+  '/helsinki/renkaanvaihto': '/palvelut/renkaanvaihto',
+  '/en/helsinki/tire-change': '/en/services/tire-change',
+  '/helsinki/rengashotelli': '/palvelut/rengashotelli',
+  '/en/helsinki/tire-hotel': '/en/services/tire-hotel',
+  '/palvelut/dpf-pesu': '/palvelut/dpf-huolto',
+  '/en/services/dpf-cleaning': '/en/services/dpf-service',
+};
+
+const PUBLIC_SPA_PATHS = new Set([
+  '/',
+  '/en',
+  '/palvelut',
+  '/en/services',
+  '/helsinki',
+  '/en/helsinki',
+  '/yhteystiedot',
+  '/en/contact',
+  '/ukk',
+  '/en/faq',
+  '/meista',
+  '/en/about',
+  '/catalog',
+  '/en/catalog',
+  '/privacy',
+  '/cookies',
+  '/cookie-policy',
+  '/terms',
+  '/legal',
+  '/checkout',
+  '/checkout/success',
+  '/checkout/cancel',
+  '/palvelut/autohuolto',
+  '/en/services/car-service',
+  '/palvelut/renkaanvaihto',
+  '/en/services/tire-change',
+  '/palvelut/rengashotelli',
+  '/en/services/tire-hotel',
+  '/palvelut/vikadiagnostiikka',
+  '/en/services/diagnostics',
+  '/palvelut/autopesu',
+  '/en/services/car-wash',
+  '/palvelut/ilmastointihuolto',
+  '/en/services/ac-service',
+  '/palvelut/dpf-huolto',
+  '/en/services/dpf-service',
+  '/palvelut/oljynvaihto',
+  '/en/services/oil-change',
+  '/palvelut/tasapainotus',
+  '/en/services/wheel-balancing',
+  '/palvelut/rengaspaikkaus',
+  '/en/services/tire-repair',
+]);
+
+const STATIC_ASSET_PATHS = new Set([
+  '/robots.txt',
+  '/sitemap.xml',
+  '/sitemap-products.xml',
+  '/merchant-products.xml',
+  '/manifest.webmanifest',
+  '/sw.js',
+  '/404.html',
+]);
+
+const PRIVATE_ROUTE_PREFIXES = [
+  '/admin',
+  '/cms',
+  '/pwa',
+  '/account',
+  '/customer',
+  '/customer-account',
+  '/booking/manage',
+  '/en/account',
+  '/en/customer',
+  '/en/booking/manage',
+];
+
+const GENERATED_SERVICE_IDS = new Set([
+  'basic-hand-wash-car',
+  'basic-hand-wash-suv',
+  'quick-wax-car',
+  'quick-wax-suv',
+  'interior-cleaning-car',
+  'interior-cleaning-suv',
+  'super-exterior-wash-car',
+  'super-exterior-wash-suv',
+  'hard-wax-car',
+  'hard-wax-suv',
+  'engine-wash',
+  'wheel-wash-set',
+  'tire-change-car',
+  'tire-change-suv',
+  'tire-change-van',
+  'wheel-balancing',
+  'tire-repair-outside',
+  'tire-repair-inside',
+  'tire-work-up-to-17',
+  'tire-work-18-19',
+  'tire-work-20-21',
+  'tire-hotel-storage',
+  'error-code-reading',
+  'troubleshooting',
+  'engine-oil-change',
+  'seasonal-maintenance',
+  'annual-maintenance',
+  'manual-gearbox-oil',
+  'automatic-gearbox-oil',
+  'automatic-gearbox-flush',
+  'brake-fluid',
+  'pedal-installation',
+  'rust-repair',
+  'ac-service-r134a',
+  'ac-extra-refrigerant',
+  'ac-hybrid-extra-r134a',
+  'ac-service-r1234yf',
+  'ac-hybrid-extra-r1234yf',
+  'ac-service-electric',
+  'ac-diagnostics',
+  'dpf-diagnosis',
+  'dpf-forced-regeneration',
+  'dpf-cleaning-2002-2008',
+  'dpf-cleaning-2009-2013',
+  'dpf-cleaning-2014-newer',
+  'dpf-removal-installation-estimate',
+  'other',
+]);
 
 type ProductType = 'tire' | 'rim';
 
@@ -40,6 +177,41 @@ function normalizePath(pathname: string) {
   }
 
   return pathname || '/';
+}
+
+function permanentRedirect(request: Request, pathname: string, status = 301) {
+  const url = new URL(request.url);
+  url.pathname = pathname;
+  url.hash = '';
+
+  return Response.redirect(url.toString(), status);
+}
+
+function isPrivateRoute(pathname: string) {
+  return PRIVATE_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isStaticAssetPath(pathname: string) {
+  return (
+    STATIC_ASSET_PATHS.has(pathname) ||
+    PRODUCT_SITEMAP_PATTERN.test(pathname) ||
+    pathname.startsWith('/assets/') ||
+    pathname.startsWith('/icons/')
+  );
+}
+
+function isPublicSpaPath(pathname: string) {
+  if (PUBLIC_SPA_PATHS.has(pathname) || PRODUCT_PATH_PATTERN.test(pathname)) return true;
+
+  const generatedServiceMatch = pathname.match(/^\/(?:palvelut|en\/services)\/([^/]+)$/);
+  return generatedServiceMatch ? GENERATED_SERVICE_IDS.has(decodeURIComponent(generatedServiceMatch[1])) : false;
+}
+
+function applyRobotsHeaders(headers: Headers, directive: string, noStore = false) {
+  headers.set('x-robots-tag', directive);
+  if (noStore) {
+    headers.set('cache-control', 'no-store');
+  }
 }
 
 function normalizeSlug(value?: string | null) {
@@ -143,25 +315,38 @@ async function fetchCatalogRow(env: RedirectEnv, productType: ProductType, ident
   return Array.isArray(rows) && rows[0] ? rows[0] as CatalogRow : null;
 }
 
-async function productNotFoundResponse(request: Request, env: RedirectEnv) {
+async function fetchShell(request: Request, env: RedirectEnv, pathname = '/') {
   if (!env.ASSETS) {
-    return new Response('Product not found', {
+    return null;
+  }
+
+  const shellUrl = new URL(request.url);
+  shellUrl.pathname = pathname;
+  shellUrl.search = '';
+  shellUrl.hash = '';
+
+  return env.ASSETS.fetch(new Request(shellUrl.toString(), request));
+}
+
+async function notFoundResponse(
+  request: Request,
+  env: RedirectEnv,
+  options: { body?: string; robots?: string; noStore?: boolean } = {},
+) {
+  const shellResponse = await fetchShell(request, env, '/404.html') ?? await fetchShell(request, env, '/');
+  if (!shellResponse) {
+    return new Response(options.body ?? 'Not found', {
       status: 404,
       headers: {
         'content-type': 'text/plain; charset=utf-8',
-        'x-robots-tag': 'noindex, follow',
+        'x-robots-tag': options.robots ?? 'noindex, follow',
+        ...(options.noStore ? { 'cache-control': 'no-store' } : {}),
       },
     });
   }
 
-  const shellUrl = new URL(request.url);
-  shellUrl.pathname = '/';
-  shellUrl.search = '';
-  shellUrl.hash = '';
-
-  const shellResponse = await env.ASSETS.fetch(new Request(shellUrl.toString(), request));
   const headers = new Headers(shellResponse.headers);
-  headers.set('x-robots-tag', 'noindex, follow');
+  applyRobotsHeaders(headers, options.robots ?? 'noindex, follow', options.noStore);
 
   return new Response(shellResponse.body, {
     status: 404,
@@ -181,9 +366,12 @@ async function resolveProductRequest(request: Request, env: RedirectEnv) {
   const identifier = decodeURIComponent(match[3]);
 
   const row = await fetchCatalogRow(env, productType, identifier);
-  if (row === undefined) return null;
-  if (row === null) return productNotFoundResponse(request, env);
-  if (!isOpaqueIdentifier(identifier)) return null;
+  if (row === undefined) {
+    return isOpaqueIdentifier(identifier)
+      ? notFoundResponse(request, env, { body: 'Product redirect lookup is unavailable' })
+      : null;
+  }
+  if (row === null) return notFoundResponse(request, env, { body: 'Product not found' });
 
   const canonicalIdentifier = getCanonicalIdentifier(productType, row);
   if (!canonicalIdentifier) return null;
@@ -199,11 +387,40 @@ async function resolveProductRequest(request: Request, env: RedirectEnv) {
 }
 
 export async function onRequest(context: { request: Request; env: RedirectEnv }) {
+  const url = new URL(context.request.url);
+  const normalizedPath = normalizePath(url.pathname);
+
+  if (url.pathname !== normalizedPath) {
+    return permanentRedirect(context.request, normalizedPath);
+  }
+
+  if (isStaticAssetPath(normalizedPath) && context.env.ASSETS) {
+    return context.env.ASSETS.fetch(context.request);
+  }
+
+  if (isPrivateRoute(normalizedPath)) {
+    return notFoundResponse(context.request, context.env, {
+      body: 'Not found',
+      robots: 'noindex, nofollow, noarchive',
+      noStore: true,
+    });
+  }
+
+  const legacyTarget = LEGACY_REDIRECTS[normalizedPath];
+  if (legacyTarget) {
+    return permanentRedirect(context.request, legacyTarget);
+  }
+
   const productResponse = await resolveProductRequest(context.request, context.env);
   if (productResponse) return productResponse;
 
+  if (!isPublicSpaPath(normalizedPath)) {
+    return notFoundResponse(context.request, context.env);
+  }
+
   if (context.env.ASSETS) {
-    return context.env.ASSETS.fetch(context.request);
+    const shellResponse = await fetchShell(context.request, context.env, '/');
+    if (shellResponse) return shellResponse;
   }
 
   return fetch(context.request);

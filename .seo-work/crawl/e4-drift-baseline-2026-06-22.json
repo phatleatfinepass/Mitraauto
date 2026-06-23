@@ -1,0 +1,417 @@
+{
+  "schemaVersion": "mitra.growth.drift-baseline.v1",
+  "taskId": "E-4",
+  "name": "Drift Baseline And Monitoring Handoff",
+  "generatedAt": "2026-06-22T18:50:00+03:00",
+  "baseOrigin": "https://www.mitra-auto.fi",
+  "evidenceClass": "DIRECT_OBSERVATION",
+  "scope": {
+    "mode": "public unauthenticated HTTP snapshot plus E-3 rendered-browser reference",
+    "privateContentPolicy": "Do not store raw private route response bodies. Private boundary checks use status/policy only.",
+    "platformAccess": "UNAVAILABLE",
+    "browserReference": ".growth-work/release/e3-live-crawl-browser-smoke-evidence.json"
+  },
+  "evidenceStates": {
+    "liveHttp": "EXECUTED_WITH_FINDINGS",
+    "rawHtmlMetadata": "EXECUTED_WITH_FINDINGS",
+    "renderedBrowser": "SUPPLIED_REVIEW_REQUIRED",
+    "platform": "UNAVAILABLE",
+    "sitemapMembership": "FAILED_PUBLIC_ASSET_DEPLOYMENT"
+  },
+  "rawHtmlCommonFinding": {
+    "affectedSample": [
+      "https://www.mitra-auto.fi/",
+      "https://www.mitra-auto.fi/en",
+      "https://www.mitra-auto.fi/en/services",
+      "https://www.mitra-auto.fi/palvelut/autohuolto",
+      "https://www.mitra-auto.fi/en/services/car-service",
+      "https://www.mitra-auto.fi/catalog",
+      "https://www.mitra-auto.fi/en/catalog",
+      "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "https://www.mitra-auto.fi/checkout",
+      "https://www.mitra-auto.fi/en/contact",
+      "https://www.mitra-auto.fi/contact",
+      "https://www.mitra-auto.fi/this-route-should-not-exist-e4"
+    ],
+    "status": 200,
+    "contentType": "text/html",
+    "htmlLang": "fi",
+    "title": "Mitra Auto | Full-Service Garage in Helsinki - Tires, Maintenance & Repairs",
+    "descriptionPrefix": "Book your appointment online at Mitra Auto, a premium full-service garage in Helsinki.",
+    "canonical": "",
+    "robots": "index,follow",
+    "h1": "This site requires JavaScript",
+    "schemaTypes": [],
+    "mainCount": 1,
+    "navCount": 0,
+    "anchorCount": 0,
+    "buttonCount": 1,
+    "driftInterpretation": "Current raw HTML is a weak baseline for search because route-specific head, links, schema, and primary content depend on client rendering."
+  },
+  "representativeUrls": [
+    {
+      "id": "home-apex",
+      "pageType": "host-normalization",
+      "url": "https://mitra-auto.fi/",
+      "currentFinalUrl": "https://www.mitra-auto.fi/",
+      "currentHttp": 200,
+      "currentRedirects": 1,
+      "targetPolicy": "Permanent one-hop redirect to canonical www host.",
+      "indexability": "redirect_source",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "home-fi",
+      "pageType": "homepage",
+      "url": "https://www.mitra-auto.fi/",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200, self-canonical, Finnish rendered content, crawlable navigation, Organization/LocalBusiness graph where implemented.",
+      "sitemapPolicy": "Include in sitemap after sitemap deployment is fixed.",
+      "driftSeverityIfBroken": "BLOCKER"
+    },
+    {
+      "id": "home-en",
+      "pageType": "localized-home-or-entry",
+      "url": "https://www.mitra-auto.fi/en",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200, English content and metadata, self-canonical, hreflang when locale clusters are implemented.",
+      "sitemapPolicy": "Include if intended as canonical English entry.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "services-en-hub",
+      "pageType": "service-hub",
+      "url": "https://www.mitra-auto.fi/en/services",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200, self-canonical, crawlable links to English service detail pages.",
+      "sitemapPolicy": "Include in service sitemap or root sitemap.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "service-fi-autohuolto",
+      "pageType": "service-detail",
+      "url": "https://www.mitra-auto.fi/palvelut/autohuolto",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200, self-canonical, visible service content, booking CTA, LocalBusiness/service consistency.",
+      "sitemapPolicy": "Include.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "service-en-car-service",
+      "pageType": "localized-service-detail",
+      "url": "https://www.mitra-auto.fi/en/services/car-service",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200, English rendered content, self-canonical, localized metadata.",
+      "sitemapPolicy": "Include.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "catalog-fi",
+      "pageType": "catalog-hub",
+      "url": "https://www.mitra-auto.fi/catalog",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200 when populated, self-canonical, crawlable category/product links.",
+      "sitemapPolicy": "Include if indexable.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "catalog-en",
+      "pageType": "localized-catalog-hub",
+      "url": "https://www.mitra-auto.fi/en/catalog",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200 when populated, English content, self-canonical, crawlable product links.",
+      "sitemapPolicy": "Include if indexable.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "product-rim-slug",
+      "pageType": "product-detail-slug",
+      "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200, self-canonical slug URL, visible price/stock/identifier, Product/Offer markup, feed URL agreement.",
+      "sitemapPolicy": "Include in product sitemap after XML deployment is fixed.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "product-rim-legacy-uuid",
+      "pageType": "legacy-product-id",
+      "url": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "currentHttp": 200,
+      "currentRedirects": 0,
+      "targetPolicy": "Permanent one-hop redirect to the human-readable product slug.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "legacy-shop",
+      "pageType": "legacy-route-redirect",
+      "url": "https://www.mitra-auto.fi/shop",
+      "currentHttp": 200,
+      "currentRedirects": 0,
+      "targetPolicy": "Permanent one-hop redirect to /catalog.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "legacy-services",
+      "pageType": "legacy-route-redirect",
+      "url": "https://www.mitra-auto.fi/services",
+      "currentHttp": 200,
+      "currentRedirects": 0,
+      "targetPolicy": "Permanent one-hop redirect to /en/services.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "legacy-tire-hotel",
+      "pageType": "legacy-route-redirect",
+      "url": "https://www.mitra-auto.fi/tire-hotel",
+      "currentHttp": 200,
+      "currentRedirects": 0,
+      "targetPolicy": "Permanent one-hop redirect to /en/services/tire-hotel.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "legacy-helsinki-autohuolto",
+      "pageType": "legacy-route-redirect",
+      "url": "https://www.mitra-auto.fi/helsinki/autohuolto",
+      "currentHttp": 200,
+      "currentRedirects": 0,
+      "targetPolicy": "Permanent one-hop redirect to /palvelut/autohuolto.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "legacy-dpf-pesu",
+      "pageType": "legacy-route-redirect",
+      "url": "https://www.mitra-auto.fi/palvelut/dpf-pesu",
+      "currentHttp": 200,
+      "currentRedirects": 0,
+      "targetPolicy": "Permanent one-hop redirect to /palvelut/dpf-huolto.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "checkout",
+      "pageType": "commerce-utility",
+      "url": "https://www.mitra-auto.fi/checkout",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Noindex utility route with correct URL, no sitemap inclusion, no product canonical pollution.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "checkout-success",
+      "pageType": "commerce-private-confirmation",
+      "url": "https://www.mitra-auto.fi/checkout/success",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Noindex or authenticated/safe confirmation state; exclude from sitemap.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "customer-account",
+      "pageType": "private-account-boundary",
+      "url": "https://www.mitra-auto.fi/customer-account",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Authenticated route or safe 404/401/403, noindex, no sitemap inclusion.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "BLOCKER"
+    },
+    {
+      "id": "cms",
+      "pageType": "private-admin-boundary",
+      "url": "https://www.mitra-auto.fi/cms",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Must not render unauthenticated private/admin content. Expected 401, 403, or safe 404.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "BLOCKER"
+    },
+    {
+      "id": "contact-en",
+      "pageType": "contact",
+      "url": "https://www.mitra-auto.fi/en/contact",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Indexable 200 English contact page with self-canonical and visible NAP/contact facts.",
+      "sitemapPolicy": "Include if canonical.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "contact-variant",
+      "pageType": "accidental-route-variant",
+      "url": "https://www.mitra-auto.fi/contact",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Redirect to /en/contact if intended; otherwise return 404 or 410.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "random-invalid",
+      "pageType": "not-found",
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-e4",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Return HTTP 404 or 410 with safe noindex not-found content.",
+      "sitemapPolicy": "Exclude.",
+      "driftSeverityIfBroken": "CRITICAL"
+    },
+    {
+      "id": "robots",
+      "pageType": "crawler-control",
+      "url": "https://www.mitra-auto.fi/robots.txt",
+      "currentHttp": 404,
+      "currentContentType": "text/plain;charset=UTF-8",
+      "targetPolicy": "Return 200 text/plain with sitemap declarations and no accidental global block.",
+      "sitemapPolicy": "Not applicable.",
+      "driftSeverityIfBroken": "BLOCKER"
+    },
+    {
+      "id": "sitemap-index",
+      "pageType": "sitemap-index",
+      "url": "https://www.mitra-auto.fi/sitemap.xml",
+      "currentHttp": 404,
+      "currentContentType": "text/plain;charset=UTF-8",
+      "targetPolicy": "Return 200 XML sitemap index or sitemap containing canonical indexable URLs only.",
+      "sitemapPolicy": "Not applicable.",
+      "driftSeverityIfBroken": "BLOCKER"
+    },
+    {
+      "id": "sitemap-products",
+      "pageType": "product-sitemap",
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Return XML product sitemap or sitemap index, not HTML shell.",
+      "sitemapPolicy": "Not applicable.",
+      "driftSeverityIfBroken": "BLOCKER"
+    },
+    {
+      "id": "merchant-products",
+      "pageType": "merchant-feed",
+      "url": "https://www.mitra-auto.fi/merchant-products.xml",
+      "currentHttp": 200,
+      "currentContentType": "text/html",
+      "targetPolicy": "Return XML merchant feed matching product page price, availability, identifiers, and canonical URLs.",
+      "sitemapPolicy": "Not applicable.",
+      "driftSeverityIfBroken": "BLOCKER"
+    }
+  ],
+  "renderedReferenceFromE3": [
+    {
+      "url": "https://www.mitra-auto.fi/",
+      "title": "Mitra Auto | Autohuolto, renkaat ja korjaamo Helsingissa",
+      "h1": "Mitra Auto - Ammattitaitoiset palvelut",
+      "canonical": "https://www.mitra-auto.fi/",
+      "robots": "index,follow"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/palvelut/autohuolto",
+      "title": "Autohuolto Helsinki | Maaraaikaishuolto ja korjaamo | Mitra Auto",
+      "h1": "Autohuolto Helsingissa",
+      "robots": "index,follow"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "title": "Rautamo Netto BROCK RC32 Titanium Full Pol 7x17 5x110 ET40 | Mitra Auto",
+      "h1": "Rautamo Netto BROCK RC32 Titanium Full Pol 7x17 5x110 ET40",
+      "robots": "index,follow"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/services/car-service",
+      "title": "Car Service Helsinki | Maintenance and Garage | Mitra Auto",
+      "lang": "en",
+      "robots": "index,follow"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/contact",
+      "robots": "index,follow"
+    }
+  ],
+  "releaseDriftRules": {
+    "blockDeploymentOrRollback": [
+      "Public /cms or private/admin route returns unauthenticated private content.",
+      "Homepage or important indexable template becomes non-200, blocked, noindex, or canonicalizes to another host.",
+      "robots.txt is missing, globally blocks production unintentionally, or omits expected sitemap declarations after sitemap release.",
+      "sitemap.xml, product sitemap, or merchant feed returns HTML, 404, redirect, or non-XML content after release.",
+      "Checkout, account, order, or CMS routes become indexable or enter sitemaps.",
+      "Product page price, availability, identifier, schema, feed, cart, or checkout values diverge."
+    ],
+    "criticalReviewRequired": [
+      "Legacy product ID/SKU/UUID URL does not permanently redirect to the slug URL.",
+      "Invalid or removed route returns HTTP 200 soft-404.",
+      "Route-specific title, canonical, robots, language, schema, or primary H1 disappears in rendered browser output.",
+      "English and Finnish route language/canonical policies conflict.",
+      "Internal links point to legacy, redirecting, HTML-feed, soft-404, or private URLs at scale."
+    ],
+    "warningReview": [
+      "Meta description loses page specificity while the route remains otherwise valid.",
+      "Optional schema recommended fields disappear without changing visible facts.",
+      "Response time materially increases on representative templates.",
+      "Accessibility landmarks, labels, or primary action markers regress on sampled browser tasks."
+    ]
+  },
+  "monitoringCadence": {
+    "eachRelease": [
+      "Run bounded HTTP matrix for representativeUrls.",
+      "Run rendered browser smoke for homepage, service detail, catalog/product, checkout start, booking start, contact, invalid route, and private boundary status.",
+      "Validate robots, sitemap, product sitemap, Merchant feed, legacy redirects, and product ID redirects.",
+      "Annotate release date, changed templates, static assets, redirects, provider deployments, and known exceptions."
+    ],
+    "weekly": [
+      "Check public robots/sitemap/feed URLs and critical redirect samples.",
+      "Review Search Console manual actions, security issues, indexing anomalies, and sitemap errors when access is available.",
+      "Review Merchant Center and Business Profile diagnostics when access is available.",
+      "Review booking/order/checkout failure alerts and exposed-private-route checks."
+    ],
+    "monthly": [
+      "Segment Search Console and analytics by page type, locale, device, query intent, product/service family, and qualified outcome.",
+      "Review content freshness, product/feed stock drift, local facts, Core Web Vitals field evidence, and conversion quality.",
+      "Refresh representative URL set when new page types, product lifecycle states, or public routes ship."
+    ],
+    "quarterly": [
+      "Recheck schema feature status, AI/crawler policy, Merchant Center policy, GBP policy, and source documentation.",
+      "Review architecture/content portfolio, route exceptions, stale redirects, and experiment/monitoring decisions."
+    ]
+  },
+  "incidentTriggers": [
+    {
+      "trigger": "Public /cms or private content exposure",
+      "severity": "BLOCKER",
+      "owner": "Engineering/security",
+      "firstResponse": "Disable route or require auth at edge/app layer, preserve sanitized evidence, rotate/clean exposed data if confirmed, verify unauthenticated 401/403/404."
+    },
+    {
+      "trigger": "robots/sitemap/feed public asset regression",
+      "severity": "BLOCKER",
+      "owner": "Hosting/engineering",
+      "firstResponse": "Verify deployment target, asset routing, content type, cache state, Search Console sitemap status, and Merchant Center fetch state."
+    },
+    {
+      "trigger": "Organic traffic, indexed pages, product approvals, bookings, or orders materially drop",
+      "severity": "CRITICAL",
+      "owner": "SEO/analytics/commerce owner",
+      "firstResponse": "Diagnose in order: measurement, outage, access/index/canonical/rendering, platform messages, demand/SERP, content, competition."
+    }
+  ],
+  "limitations": [
+    "Authenticated Search Console, GBP, Merchant Center, analytics, Cloudflare, and server-log evidence was unavailable.",
+    "Sitemap membership cannot be verified while public sitemap URLs are missing or serving HTML.",
+    "Rendered browser evidence is linked from E-3 and was not rerun for E-4 to avoid storing private route artifacts.",
+    "This baseline improves regression detection; it does not guarantee crawling, indexing, rankings, traffic, conversions, or rich results."
+  ]
+}

@@ -1,0 +1,338 @@
+{
+  "schemaVersion": "mitra.growth.e4.drift-baseline.v1",
+  "generatedAt": "2026-06-23T10:21:49Z",
+  "recordedLocalTime": "2026-06-23 13:21:49 EEST +0300",
+  "sourceClass": "DIRECT_OBSERVATION",
+  "baseUrl": "https://www.mitra-auto.fi",
+  "executionMode": "LIVE_HTTP_BOUNDED_DRIFT_BASELINE",
+  "limits": {
+    "maxUrls": 23,
+    "timeoutMs": 20000,
+    "maxBodyBytesSampled": 350000,
+    "method": "GET",
+    "redirects": "manual",
+    "allowedOrigin": "https://www.mitra-auto.fi",
+    "userAgent": "MitraGrowthReadinessE4/1.0"
+  },
+  "evidenceStates": {
+    "LIVE": "EXECUTED_WITH_FINDINGS",
+    "MIGRATION": "EXECUTED_WITH_FINDINGS",
+    "PLATFORM": "UNAVAILABLE",
+    "FIELD_PERFORMANCE": "UNAVAILABLE",
+    "BROWSER": "SUPPLIED_REVIEW_REQUIRED_FROM_E3"
+  },
+  "summary": {
+    "total": 23,
+    "passedReleasePolicy": 0,
+    "failedReleasePolicy": 23,
+    "rootCause": "Production still serves a generic Figma-hosted SPA shell for sampled HTML routes, while the current repo source contains static asset, redirect, protected route, checkout, and commerce contracts that pass local policy checks.",
+    "releaseDecision": "Do not classify release-ready or growth-ready from this baseline. Use this baseline to detect drift and verify remediation after production deploy parity is fixed."
+  },
+  "commonHtmlShellObservation": {
+    "status": 200,
+    "contentType": "text/html",
+    "title": "Mitra Auto | Full-Service Garage in Helsinki - Tires, Maintenance & Repairs",
+    "canonical": null,
+    "jsonLdCount": 0,
+    "hasJavaScriptRequiredText": true
+  },
+  "representativeUrls": [
+    {
+      "id": "home_fi",
+      "path": "/",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable homepage with route-specific raw metadata, self-canonical, crawlable links, and rendered parity.",
+      "driftSeverity": "BLOCKER"
+    },
+    {
+      "id": "home_en",
+      "path": "/en",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable English homepage with localized metadata/content and self-canonical.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "services_hub_fi",
+      "path": "/palvelut",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable Finnish service hub with crawlable links to approved canonical services.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "service_dpf_fi",
+      "path": "/palvelut/dpf-huolto",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable Finnish DPF service page with route-specific title, canonical, Service/LocalBusiness graph, and visible booking path.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "service_dpf_en",
+      "path": "/en/services/dpf-service",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable English DPF service page with localized metadata, canonical, visible service facts, and no internal review text.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "location_helsinki",
+      "path": "/helsinki",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable Helsinki local page with visible local facts and LocalBusiness consistency.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "contact_fi",
+      "path": "/yhteystiedot",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable contact page with visible NAP, hours, and actionable phone/email/maps links.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "catalog_fi",
+      "path": "/catalog",
+      "type": "public",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable catalog hub when populated, with crawlable product/category paths and controlled facets.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "product_canonical_rim",
+      "path": "/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "type": "product",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Indexable canonical product slug with Product/Offer schema, price, availability, identifiers, feed/cart/checkout consistency.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "product_legacy_uuid",
+      "path": "/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "type": "redirect",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedLocation": null,
+      "targetPolicy": "Permanent one-hop redirect to the canonical product slug.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "product_legacy_gtin",
+      "path": "/catalog/rim/4250996326059",
+      "type": "redirect",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedLocation": null,
+      "targetPolicy": "Permanent one-hop redirect to the canonical product slug.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "legacy_shop",
+      "path": "/shop",
+      "type": "redirect",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedLocation": null,
+      "targetPolicy": "Permanent one-hop redirect to /catalog.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "legacy_service_alias",
+      "path": "/palvelut/dpf-pesu",
+      "type": "redirect",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedLocation": null,
+      "targetPolicy": "Permanent one-hop redirect to /palvelut/dpf-huolto.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "checkout",
+      "path": "/checkout",
+      "type": "utility",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Noindex utility route, excluded from sitemap, no canonical, with checkout state guarded by current cart/order rules.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "checkout_success",
+      "path": "/checkout/success",
+      "type": "utility",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Noindex confirmation route, excluded from sitemap, no public order details without safe state.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "cms_private",
+      "path": "/cms",
+      "type": "private",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Authenticated or safe 401/403/404, noindex, excluded from sitemaps, no public private/admin content.",
+      "driftSeverity": "BLOCKER"
+    },
+    {
+      "id": "customer_account",
+      "path": "/customer-account",
+      "type": "private",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Authenticated or safe 401/403/404, noindex, excluded from sitemaps, no public customer data.",
+      "driftSeverity": "BLOCKER"
+    },
+    {
+      "id": "unknown_route",
+      "path": "/this-route-should-not-exist-e4",
+      "type": "error",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Real 404 or 410 with safe noindex content.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "unknown_product",
+      "path": "/catalog/rim/not-a-real-product-e4",
+      "type": "error",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "observedCanonical": null,
+      "observedJsonLdCount": 0,
+      "observedJavaScriptRequiredText": true,
+      "targetPolicy": "Real 404 or 410 product-not-found state, noindex, no Product schema.",
+      "driftSeverity": "CRITICAL"
+    },
+    {
+      "id": "robots",
+      "path": "/robots.txt",
+      "type": "static",
+      "observedStatus": 404,
+      "observedContentType": "text/plain",
+      "targetPolicy": "200 text/plain with no accidental global block and sitemap declarations.",
+      "driftSeverity": "BLOCKER"
+    },
+    {
+      "id": "sitemap",
+      "path": "/sitemap.xml",
+      "type": "static",
+      "observedStatus": 404,
+      "observedContentType": "text/plain",
+      "targetPolicy": "200 application/xml or text/xml sitemap index containing canonical indexable URLs only.",
+      "driftSeverity": "BLOCKER"
+    },
+    {
+      "id": "product_sitemap",
+      "path": "/sitemap-products.xml",
+      "type": "static",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "targetPolicy": "200 XML product sitemap index, not HTML shell.",
+      "driftSeverity": "BLOCKER"
+    },
+    {
+      "id": "merchant_feed",
+      "path": "/merchant-products.xml",
+      "type": "static",
+      "observedStatus": 200,
+      "observedContentType": "text/html",
+      "targetPolicy": "200 XML Merchant feed matching product pages, schema, cart, and checkout.",
+      "driftSeverity": "BLOCKER"
+    }
+  ],
+  "localPolicyGates": {
+    "static-assets:check": "passed",
+    "sitemap:check": "passed",
+    "feed:check": "passed",
+    "route-migration:check": "passed",
+    "private-routes:check": "passed",
+    "checkout:check": "passed",
+    "commerce:check": "passed"
+  },
+  "baselineUse": {
+    "blockOn": [
+      "Any public canonical route becomes blocked, noindex, non-200, or canonicalized to a wrong host.",
+      "robots.txt, sitemap.xml, product sitemaps, or Merchant feed are missing, HTML, redirected incorrectly, or wrong content type.",
+      "Legacy service/product routes or opaque product identifiers fail permanent one-hop redirect policy after deploy parity is fixed.",
+      "Private/admin/account routes render public 200 content or private data.",
+      "Unknown routes/products return public 200 soft-404 content.",
+      "Product page, schema, feed, cart, checkout, price, availability, or identifiers diverge.",
+      "Checkout, account, or order confirmation routes become indexable or enter sitemaps."
+    ],
+    "warnOn": [
+      "Optional metadata, recommended schema fields, non-critical image metadata, or non-blocking accessibility markers regress.",
+      "New unused preload or client warning appears without observed task failure.",
+      "Crawl depth, response time, or link count changes without confirmed template policy failure."
+    ],
+    "exceptionRequiredFields": [
+      "control",
+      "affectedScope",
+      "accountableOwner",
+      "businessRationale",
+      "risk",
+      "mitigation",
+      "monitoring",
+      "expiryOrRevisitDate"
+    ]
+  },
+  "limitations": [
+    "This baseline does not include authenticated Cloudflare, Search Console, Google Business Profile, Merchant Center, analytics, server log, or field Core Web Vitals readback.",
+    "Rendered browser evidence is linked from E-3 and was not rerun in this E-4 baseline.",
+    "The baseline captures current production behavior as observed on 2026-06-23, not a readiness pass.",
+    "This artifact does not guarantee crawling, indexing, selected canonicals, rankings, rich results, local-pack visibility, Merchant Center approval, traffic, conversions, revenue, ROI, or AI inclusion."
+  ]
+}

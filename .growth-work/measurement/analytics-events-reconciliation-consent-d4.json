@@ -1,0 +1,119 @@
+{
+  "version": "2026-06-23.d4",
+  "project": "Mitra Auto",
+  "status": "source_semantics_hardened_platform_owner_finance_privacy_blockers_carried",
+  "created_at": "2026-06-23",
+  "scope": "Analytics events, booking/order reconciliation, finance definitions, and consent gate for Phase D task D-4.",
+  "dataset_envelopes": [
+    {
+      "provider": "local_repo_source",
+      "api_or_report": "source inspection and local files",
+      "scope": "Clarity helper, consent banner, booking modal, checkout pages, event dictionary, booking/order reconciliation contract",
+      "date_range": "current working tree on 2026-06-23",
+      "aggregation": "source-level",
+      "retrieved_at": "2026-06-23T00:00:00+03:00",
+      "state": "executed_with_source_fix",
+      "limitations": "No live analytics dashboard, server export, finance ledger, or platform API readback was available."
+    },
+    {
+      "provider": "project_wrapper",
+      "api_or_report": "redacted environment status",
+      "scope": "analytics and platform metadata presence only",
+      "date_range": "point-in-time",
+      "aggregation": "set_or_missing",
+      "retrieved_at": "2026-06-23T00:00:00+03:00",
+      "state": "executed_with_missing_metadata",
+      "limitations": "Secrets and credential values were not printed. GA4/GTM/Search Console/Merchant/GBP metadata was unavailable in the local project wrapper."
+    },
+    {
+      "provider": "official_platform_docs",
+      "api_or_report": "GA4 recommended events, Google consent mode, Microsoft Clarity Consent API v2, Google Tag Manager consent mode reference",
+      "scope": "event semantics and consent-state requirements",
+      "date_range": "reviewed on 2026-06-23",
+      "aggregation": "documentation review",
+      "retrieved_at": "2026-06-23T00:00:00+03:00",
+      "state": "reviewed",
+      "limitations": "Docs confirm platform behavior and naming patterns, not this property's implementation quality."
+    }
+  ],
+  "source_changes": [
+    {
+      "change": "Renamed booking submit-success client event from booking_completed to booking_submitted.",
+      "files": [
+        "src/components/site/booking/BookingModal.tsx"
+      ],
+      "reason": "booking_completed must mean fulfilled service, not form submission."
+    },
+    {
+      "change": "Added common non-PII Clarity tags for event_id, event_version, occurred_at, consent_state, and route.",
+      "files": [
+        "src/lib/clarity.ts"
+      ],
+      "reason": "The event dictionary requires stable common parameters and consent-state evidence without sending customer PII."
+    },
+    {
+      "change": "Updated event dictionary and booking/order reconciliation source state after the booking event rename.",
+      "files": [
+        ".growth-work/measurement/event-dictionary.json",
+        ".growth-work/measurement/booking-order-reconciliation.json"
+      ],
+      "reason": "Measurement contracts must match source code before platform readback can be meaningful."
+    }
+  ],
+  "event_state": {
+    "analytics_runtime": "Microsoft Clarity source is present and consent-gated; GA4/GTM/dataLayer implementation was not found in reviewed source.",
+    "consent_runtime": "Clarity starts with denied analytics storage until the visitor accepts the analytics banner. Clarity Consent API v2 is called with ad_Storage denied and analytics_Storage set from the stored choice.",
+    "booking_submitted": "Source event exists after booking insert or order install booking returns success, but server-side non-PII correlation and analytics dashboard readback remain pending.",
+    "booking_completed": "Reserved for fulfilled service only. No current client-side event emits booking_completed after D-4.",
+    "begin_checkout": "Current source has checkout_payment_started as a diagnostic Clarity event before Paytrail creation. It is not a paid order or purchase.",
+    "purchase": "Must come from signed Paytrail callback/server state. Success page views remain diagnostic and are not counted as purchase.",
+    "contact_local_actions": "Call, email, and directions events are defined but not implemented. They must remain diagnostics until consent and platform readback are approved."
+  },
+  "reconciliation_requirements": [
+    "Persist or map a non-PII booking_event_id/order_event_id for server-reconciled key events.",
+    "Join booking_submitted to bookings or order_install_booking success without sending names, phones, emails, license plates, notes, tokens, or private URLs to analytics.",
+    "Count purchase only from signed Paytrail payment_ok or approved paid order state.",
+    "Do not count checkout_success_viewed, checkout_cancel_viewed, payment redirects, or front-end clicks as revenue.",
+    "Define accepted, completed, cancelled, no-show, duplicate, invalid, refund, return, and fulfilled statuses with operations and finance owners.",
+    "Reconcile VAT, Paytrail fees, refunds, margin, contribution, CAC, and revenue windows from finance-approved sources before reporting revenue KPIs."
+  ],
+  "privacy_rules": {
+    "default_state": "analytics denied until explicit acceptance",
+    "allowed_common_parameters_added": [
+      "event_id",
+      "event_version",
+      "occurred_at",
+      "consent_state",
+      "route"
+    ],
+    "prohibited_parameters": [
+      "customer name",
+      "email",
+      "phone",
+      "license plate",
+      "address",
+      "free text notes",
+      "payment credentials",
+      "private manage tokens",
+      "auth identifiers",
+      "raw provider secrets"
+    ],
+    "legal_status": "privacy/legal approval still required for analytics vendor scope, retention, deletion, property ownership, and server-side exports"
+  },
+  "blockers": [
+    "Analytics destination ownership and dashboard/API/debug readback unavailable.",
+    "GA4/GTM or equivalent reporting property ID and implementation decision unavailable.",
+    "Clarity dashboard readback unavailable.",
+    "Server outcome export for bookings, paid orders, fulfilled services, invoices, refunds, returns, no-shows, and retention unavailable.",
+    "Finance-approved VAT, fee, refund, margin, contribution, CAC, and revenue-window definitions unavailable.",
+    "Owner-approved booking/order/customer lifecycle status dictionary unavailable.",
+    "Privacy/legal approval for analytics scope, consent text, retention, identifiers, deletion, and vendor use unavailable."
+  ],
+  "gate_result": {
+    "d4_source_semantics": "passed_after_booking_event_rename",
+    "d4_consent_source": "source_present_legal_readback_pending",
+    "d4_reconciliation": "blocked_by_server_outcome_and_finance_exports",
+    "growth_ready_status": "blocked",
+    "next_required_task": "D-5 - Content, Claims, Reviews, Media, And Local/Service Owner Approval"
+  }
+}

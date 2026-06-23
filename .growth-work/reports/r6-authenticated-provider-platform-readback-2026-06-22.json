@@ -1,0 +1,244 @@
+{
+  "id": "R-6",
+  "name": "Authenticated provider and platform readback",
+  "recorded": "2026-06-22",
+  "status": "complete_with_platform_access_blockers",
+  "progress": {
+    "bar": "[███████████████░░░░░]",
+    "percent": 75
+  },
+  "decision": "R-6 completed authenticated readback where access existed. Supabase database, function inventory, function source download, and remote secret-name readback succeeded against project rcmmbwdebnmicrweoiyz. Cloudflare, Search Console, GA4/GTM, Merchant Center, Google Business Profile, server logs, and authenticated field-performance platforms remain unavailable because project IDs, target metadata, credentials, or owner access were not available. Public production checks still show deployment blockers.",
+  "evidence_states": {
+    "project_wrapper": "EXECUTED",
+    "supabase_mcp_config": "EXECUTED",
+    "supabase_database_readback": "EXECUTED",
+    "supabase_function_inventory": "EXECUTED_WITH_FINDINGS",
+    "supabase_function_source_parity": "EXECUTED_WITH_FINDINGS",
+    "supabase_secret_name_readback": "EXECUTED_WITH_FINDINGS",
+    "cloudflare_authenticated_readback": "UNAVAILABLE",
+    "public_hosting_readback": "EXECUTED_WITH_FINDINGS",
+    "google_search_console": "UNAVAILABLE",
+    "google_business_profile": "UNAVAILABLE",
+    "google_merchant_center": "UNAVAILABLE",
+    "analytics_dashboard_api": "UNAVAILABLE",
+    "crux_pagespeed": "FAILED",
+    "server_logs": "UNAVAILABLE",
+    "third_party_providers": "UNAVAILABLE"
+  },
+  "project_identity": {
+    "project_dir": "/Users/chandler/code/Mitraauto-main",
+    "project_slug": "mitraauto",
+    "supabase_project_ref": "rcmmbwdebnmicrweoiyz",
+    "supabase_url": "https://rcmmbwdebnmicrweoiyz.supabase.co",
+    "supabase_mcp_server": "supabase-mitra",
+    "generic_supabase_mcp_used": false
+  },
+  "local_environment_status": {
+    "DATABASE_URL": "set",
+    "SUPABASE_TRANSACTION_POOLER_URL": "set",
+    "SUPABASE_SESSION_POOLER_URL": "set",
+    "SUPABASE_ACCESS_TOKEN": "missing",
+    "CLOUDFLARE_API_TOKEN": "missing",
+    "CLOUDFLARE_ACCOUNT_ID": "missing",
+    "CLOUDFLARE_ZONE_ID": "missing",
+    "CLOUDFLARE_ZONE_NAME": "missing",
+    "CLOUDFLARE_PAGES_PROJECT": "missing",
+    "PUBLIC_BASE_URL": "missing",
+    "GOOGLE_APPLICATION_CREDENTIALS": "missing",
+    "GOOGLE_SEARCH_CONSOLE_SITE_URL": "missing",
+    "GSC_SITE_URL": "missing",
+    "GA4_PROPERTY_ID": "missing",
+    "GOOGLE_ANALYTICS_PROPERTY_ID": "missing",
+    "GTM_CONTAINER_ID": "missing",
+    "MERCHANT_CENTER_ACCOUNT_ID": "missing",
+    "GOOGLE_MERCHANT_CENTER_ACCOUNT_ID": "missing",
+    "GBP_ACCOUNT_ID": "missing",
+    "GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID": "missing",
+    "PAGESPEED_API_KEY": "missing",
+    "CRUX_API_KEY": "missing",
+    "PAYTRAIL_MERCHANT_ID": "missing",
+    "PAYTRAIL_SECRET_KEY": "missing",
+    "PAYTRAIL_MERCHANT_SECRET": "missing",
+    "FRONTEND_SUCCESS_URL": "missing",
+    "FRONTEND_CANCEL_URL": "missing",
+    "FRONTEND_ALLOWED_ORIGINS": "missing"
+  },
+  "remote_supabase_secret_name_status": {
+    "SUPABASE_URL": "set",
+    "SUPABASE_ANON_KEY": "set",
+    "SUPABASE_SERVICE_ROLE_KEY": "set",
+    "SUPABASE_DB_URL": "set",
+    "PAYTRAIL_API_BASE": "set",
+    "PAYTRAIL_MERCHANT_ID": "set",
+    "PAYTRAIL_SECRET_KEY": "missing",
+    "PAYTRAIL_MERCHANT_SECRET": "set",
+    "PAYTRAIL_WEBHOOK_URL": "set",
+    "FRONTEND_SUCCESS_URL": "set",
+    "FRONTEND_CANCEL_URL": "set",
+    "FRONTEND_ALLOWED_ORIGINS": "missing",
+    "PUBLIC_SITE_URL": "set",
+    "SITE_URL": "set",
+    "BOOKING_SITE_URL": "set",
+    "GOOGLE_TRANSLATE_API_KEY": "set",
+    "GOOGLE_SEARCH_CONSOLE_SITE_URL": "missing",
+    "GA4_PROPERTY_ID": "missing",
+    "MERCHANT_CENTER_ACCOUNT_ID": "missing",
+    "GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID": "missing",
+    "CLOUDFLARE_API_TOKEN": "missing",
+    "CLOUDFLARE_ACCOUNT_ID": "missing",
+    "CLOUDFLARE_ZONE_ID": "missing"
+  },
+  "supabase_database_readback": {
+    "status": "ok",
+    "database": "postgres",
+    "user": "postgres",
+    "server_version": "17.6",
+    "timezone": "UTC",
+    "target_migrations_applied": [
+      "20260621090000",
+      "20260621204946",
+      "20260621205611"
+    ],
+    "target_rpc_signatures": [
+      "catalog_get_rim_by_identifier_v1(p_identifier text)",
+      "catalog_get_tire_by_identifier_v1(p_identifier text)",
+      "catalog_list_product_sitemap_rows_v1(p_limit integer, p_offset integer)",
+      "catalog_public_product_slug(p_product_type text, p_brand text, p_model text, p_size_string text, p_season text, p_width_in numeric, p_rim_diameter_in numeric, p_bolt_pattern text, p_et_offset_mm numeric, p_center_bore_mm numeric, p_color text)",
+      "catalog_slugify_public_path_segment(p_value text)"
+    ]
+  },
+  "supabase_function_readback": {
+    "payments_create_paytrail": {
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "version": 23,
+      "updated_at": "2026-05-02 05:35:57 EEST",
+      "source_parity": "different",
+      "remote_has_www_default": false,
+      "remote_has_allowlist": false,
+      "local_sha256": "d4dab0876a4e2e46b0363171c4781ab5a205ca38d48b5ae3963172fc0658f10f",
+      "remote_sha256": "d1718de79e728e12a6e08c4d3709955eb700b601e8a827384e513e50125a43ef"
+    },
+    "notable_active_functions": [
+      "payments_create_paytrail",
+      "payments_paytrail_webhook",
+      "payments_status_poller",
+      "booking_manage",
+      "send_booking_confirmation",
+      "send_order_confirmation",
+      "invoice_start_payment",
+      "order_install_booking",
+      "fitment_recommendations",
+      "etrto_recommend_tyres",
+      "rim_fitment_profile",
+      "vehicle_lookup"
+    ]
+  },
+  "google_cli_status": {
+    "active_account_count": 0,
+    "project_configured": "missing",
+    "google_application_credentials": "missing"
+  },
+  "repo_platform_signals": {
+    "clarity": "source contains consent-gated Microsoft Clarity project id xaxi6o0t5o",
+    "ga4_gtm_datalayer": "not found in reviewed source",
+    "search_console_verification": "not found in reviewed source",
+    "merchant_feed_source": "local generator and checks exist",
+    "local_vercel_artifacts": [
+      ".vercel/.env.preview.local",
+      ".vercel/project.json",
+      ".vercel/output/config.json"
+    ],
+    "vercel_note": "local Vercel artifacts exist but current public host evidence shows Cloudflare; Vercel authenticated readback was not used as launch evidence"
+  },
+  "public_hosting_readback": [
+    {
+      "url": "https://mitra-auto.fi/",
+      "final_url": "https://www.mitra-auto.fi/",
+      "http": 200,
+      "content_type": "text/html",
+      "redirects": 1,
+      "remote_ip": "104.18.39.7"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/robots.txt",
+      "http": 404,
+      "content_type": "text/plain;charset=UTF-8",
+      "finding": "robots.txt is not deployed"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap.xml",
+      "http": 404,
+      "content_type": "text/plain;charset=UTF-8",
+      "finding": "sitemap.xml is not deployed"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "http": 200,
+      "content_type": "text/html",
+      "finding": "product sitemap serves HTML shell"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/merchant-products.xml",
+      "http": 200,
+      "content_type": "text/html",
+      "finding": "merchant feed serves HTML shell"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "http": 200,
+      "content_type": "text/html",
+      "redirects": 0,
+      "finding": "opaque product identifier does not redirect on production"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-r6",
+      "http": 200,
+      "content_type": "text/html",
+      "redirects": 0,
+      "finding": "unknown route still returns SPA 200"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/cms",
+      "http": 200,
+      "content_type": "text/html",
+      "redirects": 0,
+      "finding": "private route still returns SPA 200 on production"
+    }
+  ],
+  "crux_pagespeed_readback": {
+    "mobile": {
+      "http": 429,
+      "status": "QUOTA_OR_RATE_LIMIT",
+      "error": "RESOURCE_EXHAUSTED"
+    },
+    "desktop": {
+      "http": 429,
+      "status": "QUOTA_OR_RATE_LIMIT",
+      "error": "RESOURCE_EXHAUSTED"
+    }
+  },
+  "blockers": [
+    {
+      "blocker": "Cloudflare authenticated account/zone/Pages readback remains unavailable.",
+      "owner": "Hosting/provider owner",
+      "required_resolution": "Add non-secret Cloudflare account ID, zone ID/name, Pages project name, and public base URL to the project wrapper; load token through Keychain only; run harmless zone and Pages deployment reads."
+    },
+    {
+      "blocker": "Production static assets and route policies still fail public readback.",
+      "owner": "Hosting/frontend owner",
+      "required_resolution": "Deploy the current app build and Pages function, then rerun R-3/R-4/R-6 public host checks."
+    },
+    {
+      "blocker": "Deployed Paytrail function source still differs from local R-5 source.",
+      "owner": "Supabase/commerce owner",
+      "required_resolution": "Deploy the updated payments_create_paytrail function and verify source parity; add FRONTEND_ALLOWED_ORIGINS if noncanonical origins are intentionally allowed."
+    },
+    {
+      "blocker": "Search Console, GA4/GTM, Merchant Center, GBP, server logs, and authenticated field-performance evidence are unavailable.",
+      "owner": "SEO/analytics/business/ecommerce platform owners",
+      "required_resolution": "Provide property/account IDs and least-privilege access; rerun platform dataset envelopes."
+    }
+  ],
+  "next": "R-7 - Business/local/content owner evidence package"
+}

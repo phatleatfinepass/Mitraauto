@@ -1,0 +1,117 @@
+{
+  "task": "E-1",
+  "name": "Figma Make Preview Verification And Patch-State Ledger",
+  "recorded": "2026-06-23",
+  "status": "complete_with_blockers_carried",
+  "progress": {
+    "phaseE": "[█░░░░] 20%",
+    "board": "[█████████████████░░░] 84%"
+  },
+  "gitState": {
+    "remote": "https://github.com/phatleatfinepass/Mitraauto.git",
+    "currentBranch": "codex/pwa-cloudflare",
+    "currentHead": "89587c5",
+    "currentUpstream": "origin/codex/pwa-cloudflare",
+    "figmaMakePushedBranch": "origin/main",
+    "figmaMakeHead": "621aaac",
+    "figmaMakeHeadSubject": "Update files from Figma Make",
+    "sourceShapeFinding": "origin/main is a Figma Make source tree under src/app/**, while the current implementation checkout carries production/readiness work under the current local src/** shape. Do not treat non-src runtime/provider diffs as Figma Make patch files."
+  },
+  "figmaMakeSyncPolicy": {
+    "include": [
+      "origin/main:src/app/** application source files"
+    ],
+    "exclude": [
+      "functions/**",
+      "scripts/**",
+      "supabase/**",
+      "src/public/**",
+      ".growth-work/**",
+      ".seo-work/**",
+      "generated static SEO assets",
+      "provider credentials or provider readback files"
+    ],
+    "reason": "Figma Make is a source/preview surface. Production runtime, static assets, provider, and verification artifacts belong to the deployment repository workflow, not the Figma Make patch list."
+  },
+  "verifiedPresentInFigmaMakePush": [
+    {
+      "finding": "CONTACT_INFO crash source is absent",
+      "evidence": "git grep -n \"CONTACT_INFO\" origin/main -- src package.json returned no hits."
+    },
+    {
+      "finding": "Public internal audit strings from the service content gate are absent for the checked patterns",
+      "evidence": "git grep -n -E \"CONTACT_INFO|Content review|Business/service owner review required|growth-ready|booking_completed\" origin/main -- src/app returned no hits."
+    },
+    {
+      "finding": "Service route promotion helper and route registry exist in Figma Make source",
+      "evidence": "origin/main contains getPromotedServiceDetailPathForServiceId and serviceSeoRouteRegistry in src/app/i18n/dictionaries/serviceSeo.ts and related service page imports."
+    },
+    {
+      "finding": "Product owner-verified review gating exists in Figma Make source",
+      "evidence": "origin/main contains review_source and owner_verified checks in src/app/components/catalog/ProductDetailPage.tsx."
+    }
+  ],
+  "mismatches": [
+    {
+      "severity": "critical",
+      "owner": "Figma Make/source owner",
+      "finding": "Figma Make source still contains public [TBD] price and duration placeholders in legacy service pages.",
+      "impact": "These placeholders are public content defects and fail content safety/readiness gates for service SEO.",
+      "figmaMakeFilesToPatch": [
+        "/Figma/src/app/components/site/pages/CarServicePage.tsx",
+        "/Figma/src/app/components/site/pages/TireChangePage.tsx",
+        "/Figma/src/app/components/site/pages/CarWashPage.tsx",
+        "/Figma/src/app/components/site/pages/DiagnosticsPage.tsx"
+      ],
+      "localReferenceFiles": [
+        "src/components/site/pages/CarServicePage.tsx",
+        "src/components/site/pages/TireChangePage.tsx",
+        "src/components/site/pages/CarWashPage.tsx",
+        "src/components/site/pages/DiagnosticsPage.tsx"
+      ],
+      "requiredPatch": "Replace [TBD] public price/duration placeholders with owner-safe values already present locally: service.vehicleSpecificQuote, service.durationConfirmedInBooking, Tire Change 30 EUR passenger, Tire Change 35 EUR SUV, and vehicle-specific quote for van."
+    },
+    {
+      "severity": "blocker",
+      "owner": "Figma Make/release owner",
+      "finding": "Figma Make browser preview smoke was not run in this task.",
+      "impact": "Git source sync can confirm pushed code state, but it cannot prove Figma Make runtime import state, render state, or console cleanliness.",
+      "requiredPatch": "Provide or verify the current Figma Make preview URL, then smoke homepage, service page, contact, catalog, product, checkout, and error route with console capture."
+    },
+    {
+      "severity": "warning",
+      "owner": "Release/source owner",
+      "finding": "The pushed Figma Make source is on origin/main, while the current implementation branch is codex/pwa-cloudflare.",
+      "impact": "A blind merge would mix a Figma Make src/app/** restructure with production runtime files and can delete or hide local SEO/runtime checks.",
+      "requiredPatch": "Resolve source-of-truth branch policy before merging. Keep Figma Make file patching limited to src/app/** unless an explicit deployment migration is opened."
+    }
+  ],
+  "commands": [
+    {
+      "command": "git fetch --all --prune",
+      "result": "passed"
+    },
+    {
+      "command": "git show --name-status --oneline --decorate -1 origin/main",
+      "result": "passed"
+    },
+    {
+      "command": "git grep -n \"CONTACT_INFO\" origin/main -- src package.json || true",
+      "result": "passed_no_hits"
+    },
+    {
+      "command": "git grep -n -E \"CONTACT_INFO|Content review|Business/service owner review required|growth-ready|booking_completed\" origin/main -- src/app || true",
+      "result": "passed_no_hits"
+    },
+    {
+      "command": "git grep -n \"\\[TBD\\]\" origin/main -- src/app/components/site/pages/CarServicePage.tsx src/app/components/site/pages/CarWashPage.tsx src/app/components/site/pages/DiagnosticsPage.tsx src/app/components/site/pages/TireChangePage.tsx || true",
+      "result": "passed_with_findings"
+    },
+    {
+      "command": "git grep -n \"\\[TBD\\]\" -- src/components/site/pages/CarServicePage.tsx src/components/site/pages/CarWashPage.tsx src/components/site/pages/DiagnosticsPage.tsx src/components/site/pages/TireChangePage.tsx || true",
+      "result": "passed_no_hits"
+    }
+  ],
+  "next": "E-2 - Production Crawl, Rendered Head, Schema, And Browser Matrix",
+  "readinessDecision": "E-1 source ledger is complete. Figma Make preview parity remains blocked until the four service placeholder patches are applied in Figma Make and browser preview smoke is captured."
+}

@@ -10,22 +10,23 @@ interface CarWashPageProps {
 
 export function CarWashPage({ onBookingClick }: CarWashPageProps) {
   const { t } = useLanguage();
+  const priceConfirmed = t('service.vehicleSpecificQuote');
 
   const services = [
     {
       name: t('carWashPage.services.basic.name'),
       desc: t('carWashPage.services.basic.desc'),
-      price: '[TBD] €',
+      price: priceConfirmed,
     },
     {
       name: t('carWashPage.services.full.name'),
       desc: t('carWashPage.services.full.desc'),
-      price: '[TBD] €',
+      price: priceConfirmed,
     },
     {
       name: t('carWashPage.services.premium.name'),
       desc: t('carWashPage.services.premium.desc'),
-      price: '[TBD] €',
+      price: priceConfirmed,
     },
   ];
 

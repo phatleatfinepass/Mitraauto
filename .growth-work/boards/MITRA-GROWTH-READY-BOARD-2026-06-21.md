@@ -1,6 +1,6 @@
 # Mitra Auto Growth Readiness Board
 
-Status: Active
+Status: Complete locally with release and growth blockers
 
 Parent board: `None - Mitra Auto growth readiness root board`
 
@@ -8,11 +8,11 @@ Workstream: Growth Readiness
 
 Surface: public website routes, catalog/product pages, service pages, local pages, schema, sitemap, Supabase catalog data, Figma Make source sync, analytics/platform setup, launch QA, and growth handoff.
 
-Current progress: `[██████████████████░░] 90%`
+Current progress: `[████████████████████] 100%`
 
-Current phase: `Phase E - Release Closeout, Evidence Ledger, And Growth Handoff`
+Current phase: `Post-Phase E Remediation`
 
-Current task: `E-3 - Live Crawl And Browser Smoke Evidence`
+Current task: `Fresh Growth re-evaluation complete - resolve production deployment/provider parity`
 
 Figma Make source: `https://github.com/phatleatfinepass/Mitraauto.git`
 
@@ -1925,7 +1925,7 @@ git diff --check -- .growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md .
 
 ## Phase E - Release Closeout, Evidence Ledger, And Growth Handoff
 
-Progress: `[██░░░] 40%`
+Progress: `[█████] 100%`
 
 Purpose: package production evidence, source/provider ledgers, live crawl/browser QA, drift baseline, monitoring cadence, and final readiness classification.
 
@@ -1933,9 +1933,9 @@ Purpose: package production evidence, source/provider ledgers, live crawl/browse
 | --- | --- | --- | --- | --- |
 | E-1 | Figma Make Patch-State Ledger | Docs/Frontend | Complete with Figma preview blocker | Local/GitHub/Figma Make patch scope is reconciled; owner still must patch and preview Figma Make. |
 | E-2 | Supabase, Hosting, And Provider Ledger | Docs/Engineering/Supabase | Complete with provider blockers | Supabase readback, hosting evidence, provider gaps, and secret status are recorded without secrets. |
-| E-3 | Live Crawl And Browser Smoke Evidence | QA/SEO/Engineering | Blocked | Production crawl and desktop/mobile browser smoke pass or blockers are explicit. |
-| E-4 | Drift Baseline And Monitoring Handoff | SEO/Analytics/Engineering | Blocked | Representative URL baseline, monitoring cadence, and incident workflow are recorded. |
-| E-5 | Final Growth Readiness Classification | Growth/Business | Blocked | Board classifies Mitra as growth-ready, pilot-ready with limitations, blocked, or complete locally only. |
+| E-3 | Live Crawl And Browser Smoke Evidence | QA/SEO/Engineering | Complete with live release blockers | Production crawl and desktop/mobile browser smoke evidence is recorded; release blockers remain explicit. |
+| E-4 | Drift Baseline And Monitoring Handoff | SEO/Analytics/Engineering | Complete with release blockers | Representative URL baseline, monitoring cadence, and incident workflow are recorded. |
+| E-5 | Final Growth Readiness Classification | Growth/Business | Complete - not growth-ready | Board classifies Mitra as not growth-ready and release-blocked; owner remediation is required. |
 
 ### Phase E Pre-Analysis - Release Closeout, Evidence Ledger, And Growth Handoff
 
@@ -2204,68 +2204,267 @@ for url in https://mitra-auto.fi/ https://www.mitra-auto.fi/ https://www.mitra-a
 
 ### E-3 Detailed Checklist - Live Crawl And Browser Smoke Evidence
 
-- [ ] Crawl representative canonical URLs.
-- [ ] Crawl noindex/private/utility routes.
-- [ ] Test old product identifier redirects.
-- [ ] Test invalid/retired URLs.
-- [ ] Browser-smoke service booking, product detail, add to cart, checkout start, contact, language routes, and mobile.
+- [x] Crawl representative canonical URLs.
+- [x] Crawl noindex/private/utility routes.
+- [x] Test old product identifier redirects.
+- [x] Test invalid/retired URLs.
+- [x] Browser-smoke service booking, product detail, add to cart, checkout start, contact, language routes, and mobile.
 
 ### E-3 Closeout - Live Crawl And Browser Smoke Evidence
 
-Status: Blocked
+Status: Complete with live release blockers
 
-Recorded: Pending
+Recorded: 2026-06-22
+
+Progress: `[███░░] 60%`
+
+Artifacts:
+
+```text
+.growth-work/release/e3-live-crawl-browser-smoke-evidence.json
+.seo-work/reports/LIVE-CRAWL-BROWSER-SMOKE-EVIDENCE-E3-2026-06-22.md
+```
+
+Decision: E-3 closes as an evidence task. The site is not release-ready from live evidence.
+
+Evidence states:
+
+| Evidence | State | Finding |
+| --- | --- | --- |
+| Live HTTP | `EXECUTED_WITH_FINDINGS` | Public indexable routes return `200`, but redirects, static SEO assets, XML feeds, opaque product redirects, and invalid route statuses fail. |
+| Browser | `EXECUTED_WITH_FINDINGS` | Key public pages render after hydration, but `/cms` exposes private CMS state and checkout route state can mismatch the URL. |
+| Migration | `EXECUTED_WITH_FINDINGS` | Legacy route redirects and opaque product identifier redirects are not deployed on the public `www` host. |
+| Conversion | `EXECUTED_WITH_FINDINGS` | Booking modal and cart start work without submission; checkout start can render on product URL. |
+| Platform | `UNAVAILABLE` | Search Console, Merchant Center, Cloudflare authenticated readback, analytics, and logs remain unavailable. |
+
+Release blockers:
+
+- Public `/cms` exposes an unauthenticated CMS control center with apparent private customer/vehicle/contact records. Raw personal data was not copied into artifacts; sanitized counts observed phone-like `14`, plate-like `8`, email-like `1`.
+- Public `robots.txt` and `sitemap.xml` return `404`.
+- Public `sitemap-products.xml` and `merchant-products.xml` return `text/html` instead of XML.
+- Public legacy routes such as `/shop`, `/services`, `/tire-hotel`, `/helsinki/autohuolto`, and `/palvelut/dpf-pesu` return `200` instead of redirecting.
+- Public opaque product identifier URL `/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697` returns `200` with `0` redirects instead of redirecting to the human-readable slug.
+- Random invalid route and accidental `/contact` route are soft-404s: browser renders noindex 404 UI, but HTTP returns `200`.
+- After product add-to-cart and `Siirry kassalle`, checkout content rendered while URL stayed on the product detail path; canonical disappeared and robots changed to `noindex,nofollow`.
+
+Browser positives:
+
+- Homepage, Finnish service detail, product detail, English mobile service detail, and English contact page render route-specific content, H1, canonical, and index/follow where expected.
+- Booking modal opens from the service page and exposes step 1 fields; no booking was submitted.
+- Product add-to-cart opens cart and checkout start; no customer data, payment, or order was submitted.
+
+Verification:
+
+```text
+command -v npx >/dev/null 2>&1 && echo 'npx=present' || echo 'npx=missing'; node -e "try{require.resolve('playwright'); console.log('playwright=present')}catch(e){console.log('playwright=missing')}": passed
+source ~/.config/projects/bin/project && project mitraauto >/dev/null && psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -F $'\t' -Atc "select product_type, variant_id::text, coalesce(nullif(seo_slug_fi,''), generated_slug), coalesce(nullif(seo_slug_en,''), generated_slug), final_price_eur::text from public.catalog_list_product_sitemap_rows_v1(10,0) where coalesce(nullif(seo_slug_fi,''), generated_slug) is not null limit 4;": passed
+for url in https://mitra-auto.fi/ https://www.mitra-auto.fi/ https://www.mitra-auto.fi/en https://www.mitra-auto.fi/en/services https://www.mitra-auto.fi/palvelut/autohuolto https://www.mitra-auto.fi/en/services/car-service https://www.mitra-auto.fi/catalog https://www.mitra-auto.fi/en/catalog https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10 https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697 https://www.mitra-auto.fi/shop https://www.mitra-auto.fi/services https://www.mitra-auto.fi/tire-hotel https://www.mitra-auto.fi/helsinki/autohuolto https://www.mitra-auto.fi/palvelut/dpf-pesu https://www.mitra-auto.fi/checkout https://www.mitra-auto.fi/checkout/success https://www.mitra-auto.fi/customer-account https://www.mitra-auto.fi/cms https://www.mitra-auto.fi/pwa https://www.mitra-auto.fi/this-route-should-not-exist-e3 https://www.mitra-auto.fi/robots.txt https://www.mitra-auto.fi/sitemap.xml https://www.mitra-auto.fi/sitemap-products.xml https://www.mitra-auto.fi/merchant-products.xml; do curl -sSIL -o /dev/null --max-time 20 -w '%{url_effective}|http=%{http_code}|content_type=%{content_type}|redirects=%{num_redirects}|time=%{time_total}\n' "$url"; done: passed with findings
+mcp__playwright browser smoke on homepage, service, product detail, add-to-cart, checkout start, booking modal, English mobile service page, contact, invalid route, /customer-account, /cms, and /pwa: passed with findings
+```
+
+Cleanup: E-3 Playwright snapshot and console files generated from 2026-06-22T15:23 through 2026-06-22T15:27 were removed because they could contain rendered private route evidence. E-3 websocket noise appended to the pre-existing `.playwright-mcp/console-2026-06-22T14-39-17-906Z.log` file was trimmed.
 
 ### E-4 Detailed Checklist - Drift Baseline And Monitoring Handoff
 
-- [ ] Create representative URL set.
-- [ ] Record status, canonical, robots, title, description, hreflang, schema, sitemap membership, content marker, and accessibility markers.
-- [ ] Define release drift comparison rules.
-- [ ] Define weekly/monthly/quarterly monitoring cadence.
-- [ ] Define incident response owner and trigger.
+- [x] Create representative URL set.
+- [x] Record status, canonical, robots, title, description, hreflang, schema, sitemap membership, content marker, and accessibility markers.
+- [x] Define release drift comparison rules.
+- [x] Define weekly/monthly/quarterly monitoring cadence.
+- [x] Define incident response owner and trigger.
 
 ### E-4 Closeout - Drift Baseline And Monitoring Handoff
 
-Status: Blocked
+Status: Complete with release blockers
 
-Recorded: Pending
-
-### E-5 Detailed Checklist - Final Growth Readiness Classification
-
-- [ ] Reconcile all phase wrap-ups.
-- [ ] Reconcile remaining exceptions.
-- [ ] Record release classification.
-- [ ] Record remaining risks and owner tasks.
-- [ ] Record final verification.
-
-### E-5 Closeout - Final Growth Readiness Classification
-
-Status: Blocked
-
-Recorded: Pending
-
-### Phase E Wrap-Up - Release Closeout, Evidence Ledger, And Growth Handoff
-
-Status: Blocked
-
-Progress: `[░░░░░] 0%`
-
-Recorded: Pending
+Recorded: 2026-06-22
 
 Decision:
 
 ```text
-Phase E is blocked.
-It cannot close until production/source/provider/platform evidence is available.
+E-4 can close as a drift-baseline and monitoring handoff.
+Mitra cannot be release-ready or growth-ready until live blockers from E-3 are fixed and revalidated.
+```
+
+Created:
+
+```text
+.seo-work/crawl/e4-drift-baseline-2026-06-22.json
+.growth-work/release/e4-drift-baseline-monitoring-handoff.json
+.seo-work/reports/DRIFT-BASELINE-MONITORING-HANDOFF-E4-2026-06-22.md
+```
+
+Adjusted:
+
+```text
+.growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md
+```
+
+Evidence states:
+
+| Evidence mode | State | Note |
+| --- | --- | --- |
+| Live HTTP | `EXECUTED_WITH_FINDINGS` | 26 representative URLs checked with unauthenticated HTTP. |
+| Raw HTML metadata | `EXECUTED_WITH_FINDINGS` | Direct HTML shell has generic metadata, empty canonical, no schema, no crawlable links, and JavaScript-required H1. |
+| Rendered browser | `SUPPLIED_REVIEW_REQUIRED_FROM_E3` | E-3 rendered evidence is linked and sanitized; E-4 did not rerun browser storage for private route evidence. |
+| Platform | `UNAVAILABLE` | Search Console, GBP, Merchant Center, analytics, Cloudflare, and server logs remain unavailable. |
+| Sitemap membership | `FAILED_PUBLIC_ASSET_DEPLOYMENT` | Public sitemap assets are missing or serving HTML, so membership cannot be trusted. |
+
+Release blockers carried forward:
+
+- Public `/cms` exposes unauthenticated admin/private-looking content.
+- `robots.txt` and `sitemap.xml` return `404`.
+- `sitemap-products.xml` and `merchant-products.xml` return HTML instead of XML.
+- Legacy redirect rules are not active on the `www` host.
+- Opaque product UUID route does not permanently redirect to the slug URL.
+- Invalid and accidental route variants return HTTP `200` soft-404s.
+- Checkout can render on a product URL after cart action.
+
+Monitoring handoff:
+
+- Each release: run bounded HTTP drift matrix, rendered browser smoke, robots/sitemap/feed checks, redirect checks, product ID redirect checks, and release annotation.
+- Weekly: review critical public assets, redirects, Search Console diagnostics when available, Merchant/GBP diagnostics when available, and booking/order/checkout/private-route alerts.
+- Monthly: segment Search Console and analytics by page type, locale, device, query intent, product/service family, and qualified outcome; review content, product/feed, local facts, field performance, and conversion quality.
+- Quarterly: recheck schema feature status, crawler/AI policy, Merchant Center policy, GBP policy, source freshness, route exceptions, stale redirects, and experiment decisions.
+
+Incident triggers:
+
+- `BLOCKER`: public `/cms` or private content exposure. Owner: Engineering/security.
+- `BLOCKER`: robots, sitemap, product sitemap, or Merchant feed regression. Owner: Hosting/engineering.
+- `CRITICAL`: material drop in organic traffic, indexed pages, product approvals, bookings, or orders. Owner: SEO/analytics/commerce owner.
+
+Verification:
+
+```text
+while IFS= read -r url; do curl -sSIL -o /dev/null --max-time 20 -w '%{url_effective}|http=%{http_code}|content_type=%{content_type}|redirects=%{num_redirects}|time=%{time_total}\n' "$url"; done < <(node -e "const b=JSON.parse(require('fs').readFileSync('.seo-work/crawl/e4-drift-baseline-2026-06-22.json','utf8')); for (const r of b.representativeUrls) console.log(r.url)"): passed with findings
+node raw HTML metadata snapshot for 12 representative routes: passed with findings
+node -e "for (const f of ['.seo-work/crawl/e4-drift-baseline-2026-06-22.json','.growth-work/release/e4-drift-baseline-monitoring-handoff.json','.growth-work/release/e3-live-crawl-browser-smoke-evidence.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('json ok')": passed
+git diff --check -- .growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md .seo-work/crawl/e4-drift-baseline-2026-06-22.json .growth-work/release/e4-drift-baseline-monitoring-handoff.json .seo-work/reports/DRIFT-BASELINE-MONITORING-HANDOFF-E4-2026-06-22.md: passed
+```
+
+### E-5 Detailed Checklist - Final Growth Readiness Classification
+
+- [x] Reconcile all phase wrap-ups.
+- [x] Reconcile remaining exceptions.
+- [x] Record release classification.
+- [x] Record remaining risks and owner tasks.
+- [x] Record final verification.
+
+### E-5 Closeout - Final Growth Readiness Classification
+
+Status: Complete - not growth-ready
+
+Recorded: 2026-06-22
+
+Decision:
+
+```text
+The Growth Readiness Board is complete as an evidence, architecture, QA, monitoring, and handoff workstream.
+Mitra Auto is not release-ready and not growth-ready because live production blockers, Figma Make parity, provider readback, platform readback, and owner approvals remain unresolved.
+```
+
+Created:
+
+```text
+.growth-work/release/e5-final-growth-readiness-classification.json
+.seo-work/reports/FINAL-GROWTH-READINESS-CLASSIFICATION-E5-2026-06-22.md
+```
+
+Adjusted:
+
+```text
+.growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md
+```
+
+Final classification:
+
+| Area | Classification | Decision |
+| --- | --- | --- |
+| Growth readiness | `NOT_GROWTH_READY_RELEASE_BLOCKED` | Mitra is not growth-ready. |
+| Release readiness | `NO_GO` | Do not treat the public site as launch-ready. |
+| Platform readiness | `UNVERIFIED_BLOCKED_BY_MISSING_AUTHENTICATED_READBACK` | Search Console, GBP, Merchant Center, analytics, Cloudflare, logs, and field data remain unavailable. |
+| Source readiness | `LOCAL_SOURCE_IMPROVED_WITH_FIGMA_MAKE_SYNC_BLOCKER` | Local work improved the source system, but Figma Make still needs owner patch/preview. |
+| Remediation readiness | `READY_FOR_OWNER_BLOCKER_REMEDIATION` | The blocker list, owners, verification, and monitoring handoff are ready for execution. |
+
+Stage gates:
+
+| Gate | Result | Basis |
+| --- | --- | --- |
+| Gate A - concept/source inventory | `PASS_LOCAL` | Phase A closed route, schema, content, product, and board-contract inventory. |
+| Gate B - plan ready | `PASS_LOCAL_WITH_OWNER_EXCEPTIONS` | Public route contracts, slug policy, product/service/local/schema/content plans, KPI tree, and monitoring contracts exist. |
+| Gate C - template/source ready | `PARTIAL_PASS_LOCAL` | Local source/runtime work completed, but Figma Make source parity and deployed checkout/function parity remain unverified. |
+| Gate D - launch ready | `FAIL` | Public `/cms`, broken deployed robots/sitemaps/feed, missing redirects, soft-404s, checkout URL-state bug, provider gaps, and platform readback block launch. |
+| Gate E - growth ready | `FAIL` | Stable measurement, Search Console, Merchant Center, GBP, analytics, field performance, conversion quality, owner approvals, and platform diagnostics are not verified. |
+
+Blocking owner tasks:
+
+| Priority | Finding | Owner | Verification |
+| --- | --- | --- | --- |
+| `P0` | Public `/cms` exposes unauthenticated admin/private-looking content. | Engineering/security | Unauthenticated `/cms` and private/admin/account routes return `401`, `403`, or safe `404`; no private content renders. |
+| `P0` | SEO static assets and Merchant feed are not deployed correctly. | Hosting/engineering/Figma Make deployment owner | `robots.txt` returns `200 text/plain`; `sitemap.xml`, product sitemap, and Merchant feed return XML with correct bodies. |
+| `P0` | Figma Make source is stale and preview remains unverified. | Figma Make/source sync owner | Patch E-1 `/Figma/src` list and verify preview no longer throws `CONTACT_INFO` or stale import errors. |
+| `P1` | Legacy redirects and opaque product ID redirects are not active on `www`. | Hosting/engineering | Legacy route samples and product UUID/SKU/ID samples permanently redirect one hop to canonical slug URLs. |
+| `P1` | Invalid and accidental route variants are HTTP `200` soft-404s. | Frontend/edge routing owner | Unknown routes return `404`/`410`; intended variants redirect to canonical equivalents. |
+| `P1` | Checkout can render on product URL after cart action. | Frontend/commerce owner | Checkout navigation updates to `/checkout`, stays noindex, and does not corrupt product canonical state. |
+| `P1` | Cloudflare/provider authenticated readback is unavailable. | Provider/deployment owner | Authenticated Cloudflare account, zone, Pages/project, routes, headers, redirects, and deployment state are read back without secrets. |
+| `P1` | Search Console, GBP, Merchant Center, analytics, logs, and field performance are unavailable. | Platform owners | Authenticated readback confirms ownership, submitted assets, diagnostics, events, conversions, and field evidence. |
+| `P1` | Paytrail checkout revalidation deployed parity is unverified. | Supabase/commerce owner | Deploy/read back `payments_create_paytrail` after local revalidation work and verify server-side price/stock revalidation. |
+
+Figma Make sync:
+
+```text
+None for E-5.
+E-5 changed only docs/evidence artifacts. Figma Make source files still need the E-1 owner patch list.
+```
+
+### Phase E Wrap-Up - Release Closeout, Evidence Ledger, And Growth Handoff
+
+Status: Complete with release blockers
+
+Progress: `[█████] 100%`
+
+Recorded: 2026-06-22
+
+Decision:
+
+```text
+Phase E is complete as a release closeout and handoff phase.
+It does not approve release. The final classification is not growth-ready and release no-go.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| Phase E wrap-up ledger | `.growth-work/release/phase-e-wrapup.json` |
+| Phase E wrap-up report | `.seo-work/reports/PHASE-E-RELEASE-CLOSEOUT-EVIDENCE-LEDGER-GROWTH-HANDOFF-WRAPUP-2026-06-22.md` |
+
+Extra layer - Release Evidence Authority And Remediation Control Model:
+
+| Layer | State | Control | Owner |
+| --- | --- | --- | --- |
+| E0 - Evidence authority and privacy gate | Active with security blocker | Keep executed, supplied, unavailable, and failed evidence separate; do not persist secrets or raw private markers. | Growth lead plus engineering/security |
+| E1 - Source parity and Figma Make gate | Blocked | Local source and Figma Make preview must agree before handoff. | Figma Make/source sync owner |
+| E2 - Provider, hosting, and secret-safe readback gate | Blocked | Provider state must be read back from authenticated APIs without printing or storing secrets. | Provider/deployment owner |
+| E3 - Live runtime and search eligibility gate | Failed | Live HTTP/browser evidence controls release, not local intent. | Engineering, SEO QA, commerce owner |
+| E4 - Drift baseline and monitoring gate | Ready for post-fix rerun | Baseline evidence is a comparison contract, not a ranking prediction. | SEO/analytics/engineering |
+| E5 - Final release and growth classification gate | No-go | Gate D launch and Gate E growth cannot pass with unresolved blockers. | Release owner and business owner |
+| E6 - Remediation acceptance and handoff gate | Added | No next-phase growth work starts until remediation evidence is captured in the same board discipline. | Release owner |
+
+Release reopen criteria:
+
+```text
+All P0 blockers must be verified closed.
+Each P1 blocker must be verified closed or owner-excepted with mitigation, monitoring, expiry, and rollback policy.
+Figma Make preview, authenticated provider readback, platform readback, live crawl, browser smoke, redirects, sitemaps, schema, Merchant feed, checkout, and drift checks must pass after deployment.
 ```
 
 ## Board Wrap-Up - Growth Readiness
 
-Status: Blocked
+Status: Complete locally with release and growth blockers
 
-Progress: `[████████████████░░░░] 80%`
+Progress: `[████████████████████] 100%`
 
-Recorded: Pending
+Recorded: 2026-06-22
 
 Completed phases:
 
@@ -2275,41 +2474,986 @@ Completed phases:
 | Phase B - Technical And Product SEO Runtime | `[█████] 100%` | Complete locally | B-1 through B-5 source/runtime gates complete; production redirect/sitemap/feed/schema/checkout evidence remains E-3. |
 | Phase C - Local, Service Content, And Schema Readiness | `[█████] 100%` | Complete locally with owner/platform exceptions | C-1 through C-5 source/content/schema/browser gates complete; GBP/citation/platform/outcome proof remains later-phase owner work. |
 | Phase D - Measurement, Revenue, Conversion, And Platform QA | `[█████] 100%` | Complete locally with platform and owner exceptions | D-1 through D-5 complete locally; authenticated platform readback, deployed static asset behavior, live business-system reconciliation, owner approvals, and D-4 checkout warnings remain blockers. |
-| Phase E - Release Closeout, Evidence Ledger, And Growth Handoff | `[░░░░░] 0%` | Blocked | Pending source parity, provider evidence, live crawl/browser QA, drift baseline, and production evidence. |
+| Phase E - Release Closeout, Evidence Ledger, And Growth Handoff | `[█████] 100%` | Complete with release blockers | E-1 through E-5 source parity ledger, provider ledger, live crawl/browser evidence, drift baseline, monitoring handoff, and final classification complete. |
 
 Release classification:
 
 ```text
-blocked - build-to-launch hardening active
+NO-GO - not release-ready, not growth-ready
 ```
 
-Remaining risks:
+Final evidence coverage:
+
+| Evidence mode | State |
+| --- | --- |
+| Repository/source | `EXECUTED` |
+| Build | `EXECUTED_WITH_FINDINGS` |
+| Supabase | `EXECUTED_WITH_FINDINGS` |
+| Public hosting | `EXECUTED_WITH_FINDINGS` |
+| Live HTTP | `EXECUTED_WITH_FINDINGS` |
+| Browser | `EXECUTED_WITH_FINDINGS` |
+| Migration/redirects | `EXECUTED_WITH_FINDINGS` |
+| Drift baseline | `EXECUTED_WITH_FINDINGS` |
+| Content/local/product/schema | `EXECUTED_LOCAL_WITH_OWNER_EXCEPTIONS` |
+| Conversion | `EXECUTED_WITH_FINDINGS` |
+| Measurement | `EXECUTED_LOCAL_PROTOCOL_ONLY` |
+| Figma Make preview | `UNAVAILABLE` |
+| Cloudflare authenticated readback | `UNAVAILABLE` |
+| Search Console, GBP, Merchant Center, analytics, logs, field CWV | `UNAVAILABLE` |
+
+Remaining risks and owner tasks:
 
 | Risk | Owner | Release impact |
 | --- | --- | --- |
-| Figma Make final preview parity not verified | `E-1` | Blocks release handoff, not B-1 closure. |
-| Production redirect verification missing | `B-5`, `E-3` | Blocks live migration/legacy URL closure. |
-| Product sitemap deployed fetch verification missing | `B-5`, `E-3` | Blocks final production discovery readiness, but source-generated product sitemap exists and validates locally. |
-| Merchant feed submission and deployed checkout validation not verified | `B-5`, `E-3` | Blocks production commerce trust. |
-| GBP owner evidence missing | `C-1` | Blocks local SEO readiness. |
-| P1 service proof/content missing | `C-2` | Blocks service SEO strength. |
-| Platform readback and live reconciliation missing | `D-3`, `D-5`, `E-2`, `E-3` | Blocks growth-ready classification. |
-| Deployed robots/sitemap/feed asset mismatch | `D-3`, `E-3` | Blocks Search Console and Merchant Center readiness until production serves expected XML/text artifacts. |
-| Checkout accessibility warnings | `D-4` | Field-associated errors and duplicate responsive submit controls should be fixed before growth-ready classification. |
-| Experiment launch readiness missing | `D-5`, `E-4` | No experiment can launch until instrumentation, sample policy, platform readback, reconciliation, and guardrails are verified. |
-| Live crawl/browser QA missing | `E-3` | Blocks production readiness. |
-| Figma Make source sync uncertain | `E-1` | Can reintroduce runtime failures. |
+| Public/private route boundary unsafe | Engineering/security | Blocks release and requires immediate remediation. |
+| Figma Make final preview parity not verified | Figma Make/source sync owner | Can reintroduce runtime failures such as `CONTACT_INFO` and blocks source handoff. |
+| Deployed robots/sitemap/product sitemap/Merchant feed asset mismatch | Hosting/engineering | Blocks Search Console and Merchant Center readiness until production serves expected XML/text artifacts. |
+| Production legacy redirects and product ID redirects failing | Hosting/engineering | Blocks URL migration and product SEO slug policy. |
+| HTTP soft-404 behavior | Frontend/edge routing owner | Blocks technical SEO release readiness. |
+| Checkout URL/canonical state bug | Frontend/commerce owner | Blocks commerce trust and product SEO consistency. |
+| Cloudflare authenticated readback missing | Provider/deployment owner | Blocks provider-safe release approval. |
+| Search Console, GBP, Merchant Center, analytics, logs, and field performance missing | Platform owners | Blocks growth-ready classification and postlaunch monitoring. |
+| Supabase checkout function deployed parity unverified | Supabase/commerce owner | Blocks checkout revalidation confidence. |
+| GBP/citation/business fact owner approvals missing | Business/local SEO owner | Blocks local SEO readiness. |
+| Experiment launch readiness missing | Growth/analytics owner | No experiment should launch until instrumentation, sample policy, platform readback, reconciliation, and guardrails are verified. |
 
 Final verification:
 
 ```text
-git diff --check -- .growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md: passed
-LC_ALL=C rg -n "[^[:ascii:]]" .growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md: progress-bar glyphs only
+node -e "for (const f of ['.growth-work/release/phase-e-wrapup.json','.growth-work/release/e5-final-growth-readiness-classification.json','.growth-work/release/e4-drift-baseline-monitoring-handoff.json','.growth-work/release/e3-live-crawl-browser-smoke-evidence.json','.growth-work/release/e2-supabase-hosting-provider-ledger.json','.growth-work/release/e1-figma-make-patch-state-ledger.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('json ok')": passed
+git diff --check -- .growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md .growth-work/release/phase-e-wrapup.json .seo-work/reports/PHASE-E-RELEASE-CLOSEOUT-EVIDENCE-LEDGER-GROWTH-HANDOFF-WRAPUP-2026-06-22.md .growth-work/release/e5-final-growth-readiness-classification.json .seo-work/reports/FINAL-GROWTH-READINESS-CLASSIFICATION-E5-2026-06-22.md: passed
+rg -n 'NOT_GROWTH_READY_RELEASE_BLOCKED|NO-GO|Gate D - launch ready|Gate E - growth ready|E-5 Closeout|Phase E Wrap-Up|Release Evidence Authority|E6 - Remediation acceptance|Board Wrap-Up' .growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md .seo-work/reports/PHASE-E-RELEASE-CLOSEOUT-EVIDENCE-LEDGER-GROWTH-HANDOFF-WRAPUP-2026-06-22.md .seo-work/reports/FINAL-GROWTH-READINESS-CLASSIFICATION-E5-2026-06-22.md: passed
+node -e "const fs=require('fs'); const board='.growth-work/boards/MITRA-GROWTH-READY-BOARD-2026-06-21.md'; const files=['.growth-work/release/phase-e-wrapup.json','.growth-work/release/e5-final-growth-readiness-classification.json','.seo-work/reports/PHASE-E-RELEASE-CLOSEOUT-EVIDENCE-LEDGER-GROWTH-HANDOFF-WRAPUP-2026-06-22.md','.seo-work/reports/FINAL-GROWTH-READINESS-CLASSIFICATION-E5-2026-06-22.md']; const boardText=fs.readFileSync(board,'utf8'); const start=boardText.indexOf('### Phase E Wrap-Up'); const end=boardText.indexOf('## Board Wrap-Up', start); const docs=[['board-phase-e-wrapup', boardText.slice(start,end)], ...files.map(f=>[f,fs.readFileSync(f,'utf8')])]; const patterns=[['email',/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i],['phone',/(?:\+358|00358|0[1-9])[\s().-]*\d[\d\s().-]{6,}\d/],['vehicle_plate',/\b[A-ZÅÄÖ]{2,3}-\d{1,3}\b/u]]; const hits=[]; for (const [label,text] of docs) for (const [name,re] of patterns) if (re.test(text)) hits.push(name+':'+label); if (hits.length) { console.error('raw personal-marker pattern hits: '+hits.join(', ')); process.exit(1); } console.log('sanitized phase-e marker scan ok')": passed
 ```
 
 Handoff:
 
 ```text
-Next task: E-1 - Figma Make Patch-State Ledger
-Reason: Phase D is complete locally; release handoff now needs source parity, provider evidence, live crawl/browser QA, drift baseline, and final growth-readiness classification.
+Next task: owner remediation of P0/P1 blockers before any release or growth work.
+Reason: board is complete locally, but public release and growth readiness are blocked.
+```
+
+No-guarantee boundary:
+
+```text
+This board improves implementation quality, release governance, and monitoring readiness. It does not guarantee crawling, indexing, selected canonicals, rankings, rich results, local-pack visibility, Merchant Center approval, traffic, conversions, revenue, or AI inclusion.
+```
+
+## Post-Phase E Next Work Scan - 2026-06-22
+
+Status: Complete
+
+Progress: `[█████] 100%`
+
+Purpose:
+
+```text
+Scan the project and completed Growth Readiness Board to identify the next work after Phase E.
+This addendum does not reopen release. It converts the no-go board state into a prioritized remediation sequence.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| Next work scan ledger | `.growth-work/reports/growth-readiness-next-work-scan-2026-06-22.json` |
+| Next work scan report | `.seo-work/reports/GROWTH-READINESS-NEXT-WORK-SCAN-2026-06-22.md` |
+
+Scan result:
+
+```text
+Local source checks pass. Release remains blocked by live/provider/Figma/platform/owner evidence.
+The next work is remediation, not another audit phase.
+```
+
+Next work sequence:
+
+| ID | Priority | Work | Owner |
+| --- | --- | --- | --- |
+| R-1 | `P0` | Public/private boundary and CMS route protection | Engineering/security plus hosting/provider owner |
+| R-2 | `P0` | Figma Make source sync and preview verification | Figma Make/source sync owner |
+| R-3 | `P0` | Production static SEO assets and Merchant feed deployment parity | Hosting/engineering/Figma Make deployment owner |
+| R-4 | `P1` | HTTP redirect, product ID migration, and soft-404 remediation | Frontend/edge routing plus hosting/engineering |
+| R-5 | `P1` | Checkout URL, canonical, and deployed Paytrail parity | Frontend/commerce plus Supabase/commerce owner |
+| R-6 | `P1` | Authenticated provider and platform readback | Provider/SEO/analytics/local/merchant owners |
+| R-7 | `P1` | Business/local/content owner evidence package | Business/local SEO/content owner |
+| R-8 | `P1` | Post-remediation live crawl, browser smoke, and drift rerun | SEO QA/engineering/release owner |
+
+Verification snapshot:
+
+```text
+source ~/.config/projects/bin/project && project mitraauto: passed, non-secret project metadata confirmed
+codex mcp get supabase-mitra: passed, project ref rcmmbwdebnmicrweoiyz confirmed
+npm run build: passed
+npm run i18n:audit: passed
+npm run sitemap:check: passed, 60918 URLs across 2 product sitemap files
+npm run feed:check: passed, 31575 Merchant feed items
+npm run commerce:check: passed
+```
+
+## Independent SEO Score - 2026-06-22
+
+Status: Complete
+
+Progress: `[█████] 100%`
+
+Score boundary:
+
+```text
+Internal implementation score. Not a Google score and not a ranking prediction.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| Independent SEO score ledger | `.growth-work/reports/independent-seo-score-2026-06-22.json` |
+| Independent SEO score report | `.seo-work/reports/INDEPENDENT-SEO-SCORE-2026-06-22.md` |
+
+Score result:
+
+| Score | Value | Decision |
+| --- | ---: | --- |
+| Live production SEO score | `38/100` | `NO_GO` |
+| Raw weighted live score before blocker cap | `46/100` | Blocker-capped by P0/P1 production issues. |
+| Local/source SEO foundation score | `74/100` | Source improved but not release-ready. |
+| Growth readiness score | `31/100` | Platform, owner, monitoring, and live evidence gaps remain. |
+
+Independent evaluation:
+
+```text
+Mitra Auto is not SEO-ready on production today.
+The local/source foundation is much stronger than the live deployment, but live public behavior still blocks release and growth readiness.
+```
+
+Current live blocker evidence:
+
+| Area | Current evidence | Required state |
+| --- | --- | --- |
+| Robots | `/robots.txt` returns `404` | `200 text/plain` with sitemap declarations. |
+| Primary sitemap | `/sitemap.xml` returns `404` | `200 XML` with canonical indexable URLs. |
+| Product sitemap | `/sitemap-products.xml` returns `200 text/html` | `200 XML`, not SPA HTML. |
+| Merchant feed | `/merchant-products.xml` returns `200 text/html` | `200 XML` feed. |
+| Product ID URL | Opaque product identifier URL returns `200`, redirects `0` | Permanent one-hop redirect to slug URL. |
+| Invalid route | Unknown route returns `200` | `404` or `410`. |
+| Private/admin route | `/cms` returns `200` | `401`, `403`, or safe `404` before private/admin interface renders. |
+
+Scoring summary:
+
+| Dimension | Weight | Live score | Local/source score |
+| --- | ---: | ---: | ---: |
+| Access, indexability, canonicalization | 20 | 3 | 13 |
+| Rendering and architecture | 15 | 7 | 11 |
+| Content quality and evidence | 20 | 12 | 15 |
+| Metadata and search appearance | 10 | 5 | 8 |
+| Structured data | 10 | 6 | 8 |
+| Experience, accessibility, and SXO | 10 | 5 | 7 |
+| Local, ecommerce, international | 10 | 6 | 8 |
+| Monitoring and governance | 5 | 2 | 4 |
+
+Next work:
+
+```text
+Continue with R-1 - Public/private boundary and CMS route protection.
+Then R-3 and R-4 should follow quickly because they produce the biggest SEO score lift after the private-route blocker.
+```
+
+## R-1 Closeout - Public/Private Boundary And CMS Route Protection
+
+Status: Complete locally with production verification pending
+
+Progress: `[███░░░░░░░░░░░░░░░░░] 13%`
+
+Decision:
+
+```text
+R-1 source implementation is complete.
+Production release still requires deployed www verification after Figma/source sync and hosting deployment.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-1 implementation ledger | `.growth-work/reports/r1-public-private-boundary-cms-route-protection-2026-06-22.json` |
+| R-1 closeout report | `.seo-work/reports/R1-PUBLIC-PRIVATE-BOUNDARY-CMS-ROUTE-PROTECTION-2026-06-22.md` |
+
+Implemented controls:
+
+| Control | Implementation |
+| --- | --- |
+| Private route policy | `src/utils/privateRoutePolicy.ts` centralizes protected route families and public-site blocking. |
+| SPA dispatch guard | `src/SiteApp.tsx` blocks protected route families before CMS/PWA/account/customer/private components mount. |
+| PWA bootstrap guard | `src/main.tsx` prevents `/pwa` from mounting the CMS PWA runtime unless private routes are explicitly allowed. |
+| Host safe-404 rules | `src/public/_redirects` now sends protected route families to `404.html` before the SPA fallback. |
+| Protected headers | `src/public/_headers` adds `no-store` and `X-Robots-Tag: noindex, nofollow, noarchive` for protected route families. |
+| Static safe 404 | `src/public/404.html` provides a noindex static fallback for host-level protected-route handling. |
+| Regression check | `scripts/check_private_route_boundary.mjs` verifies route rules, headers, static 404 metadata, SPA dispatch guard, and bootstrap guard. |
+
+Protected route families:
+
+```text
+/admin
+/cms
+/pwa
+/account
+/customer
+/customer-account
+/booking/manage
+/en/account
+/en/customer
+/en/booking/manage
+```
+
+Local browser smoke:
+
+| Route | Result |
+| --- | --- |
+| `/cms` | Public not-found page rendered; no CMS login/admin/PWA text detected. |
+| `/pwa` | Public not-found page rendered; CMS PWA bootstrap no longer mounted. |
+| `/customer-account` | Public not-found page rendered; no private customer/account UI detected. |
+| `/palvelut/autohuolto` | Public service page still rendered with expected title. |
+
+Verification:
+
+```text
+npm run private-routes:check: passed
+node scripts/check_seo_redirects.mjs: passed
+npm run i18n:audit: passed
+npm run build: passed with existing large-chunk warning
+npm run sitemap:check: passed, 60918 URLs across 2 product sitemap files
+npm run feed:check: passed, 31575 Merchant feed items
+npm run commerce:check: passed
+build protected-route artifact check: passed
+npx vite preview --host 127.0.0.1 --port 4173 plus Playwright browser smoke: passed
+```
+
+Remaining proof gap:
+
+```text
+Live production has not been redeployed or recrawled in this task.
+After deployment, www must prove protected routes return 401, 403, or safe 404 before private UI renders.
+If the host does not honor the local protected-route rules, enforce equivalent Cloudflare Access, Worker, or provider routing before the SPA fallback.
+```
+
+Next work:
+
+```text
+Continue with R-2 - Figma Make source sync and preview verification.
+Then R-3 - Production static SEO assets and Merchant feed deployment parity.
+```
+
+## R-2 Closeout - Figma Make Source Sync And Preview Verification
+
+Status: Complete with current preview URL blocker
+
+Progress: `[█████░░░░░░░░░░░░░░░] 25%`
+
+Decision:
+
+```text
+R-2 source and Git verification is complete.
+Independent current Figma Make preview verification is blocked because the only available Make proxy URL from the original CONTACT_INFO error now returns 404 JSON.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-2 verification ledger | `.growth-work/reports/r2-figma-make-source-sync-preview-verification-2026-06-22.json` |
+| R-2 closeout report | `.seo-work/reports/R2-FIGMA-MAKE-SOURCE-SYNC-PREVIEW-VERIFICATION-2026-06-22.md` |
+
+Git sync evidence:
+
+| Check | Result |
+| --- | --- |
+| Remote | `https://github.com/phatleatfinepass/Mitraauto.git` |
+| Branch | `codex/pwa-cloudflare` |
+| Local HEAD | `89587c54e2025dba4a7419465e9963e96a7eab72` |
+| Remote branch HEAD | `89587c54e2025dba4a7419465e9963e96a7eab72` |
+| Finding | Remote branch matches local HEAD, with uncommitted local R-1/report changes still present in the checkout. |
+
+Figma Make source evidence:
+
+```text
+E-1 Figma Make source inventory gate: 42 required source/presence files checked, 0 missing locally.
+Local source has no CONTACT_INFO matches or disallowed stale LanguageContext, ThemeContext, or Toaster import matches.
+ContactSection.tsx uses businessProfile from src/config/businessProfile.ts.
+No local Skeleton/src/app export is present for a direct Figma-source file diff.
+```
+
+Old Figma Make proxy evidence:
+
+```text
+Old preview root: HTTP 404 application/json, {"error":"not found"}
+Old ContactSection module URL: HTTP 404 application/json, {"error":"not found"}
+```
+
+Verification:
+
+```text
+git status --short --branch: passed with dirty-tree finding
+git rev-parse --abbrev-ref HEAD && git rev-parse HEAD && git log -1 --pretty=format:'%H%n%ci%n%s' && git remote -v: passed
+git ls-remote --heads origin codex/pwa-cloudflare main: passed
+node E-1 local Figma Make inventory gate: passed
+rg stale CONTACT_INFO/LanguageContext/ThemeContext/Toaster disallowed patterns: passed with no matches
+rg businessProfile/CONTACT_INFO in ContactSection and businessProfile config: passed
+npm run private-routes:check: passed
+npm run i18n:audit: passed
+npm run sitemap:check: passed
+npm run feed:check: passed
+npm run commerce:check: passed
+npm run build through distill wrapper: passed with existing large-chunk warning
+curl old Figma Make proxy root: blocked, old proxy returns 404 JSON
+curl old Figma Make ContactSection module URL: blocked, old proxy returns 404 JSON
+```
+
+Remaining proof gap:
+
+```text
+Figma Make/source sync owner must provide a current Figma Make preview URL or figma.com/make URL after the push.
+Then rerun browser/MCP preview verification and confirm no CONTACT_INFO or stale import runtime errors.
+```
+
+Next work:
+
+```text
+Continue with R-3 - Production static SEO assets and Merchant feed deployment parity.
+```
+
+## R-3 Closeout - Production Static SEO Assets And Merchant Feed Deployment Parity
+
+Status: Complete locally with production deployment blocker
+
+Progress: `[████████░░░░░░░░░░░░] 38%`
+
+Decision:
+
+```text
+R-3 local source, build output, and local preview parity are complete.
+Production www still fails static SEO asset parity and must be fixed at the hosting/deployment layer before release.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-3 verification ledger | `.growth-work/reports/r3-production-static-seo-assets-merchant-feed-deployment-parity-2026-06-22.json` |
+| R-3 closeout report | `.seo-work/reports/R3-PRODUCTION-STATIC-SEO-ASSETS-MERCHANT-FEED-DEPLOYMENT-PARITY-2026-06-22.md` |
+
+Implemented:
+
+| Control | Implementation |
+| --- | --- |
+| Static asset regression gate | `scripts/check_static_deployment_assets.mjs` verifies source/build assets and optional live host parity. |
+| npm script | `package.json` now includes `static-assets:check`. |
+| Public asset hygiene | Removed generated `src/public/.DS_Store` so it cannot be copied into deployment output. |
+
+Local/build evidence:
+
+```text
+src/public and build both contain robots.txt, sitemap.xml, sitemap-products.xml, product sitemap child files, merchant-products.xml, _headers, and _redirects.
+Product sitemap check: 60,918 canonical product URLs across 2 child sitemap files.
+Merchant feed check: 31,575 feed items.
+Local preview serves robots.txt, sitemap.xml, sitemap-products.xml, and merchant-products.xml as 200 text/xml or text/plain.
+```
+
+Live production blocker:
+
+| URL | Expected | Observed |
+| --- | --- | --- |
+| `https://www.mitra-auto.fi/robots.txt` | `200 text/plain` | `404 text/plain;charset=utf-8` |
+| `https://www.mitra-auto.fi/sitemap.xml` | `200 application/xml` or `text/xml` | `404 text/plain;charset=utf-8` |
+| `https://www.mitra-auto.fi/sitemap-products.xml` | `200 application/xml` or `text/xml` | `200 text/html` |
+| `https://www.mitra-auto.fi/merchant-products.xml` | `200 application/xml`, `text/xml`, or `application/rss+xml` | `200 text/html` |
+
+Provider evidence:
+
+```text
+project mitraauto confirms PROJECT_SLUG, PROJECT_DIR, SUPABASE_PROJECT_REF, and SUPABASE_URL.
+Cloudflare zone ID, account ID, public base URL, and token status are missing from the wrapper, so authenticated hosting readback/write was not attempted.
+```
+
+Required owner actions:
+
+```text
+Deploy the current build directory to the production www host.
+Serve static files before the SPA fallback.
+Honor _headers or equivalent provider MIME rules for XML/text assets.
+Add non-secret hosting metadata to the project wrapper before any provider-changing operation.
+```
+
+Verification:
+
+```text
+npm run static-assets:check: passed
+npm run sitemap:check: passed
+npm run feed:check: passed
+npm run build through distill wrapper: passed; filesystem confirmed output directory build
+node scripts/check_static_deployment_assets.mjs --build-dir build: passed
+node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi: failed, live www static asset parity not met
+local Vite preview static asset curl matrix: passed
+npm run private-routes:check: passed
+npm run i18n:audit: passed
+npm run commerce:check: passed
+```
+
+Next work:
+
+```text
+Continue with R-4 - HTTP redirect, product ID migration, and soft-404 remediation.
+```
+
+## R-4 Closeout - HTTP Redirect, Product ID Migration, And Soft-404 Remediation
+
+Status: Complete locally with production deployment blocker
+
+Progress: `[██████████░░░░░░░░░░] 50%`
+
+Decision:
+
+```text
+R-4 HTTP route policy is implemented in the Pages function surface and verified locally.
+Live production still serves old SPA fallback behavior, so release remains blocked until the updated function/build is deployed and verified.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-4 verification ledger | `.growth-work/reports/r4-http-redirect-product-id-migration-soft-404-remediation-2026-06-22.json` |
+| R-4 closeout report | `.seo-work/reports/R4-HTTP-REDIRECT-PRODUCT-ID-MIGRATION-SOFT-404-REMEDIATION-2026-06-22.md` |
+
+Implemented:
+
+| Control | Implementation |
+| --- | --- |
+| HTTP route function policy | `functions/[[path]].ts` handles legacy redirects, trailing slash redirects, product identifier redirects, protected 404s, generated service allowlisting, and unknown-route 404s. |
+| Migration regression check | `scripts/check_http_route_migration.mjs` verifies redirects, product identifier migration, valid generated service routes, invalid service/product routes, protected routes, static assets, and soft-404 candidates. |
+| npm script | `package.json` now includes `route-migration:check`. |
+
+Local route policy evidence:
+
+```text
+/shop -> /catalog: 301
+/palvelut/dpf-pesu -> /palvelut/dpf-huolto: 301
+/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697 -> /catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10: 308
+Unknown routes: 404 with X-Robots-Tag: noindex, follow
+Protected routes: 404 with X-Robots-Tag: noindex, nofollow, noarchive and Cache-Control: no-store
+Generated service IDs from SERVICE_CATALOG remain valid public SPA routes.
+```
+
+Database sample:
+
+```text
+product_type=rim
+variant_id=00024bb0-2f88-dc51-fca7-b0c7bb8ed697
+canonical_slug=rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10
+```
+
+Live production blocker:
+
+| URL | Expected | Observed |
+| --- | --- | --- |
+| `https://www.mitra-auto.fi/shop` | `301` to `/catalog` | `200 text/html`, `0` redirects |
+| `https://www.mitra-auto.fi/palvelut/dpf-pesu` | `301` to `/palvelut/dpf-huolto` | `200 text/html`, `0` redirects |
+| `https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697` | `308` to canonical slug | `200 text/html`, `0` redirects |
+| `https://www.mitra-auto.fi/catalog/rim/does-not-exist-product` | `404` | `200 text/html` |
+| `https://www.mitra-auto.fi/contact` | `404` | `200 text/html` |
+| `https://www.mitra-auto.fi/this-route-should-not-exist-r4` | `404` | `200 text/html` |
+| `https://www.mitra-auto.fi/cms` | `404` or equivalent protected-route denial | `200 text/html` |
+
+Provider blocker:
+
+```text
+Cloudflare zone ID, account ID, and token status are missing from the project wrapper.
+Current shell also does not expose the public Supabase anon key needed for live edge-function REST verification.
+No hosting/provider write was attempted.
+```
+
+Verification:
+
+```text
+npm run route-migration:check: passed
+node scripts/check_seo_redirects.mjs: passed
+npm run private-routes:check: passed
+npm run build through distill wrapper: passed with existing large-chunk warning
+node scripts/check_static_deployment_assets.mjs --build-dir build: passed
+npm run i18n:audit: passed
+npm run sitemap:check: passed
+npm run feed:check: passed
+npm run commerce:check: passed
+live R-4 curl matrix: failed, production still returns old SPA fallback behavior
+```
+
+Next work:
+
+```text
+Continue with R-5 - Checkout URL, canonical, and deployed Paytrail parity.
+```
+
+## R-5 Closeout - Checkout URL, Canonical, And Deployed Paytrail Parity
+
+Status: Complete locally with deployed Paytrail parity blocker
+
+Progress: `[█████████████░░░░░░░] 63%`
+
+Decision:
+
+```text
+R-5 local remediation is complete.
+Checkout now uses URL navigation, checkout utility pages remain noindex/no-canonical, client Paytrail callbacks use the canonical public site URL, and the local Paytrail Edge Function restricts checkout callbacks by allowed origin and allowed path.
+Production Paytrail parity remains blocked because the deployed payments_create_paytrail source differs from local and lacks the R-5 callback allowlist/canonical www defaults.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-5 verification ledger | `.growth-work/reports/r5-checkout-url-canonical-deployed-paytrail-parity-2026-06-22.json` |
+| R-5 closeout report | `.seo-work/reports/R5-CHECKOUT-URL-CANONICAL-DEPLOYED-PAYTRAIL-PARITY-2026-06-22.md` |
+
+Implemented:
+
+| Control | Implementation |
+| --- | --- |
+| Checkout URL state | `src/SiteApp.tsx` now routes cart checkout through `navigate('/checkout')` instead of rendering checkout on the current URL. |
+| Canonical callback source | `src/components/site/checkout/CheckoutPage.tsx` sends Paytrail callback URLs from `publicSiteUrl`. |
+| Paytrail callback allowlist | `supabase/functions/payments_create_paytrail/index.ts` defaults callbacks to canonical `https://www.mitra-auto.fi` and only accepts configured frontend origins plus `/checkout/success` or `/checkout/cancel`. |
+| Regression guard | `scripts/check_checkout_runtime_parity.mjs` checks checkout route navigation, noindex/no-canonical policy, callback allowlisting, edge route allowance, and server-side validation markers. |
+| npm script | `package.json` now includes `checkout:check`. |
+
+Figma Make sync files:
+
+```text
+/Figma/src/SiteApp.tsx
+/Figma/src/components/site/checkout/CheckoutPage.tsx
+```
+
+Local browser evidence:
+
+| URL | Robots | Canonical | Alternates | Heading | Result |
+| --- | --- | --- | ---: | --- | --- |
+| `http://127.0.0.1:4175/checkout` | `noindex, nofollow` | none | 0 | `Kassa` | Passed |
+| `http://127.0.0.1:4175/checkout/success` | `noindex, nofollow` | none | 0 | `Emme voineet vahvistaa tilaustasi` | Passed |
+| `http://127.0.0.1:4175/checkout/cancel` | `noindex, nofollow` | none | 0 | `Maksu keskeytettiin` | Passed |
+
+Live evidence:
+
+```text
+https://www.mitra-auto.fi/checkout: HTTP 200 text/html, rendered robots noindex/nofollow, no canonical, no alternates.
+https://www.mitra-auto.fi/checkout/success: HTTP 200 text/html, redirects 0.
+https://www.mitra-auto.fi/checkout/cancel: HTTP 200 text/html, redirects 0.
+```
+
+Supabase readback:
+
+```text
+PROJECT_SLUG=mitraauto
+SUPABASE_PROJECT_REF=rcmmbwdebnmicrweoiyz
+codex mcp get supabase-mitra: passed, project ref confirmed
+payments_create_paytrail: ACTIVE, verify_jwt true, version 23, updated 2026-05-02 05:35:57 EEST
+deployed source parity: different
+remote_has_www_default: no
+remote_has_allowlist: no
+```
+
+Remaining blockers:
+
+| Blocker | Owner | Required resolution |
+| --- | --- | --- |
+| Deployed `payments_create_paytrail` differs from local R-5 source and lacks callback allowlist/canonical `www` defaults. | Supabase/commerce deployment owner | Deploy the updated Edge Function to `rcmmbwdebnmicrweoiyz`, redownload it, and verify source parity. |
+| Paytrail merchant credential and callback env values were not available in the local shell. | Commerce/provider owner | Verify Paytrail secrets and callback env through secret-safe provider readback; record only set/missing status. |
+| Local cart-to-checkout URL fix is not proven on production. | Frontend/hosting owner | Deploy current app build and run live cart-to-checkout browser smoke verifying URL becomes `/checkout`. |
+
+Verification:
+
+```text
+npm run checkout:check: passed
+deno check supabase/functions/payments_create_paytrail/index.ts: passed
+npm run build through distill wrapper: passed
+npm run commerce:check: passed
+source ~/.config/projects/bin/project && project mitraauto: passed, project ref rcmmbwdebnmicrweoiyz confirmed
+codex mcp get supabase-mitra: passed
+supabase functions list --project-ref "$SUPABASE_PROJECT_REF" -o json: passed, payments_create_paytrail active verify_jwt true
+supabase functions download payments_create_paytrail --project-ref "$SUPABASE_PROJECT_REF" --use-api: passed with source parity finding
+Playwright MCP local checkout utility route checks: passed
+curl live checkout utility route matrix: passed for reachability
+Playwright MCP live /checkout head check: passed for direct route head
+git diff --check -- R-5 touched files: passed
+```
+
+Next work:
+
+```text
+Continue with R-6 - Authenticated provider and platform readback.
+```
+
+## R-6 Closeout - Authenticated Provider And Platform Readback
+
+Status: Complete with platform access blockers
+
+Progress: `[███████████████░░░░░] 75%`
+
+Decision:
+
+```text
+R-6 completed authenticated readback where access exists.
+Supabase database, function inventory, function source download, and remote secret-name readback succeeded against project rcmmbwdebnmicrweoiyz.
+Cloudflare, Search Console, GA4/GTM, Merchant Center, Google Business Profile, server logs, and authenticated field-performance platforms remain unavailable because target IDs, provider metadata, credentials, or owner access were not available.
+Public production checks still show deployment blockers.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-6 provider/platform ledger | `.growth-work/reports/r6-authenticated-provider-platform-readback-2026-06-22.json` |
+| R-6 closeout report | `.seo-work/reports/R6-AUTHENTICATED-PROVIDER-PLATFORM-READBACK-2026-06-22.md` |
+
+Evidence states:
+
+| Evidence | State | Finding |
+| --- | --- | --- |
+| Project wrapper | `EXECUTED` | Project dir, slug, Supabase ref, and Supabase URL confirmed. |
+| Supabase MCP config | `EXECUTED` | `supabase-mitra` points to `project_ref=rcmmbwdebnmicrweoiyz`; generic Supabase MCP not used. |
+| Supabase database | `EXECUTED` | DB readback succeeded as `postgres`, server version `17.6`, timezone `UTC`. |
+| Supabase functions | `EXECUTED_WITH_FINDINGS` | Function inventory succeeded; `payments_create_paytrail` is active but source parity fails against local R-5. |
+| Supabase remote secret names | `EXECUTED_WITH_FINDINGS` | Supabase and Paytrail secret names exist; values were not recorded. `FRONTEND_ALLOWED_ORIGINS` is missing. |
+| Cloudflare authenticated readback | `UNAVAILABLE` | Token, account ID, zone ID/name, Pages project, and public base URL are missing from wrapper. |
+| Public hosting readback | `EXECUTED_WITH_FINDINGS` | Live `www` still fails static asset, redirect, private-route, and soft-404 behavior. |
+| Search Console | `UNAVAILABLE` | No property ID/env/access; Google CLI has zero active accounts. |
+| Google Business Profile | `UNAVAILABLE` | No GBP account/location ID/access. |
+| Merchant Center | `UNAVAILABLE` | No account ID/access; public feed URL serves HTML shell. |
+| Analytics | `UNAVAILABLE` | Clarity source exists, but no authenticated dashboard/API; no GA4/GTM/dataLayer found. |
+| CrUX/PageSpeed | `FAILED` | Public PageSpeed API returned `429 RESOURCE_EXHAUSTED` for mobile and desktop. |
+| Server logs | `UNAVAILABLE` | No authorized log source or export target available. |
+
+Secret-safe readback:
+
+```text
+Local wrapper: DATABASE_URL=set, Supabase poolers=set, Cloudflare IDs/token=missing, Google platform IDs=missing, Paytrail local env=missing.
+Remote Supabase secret names: PAYTRAIL_MERCHANT_ID=set, PAYTRAIL_MERCHANT_SECRET=set, PAYTRAIL_WEBHOOK_URL=set, FRONTEND_SUCCESS_URL=set, FRONTEND_CANCEL_URL=set, FRONTEND_ALLOWED_ORIGINS=missing.
+No secret values or hashes were recorded in R-6 artifacts.
+```
+
+Supabase readback:
+
+```text
+db_read=ok
+database=postgres
+user=postgres
+server_version=17.6
+timezone=UTC
+target migrations applied: 20260621090000, 20260621204946, 20260621205611
+target public RPC signatures present: catalog_get_rim_by_identifier_v1, catalog_get_tire_by_identifier_v1, catalog_list_product_sitemap_rows_v1, catalog_public_product_slug, catalog_slugify_public_path_segment
+payments_create_paytrail: ACTIVE, verify_jwt true, version 23, updated 2026-05-02 05:35:57 EEST
+payments_create_paytrail source parity: different
+remote_has_www_default: no
+remote_has_allowlist: no
+```
+
+Public host readback:
+
+| URL | Observed |
+| --- | --- |
+| `https://mitra-auto.fi/` | Final `https://www.mitra-auto.fi/`, HTTP 200, redirects 1 |
+| `https://www.mitra-auto.fi/robots.txt` | HTTP 404 |
+| `https://www.mitra-auto.fi/sitemap.xml` | HTTP 404 |
+| `https://www.mitra-auto.fi/sitemap-products.xml` | HTTP 200 `text/html` |
+| `https://www.mitra-auto.fi/merchant-products.xml` | HTTP 200 `text/html` |
+| `https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697` | HTTP 200, redirects 0 |
+| `https://www.mitra-auto.fi/this-route-should-not-exist-r6` | HTTP 200, redirects 0 |
+| `https://www.mitra-auto.fi/cms` | HTTP 200, redirects 0 |
+
+Blockers:
+
+| Blocker | Owner | Required resolution |
+| --- | --- | --- |
+| Cloudflare authenticated account/zone/Pages readback remains unavailable. | Hosting/provider owner | Add non-secret Cloudflare metadata to project wrapper, load token through Keychain only, and run harmless zone/Pages reads. |
+| Production static assets and route policies still fail public readback. | Hosting/frontend owner | Deploy current app build and Pages function, then rerun R-3/R-4/R-6 public checks. |
+| Deployed Paytrail function source still differs from local R-5 source. | Supabase/commerce owner | Deploy updated function and verify source parity; add `FRONTEND_ALLOWED_ORIGINS` if noncanonical origins are intentionally allowed. |
+| Search Console, GA4/GTM, Merchant Center, GBP, server logs, and authenticated field-performance evidence are unavailable. | SEO/analytics/business/ecommerce owners | Provide property/account IDs plus least-privilege access and rerun dataset envelopes. |
+
+Verification:
+
+```text
+source ~/.config/projects/bin/project && project mitraauto: passed
+security find-generic-password -s mitraauto.supabase.db -a postgres: passed, set
+codex mcp get supabase-mitra: passed
+psql "$DATABASE_URL" safe DB identity read: passed
+psql migration readback: passed
+psql RPC signature readback: passed
+supabase functions list --project-ref "$SUPABASE_PROJECT_REF" -o json: passed
+supabase secrets list --project-ref "$SUPABASE_PROJECT_REF" -o json: passed, names only used
+supabase functions download payments_create_paytrail --project-ref "$SUPABASE_PROJECT_REF" --use-api: passed with source parity finding
+gcloud auth/config status check without account output: passed, no active account/project
+rg platform source markers: passed with findings
+curl public host matrix: passed with findings
+PageSpeed API mobile/desktop: failed with 429 RESOURCE_EXHAUSTED
+```
+
+Next work:
+
+```text
+Continue with R-7 - Business/local/content owner evidence package.
+```
+
+## R-7 Closeout - Business/Local/Content Owner Evidence Package
+
+Status: Complete as owner evidence package with business evidence blockers
+
+Progress: `[██████████████████░░] 88%`
+
+Decision:
+
+```text
+R-7 converts the remaining owner-side growth-readiness gaps into a concrete evidence package.
+The repo has a centralized business fact source and improved service/product content scaffolding, but Mitra is not local/content growth-ready until accountable owners provide GBP, citation, service, product, review, media, customer-research, and legal/policy proof or approve removing unsupported claims.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-7 owner evidence ledger | `.growth-work/reports/r7-business-local-content-owner-evidence-package-2026-06-22.json` |
+| R-7 closeout report | `.seo-work/reports/R7-BUSINESS-LOCAL-CONTENT-OWNER-EVIDENCE-PACKAGE-2026-06-22.md` |
+
+Evidence states:
+
+| Evidence | State | Finding |
+| --- | --- | --- |
+| Repo business facts | `EXECUTED_WITH_FINDINGS` | `src/config/businessProfile.ts` centralizes NAP, legal name, business ID, hours, service area, phone, email, and schema source. Owner confirmation is still required. |
+| Prior Phase C reports | `SUPPLIED_REVIEW_REQUIRED` | C-1 through C-5 define the local/content/schema gaps but do not supply owner proof. |
+| Google Business Profile | `UNAVAILABLE` | No owner/dashboard evidence for ownership, verification, category, hours, services, photos, reviews, duplicate status, or appointment URL. |
+| Citations/directories | `UNAVAILABLE` | C-1 found public snippet conflicts; owner correction evidence is not supplied. |
+| Service owner review | `UNAVAILABLE` | P1 pages include review caveats, but no named reviewer or owner approval is supplied. |
+| Product/policy owner review | `UNAVAILABLE` | Shipping, pickup, installation, return, warranty, used-condition, fitment, and category-promotion policies need owner/legal approval. |
+| Review/testimonial provenance | `UNAVAILABLE` | Product review schema is disabled, but visible review/rating/trust strings still need provenance or cleanup. |
+| Original media proof | `UNAVAILABLE` | Workshop, team, process, tire hotel, product, and location media evidence is not owner-governed. |
+| Customer/search research | `UNAVAILABLE` | Search Console, GBP interactions, customer calls, bookings, support, and site-search evidence are unavailable. |
+
+Owner evidence package:
+
+| Packet | Owner | Required resolution |
+| --- | --- | --- |
+| Business identity and NAP | Business owner | Approve current source facts or provide corrections for name, legal name, Y-tunnus, address, phone, email, website, booking URL, service area, hours, and special-hour process. |
+| GBP and citations | Local SEO/business owner | Provide GBP ownership/verification/category/hour/service/photo/review/citation evidence and reconcile C-1 conflicts. |
+| Service content review | Business/service owner plus subject-matter reviewer | Approve P1 service copy, safety limits, durations, exclusions, aftercare, warranty terms, and proof media. |
+| Product and category policy | Product/ecommerce/legal owner | Approve shipping, pickup, installation, returns, warranty, used-condition, supplier-stock, delivery-time, fitment, and category-promotion policy. |
+| Reviews and trust claims | Business/content/legal owner | Prove or remove visible review/rating/customer-count/certification/equipment/waiting-room/insurance claims. |
+| Original media | Business/content owner | Provide rights/consent-governed workshop, exterior, interior, team, equipment, tire hotel, product, and service-process media. |
+| Customer/search research | SEO/content/business owner | Provide Search Console, GBP, booking/support/site-search, review-theme, and customer-question evidence before guide/category expansion. |
+
+Proof-sensitive findings:
+
+| Severity | Finding | Owner |
+| --- | --- | --- |
+| `CRITICAL` | Visible review/rating/customer-count claims need provenance or removal before growth-ready classification. | Business/content/legal owner |
+| `CRITICAL` | Tire hotel insurance/liability claims conflict and need owner/legal proof before publication as trust evidence. | Business/legal owner |
+| `WARNING` | P1 service pages correctly show owner-review caveats, but the owner review is not supplied. | Business/service owner |
+| `WARNING` | Warranty, waiting-room, certified-technician, modern-equipment, and similar trust claims need proof or softer copy. | Business/content owner |
+| `WARNING` | Product review schema remains disabled correctly, but visible product reviews can still render when product data includes review fields. | Product/content owner |
+
+Blockers:
+
+| Blocker | Owner | Required resolution |
+| --- | --- | --- |
+| GBP and citation owner evidence remains unavailable. | Business/local SEO owner | Provide the C-1 GBP/citation packet and reconcile source, profile, and directory facts. |
+| Service-owner and subject-matter review remains unavailable. | Business/service owner | Approve or revise P1 service content, provide reviewer identity/update trigger, and supply original proof or remove unsupported claims. |
+| Product, policy, review, and trust-claim proof remains unavailable. | Product/legal/business owner | Approve commerce policies, review provenance, insurance/warranty/customer-count claims, and product/category evidence before richer schema or growth claims. |
+| Search Console, GBP, Merchant Center, analytics, and customer-research evidence remains unavailable. | SEO/platform/business owners | Provide authenticated readback or sanitized exports so content priorities are evidence-led rather than assumed. |
+
+Verification:
+
+```text
+rg businessProfile/localSeo/serviceSeoEvidence/serviceCatalog source review: passed
+rg owner-review/proof-sensitive trust and policy claims: passed with findings
+rg C-1/C-2/C-3/C-4/C-5 report blockers: passed with findings
+node serviceSeo owner-review marker count: passed, 14 markers found
+```
+
+Next work:
+
+```text
+Continue with R-8 - Post-remediation live crawl, browser smoke, and drift rerun.
+```
+
+## R-8 Closeout - Post-remediation Live Crawl, Browser Smoke, And Drift Rerun
+
+Status: Complete with live release blockers unchanged
+
+Progress: `[████████████████████] 100%`
+
+Decision:
+
+```text
+R-8 is complete as a verification rerun.
+Mitra is still not release-ready or growth-ready. Browser-rendered public pages hydrate with correct route-specific SEO markers, but production still fails the HTTP/static/redirect/private-boundary layer. The live host is still serving old SPA fallback behavior for critical release surfaces.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| R-8 crawl/drift rerun | `.seo-work/crawl/r8-live-drift-rerun-2026-06-22.json` |
+| R-8 machine ledger | `.growth-work/reports/r8-post-remediation-live-crawl-browser-smoke-drift-rerun-2026-06-22.json` |
+| R-8 closeout report | `.seo-work/reports/R8-POST-REMEDIATION-LIVE-CRAWL-BROWSER-SMOKE-DRIFT-RERUN-2026-06-22.md` |
+
+Evidence states:
+
+| Evidence | State | Result |
+| --- | --- | --- |
+| Live HTTP matrix | `EXECUTED_WITH_FINDINGS` | 26 representative URLs rerun against `https://www.mitra-auto.fi`. |
+| Live static asset parity | `EXECUTED_WITH_FINDINGS` | Static SEO assets still fail on production. |
+| Local static asset parity | `EXECUTED` | Source and rebuilt `build` assets pass. |
+| Local route migration gate | `EXECUTED` | Local edge route policy passes. |
+| Local checkout gate | `EXECUTED` | Checkout URL/noindex/callback policy passes locally. |
+| Raw HTML metadata | `EXECUTED_WITH_FINDINGS` | Direct HTML remains a generic JavaScript shell. |
+| Browser smoke | `EXECUTED_WITH_FINDINGS` | Public rendered pages pass sampled head/content/schema checks; invalid route renders noindex 404 UI but HTTP status remains `200`. |
+| Drift comparison | `EXECUTED_WITH_FINDINGS` | No material production improvement from E-4 at HTTP/static/redirect/private-boundary layer. |
+| Platform readback | `UNAVAILABLE` | Search Console, GBP, Merchant Center, analytics, Cloudflare, logs, and field data remain unavailable. |
+
+Live HTTP result:
+
+| Surface | Expected | Observed |
+| --- | --- | --- |
+| `robots.txt` | `200 text/plain` | `404 text/plain;charset=UTF-8` |
+| `sitemap.xml` | `200 XML` | `404 text/plain;charset=UTF-8` |
+| `sitemap-products.xml` | XML sitemap/index | `200 text/html` |
+| `merchant-products.xml` | XML/RSS Merchant feed | `200 text/html` |
+| Product UUID URL | `308` to slug | `200 text/html`, `0` redirects |
+| `/shop`, `/services`, `/tire-hotel`, `/helsinki/autohuolto`, `/palvelut/dpf-pesu` | one-hop permanent redirects | `200 text/html`, `0` redirects |
+| `/cms`, `/customer-account` | auth boundary or safe `401`/`403`/`404` | `200 text/html` |
+| `/contact`, random invalid route | redirect or real `404`/`410` | `200 text/html` |
+
+Browser smoke:
+
+- Homepage rendered Finnish title, `lang=fi`, H1, self-canonical, `index,follow`, crawlable anchors, and LocalBusiness/WebSite/WebPage/Breadcrumb JSON-LD.
+- Finnish service page rendered route-specific title, H1, self-canonical, `index,follow`, service content, and Service/Breadcrumb JSON-LD.
+- Product slug page rendered product title, canonical slug URL, `index,follow`, price, stock, Product JSON-LD, and Breadcrumb JSON-LD.
+- Checkout rendered at `/checkout` with no canonical and `noindex,nofollow`.
+- English mobile service page rendered `lang=en`, English H1/title, self-canonical, and Service/Breadcrumb JSON-LD.
+- English contact page rendered address, phone, email, self-canonical, `index,follow`, ContactPage/Breadcrumb JSON-LD.
+- Invalid route rendered a noindex 404 UI, but HTTP still returned `200`.
+
+Blockers:
+
+| Severity | Finding | Owner |
+| --- | --- | --- |
+| `BLOCKER` | Production static SEO assets and Merchant feed are still not deployed or routed correctly. | Hosting/deployment owner |
+| `BLOCKER` | Private/admin routes still return public HTTP `200` at the edge. | Engineering/security plus hosting/provider owner |
+| `CRITICAL` | Legacy redirects and product identifier redirects remain inactive on production. | Hosting/edge routing owner |
+| `CRITICAL` | Invalid and noncanonical routes remain HTTP soft-404s. | Hosting/edge routing owner |
+| `WARNING` | Raw HTML remains a generic JavaScript shell with no canonical, no JSON-LD, zero anchors, and H1 `This site requires JavaScript`. | Frontend/SEO architecture owner |
+
+Release decision:
+
+```text
+NO-GO.
+```
+
+Verification:
+
+```text
+while IFS= read -r url; do curl -sSIL -o /dev/null --max-time 20 -w '%{url_effective}|http=%{http_code}|content_type=%{content_type}|redirects=%{num_redirects}|time=%{time_total}\n' "$url"; done < <(node -e "const b=JSON.parse(require('fs').readFileSync('.seo-work/crawl/e4-drift-baseline-2026-06-22.json','utf8')); for (const r of b.representativeUrls) console.log(r.url)"): passed with findings
+/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh "Run the Mitra Auto Vite production build for R-8 verification. Return exactly: status passed/failed, output directory, key warnings grouped by source, fatal errors, and whether public static assets were copied. Do not include routine transform progress." -- npm run build: passed
+node scripts/check_static_deployment_assets.mjs --build-dir build: passed
+node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi: failed, live static asset parity not met
+npm run route-migration:check: passed
+npm run checkout:check: passed
+node raw HTML metadata snapshot for homepage, service detail, product slug, and invalid route: passed with findings
+mcp__playwright browser smoke for homepage, service detail, product slug, checkout, English mobile service, English contact, invalid route: passed with findings
+```
+
+Cleanup:
+
+```text
+Generated verification artifacts removed: build and R-8 Playwright MCP console/snapshot files.
+```
+
+Figma Make Sync:
+
+```text
+None.
+```
+
+Next work:
+
+```text
+Resolve production deployment/provider parity blockers from R-3, R-4, R-5, and R-6 before another growth-readiness rerun.
+```
+
+## Fresh Growth Re-evaluation - 2026-06-22
+
+Status: Complete, no-go with live blockers unchanged
+
+Progress: `[████████████████████] 100%`
+
+Score boundary:
+
+```text
+Internal implementation score. Not a Google score and not a ranking prediction.
+```
+
+Decision:
+
+```text
+Mitra Auto remains NO-GO.
+Local/source quality improved and the compact local gates pass. Production still fails release-level HTTP/static/redirect/private-boundary checks, so live SEO and growth readiness remain capped.
+```
+
+Artifacts:
+
+| Artifact | Path |
+| --- | --- |
+| Re-evaluation ledger | `.growth-work/reports/growth-readiness-reevaluation-2026-06-22.json` |
+| Re-evaluation report | `.seo-work/reports/GROWTH-READINESS-REEVALUATION-2026-06-22.md` |
+
+Scores:
+
+| Score | Value | Decision |
+| --- | ---: | --- |
+| Live production SEO score | `38/100` | `NO-GO` |
+| Raw weighted live score before blocker cap | `49/100` | Live blockers cap the usable score. |
+| Local/source foundation score | `78/100` | Improved, but not release-ready. |
+| Growth readiness score | `34/100` | Still blocked by production, platform, owner, and measurement evidence gaps. |
+
+Fresh live blockers:
+
+| Priority | Finding | Owner |
+| --- | --- | --- |
+| `P0` | Production static SEO assets and Merchant feed are not deployed correctly. | Hosting/deployment owner |
+| `P0` | Public/private boundary remains unsafe at HTTP level. | Engineering/security plus hosting/provider owner |
+| `P1` | Legacy redirects and product identifier redirects are inactive on production. | Hosting/edge routing owner |
+| `P1` | Invalid and noncanonical routes remain HTTP soft-404s. | Hosting/edge routing owner |
+| `P1` | Authenticated platform, provider, and owner evidence remains unavailable. | Provider/SEO/analytics/business owners |
+
+Fresh verification:
+
+```text
+live curl matrix: passed with findings, production blockers unchanged
+local source gates through distill wrapper: passed
+Vite production build through distill wrapper: passed
+node scripts/check_static_deployment_assets.mjs --build-dir build: passed
+node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi: failed, live static asset parity not met
+R-7/R-8 JSON integrity check: passed
+```
+
+Cleanup:
+
+```text
+Generated verification artifacts removed: build
+```
+
+Figma Make Sync:
+
+```text
+None.
+```
+
+Next work:
+
+```text
+Resolve production deployment/provider parity blockers before rerunning live evaluation or starting growth scaling.
 ```

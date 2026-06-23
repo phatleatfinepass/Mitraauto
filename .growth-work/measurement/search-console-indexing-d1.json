@@ -1,0 +1,244 @@
+{
+  "version": "2026-06-23.d1",
+  "project": "Mitra Auto",
+  "task": "D-1 - Search Console And Indexing Evidence Readback",
+  "status": "complete_with_blockers_carried",
+  "recorded_at": "2026-06-23T06:23:00+03:00",
+  "public_origin": "https://www.mitra-auto.fi",
+  "lifecycle_modes": ["VERIFY", "LAUNCH", "MONITOR"],
+  "evidence_states": {
+    "repo": "EXECUTED_WITH_FINDINGS",
+    "local_gate": "EXECUTED",
+    "live": "EXECUTED_WITH_FINDINGS",
+    "platform": "UNAVAILABLE",
+    "owner": "UNAVAILABLE",
+    "official_docs": "REVIEWED_2026_06_23"
+  },
+  "official_sources": [
+    {
+      "provider": "Google Search Console Help",
+      "title": "URL Inspection tool",
+      "url": "https://support.google.com/webmasters/answer/9012289",
+      "used_for": "URL Inspection scope, live test limits, and indexing caveats"
+    },
+    {
+      "provider": "Google Search Console Help",
+      "title": "Sitemaps report",
+      "url": "https://support.google.com/webmasters/answer/7451001",
+      "used_for": "Sitemap fetch diagnostics and failure modes"
+    },
+    {
+      "provider": "Google Search Console Help",
+      "title": "Page indexing report",
+      "url": "https://support.google.com/webmasters/answer/7440203",
+      "used_for": "Indexing status categories and URL Inspection limitations"
+    },
+    {
+      "provider": "Google Search Central",
+      "title": "Get started with Search Console",
+      "url": "https://developers.google.com/search/docs/monitor-debug/search-console-start",
+      "used_for": "Search Console setup and monitoring context"
+    }
+  ],
+  "search_console_envelope": {
+    "provider": "Google Search Console",
+    "dataset": "property ownership, sitemap submission, URL Inspection samples, indexing, canonical, enhancements, manual actions, security issues, performance",
+    "property": "UNAVAILABLE",
+    "scope": {
+      "url_or_origin": "https://www.mitra-auto.fi",
+      "property_type": "domain property preferred; URL-prefix acceptable as secondary",
+      "country": "FI primary; all countries secondary",
+      "device": "desktop and mobile",
+      "search_type": "web; search appearance and product/image surfaces when available",
+      "locale": "fi and en"
+    },
+    "date_range": {
+      "start": "UNAVAILABLE",
+      "end": "UNAVAILABLE",
+      "timezone": "UNAVAILABLE"
+    },
+    "aggregation": "property, sitemap, URL, page type, locale, country, device, date, search appearance",
+    "retrieved_at": "UNAVAILABLE",
+    "freshness": "UNAVAILABLE",
+    "credential_source": "not recorded",
+    "status": "UNAVAILABLE",
+    "limitations": [
+      "No Search Console property URL, owner, backup owner, OAuth/service-account credential, API credential, or sanitized export was available through the project wrapper or repo evidence.",
+      "No sitemap submission status, URL Inspection result, Google-selected canonical, Page indexing status, enhancement report, manual action report, security issue report, HTTPS report, or performance report was read back.",
+      "Public production HTTP evidence currently fails the expected robots and sitemap contract, so Search Console readback should be repeated after the production deployment is corrected."
+    ]
+  },
+  "project_wrapper_status": {
+    "command": "source ~/.config/projects/bin/project && project mitraauto",
+    "project_slug": "mitraauto",
+    "project_dir": "/Users/chandler/code/Mitraauto-main",
+    "supabase_project_ref": "rcmmbwdebnmicrweoiyz",
+    "public_base_url": "missing",
+    "google_application_credentials": "missing",
+    "gsc_property_url": "missing",
+    "search_console_site_url": "missing",
+    "google_search_console_property": "missing"
+  },
+  "local_gate_results": [
+    {
+      "command": "npm run static-assets:check",
+      "status": "passed",
+      "evidence": "src/public contains robots.txt, sitemap.xml, sitemap-products.xml, merchant-products.xml, _headers, and _redirects; source static asset check passed."
+    },
+    {
+      "command": "npm run sitemap:check",
+      "status": "passed",
+      "evidence": "Product sitemap check passed: 60918 URLs across 2 file(s)."
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"); for (const f of [\"src/public/robots.txt\",\"src/public/sitemap.xml\",\"src/public/sitemap-products.xml\",\"src/public/sitemap-products-1.xml\",\"src/public/sitemap-products-2.xml\"]) { const s=fs.statSync(f); console.log(f+\"|bytes=\"+s.size); }'",
+      "status": "passed",
+      "evidence": "Local source files exist with non-zero sizes."
+    }
+  ],
+  "local_static_file_sizes": {
+    "src/public/robots.txt": 274,
+    "src/public/sitemap.xml": 6379,
+    "src/public/sitemap-products.xml": 368,
+    "src/public/sitemap-products-1.xml": 10829537,
+    "src/public/sitemap-products-2.xml": 3645325
+  },
+  "live_asset_results": [
+    {
+      "url": "https://www.mitra-auto.fi/robots.txt",
+      "expected": "200 text/plain",
+      "observed": "404 text/plain;charset=UTF-8",
+      "redirects": 0,
+      "severity": "BLOCKER",
+      "impact": "Search Console and crawlers cannot discover sitemap declarations from production robots.txt."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap.xml",
+      "expected": "200 application/xml or text/xml",
+      "observed": "404 text/plain;charset=UTF-8",
+      "redirects": 0,
+      "severity": "BLOCKER",
+      "impact": "Primary sitemap submission would fail or report fetch errors."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "expected": "200 application/xml or text/xml",
+      "observed": "200 text/html",
+      "redirects": 0,
+      "body_sniff": "<!doctype html> <!-- Created in Figma Make -->",
+      "severity": "BLOCKER",
+      "impact": "Product sitemap index is serving the SPA shell instead of XML."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products-1.xml",
+      "expected": "200 application/xml or text/xml",
+      "observed": "200 text/html",
+      "redirects": 0,
+      "body_sniff": "<!doctype html> <!-- Created in Figma Make -->",
+      "severity": "BLOCKER",
+      "impact": "Product child sitemap is serving the SPA shell instead of XML."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products-2.xml",
+      "expected": "200 application/xml or text/xml",
+      "observed": "200 text/html",
+      "redirects": 0,
+      "severity": "BLOCKER",
+      "impact": "Product child sitemap is serving the SPA shell instead of XML."
+    }
+  ],
+  "representative_live_url_results": [
+    {
+      "template": "homepage",
+      "url": "https://www.mitra-auto.fi/",
+      "observed": "200 text/html",
+      "search_console_status": "UNAVAILABLE"
+    },
+    {
+      "template": "fi service",
+      "url": "https://www.mitra-auto.fi/palvelut/dpf-huolto",
+      "observed": "200 text/html",
+      "search_console_status": "UNAVAILABLE"
+    },
+    {
+      "template": "en service",
+      "url": "https://www.mitra-auto.fi/en/services/dpf-service",
+      "observed": "200 text/html",
+      "search_console_status": "UNAVAILABLE"
+    },
+    {
+      "template": "product canonical",
+      "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "observed": "200 text/html",
+      "search_console_status": "UNAVAILABLE"
+    },
+    {
+      "template": "checkout utility",
+      "url": "https://www.mitra-auto.fi/checkout",
+      "observed": "200 text/html",
+      "search_console_status": "UNAVAILABLE",
+      "expected_policy": "noindex utility page"
+    },
+    {
+      "template": "private cms",
+      "url": "https://www.mitra-auto.fi/cms",
+      "observed": "200 text/html",
+      "search_console_status": "UNAVAILABLE",
+      "expected_policy": "safe denial, no private UI, noindex/noarchive"
+    },
+    {
+      "template": "unknown route",
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-d1",
+      "observed": "200 text/html",
+      "search_console_status": "UNAVAILABLE",
+      "expected_policy": "404 or 410 with noindex"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "BLOCKER",
+      "title": "Search Console authenticated readback unavailable",
+      "evidence": "Project wrapper has no Search Console property URL, site URL, Google Search Console property metadata, or Google application credentials.",
+      "impact": "D-1 cannot confirm property ownership, submitted sitemaps, URL Inspection samples, Google-selected canonicals, indexing diagnostics, enhancements, manual actions, security issues, or performance.",
+      "owner": "SEO/Platform owner",
+      "verification": "Provide verified owner/full-user access or sanitized exports/API readback."
+    },
+    {
+      "severity": "BLOCKER",
+      "title": "Production robots and sitemaps are not served as deployable Search Console assets",
+      "evidence": "robots.txt and sitemap.xml return 404; product sitemaps return text/html Figma Make shell.",
+      "impact": "Sitemap submission and Google crawler discovery are unreliable until production host parity is fixed.",
+      "owner": "Deployment/Cloudflare owner",
+      "verification": "Live curl and Search Console Sitemaps report show 200 XML/text responses and successful fetch."
+    },
+    {
+      "severity": "CRITICAL",
+      "title": "Representative invalid/private URLs still return public 200 HTML",
+      "evidence": "/cms and a random unknown route return 200 text/html on live production.",
+      "impact": "Search Console Page indexing and URL Inspection may show soft-404, duplicate, or unintended indexability signals until edge route policy is live.",
+      "owner": "Deployment/Engineering owner",
+      "verification": "Live invalid/private route samples return safe 404/410 or denial headers with noindex policy."
+    }
+  ],
+  "required_search_console_readback": [
+    "Verified property and owner/backup owner",
+    "Property type and canonical host coverage",
+    "Submitted sitemap status for robots-declared sitemap.xml and sitemap-products.xml",
+    "Representative URL Inspection for homepage, FI service, EN service, product canonical, utility/noindex, invalid route, and legacy/redirect route samples",
+    "Google-selected canonical versus user-declared canonical for samples",
+    "Page indexing report grouped by page type and reason",
+    "Enhancement reports for applicable structured data",
+    "Manual actions and security issues",
+    "HTTPS/Page Experience/Core Web Vitals where available",
+    "Search performance by page, query, country, device, date, and search appearance"
+  ],
+  "gate_result": {
+    "d1_task_status": "complete_with_blockers_carried",
+    "search_console_platform_status": "blocked_by_missing_authenticated_access",
+    "production_indexing_asset_status": "blocked_by_live_asset_mismatch",
+    "indexing_readiness_status": "not_ready",
+    "growth_ready_status": "blocked",
+    "next_required_task": "D-2 - Google Business Profile, Citations, And Business Fact Approval"
+  },
+  "no_guarantee": "This D-1 evidence record improves governance and launch readiness. It does not guarantee crawling, indexing, selected canonicals, rankings, rich results, traffic, conversions, revenue, or AI inclusion."
+}

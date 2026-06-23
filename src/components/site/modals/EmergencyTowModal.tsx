@@ -24,11 +24,6 @@ type Step = 'choose' | 'gps' | 'manual';
 export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps) {
   const { t } = useLanguage();
   const [step, setStep] = useState<Step>('choose');
-  
-  // Debug logging
-  React.useEffect(() => {
-    console.log('🔔 EmergencyTowModal state changed - open:', open);
-  }, [open]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -161,24 +156,14 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
         };
       }
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('SUPABASE URL:', supabase.url);
-        console.log('ANON KEY prefix:', supabase.key.slice(0, 8));
-        console.log('RPC payload keys:', Object.keys(payload));
-      }
-
-      console.log('📞 Calling emergency_roadside_create RPC with payload:', payload);
-
       // Call Supabase RPC
       const { data, error: rpcError } = await supabase.rpc('emergency_roadside_create', payload);
 
       if (rpcError) {
-        console.error('❌ RPC Error:', rpcError);
+        console.error('Emergency request RPC failed');
         throw new Error(rpcError.message || 'Failed to submit request');
       }
 
-      console.log('✅ Emergency request created:', data);
-      
       setRequestId(data?.request_id ?? null);
       setSuccess(true);
       setLoading(false);
@@ -189,7 +174,7 @@ export function EmergencyTowModal({ open, onOpenChange }: EmergencyTowModalProps
         onOpenChange(false);
       }, 5000);
     } catch (err: any) {
-      console.error('❌ Submit error:', err);
+      console.error('Emergency request submission failed');
       setError(err.message || t('emergency.error.submit'));
       setLoading(false);
     }

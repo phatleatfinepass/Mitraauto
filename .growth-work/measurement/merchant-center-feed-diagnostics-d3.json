@@ -1,0 +1,263 @@
+{
+  "version": "2026-06-23.d3",
+  "project": "Mitra Auto",
+  "task": "D-3 - Merchant Center Feed Diagnostics And Product Policy Approval",
+  "status": "complete_with_blockers_carried",
+  "recorded_at": "2026-06-23T10:35:00+03:00",
+  "public_origin": "https://www.mitra-auto.fi",
+  "feed_url": "https://www.mitra-auto.fi/merchant-products.xml",
+  "evidence_states": {
+    "repo": "EXECUTED_WITH_FINDINGS",
+    "local_gate": "EXECUTED",
+    "live": "EXECUTED_WITH_FINDINGS",
+    "platform": "UNAVAILABLE",
+    "owner_policy": "UNAVAILABLE",
+    "official_docs": "REVIEWED_2026_06_23"
+  },
+  "official_sources": [
+    {
+      "provider": "Google Merchant Center Help",
+      "title": "Product data specification",
+      "url": "https://support.google.com/merchants/answer/7052112?hl=en",
+      "used_for": "Feed attributes, price/availability/shipping/returns, VAT, and product-data quality requirements"
+    },
+    {
+      "provider": "Google Merchant Center Help",
+      "title": "Availability [availability]",
+      "url": "https://support.google.com/merchants/answer/6324448?hl=en",
+      "used_for": "Availability truth, landing-page and checkout consistency, and disapproval risk for false in-stock offers"
+    },
+    {
+      "provider": "Google Merchant Center Help",
+      "title": "GTIN [gtin]",
+      "url": "https://support.google.com/merchants/answer/6324461?hl=en",
+      "used_for": "Identifier policy and not guessing GTINs"
+    },
+    {
+      "provider": "Google Search Central",
+      "title": "Merchant listing structured data",
+      "url": "https://developers.google.com/search/docs/appearance/structured-data/merchant-listing",
+      "used_for": "Product/Offer schema alignment with visible price, availability, shipping, and return data"
+    },
+    {
+      "provider": "Google Merchant Center Help",
+      "title": "Misrepresentation",
+      "url": "https://support.google.com/merchants/answer/6150127?hl=en",
+      "used_for": "Truthful merchant identity, contact, pricing, shipping, return, availability, and customer-consent policy"
+    },
+    {
+      "provider": "Google Merchant Center Help",
+      "title": "Website claiming",
+      "url": "https://support.google.com/merchants/answer/15624943?hl=en-IE",
+      "used_for": "Merchant Center website ownership evidence requirement"
+    },
+    {
+      "provider": "Google Merchant Center Help",
+      "title": "Account access",
+      "url": "https://support.google.com/merchants/answer/15620708?hl=en-GB",
+      "used_for": "Merchant Center account access/readback evidence requirement"
+    }
+  ],
+  "project_wrapper_status": {
+    "command": "source ~/.config/projects/bin/project && project mitraauto",
+    "project_slug": "mitraauto",
+    "project_dir": "/Users/chandler/code/Mitraauto-main",
+    "public_base_url": "missing",
+    "google_application_credentials": "missing",
+    "google_merchant_center_account": "missing",
+    "merchant_center_account_id": "missing",
+    "google_merchant_id": "missing",
+    "merchant_id": "missing",
+    "google_merchant_center_id": "missing",
+    "google_merchant_account_id": "missing"
+  },
+  "merchant_center_envelope": {
+    "provider": "Google Merchant Center",
+    "account_id": "UNAVAILABLE",
+    "website_claim": "UNAVAILABLE",
+    "account_access": "UNAVAILABLE",
+    "data_source": "UNAVAILABLE",
+    "feed_url": "UNAVAILABLE",
+    "last_fetch": "UNAVAILABLE",
+    "processing_status": "UNAVAILABLE",
+    "needs_attention": "UNAVAILABLE",
+    "account_issues": "UNAVAILABLE",
+    "product_disapprovals": "UNAVAILABLE",
+    "item_count": "UNAVAILABLE",
+    "free_listings_status": "UNAVAILABLE",
+    "shopping_ads_status": "UNAVAILABLE",
+    "local_inventory_status": "UNAVAILABLE",
+    "shipping_settings": "UNAVAILABLE",
+    "return_settings": "UNAVAILABLE",
+    "automatic_item_updates": "UNAVAILABLE",
+    "performance": "UNAVAILABLE",
+    "status": "UNAVAILABLE",
+    "limitations": [
+      "No Merchant Center account ID, owner/access evidence, claimed website status, feed/data source status, item diagnostics, account issues, product status, or shipping/return settings export was available.",
+      "Merchant Center readiness cannot be inferred from local XML validation alone.",
+      "Production feed URL currently returns HTML instead of XML, so a Merchant Center data source pointed at the public URL would not receive the local feed body."
+    ]
+  },
+  "local_feed_summary": {
+    "file": "src/public/merchant-products.xml",
+    "bytes": 36405465,
+    "item_count": 31528,
+    "gtin_count": 31528,
+    "condition_new_count": 31528,
+    "availability_in_stock_count": 31528,
+    "availability_out_of_stock_count": 0,
+    "shipping_fi_50_eur_count": 31528,
+    "currency": "EUR",
+    "vat_policy": "Local generator multiplies ex-VAT source prices by 1.255 and emits VAT-inclusive EUR prices.",
+    "first_product_link": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10"
+  },
+  "local_gate_results": [
+    {
+      "command": "npm run feed:check",
+      "status": "passed",
+      "evidence": "Merchant feed check passed: 31528 items in merchant-products.xml."
+    },
+    {
+      "command": "npm run commerce:check",
+      "status": "passed",
+      "evidence": "Product UI, Product/Offer schema, Merchant feed shipping, cart, checkout, and product mapping use the shared commerce contract."
+    },
+    {
+      "command": "npm run static-assets:check",
+      "status": "passed",
+      "evidence": "Source static asset check passed with merchant-products.xml size 36405465 bytes and merchantItems 31528."
+    },
+    {
+      "command": "node merchant feed summary script",
+      "status": "passed",
+      "evidence": "31528 items, 31528 GTINs, 31528 in-stock offers, 0 out-of-stock offers, 31528 new-condition offers, and 31528 FI shipping entries at 50.00 EUR."
+    }
+  ],
+  "live_results": [
+    {
+      "url": "https://www.mitra-auto.fi/merchant-products.xml",
+      "expected": "200 application/xml or text/xml body containing Google Merchant RSS XML",
+      "observed": "200 text/html",
+      "body_sniff": "<!doctype html> <!-- Created in Figma Make -->",
+      "severity": "BLOCKER",
+      "impact": "Merchant Center data source fetch from production would receive the SPA/Figma shell instead of the feed."
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "expected": "200 application/xml or text/xml",
+      "observed": "200 text/html",
+      "severity": "BLOCKER",
+      "impact": "Product URL discovery parity remains broken alongside the Merchant feed."
+    }
+  ],
+  "source_contract": {
+    "feed_generator": "scripts/generate_merchant_feed.mjs",
+    "feed_checker": "scripts/check_merchant_feed.mjs",
+    "commerce_contract": "src/utils/productCommerce.ts",
+    "product_page": "src/components/catalog/ProductDetailPage.tsx",
+    "checkout_page": "src/components/site/checkout/CheckoutPage.tsx",
+    "catalog_policy_copy": "src/i18n/dictionaries/catalog.ts",
+    "legal_policy_copy": "src/i18n/dictionaries/legal.ts",
+    "shared_values": {
+      "home_delivery_fee_incl_vat_eur": 50,
+      "return_window_days": 14,
+      "policy_country": "FI"
+    },
+    "source_findings": [
+      "Product/Offer schema includes price, availability, shippingDetails, merchant return policy, GTIN/SKU/MPN, and inventory level from the shared commerce snapshot.",
+      "Checkout sends client unit price cents, GTIN, SKU, stock quantity, and delivery-day range for server-side revalidation.",
+      "Feed generator emits canonical slug URLs, VAT-inclusive EUR price, in stock/out of stock availability, new condition, GTIN when normalized, MPN, Google product category, product_type, and FI shipping 50.00 EUR.",
+      "Product detail copy tells users price, stock, and delivery can change as supplier/catalog data updates and that cart/checkout revalidate price and availability before payment.",
+      "Legal policy copy includes delivery, return, warranty, supplier-stock, and liability statements that still require owner/legal approval for Merchant Center policy parity."
+    ]
+  },
+  "policy_gate": {
+    "shipping": "SOURCE_PRESENT_OWNER_APPROVAL_REQUIRED",
+    "pickup": "SOURCE_PRESENT_OWNER_APPROVAL_REQUIRED",
+    "installation": "SOURCE_PRESENT_OWNER_APPROVAL_REQUIRED",
+    "returns": "SOURCE_PRESENT_OWNER_APPROVAL_REQUIRED",
+    "warranty": "SOURCE_PRESENT_OWNER_APPROVAL_REQUIRED",
+    "used_condition": "NOT_IN_CURRENT_FEED_OWNER_POLICY_REQUIRED_FOR_FUTURE_USED_ITEMS",
+    "stock": "SOURCE_PRESENT_PROVIDER_AND_OWNER_APPROVAL_REQUIRED",
+    "delivery_time": "SOURCE_PRESENT_PROVIDER_AND_OWNER_APPROVAL_REQUIRED",
+    "fitment_authority": "SOURCE_PRESENT_OWNER_APPROVAL_REQUIRED",
+    "category_promotion": "OWNER_POLICY_UNAVAILABLE"
+  },
+  "findings": [
+    {
+      "severity": "BLOCKER",
+      "title": "Merchant Center authenticated diagnostics unavailable",
+      "evidence": "Project wrapper has no Merchant Center account ID, Merchant ID, Google credential status, public base URL, or sanitized provider export.",
+      "impact": "D-3 cannot confirm website claim, data source URL, last fetch, item count, processing status, needs-attention issues, disapprovals, account issues, program eligibility, shipping/return settings, automatic item updates, or Merchant performance.",
+      "owner": "Ecommerce/Platform owner",
+      "required_resolution": "Provide account access or sanitized Merchant Center export/API evidence."
+    },
+    {
+      "severity": "BLOCKER",
+      "title": "Production Merchant feed URL returns HTML",
+      "evidence": "https://www.mitra-auto.fi/merchant-products.xml returns 200 text/html and body starts with Created in Figma Make.",
+      "impact": "Merchant Center cannot reliably ingest the local feed from production until the canonical host serves the XML asset before SPA fallback.",
+      "owner": "Deployment/Cloudflare owner",
+      "required_resolution": "Deploy repo static asset routing or equivalent provider rule so the live feed returns 200 application/xml and the expected RSS body."
+    },
+    {
+      "severity": "CRITICAL",
+      "title": "Product policy approval unavailable",
+      "evidence": "Local source defines 50.00 EUR FI shipping, 14-day return window, checkout price/stock revalidation, fitment caveats, and legal warranty/delivery language, but no owner/legal/product approval is recorded.",
+      "impact": "Feed/schema/cart/checkout parity cannot be called Merchant-ready until the business confirms shipping, pickup, installation, return, warranty, used-condition, stock, delivery, and fitment rules.",
+      "owner": "Product/Ecommerce/Legal owner",
+      "required_resolution": "Approve the product policy source of truth and update feed/schema/cart/checkout/legal copy if any value changes."
+    },
+    {
+      "severity": "CRITICAL",
+      "title": "All emitted feed offers are in stock and new condition",
+      "evidence": "Local feed summary found 31528 in-stock items, 0 out-of-stock items, and 31528 new-condition items.",
+      "impact": "This is acceptable only if supplier/CMS data and checkout revalidation prove those products are genuinely purchasable as new. False stock or wrong condition can trigger disapprovals and customer harm.",
+      "owner": "Catalog/Product owner",
+      "required_resolution": "Confirm inventory source freshness, supplier-stock semantics, reservation behavior, and used/unique-item exclusion or separate lifecycle policy."
+    },
+    {
+      "severity": "WARNING",
+      "title": "GTIN presence is high but GTIN authority is not proven",
+      "evidence": "Local feed has 31528 GTIN values; source normalizes 8-14 digit values but does not itself prove GS1 correctness.",
+      "impact": "Incorrect GTINs can limit visibility or trigger item issues even when the feed parser passes.",
+      "owner": "Catalog/Product owner",
+      "required_resolution": "Verify GTIN provenance from supplier/CMS data and use Merchant Center item diagnostics to catch invalid identifiers."
+    }
+  ],
+  "required_merchant_center_evidence": [
+    "Merchant Center account ID, account owner, access role, and website claim status for https://www.mitra-auto.fi.",
+    "Data source/feed URL, schedule, last fetch time, fetch HTTP status, processing status, and item count.",
+    "Needs attention/account issues, product disapproval counts, warning counts, and issue examples by product ID.",
+    "Program eligibility by Free listings, Shopping ads, Free local listings, Local inventory ads, and YouTube Shopping where applicable.",
+    "Shipping and return settings, including FI delivery cost/speed, pickup/garage option, return window, return fees, and product-condition eligibility.",
+    "Automatic item update settings and price/availability mismatch diagnostics.",
+    "Representative item diagnostics for tire and rim canonical URLs, including landing page crawl, price, availability, GTIN, condition, image, shipping, and return state.",
+    "Owner/legal approval for shipping, pickup, installation, returns, warranty, used condition, supplier-stock, stock freshness, delivery time, and fitment authority."
+  ],
+  "implementation_policy": {
+    "source_code_changes_in_d3": "none",
+    "reason": "Local feed and commerce source checks pass. Merchant Center diagnostics, live deployment parity, and owner/legal product-policy approval are missing and cannot be fixed by inventing facts.",
+    "files_to_change_after_evidence": [
+      "scripts/generate_merchant_feed.mjs",
+      "scripts/check_merchant_feed.mjs",
+      "src/utils/productCommerce.ts",
+      "src/components/catalog/ProductDetailPage.tsx",
+      "src/components/site/checkout/CheckoutPage.tsx",
+      "src/i18n/dictionaries/catalog.ts",
+      "src/i18n/dictionaries/legal.ts",
+      "src/public/merchant-products.xml",
+      "src/public/_headers",
+      "src/public/_redirects"
+    ],
+    "non_repo_work_after_evidence": [
+      "Google Merchant Center website claim",
+      "Google Merchant Center data source/feed scheduling",
+      "Merchant Center shipping and return settings",
+      "Merchant Center diagnostics export",
+      "Owner/legal product policy approval"
+    ]
+  },
+  "decision": "D-3 is complete as a Merchant Center/feed/product-policy evidence gate. Local source checks pass, but Merchant readiness remains blocked by missing Merchant Center readback, live production feed serving HTML, and missing owner/legal approval for shipping, pickup, installation, returns, warranty, stock, delivery, condition, and fitment policies.",
+  "next_required_task": "D-4 - Analytics, Events, Booking/Order Reconciliation, And Consent Gate"
+}

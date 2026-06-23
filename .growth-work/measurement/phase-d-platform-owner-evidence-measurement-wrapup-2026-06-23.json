@@ -1,0 +1,242 @@
+{
+  "version": "2026-06-23.phase-d-final-audit",
+  "project": "Mitra Auto",
+  "phase": "Phase D - Platform, Owner Evidence, And Measurement Readiness",
+  "status": "complete_with_blockers_carried",
+  "recorded_at": "2026-06-23T12:41:57+03:00",
+  "lifecycle_modes": [
+    "VERIFY",
+    "LAUNCH",
+    "MONITOR",
+    "GROW"
+  ],
+  "stage_gate_decision": {
+    "gate_d_launch_ready": "blocked_by_platform_owner_and_live_evidence",
+    "gate_e_growth_ready": "blocked_until_phase_e_evidence_and_owner_readbacks_pass",
+    "phase_d_task_status": "complete_as_source_hardening_and_evidence_contracts",
+    "classification": "not_growth_ready"
+  },
+  "evidence_coverage": {
+    "repo": {
+      "state": "EXECUTED_WITH_FINDINGS",
+      "evidence": "D-1 through D-5 source and evidence artifacts were reviewed; source guards and contracts exist, with owner/platform blockers carried."
+    },
+    "build": {
+      "state": "EXECUTED",
+      "evidence": "npm run build passed on 2026-06-23."
+    },
+    "local_gate": {
+      "state": "EXECUTED",
+      "evidence": "i18n, content-claims, static assets, sitemap, Merchant feed, commerce, checkout, route migration, and private-route checks passed locally."
+    },
+    "live": {
+      "state": "EXECUTED_WITH_FINDINGS",
+      "evidence": "D-1 and D-3 evidence records show production robots/sitemap/feed/static route mismatches and soft-404/private-route behavior on the live host. These were not converted into passes."
+    },
+    "browser": {
+      "state": "UNAVAILABLE_THIS_AUDIT",
+      "evidence": "No new Phase D browser crawl or interaction run was supplied in this final wrap-up. Browser and live smoke remain Phase E evidence work."
+    },
+    "platform": {
+      "state": "UNAVAILABLE",
+      "evidence": "Search Console, Google Business Profile, Merchant Center, analytics, logs, and field Core Web Vitals readbacks were unavailable."
+    },
+    "owner": {
+      "state": "UNAVAILABLE",
+      "evidence": "Owner-approved business facts, GBP/citation corrections, product policy approvals, content claim proof, legal/privacy approvals, and finance definitions were unavailable."
+    },
+    "content": {
+      "state": "EXECUTED_WITH_FINDINGS",
+      "evidence": "D-5 source hardening removed internal governance copy from public service pages, softened unsupported claims, and added a repeatable public claim guard; owner proof remains blocked."
+    },
+    "conversion": {
+      "state": "EXECUTED_WITH_FINDINGS",
+      "evidence": "D-4 renamed booking submit success to booking_submitted, reserved booking_completed for fulfilled service, and recorded analytics/reconciliation/consent blockers."
+    },
+    "local_commerce": {
+      "state": "EXECUTED_WITH_FINDINGS",
+      "evidence": "D-2 and D-3 record GBP/citation conflicts, unavailable Merchant Center diagnostics, live feed mismatch, and product policy approval blockers."
+    }
+  },
+  "task_rollup": [
+    {
+      "task": "D-1 - Search Console And Indexing Evidence Readback",
+      "status": "complete_with_blockers_carried",
+      "ready_state": "not_search_console_pass",
+      "primary_blockers": [
+        "Search Console property/readback unavailable",
+        "live robots/sitemap/product sitemap assets not served correctly",
+        "private and unknown live routes still return public HTML in D-1 evidence"
+      ],
+      "artifact": ".growth-work/measurement/search-console-indexing-d1.json"
+    },
+    {
+      "task": "D-2 - Google Business Profile, Citations, And Business Fact Approval",
+      "status": "complete_with_blockers_carried",
+      "ready_state": "not_local_seo_pass",
+      "primary_blockers": [
+        "GBP account/location/readback unavailable",
+        "citation conflicts for email and hours",
+        "alias/history decision unresolved",
+        "owner approval unavailable for NAP, categories, services, photos, reviews, and special hours"
+      ],
+      "artifact": ".growth-work/measurement/google-business-profile-citations-d2.json"
+    },
+    {
+      "task": "D-3 - Merchant Center Feed Diagnostics And Product Policy Approval",
+      "status": "complete_with_blockers_carried",
+      "ready_state": "not_merchant_or_product_seo_pass",
+      "primary_blockers": [
+        "Merchant Center diagnostics/readback unavailable",
+        "production merchant feed and product sitemap URLs return HTML in D-3 evidence",
+        "owner/legal approval unavailable for shipping, pickup, installation, returns, warranty, stock, delivery, condition, and fitment policy"
+      ],
+      "artifact": ".growth-work/measurement/merchant-center-feed-diagnostics-d3.json"
+    },
+    {
+      "task": "D-4 - Analytics, Events, Booking/Order Reconciliation, And Consent Gate",
+      "status": "complete_with_blockers_carried",
+      "ready_state": "source_semantics_hardened_platform_readback_pending",
+      "primary_blockers": [
+        "analytics destination ownership/readback unavailable",
+        "server outcome exports unavailable",
+        "finance-approved VAT, fee, refund, margin, contribution, CAC, and revenue windows unavailable",
+        "privacy/legal approval unavailable"
+      ],
+      "artifact": ".growth-work/measurement/analytics-events-reconciliation-consent-d4.json"
+    },
+    {
+      "task": "D-5 - Content, Claims, Reviews, Media, And Local/Service Owner Approval",
+      "status": "complete_with_blockers_carried",
+      "ready_state": "public_source_claims_hardened_owner_proof_pending",
+      "primary_blockers": [
+        "owner proof unavailable for reviews, ratings, customer counts, certifications, equipment, warranty, waiting-room amenities, tire-hotel insurance/liability, original media, service reviewer identity, and guide/category source briefs",
+        "GBP/citation and Merchant/product policy blockers remain carried",
+        "live raw HTML/static asset blockers remain carried"
+      ],
+      "artifact": ".growth-work/reports/content-claims-owner-approval-d5.json"
+    }
+  ],
+  "controls_applied": [
+    "GOV-001",
+    "GOV-002",
+    "GOV-004",
+    "MON-001",
+    "MON-008",
+    "KPI-002",
+    "KPI-004",
+    "KPI-005",
+    "REV-004",
+    "LOCAL-002",
+    "LOCAL-007",
+    "COM-002",
+    "COM-004",
+    "SCHEMA-002",
+    "CONTENT-003",
+    "CONTENT-004",
+    "OPS-003",
+    "OPS-004",
+    "GROW-006"
+  ],
+  "verification": [
+    {
+      "command": "/Users/chandler/.codex/skills/distill-heavy-output/scripts/distill_cmd.sh \"Return PASS or FAIL for npm run build, include the final Vite build status line, TypeScript/build errors, and warnings. Do not include the full asset list.\" -- npm run build",
+      "status": "passed",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run i18n:audit",
+      "status": "passed",
+      "result": "i18n audit passed."
+    },
+    {
+      "command": "npm run content:claims:check",
+      "status": "passed",
+      "result": "Public content claim check passed: scanned 50 files."
+    },
+    {
+      "command": "npm run checkout:check",
+      "status": "passed",
+      "result": "Checkout runtime parity check passed."
+    },
+    {
+      "command": "npm run static-assets:check",
+      "status": "passed",
+      "result": "Source static assets checked: 6 files; Merchant feed items: 31528."
+    },
+    {
+      "command": "npm run sitemap:check",
+      "status": "passed",
+      "result": "Product sitemap check passed: 60918 URLs across 2 files."
+    },
+    {
+      "command": "npm run feed:check",
+      "status": "passed",
+      "result": "Merchant feed check passed: 31528 items."
+    },
+    {
+      "command": "npm run commerce:check",
+      "status": "passed",
+      "result": "Product commerce contract check passed."
+    },
+    {
+      "command": "npm run private-routes:check",
+      "status": "passed",
+      "result": "Private route boundary check passed: 19 protected redirect rules and 10 header blocks verified."
+    },
+    {
+      "command": "npm run route-migration:check",
+      "status": "passed",
+      "result": "HTTP route migration check passed."
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"); const files=[\".growth-work/measurement/search-console-indexing-d1.json\",\".growth-work/measurement/google-business-profile-citations-d2.json\",\".growth-work/measurement/merchant-center-feed-diagnostics-d3.json\",\".growth-work/measurement/analytics-events-reconciliation-consent-d4.json\",\".growth-work/reports/content-claims-owner-approval-d5.json\",\".growth-work/measurement/event-dictionary.json\",\".growth-work/measurement/booking-order-reconciliation.json\"]; for (const file of files) JSON.parse(fs.readFileSync(file,\"utf8\")); console.log(`json ok: ${files.length} files`);'",
+      "status": "passed",
+      "result": "json ok: 7 files"
+    },
+    {
+      "command": "if rg -n \"Content review|Business/service owner review required|growth-ready|owner approval|owner-approved|owner approved|review required|source pending|\\[TBD\\]\" src/config src/i18n src/components/site src/components/catalog src/utils -g '!**/*.map'; then exit 1; else echo 'forbidden public governance and TBD scan passed'; fi",
+      "status": "passed",
+      "result": "forbidden public governance and TBD scan passed"
+    },
+    {
+      "command": "zsh -lc 'set -euo pipefail; source ~/.config/projects/bin/project; project mitraauto >/dev/null; printf \"PROJECT_SLUG=%s\\nPROJECT_DIR=%s\\nSUPABASE_PROJECT_REF=%s\\nSUPABASE_URL=%s\\nPUBLIC_BASE_URL=%s\\nGSC_PROPERTY=%s\\nGBP_LOCATION=%s\\nMERCHANT_CENTER=%s\\nGA4_PROPERTY=%s\\n\" \"${PROJECT_SLUG:-missing}\" \"${PROJECT_DIR:-missing}\" \"${SUPABASE_PROJECT_REF:-missing}\" \"${SUPABASE_URL:-missing}\" \"${PUBLIC_BASE_URL:-missing}\" \"${GOOGLE_SEARCH_CONSOLE_PROPERTY:-${GSC_PROPERTY_URL:-missing}}\" \"${GBP_LOCATION_ID:-${GOOGLE_BUSINESS_PROFILE_LOCATION:-missing}}\" \"${MERCHANT_CENTER_ACCOUNT_ID:-${GOOGLE_MERCHANT_CENTER_ACCOUNT:-missing}}\" \"${GA4_PROPERTY_ID:-${GOOGLE_ANALYTICS_PROPERTY:-missing}}\"'",
+      "status": "passed",
+      "result": "Target project confirmed as mitraauto; Search Console, GBP, Merchant Center, GA4, and public base URL metadata are missing."
+    }
+  ],
+  "open_blockers": [
+    {
+      "severity": "BLOCKER",
+      "owner": "Platform/SEO owner",
+      "blocker": "Authenticated Search Console ownership, sitemap submission, URL Inspection, indexing, manual action, security, enhancement, and performance readbacks are unavailable."
+    },
+    {
+      "severity": "BLOCKER",
+      "owner": "Business/Local owner",
+      "blocker": "GBP readback, citation cleanup, NAP/hours/category/services/photos/reviews approval, duplicate/suspension status, and alias decision are unavailable or unresolved."
+    },
+    {
+      "severity": "BLOCKER",
+      "owner": "Deployment/Cloudflare owner",
+      "blocker": "D-1/D-3 live evidence shows production static SEO assets, product sitemaps, Merchant feed, private route denial, and soft-404 behavior are not production-parity yet."
+    },
+    {
+      "severity": "BLOCKER",
+      "owner": "Ecommerce/Product/Legal owner",
+      "blocker": "Merchant Center diagnostics and owner/legal product policy approvals are unavailable."
+    },
+    {
+      "severity": "BLOCKER",
+      "owner": "Analytics/Finance/Privacy owner",
+      "blocker": "Analytics destination readback, server outcome exports, finance definitions, lifecycle statuses, and privacy/legal approval are unavailable."
+    },
+    {
+      "severity": "CRITICAL",
+      "owner": "Content/Business/Legal owner",
+      "blocker": "Owner proof for reviews, ratings, customer counts, facility and technician claims, warranty, tire-hotel liability, original media, service reviewer identity, and guide/category briefs is unavailable."
+    }
+  ],
+  "release_recommendation": "Proceed to Phase E verification and handoff work only as a blocked launch-readiness closeout. Do not classify Mitra Auto as growth-ready until provider readbacks, owner approvals, live production static/HTTP evidence, browser smoke, drift baseline, and final readiness classification pass or receive explicit owner-approved exceptions with mitigation and expiry.",
+  "no_guarantee_statement": "This Phase D audit improves implementation quality, evidence governance, and measurement readiness. It does not guarantee crawling, indexing, Google-selected canonicals, rankings, rich results, local-pack visibility, Merchant approval, traffic, conversions, revenue, or AI citations."
+}

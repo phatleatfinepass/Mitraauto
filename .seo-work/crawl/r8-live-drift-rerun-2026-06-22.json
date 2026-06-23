@@ -1,0 +1,477 @@
+{
+  "schemaVersion": "mitra.growth.live-drift-rerun.v1",
+  "taskId": "R-8",
+  "name": "Post-remediation live crawl, browser smoke, and drift rerun",
+  "generatedAt": "2026-06-22T18:32:12Z",
+  "generatedAtLocal": "2026-06-22T21:32:12+03:00",
+  "baseOrigin": "https://www.mitra-auto.fi",
+  "evidenceClass": "DIRECT_OBSERVATION",
+  "status": "complete_with_live_release_blockers_unchanged",
+  "progress": {
+    "bar": "[████████████████████]",
+    "percent": 100
+  },
+  "scope": {
+    "mode": "public unauthenticated HTTP matrix, rendered browser smoke, raw HTML snapshot, and E-4 drift comparison",
+    "network": "production public host only",
+    "browserPrivateRoutePolicy": "Do not render /cms in browser because E-3 indicated private-looking data may be exposed. R-8 uses HEAD/status-only evidence for private/admin routes.",
+    "noDestructiveActions": true,
+    "platformAccess": "UNAVAILABLE"
+  },
+  "evidenceStates": {
+    "liveHttpMatrix": "EXECUTED_WITH_FINDINGS",
+    "liveStaticAssetParity": "EXECUTED_WITH_FINDINGS",
+    "localStaticAssetParity": "EXECUTED",
+    "localRouteMigrationGate": "EXECUTED",
+    "localCheckoutGate": "EXECUTED",
+    "rawHtmlMetadata": "EXECUTED_WITH_FINDINGS",
+    "renderedBrowserSmoke": "EXECUTED_WITH_FINDINGS",
+    "driftComparison": "EXECUTED_WITH_FINDINGS",
+    "platformReadback": "UNAVAILABLE"
+  },
+  "httpMatrix": [
+    {
+      "url": "https://mitra-auto.fi/",
+      "finalUrl": "https://www.mitra-auto.fi/",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 1,
+      "policy": "Apex should one-hop redirect to canonical www host.",
+      "state": "PASS"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/",
+      "finalUrl": "https://www.mitra-auto.fi/",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Homepage should return 200 and render route-specific content.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en",
+      "finalUrl": "https://www.mitra-auto.fi/en",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "English entry should return 200 when intended as indexable.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/services",
+      "finalUrl": "https://www.mitra-auto.fi/en/services",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "English services hub should return 200.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/palvelut/autohuolto",
+      "finalUrl": "https://www.mitra-auto.fi/palvelut/autohuolto",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Finnish service detail should return 200 and render service-specific content.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/services/car-service",
+      "finalUrl": "https://www.mitra-auto.fi/en/services/car-service",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "English service detail should return 200 and render localized content.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog",
+      "finalUrl": "https://www.mitra-auto.fi/catalog",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Catalog hub should return 200 when intended as indexable.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/catalog",
+      "finalUrl": "https://www.mitra-auto.fi/en/catalog",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "English catalog hub should return 200 when intended as indexable.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "finalUrl": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Canonical product slug should return 200 and render Product/Offer content.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "finalUrl": "https://www.mitra-auto.fi/catalog/rim/00024bb0-2f88-dc51-fca7-b0c7bb8ed697",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Legacy opaque product identifier should permanently redirect to canonical product slug.",
+      "state": "FAIL_CRITICAL"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/shop",
+      "finalUrl": "https://www.mitra-auto.fi/shop",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Legacy /shop should permanently redirect to /catalog.",
+      "state": "FAIL_CRITICAL"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/services",
+      "finalUrl": "https://www.mitra-auto.fi/services",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Legacy /services should permanently redirect to /en/services.",
+      "state": "FAIL_CRITICAL"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/tire-hotel",
+      "finalUrl": "https://www.mitra-auto.fi/tire-hotel",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Legacy /tire-hotel should permanently redirect to /en/services/tire-hotel.",
+      "state": "FAIL_CRITICAL"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/helsinki/autohuolto",
+      "finalUrl": "https://www.mitra-auto.fi/helsinki/autohuolto",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Legacy local service URL should permanently redirect to /palvelut/autohuolto.",
+      "state": "FAIL_CRITICAL"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/palvelut/dpf-pesu",
+      "finalUrl": "https://www.mitra-auto.fi/palvelut/dpf-pesu",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Legacy DPF URL should permanently redirect to /palvelut/dpf-huolto.",
+      "state": "FAIL_CRITICAL"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/checkout",
+      "finalUrl": "https://www.mitra-auto.fi/checkout",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Checkout utility route should be noindex in rendered output and excluded from sitemaps.",
+      "state": "PASS_RENDERED_NOINDEX"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/checkout/success",
+      "finalUrl": "https://www.mitra-auto.fi/checkout/success",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Checkout success should remain noindex/private utility and excluded from sitemaps.",
+      "state": "REVIEW_REQUIRED"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/customer-account",
+      "finalUrl": "https://www.mitra-auto.fi/customer-account",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Customer account should require auth or return safe 401/403/404.",
+      "state": "FAIL_BLOCKER"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/cms",
+      "finalUrl": "https://www.mitra-auto.fi/cms",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "CMS/admin route must not render unauthenticated public content; expected 401, 403, or safe 404.",
+      "state": "FAIL_BLOCKER"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/contact",
+      "finalUrl": "https://www.mitra-auto.fi/en/contact",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "English contact page should return 200 and render NAP/contact details.",
+      "state": "PASS_WITH_RENDERED_DEPENDENCY"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/contact",
+      "finalUrl": "https://www.mitra-auto.fi/contact",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Noncanonical contact variant should redirect to /en/contact or return 404/410.",
+      "state": "FAIL_CRITICAL"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-r8",
+      "finalUrl": "https://www.mitra-auto.fi/this-route-should-not-exist-r8",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Invalid route should return HTTP 404/410 with safe noindex page.",
+      "state": "FAIL_CRITICAL_SOFT_404"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/robots.txt",
+      "finalUrl": "https://www.mitra-auto.fi/robots.txt",
+      "http": 404,
+      "contentType": "text/plain;charset=UTF-8",
+      "redirects": 0,
+      "policy": "robots.txt should return 200 text/plain and declare sitemaps.",
+      "state": "FAIL_BLOCKER"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap.xml",
+      "finalUrl": "https://www.mitra-auto.fi/sitemap.xml",
+      "http": 404,
+      "contentType": "text/plain;charset=UTF-8",
+      "redirects": 0,
+      "policy": "sitemap.xml should return 200 XML.",
+      "state": "FAIL_BLOCKER"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "finalUrl": "https://www.mitra-auto.fi/sitemap-products.xml",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Product sitemap should return XML, not the SPA shell.",
+      "state": "FAIL_BLOCKER"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/merchant-products.xml",
+      "finalUrl": "https://www.mitra-auto.fi/merchant-products.xml",
+      "http": 200,
+      "contentType": "text/html",
+      "redirects": 0,
+      "policy": "Merchant feed should return XML/RSS, not the SPA shell.",
+      "state": "FAIL_BLOCKER"
+    }
+  ],
+  "rawHtmlSnapshot": {
+    "finding": "Raw direct HTML still serves the generic JavaScript shell on sampled routes.",
+    "sample": [
+      {
+        "url": "https://www.mitra-auto.fi/",
+        "status": 200,
+        "contentType": "text/html",
+        "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+        "canonical": "",
+        "robots": "index,follow",
+        "h1": "This site requires JavaScript",
+        "anchorCount": 0,
+        "schemaCount": 0
+      },
+      {
+        "url": "https://www.mitra-auto.fi/palvelut/autohuolto",
+        "status": 200,
+        "contentType": "text/html",
+        "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+        "canonical": "",
+        "robots": "index,follow",
+        "h1": "This site requires JavaScript",
+        "anchorCount": 0,
+        "schemaCount": 0
+      },
+      {
+        "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+        "status": 200,
+        "contentType": "text/html",
+        "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+        "canonical": "",
+        "robots": "index,follow",
+        "h1": "This site requires JavaScript",
+        "anchorCount": 0,
+        "schemaCount": 0
+      },
+      {
+        "url": "https://www.mitra-auto.fi/this-route-should-not-exist-r8",
+        "status": 200,
+        "contentType": "text/html",
+        "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+        "canonical": "",
+        "robots": "index,follow",
+        "h1": "This site requires JavaScript",
+        "anchorCount": 0,
+        "schemaCount": 0
+      }
+    ]
+  },
+  "browserSmoke": [
+    {
+      "url": "https://www.mitra-auto.fi/",
+      "viewport": "desktop 1365x900",
+      "title": "Mitra Auto | Autohuolto, renkaat ja korjaamo Helsingissä",
+      "lang": "fi",
+      "h1": "Mitra Auto - Ammattitaitoiset palvelut",
+      "canonical": "https://www.mitra-auto.fi/",
+      "robots": "index,follow",
+      "anchors": 35,
+      "buttons": 15,
+      "jsonLdTypes": ["AutoRepair", "AutomotiveBusiness", "LocalBusiness", "WebSite", "WebPage", "BreadcrumbList"],
+      "state": "PASS_RENDERED"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/palvelut/autohuolto",
+      "viewport": "desktop 1365x900",
+      "title": "Autohuolto Helsinki | Määräaikaishuolto ja korjaamo | Mitra Auto",
+      "lang": "fi",
+      "h1": "Autohuolto Helsingissä",
+      "canonical": "https://www.mitra-auto.fi/palvelut/autohuolto",
+      "robots": "index,follow",
+      "anchors": 27,
+      "buttons": 12,
+      "jsonLdTypes": ["AutoRepair", "AutomotiveBusiness", "LocalBusiness", "Service", "BreadcrumbList"],
+      "state": "PASS_RENDERED"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "viewport": "desktop 1365x900",
+      "title": "Rautamo Netto BROCK RC32 Titanium Full Pol 7x17 5x110 ET40 | Mitra Auto",
+      "lang": "fi",
+      "h1": "Rautamo Netto BROCK RC32 Titanium Full Pol",
+      "canonical": "https://www.mitra-auto.fi/catalog/rim/rautamo-netto-brock-rc32-titanium-full-pol-7x17-5x110-et40-5x110-et-40-00-cb-65-10",
+      "robots": "index,follow",
+      "hasPrice": true,
+      "hasStock": true,
+      "anchors": 24,
+      "buttons": 15,
+      "jsonLdTypes": ["AutoRepair", "AutomotiveBusiness", "LocalBusiness", "Product", "BreadcrumbList"],
+      "state": "PASS_RENDERED"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/checkout",
+      "viewport": "desktop 1365x900",
+      "title": "Mitra Auto | Full-Service Garage in Helsinki — Tires, Maintenance & Repairs",
+      "lang": "fi",
+      "h1": "Kassa",
+      "canonical": "",
+      "robots": "noindex, nofollow",
+      "anchors": 23,
+      "buttons": 18,
+      "jsonLdTypes": [],
+      "state": "PASS_RENDERED_UTILITY_NOINDEX"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/services/car-service",
+      "viewport": "mobile 390x844",
+      "title": "Car Service Helsinki | Maintenance and Garage | Mitra Auto",
+      "lang": "en",
+      "h1": "Car Service in Helsinki",
+      "canonical": "https://www.mitra-auto.fi/en/services/car-service",
+      "robots": "index,follow",
+      "anchors": 27,
+      "buttons": 12,
+      "jsonLdTypes": ["AutoRepair", "AutomotiveBusiness", "LocalBusiness", "Service", "BreadcrumbList"],
+      "state": "PASS_RENDERED"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/en/contact",
+      "viewport": "mobile 390x844",
+      "title": "Contact Mitra Auto | Helsinki Garage",
+      "lang": "en",
+      "h1": "Get in Touch",
+      "canonical": "https://www.mitra-auto.fi/en/contact",
+      "robots": "index,follow",
+      "hasAddress": true,
+      "hasPhone": true,
+      "hasEmail": true,
+      "anchors": 25,
+      "buttons": 11,
+      "jsonLdTypes": ["AutoRepair", "AutomotiveBusiness", "LocalBusiness", "WebSite", "ContactPage", "BreadcrumbList"],
+      "state": "PASS_RENDERED"
+    },
+    {
+      "url": "https://www.mitra-auto.fi/this-route-should-not-exist-r8",
+      "viewport": "mobile 390x844",
+      "title": "Page not found | Mitra Auto",
+      "lang": "en",
+      "h1": "Looks like this car took the wrong turn.",
+      "canonical": "",
+      "robots": "noindex, follow",
+      "bodyHasNotFound": true,
+      "anchors": 23,
+      "buttons": 10,
+      "state": "PASS_RENDERED_BUT_HTTP_SOFT_404"
+    }
+  ],
+  "driftAgainstE4": {
+    "summary": "No material improvement from E-4 at the production HTTP/static/redirect/private-boundary layers. Rendered public pages still hydrate correctly, but deployment parity blockers remain.",
+    "unchangedBlockers": [
+      "robots.txt returns 404.",
+      "sitemap.xml returns 404.",
+      "sitemap-products.xml returns HTML shell instead of XML.",
+      "merchant-products.xml returns HTML shell instead of XML/RSS.",
+      "legacy product UUID route returns 200 instead of permanent redirect.",
+      "legacy public routes return 200 instead of permanent redirects.",
+      "invalid routes return HTTP 200 soft-404.",
+      "private/admin route /cms returns 200 at HTTP level."
+    ],
+    "improvedOrConfirmed": [
+      "Local source/build static assets pass after rebuild.",
+      "Local route migration gate passes.",
+      "Local checkout route/canonical/noindex gate passes.",
+      "Rendered homepage, service detail, product slug, checkout, English mobile service, English contact, and invalid-route UI expose expected page-level markers."
+    ]
+  },
+  "blockers": [
+    {
+      "severity": "BLOCKER",
+      "controlIds": ["TECH-009", "TECH-020", "MON-009"],
+      "finding": "Production static SEO assets and Merchant feed are still not deployed or routed correctly.",
+      "evidence": "robots.txt and sitemap.xml return 404; product sitemap and Merchant feed return text/html.",
+      "owner": "Hosting/deployment owner",
+      "verification": "node scripts/check_static_deployment_assets.mjs --build-dir build --live https://www.mitra-auto.fi"
+    },
+    {
+      "severity": "BLOCKER",
+      "controlIds": ["TECH-001", "TECH-004", "COM-012"],
+      "finding": "Private/admin routes still return public HTTP 200 at the edge.",
+      "evidence": "/cms and /customer-account return HTTP 200 text/html. /cms was not rendered in-browser during R-8 to avoid storing possible private content.",
+      "owner": "Engineering/security plus hosting/provider owner",
+      "verification": "Unauthenticated /cms and private route requests return 401, 403, or safe 404 with no private content."
+    },
+    {
+      "severity": "CRITICAL",
+      "controlIds": ["TECH-007", "TECH-018", "COM-001"],
+      "finding": "Legacy redirects and product identifier redirects remain inactive on production.",
+      "evidence": "/shop, /services, /tire-hotel, /helsinki/autohuolto, /palvelut/dpf-pesu, and product UUID URL return 200 with zero redirects.",
+      "owner": "Hosting/edge routing owner",
+      "verification": "Live curl matrix shows one-hop 301/308 redirects to canonical destinations."
+    },
+    {
+      "severity": "CRITICAL",
+      "controlIds": ["TECH-008", "JS-005"],
+      "finding": "Invalid and noncanonical routes remain HTTP soft-404s.",
+      "evidence": "/this-route-should-not-exist-r8 and /contact return HTTP 200. Browser invalid-route UI is noindex, but HTTP status is still wrong.",
+      "owner": "Hosting/edge routing owner",
+      "verification": "Invalid routes return 404 or 410 at HTTP level."
+    },
+    {
+      "severity": "WARNING",
+      "controlIds": ["JS-001", "JS-004", "META-003"],
+      "finding": "Raw HTML still lacks route-specific canonical, schema, crawlable anchors, and useful H1 before hydration.",
+      "evidence": "Sampled direct HTML title is generic, canonical empty, schema count 0, anchor count 0, and H1 is 'This site requires JavaScript'.",
+      "owner": "Frontend/SEO architecture owner",
+      "verification": "Rendered route-specific signals remain correct; consider prerender/SSR/static snapshots for stronger crawler resilience."
+    }
+  ],
+  "next": "Resolve production deployment/provider parity blockers from R-3, R-4, R-5, and R-6 before another growth-readiness rerun."
+}
