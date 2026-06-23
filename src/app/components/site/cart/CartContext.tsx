@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { calculateLinePricing, normalizePricingRules, type ProductPricingRules } from '../../../utils/pricing';
+import { getProductCommerceSnapshot } from '../../../utils/productCommerce';
 
 export interface CartItem {
   id: string;
@@ -25,24 +26,10 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 function resolveCartBasePrice(item: any) {
-  const candidates = [
-    item?.base_price,
-    item?.price,
-    item?.best_price_eur,
-    item?.final_price_eur,
-    item?.price_eur,
-    item?.product?.best_price_eur,
-    item?.product?.final_price_eur,
-    item?.product?.price_eur,
-    item?.product?.price,
-  ];
+  const directBasePrice = Number(item?.base_price ?? item?.price);
+  if (Number.isFinite(directBasePrice) && directBasePrice > 0) return directBasePrice;
 
-  for (const candidate of candidates) {
-    const value = Number(candidate);
-    if (Number.isFinite(value) && value > 0) return value;
-  }
-
-  return 0;
+  return getProductCommerceSnapshot(item?.product ?? item).baseUnitPriceExVatEur;
 }
 
 function resolveStockLimit(product: any) {
@@ -92,7 +79,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setItems([]);
         }
       } catch (error) {
-        console.error('Failed to load cart from localStorage:', error);
+        console.error('Failed to load cart from localStorage');
       }
     }
   }, []);

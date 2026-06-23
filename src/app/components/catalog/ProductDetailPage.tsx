@@ -33,7 +33,12 @@ import { TireCard } from './TireCard';
 import { RimCard } from './RimCard';
 import { buildProductImageFallback } from '../../utils/productImage';
 import { calculateLinePricing, PRODUCT_VAT_MULTIPLIER, type ProductPricingRules } from '../../utils/pricing';
-import { getProductCommerceSnapshot } from '../../utils/productCommerce';
+import {
+  PRODUCT_HOME_DELIVERY_FEE_INCL_VAT_EUR,
+  PRODUCT_POLICY_COUNTRY,
+  PRODUCT_RETURN_WINDOW_DAYS,
+  getProductCommerceSnapshot,
+} from '../../utils/productCommerce';
 import { fetchProductLocaleContent, type ProductLocaleContent } from '../../utils/productsSearch';
 import { getCatalogProductDetailPath, getCatalogProductSeoIdentifier } from '../../utils/catalogSeo';
 import type { TyreLabelSectionData } from '../../utils/tyreLabel';
@@ -87,6 +92,7 @@ export interface TireProduct {
   warranty_years?: number;
   rating?: number;
   review_count?: number;
+  review_source?: string;
   ean?: string;
 }
 
@@ -127,6 +133,7 @@ export interface RimProduct {
   warranty_years?: number;
   rating?: number;
   review_count?: number;
+  review_source?: string;
 }
 
 export type Product = TireProduct | RimProduct;
@@ -596,11 +603,18 @@ export function ProductDetailPage({
     product.type === 'rim' && Array.isArray(product.compatible_vehicles)
       ? product.compatible_vehicles.filter((item): item is string => Boolean(item && String(item).trim()))
       : [];
-  const hasReviewData = typeof product.rating === 'number' && typeof product.review_count === 'number' && product.review_count > 0;
-  const hasSellablePrice = hasSellableProductPrice(product.best_price_eur);
-  const price = hasSellablePrice ? product.best_price_eur ?? 0 : 0;
-  const pricingForQuantity = calculateLinePricing(price, quantity, product.pricing_rules ?? null);
+  const hasReviewData =
+    product.review_source === 'owner_verified' &&
+    typeof product.rating === 'number' &&
+    typeof product.review_count === 'number' &&
+    product.review_count > 0;
   const commerce = getProductCommerceSnapshot(product, { quantity, displayName });
+  const hasSellablePrice = commerce.hasSellablePrice;
+  const price = commerce.baseUnitPriceExVatEur;
+  const productInStock = commerce.inStock;
+  const productCanPurchase = commerce.canPurchase;
+  const displayStockQuantity = commerce.stockQuantity;
+  const pricingForQuantity = calculateLinePricing(price, quantity, product.pricing_rules ?? null);
   const displayUnitPrice = commerce.unitPriceInclVatEur;
   const totalPrice = commerce.lineTotalInclVatEur;
   const hasTierDiscount = hasSellablePrice && pricingForQuantity.savingsEur > 0;
@@ -786,6 +800,38 @@ export function ProductDetailPage({
       displayName,
     });
     const stockQuantity = commerceSchema.stockQuantity ?? undefined;
+    const policyUrl = `${businessProfile.websiteUrl}/terms`;
+    const shippingDetails = {
+      '@type': 'OfferShippingDetails',
+      shippingDestination: {
+        '@type': 'DefinedRegion',
+        addressCountry: PRODUCT_POLICY_COUNTRY,
+      },
+      shippingRate: {
+        '@type': 'MonetaryAmount',
+        value: PRODUCT_HOME_DELIVERY_FEE_INCL_VAT_EUR.toFixed(2),
+        currency: 'EUR',
+      },
+      deliveryTime: commerceSchema.deliveryDaysMin !== null && commerceSchema.deliveryDaysMax !== null
+        ? {
+            '@type': 'ShippingDeliveryTime',
+            transitTime: {
+              '@type': 'QuantitativeValue',
+              minValue: commerceSchema.deliveryDaysMin,
+              maxValue: commerceSchema.deliveryDaysMax,
+              unitCode: 'DAY',
+            },
+          }
+        : undefined,
+    };
+    const merchantReturnPolicy = {
+      '@type': 'MerchantReturnPolicy',
+      applicableCountry: PRODUCT_POLICY_COUNTRY,
+      returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+      merchantReturnDays: PRODUCT_RETURN_WINDOW_DAYS,
+      returnFees: 'https://schema.org/ReturnFeesCustomerResponsibility',
+      merchantReturnLink: policyUrl,
+    };
     const productSchema = {
       '@type': 'Product',
       '@id': `${canonicalUrl}#product`,
@@ -810,6 +856,8 @@ export function ProductDetailPage({
             price: commerceSchema.unitPriceInclVatEur.toFixed(2),
             availability: commerceSchema.schemaAvailability,
             itemCondition: 'https://schema.org/NewCondition',
+            shippingDetails,
+            hasMerchantReturnPolicy: merchantReturnPolicy,
             inventoryLevel: stockQuantity !== undefined
               ? {
                   '@type': 'QuantitativeValue',
@@ -933,7 +981,7 @@ export function ProductDetailPage({
     window.history.back();
   };
 
-  const productText = (key: string) => t(`productDetail.${key}`);
+  const productText = (key: string, params?: Record<string, string | number>) => t(`productDetail.${key}`, params);
 
   const getSeasonLabel = (season: string) => {
     const labels: Record<string, string> = {
@@ -1023,7 +1071,7 @@ export function ProductDetailPage({
           },
           {
             label: productText('stockStatus'),
-            value: product.in_stock ? productText('inStock') : productText('outOfStock'),
+            value: productInStock ? productText('inStock') : productText('outOfStock'),
           },
           {
             label: productText('deliveryTime'),
@@ -1042,7 +1090,7 @@ export function ProductDetailPage({
           },
           {
             label: productText('stockStatus'),
-            value: product.in_stock ? productText('inStock') : productText('outOfStock'),
+            value: productInStock ? productText('inStock') : productText('outOfStock'),
           },
           {
             label: productText('deliveryTime'),
@@ -1087,7 +1135,7 @@ export function ProductDetailPage({
     {
       icon: <Truck className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
       title: productText('fastDelivery'),
-      body: productText('deliveryDesc'),
+      body: productText('deliveryDesc', { homeDeliveryFee: PRODUCT_HOME_DELIVERY_FEE_INCL_VAT_EUR.toFixed(2) }),
     },
     {
       icon: <Lock className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
@@ -1102,7 +1150,7 @@ export function ProductDetailPage({
     {
       icon: <RotateCcw className={`size-6 ${theme === 'dark' ? 'text-gray-300' : 'text-[#FF6B00]'}`} />,
       title: productText('easyReturns'),
-      body: productText('returnsDesc'),
+      body: productText('returnsDesc', { returnDays: PRODUCT_RETURN_WINDOW_DAYS }),
     },
   ];
   const buyingGuideItems = product.type === 'tire'
@@ -1416,10 +1464,10 @@ export function ProductDetailPage({
                       {productText('stockStatus')}
                     </p>
                     <div className="mt-2 flex items-center gap-2">
-                      <Check className={`size-4 ${product.in_stock ? 'text-green-500' : 'text-red-500'}`} />
-                      <span className={`text-sm ${product.in_stock ? 'text-green-600' : 'text-red-600'}`}>
-                        {product.in_stock ? productText('inStock') : productText('outOfStock')}
-                        {product.in_stock && product.stock_quantity ? ` (${product.stock_quantity} ${productText('perPcs')})` : ''}
+                      <Check className={`size-4 ${productInStock ? 'text-green-500' : 'text-red-500'}`} />
+                      <span className={`text-sm ${productInStock ? 'text-green-600' : 'text-red-600'}`}>
+                        {productInStock ? productText('inStock') : productText('outOfStock')}
+                        {productInStock && displayStockQuantity ? ` (${displayStockQuantity} ${productText('perPcs')})` : ''}
                       </span>
                     </div>
                   </div>
@@ -1466,11 +1514,11 @@ export function ProductDetailPage({
 
                 <Button
                   onClick={() => onAddToCart?.(product, quantity)}
-                  disabled={!product.in_stock || !hasSellablePrice}
+                  disabled={!productCanPurchase}
                   className="h-12 w-full bg-[#FF6B00] text-white hover:bg-[#FF6B00]/90 disabled:opacity-50"
                 >
                   <Package className="mr-2 size-5" />
-                  {product.in_stock
+                  {productInStock
                     ? hasSellablePrice
                       ? productText('addToCart')
                       : productText('priceOnRequest')
@@ -1709,10 +1757,10 @@ export function ProductDetailPage({
               </div>
               <Button
                 onClick={() => onAddToCart?.(product, quantity)}
-                disabled={!product.in_stock || !hasSellablePrice}
+                disabled={!productCanPurchase}
                 className="h-11 bg-[#FF6B00] px-6 text-white hover:bg-[#FF6B00]/90"
               >
-                {product.in_stock
+                {productInStock
                   ? hasSellablePrice
                     ? productText('addToCart')
                     : productText('priceOnRequest')

@@ -6,7 +6,7 @@ import { ArrowRight, Calendar, Award, Settings, CheckCircle2, Users } from 'luci
 import { ImageWithFallback } from '../../figma/ImageWithFallback';
 import { ContactSection } from '../sections/ContactSection';
 import { motion, AnimatePresence } from 'motion/react';
-import { getServiceDetailPathForServiceId } from '../../../i18n/dictionaries/serviceSeo';
+import { getPromotedServiceDetailPathForServiceId } from '../../../i18n/dictionaries/serviceSeo';
 import { useLocalSeoHead } from '../../../utils/localSeo';
 import carWashService from 'figma:asset/cac46ce90efaaa69a5d5eac00cb56658fc7c8afa.png';
 import carMaintenanceService from 'figma:asset/23fb0673ef5da715efe16a47361607b6c4536093.png';
@@ -358,7 +358,7 @@ export function ServicesPage({ onBookingClick, onNavigate }: ServicesPageProps) 
       <section className="py-16 lg:py-20 bg-secondary/30" aria-label="Why choose Mitra Auto services">
         <div className="container mx-auto max-w-7xl px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Certified Technicians */}
+            {/* Service team */}
             <div className="flex flex-col items-center text-center group">
               <div className="p-4 rounded-full mb-4 bg-background transition-all group-hover:shadow-[0_0_25px_rgba(231,76,60,0.2)] group-hover:scale-110">
                 <Award className="size-6 text-accent" aria-hidden="true" />
@@ -429,7 +429,7 @@ interface ServiceListItemProps {
 function ServiceListItem({ service, onBookClick, onNavigate }: ServiceListItemProps) {
   const { t, language } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
-  const detailHref = getServiceDetailPathForServiceId(service.id, getRouteLanguage(language));
+  const detailHref = getPromotedServiceDetailPathForServiceId(service.id, getRouteLanguage(language));
   const openServiceDetail = () => {
     if (detailHref) {
       onNavigate(detailHref);

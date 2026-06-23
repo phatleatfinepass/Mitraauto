@@ -53,18 +53,20 @@ export type ServiceSeoEvidence = {
   safetyLimitations: string[];
   aftercareTitle: string;
   aftercare: string[];
-  evidenceTitle: string;
-  evidence: string[];
-  reviewTitle: string;
-  reviewedBy: string;
-  lastReviewed: string;
-  sourceNotesTitle: string;
-  sourceNotes: string[];
 };
 
 export type ResolvedServiceDetail =
   | { kind: 'bespoke'; pageId: ServiceSeoPageId; language: ServiceSeoLanguage }
   | { kind: 'generated'; serviceId: string; language: ServiceSeoLanguage };
+
+export type ServiceSeoRouteRegistryEntry = {
+  serviceId: string;
+  pageId: ServiceSeoPageId | null;
+  publicRouteKind: 'bespoke_indexable' | 'generated_noindex';
+  promotedInPublicNavigation: boolean;
+  sitemapIncluded: boolean;
+  canonicalPolicy: string;
+};
 
 export const serviceSeoPages: ServiceSeoPage[] = [
   {
@@ -759,9 +761,35 @@ for (const page of serviceSeoPages) {
   SERVICE_DETAIL_BY_SERVICE_ID.set(page.primaryServiceId, page.id);
 }
 
+export const serviceSeoRouteRegistry: ServiceSeoRouteRegistryEntry[] = SERVICE_CATALOG.map((service) => {
+  const pageId = SERVICE_DETAIL_BY_SERVICE_ID.get(service.id) ?? null;
+  const isPromoted = Boolean(pageId);
+  return {
+    serviceId: service.id,
+    pageId,
+    publicRouteKind: isPromoted ? 'bespoke_indexable' : 'generated_noindex',
+    promotedInPublicNavigation: isPromoted,
+    sitemapIncluded: isPromoted,
+    canonicalPolicy: isPromoted
+      ? 'Self-canonical promoted service detail page.'
+      : 'Resolvable generated fallback with noindex, follow; not linked from public service navigation until approved unique content exists.',
+  };
+});
+
 export function getServiceSeoPageByServiceId(serviceId: string): ServiceSeoPage | null {
   const pageId = SERVICE_DETAIL_BY_SERVICE_ID.get(serviceId);
   return pageId ? serviceSeoPageById[pageId] : null;
+}
+
+export function getPromotedServiceDetailPathForServiceId(serviceId: string, language: ServiceSeoLanguage): string | null {
+  const page = getServiceSeoPageByServiceId(serviceId);
+  if (!page) return null;
+
+  const matcher: Record<ServiceSeoLanguage, (path: string) => boolean> = {
+    fi: (path) => !path.startsWith('/en/'),
+    en: (path) => path.startsWith('/en/'),
+  };
+  return page.paths.find(matcher[language]) ?? page.paths[0] ?? null;
 }
 
 export function getServiceDetailPathForServiceId(serviceId: string, language: ServiceSeoLanguage): string | null {
@@ -934,13 +962,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Jos punainen varoitusvalo palaa, öljynpaine puuttuu tai jarruissa on vakava oire, vältä ajamista ja ota yhteyttä ennen siirtoa.', 'Emme jatka lisäkorjauksiin ilman hyväksyntää.', 'Huolto-ohjelma ja osavalinnat tarkistetaan auton tietojen mukaan.'],
       aftercareTitle: 'Huollon jälkeen',
       aftercare: ['Saat yhteenvedon tehdystä työstä ja havaitusta jatkotarpeesta.', 'Seuraava huolto tai tarkastus sovitaan auton tilanteen mukaan.', 'Mahdolliset takuu- ja reklamaatioehdot vahvistetaan työn ja osien mukaan.'],
-      evidenceTitle: 'Nykyinen lähdepohja',
-      evidence: ['Palvelu perustuu Mitra Auton julkaistuun hinnastoon ja ajanvarauksen palvelukatalogiin.', 'Korjaamon osoite, puhelin ja aukioloajat tulevat yhdestä business profile -lähteestä.', 'Alkuperäiset työkuvat ja nimetty huoltovastaava puuttuvat vielä omistajan hyväksyntää varten.'],
-      reviewTitle: 'Sisällön tarkistus',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Lähde- ja päivityshuomiot',
-      sourceNotes: ['Hinnat tulevat `src/utils/serviceCatalog.ts`-lähteestä.', 'GBP- ja citation-faktat ovat C-1-portissa omistajalta odottavina poikkeuksina.'],
     },
     en: {
       durationValue: 'Work scope is confirmed during booking based on the vehicle and service need.',
@@ -952,13 +973,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['If a red warning light is on, oil pressure is missing or brakes show a severe symptom, avoid driving and contact the garage before moving the car.', 'Additional repairs are not continued without approval.', 'Service schedule and part choices are checked from vehicle details.'],
       aftercareTitle: 'After the service',
       aftercare: ['You receive a summary of the work and any follow-up need found.', 'The next service or inspection is agreed based on vehicle condition.', 'Warranty and complaint terms depend on the specific work and parts and are confirmed with the job.'],
-      evidenceTitle: 'Current evidence base',
-      evidence: ['The service is based on Mitra Auto published pricing and booking service catalog.', 'Address, phone and hours come from one business profile source.', 'Original workshop photos and a named service reviewer still require owner approval.'],
-      reviewTitle: 'Content review',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Source and update notes',
-      sourceNotes: ['Prices come from `src/utils/serviceCatalog.ts`.', 'GBP and citation facts remain owner-evidence exceptions from the C-1 gate.'],
     },
   },
   'tire-change': {
@@ -972,13 +986,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Emme suosittele ajamista renkaalla, jossa näkyy sivuvaurio, kudosvaurio tai selvä ilmanpaineongelma.', 'Jos renkaan kunto tai sopivuus on epävarma, suosittelemme tarkastusta ennen asennusta.', 'Jälkikiristyksen käytäntö ja tarkka ohje vahvistetaan palvelun yhteydessä.'],
       aftercareTitle: 'Vaihdon jälkeen',
       aftercare: ['Saat suosituksen, jos renkaissa näkyy kulumaa, vauriota tai tasapainotustarvetta.', 'Ilmanpaineet tarkistetaan työn yhteydessä.', 'Seuraava kausivaihto tai rengashotelli voidaan varata samalla asioinnilla.'],
-      evidenceTitle: 'Nykyinen lähdepohja',
-      evidence: ['Henkilöauto-, SUV- ja pakettiautohinnat tulevat palvelukatalogista.', 'Sivu linkittyy rengashotelliin ja tasapainotukseen käyttäjän päätöspolun mukaan.', 'Renkaiden tarkat kunto- ja jälkikiristysohjeet vaativat vielä omistajan hyväksynnän.'],
-      reviewTitle: 'Sisällön tarkistus',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Lähde- ja päivityshuomiot',
-      sourceNotes: ['Päivitä, jos hinnasto, sesonkikäytäntö tai jälkikiristysohje muuttuu.', 'Älä lisää tieliikenne- tai lakiväitteitä ilman lähde- ja omistajatarkistusta.'],
     },
     en: {
       durationValue: 'Confirmed during booking based on vehicle, wheel size and tire hotel status.',
@@ -990,13 +997,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Do not drive on a tire with visible sidewall damage, casing damage or clear pressure loss.', 'If tire condition or fit is uncertain, we recommend inspection before installation.', 'Retightening practice and exact instruction are confirmed with the service.'],
       aftercareTitle: 'After the change',
       aftercare: ['You get a recommendation if wear, damage or balancing need is visible.', 'Air pressures are checked during the work.', 'The next seasonal change or tire hotel service can be booked during the same visit.'],
-      evidenceTitle: 'Current evidence base',
-      evidence: ['Passenger car, SUV and van prices come from the service catalog.', 'The page links to tire hotel and balancing as the relevant decision path.', 'Exact condition and retightening instructions still require owner approval.'],
-      reviewTitle: 'Content review',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Source and update notes',
-      sourceNotes: ['Update when pricing, seasonal process or retightening instructions change.', 'Do not add traffic-law claims without source and owner review.'],
     },
   },
   'tire-hotel': {
@@ -1010,13 +1010,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Kuluneet tai vaurioituneet renkaat merkitään jatkotarkistusta tai vaihtosuositusta varten.', 'Säilytys ei tee kuluneesta tai vääränkokoisesta renkaasta asennuskelpoista.', 'Nouto tai vaihto kannattaa varata etukäteen, jotta sarja ehditään valmistella.'],
       aftercareTitle: 'Säilytyksen aikana ja jälkeen',
       aftercare: ['Renkaat tunnistetaan ja kirjataan säilytystä varten.', 'Seuraava kausivaihto voidaan varata ennakkoon.', 'Jos kunto herättää huolta, jatkotoimi sovitaan ennen asennusta.'],
-      evidenceTitle: 'Nykyinen lähdepohja',
-      evidence: ['Rengashotellin hinta tulee palvelukatalogista.', 'Tire Storage -backend-suunnitelma tunnistaa säilytyspalvelun retention- ja asiakashyötyarvon.', 'Säilytystilan kuvat, ehdot ja vastuukäytäntö vaativat omistajan hyväksynnän.'],
-      reviewTitle: 'Sisällön tarkistus',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Lähde- ja päivityshuomiot',
-      sourceNotes: ['Päivitä, kun rengashotellin sopimusehdot, säilytyskausi tai asiakas-PWA-polku vahvistetaan.', 'Älä julkaise säilytysvastuu- tai vakuutusväitteitä ilman omistajan hyväksyntää.'],
     },
     en: {
       durationValue: 'Seasonal storage; pickup and next change are agreed during booking.',
@@ -1028,13 +1021,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Worn or damaged tires are marked for follow-up inspection or replacement recommendation.', 'Storage does not make a worn or wrong-size tire safe to install.', 'Pickup or change should be booked in advance so the set can be prepared.'],
       aftercareTitle: 'During and after storage',
       aftercare: ['Tires are identified and recorded for storage.', 'The next seasonal change can be booked in advance.', 'If condition is a concern, the next step is agreed before installation.'],
-      evidenceTitle: 'Current evidence base',
-      evidence: ['Tire hotel price comes from the service catalog.', 'The Tire Storage backend plan identifies storage as a retention and customer-account opportunity.', 'Storage-area photos, terms and liability policy require owner approval.'],
-      reviewTitle: 'Content review',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Source and update notes',
-      sourceNotes: ['Update when tire hotel terms, storage season or customer PWA path are confirmed.', 'Do not publish storage liability or insurance claims without owner approval.'],
     },
   },
   diagnostics: {
@@ -1048,13 +1034,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Punainen varoitusvalo, voimakas käyntihäiriö, jarruoire tai ylikuumeneminen voi tarkoittaa, ettei autolla pidä ajaa korjaamolle.', 'Vikakoodi on vihje, ei yksin varma osavaihtopäätös.', 'Korjaussuositus annetaan löydösten perusteella ja jatkotyö sovitaan erikseen.'],
       aftercareTitle: 'Diagnoosin jälkeen',
       aftercare: ['Saat selityksen löydöksistä ja jatkosuosituksesta.', 'Korjauksen hinta-arvio tehdään erikseen, jos vika vaatii työtä tai osia.', 'Jos oire on ajoittainen, seuraava tarkistus voi vaatia lisähavaintoja.'],
-      evidenceTitle: 'Nykyinen lähdepohja',
-      evidence: ['Vikakoodien luvun ja vianetsinnän hinnat tulevat palvelukatalogista.', 'Sivu erottaa perustarkistuksen ja tuntipohjaisen vianetsinnän.', 'Diagnoosilaitteiden ja esimerkkiraporttien kuvat vaativat omistajan hyväksynnän.'],
-      reviewTitle: 'Sisällön tarkistus',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Lähde- ja päivityshuomiot',
-      sourceNotes: ['Päivitä, kun käytettävä diagnostiikkaprosessi tai luovutettava raportti vahvistetaan.', 'Älä neuvo jatkamaan ajoa vakavalla oireella ilman mekaanikon arviota.'],
     },
     en: {
       durationValue: 'Error-code reading is a basic check; deeper troubleshooting is priced hourly.',
@@ -1066,13 +1045,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['A red warning light, severe running issue, brake symptom or overheating can mean the car should not be driven to the garage.', 'A fault code is a clue, not a final parts decision on its own.', 'Repair recommendations are based on findings and follow-up work is agreed separately.'],
       aftercareTitle: 'After diagnosis',
       aftercare: ['You get an explanation of findings and recommended next step.', 'A repair estimate is prepared separately if the fault needs work or parts.', 'Intermittent symptoms may need additional observation before a final decision.'],
-      evidenceTitle: 'Current evidence base',
-      evidence: ['Error-code reading and troubleshooting prices come from the service catalog.', 'The page separates basic checks from hourly troubleshooting.', 'Diagnostic equipment and example report photos require owner approval.'],
-      reviewTitle: 'Content review',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Source and update notes',
-      sourceNotes: ['Update when the exact diagnostic process or customer handoff report is confirmed.', 'Do not advise continued driving with severe symptoms without mechanic review.'],
     },
   },
   'ac-service': {
@@ -1086,13 +1058,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Jos järjestelmässä epäillään vuotoa, perushuolto ei välttämättä ole oikea ratkaisu ennen vianetsintää.', 'Kylmäainetyyppi tarkistetaan ennen työtä; väärää kylmäainetta ei pidä sekoittaa järjestelmään.', 'Sähkö- ja hybridiautoissa noudatetaan ajoneuvokohtaista huoltokäytäntöä.'],
       aftercareTitle: 'Huollon jälkeen',
       aftercare: ['Saat tiedon käytetystä palvelusta ja mahdollisesta lisäkylmäaineesta.', 'Jos jäähdytys ei palaudu normaaliksi, seuraava askel on vianetsintä.', 'Mahdolliset korjaukset sovitaan erikseen ennen työn jatkamista.'],
-      evidenceTitle: 'Nykyinen lähdepohja',
-      evidence: ['R134a-, R1234yf-, sähköauto- ja lisäkylmäainehinnat tulevat palvelukatalogista.', 'Sivu erottaa perushuollon ja AC-vianetsinnän.', 'Kylmäaineprosessin kuvat ja tarkka vuototestikäytäntö vaativat omistajan hyväksynnän.'],
-      reviewTitle: 'Sisällön tarkistus',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Lähde- ja päivityshuomiot',
-      sourceNotes: ['Päivitä, jos kylmäaineen sisältyvä määrä, lisähinta tai EV/hybridikäytäntö muuttuu.', 'Ympäristö- ja kylmäaineväitteet vaativat lähdetarkistuksen ennen laajennusta.'],
     },
     en: {
       durationValue: 'Confirmed by refrigerant type, vehicle and whether diagnostics is needed.',
@@ -1104,13 +1069,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['If a leak is suspected, basic service may not be the right step before diagnostics.', 'Refrigerant type is checked before work; the wrong refrigerant should not be mixed into the system.', 'Electric and hybrid vehicles follow vehicle-specific service practice.'],
       aftercareTitle: 'After the service',
       aftercare: ['You get information on the service used and any added refrigerant.', 'If cooling does not return, the next step is diagnostics.', 'Repairs are agreed separately before work continues.'],
-      evidenceTitle: 'Current evidence base',
-      evidence: ['R134a, R1234yf, electric car and extra refrigerant prices come from the service catalog.', 'The page separates basic service from AC diagnostics.', 'Refrigerant process photos and exact leak-test practice require owner approval.'],
-      reviewTitle: 'Content review',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Source and update notes',
-      sourceNotes: ['Update when included refrigerant amount, extra price or EV/hybrid practice changes.', 'Environmental and refrigerant claims require source review before expansion.'],
     },
   },
   'dpf-service': {
@@ -1124,13 +1082,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Pakkopolttoa ei tule tehdä, jos järjestelmän kunto tai vikakoodit viittaavat vaurioriskiin.', 'Erittäin tukossa oleva tai mekaanisesti vaurioitunut suodatin voi vaatia muuta ratkaisua kuin regenerointia.', 'Palvelu ei ole päästöjärjestelmän poistopalvelu.'],
       aftercareTitle: 'DPF-palvelun jälkeen',
       aftercare: ['Saat suosituksen siitä, riittääkö regenerointi, pesu vai jatkodiagnoosi.', 'Jos irrotus tai asennus tarvitaan, hinta arvioidaan autokohtaisesti.', 'Jos taustavika aiheuttaa tukkeutumisen, se täytyy korjata erikseen.'],
-      evidenceTitle: 'Nykyinen lähdepohja',
-      evidence: ['DPF-hinnat ja 2-3 h pakkopolton huomio tulevat nykyisestä palvelusivun hinnastosta.', 'Sivu käyttää diagnoosi ensin -mallia, eikä lupaa pesua kaikkiin tilanteisiin.', 'DPF-prosessikuvat, vastuullinen mekaanikko ja tarkka turvallisuusprotokolla vaativat omistajan hyväksynnän.'],
-      reviewTitle: 'Sisällön tarkistus',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Lähde- ja päivityshuomiot',
-      sourceNotes: ['Päivitä, jos DPF-hinnasto, ajoneuvovuosimallijaottelu tai irrotustyön käytäntö muuttuu.', 'Päästö- ja tieliikennekelpoisuusväitteet tarvitsevat lähde- ja omistajatarkistuksen.'],
     },
     en: {
       durationValue: 'Diagnosis first; the price list notes forced regeneration is usually around 2-3 h, other work is vehicle-specific.',
@@ -1142,13 +1093,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Forced regeneration should not be performed when system condition or fault codes suggest damage risk.', 'A heavily blocked or mechanically damaged filter may need another solution than regeneration.', 'This is not an emissions-system removal service.'],
       aftercareTitle: 'After DPF service',
       aftercare: ['You get a recommendation on whether regeneration, cleaning or further diagnosis is the right step.', 'If removal or installation is needed, the price is estimated by vehicle.', 'If an underlying fault causes blockage, it must be repaired separately.'],
-      evidenceTitle: 'Current evidence base',
-      evidence: ['DPF prices and the 2-3 h forced-regeneration note come from the current service-page price list.', 'The page uses a diagnosis-first model and does not promise cleaning for every case.', 'DPF process photos, responsible mechanic and exact safety protocol require owner approval.'],
-      reviewTitle: 'Content review',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Source and update notes',
-      sourceNotes: ['Update if DPF pricing, model-year split or removal-work policy changes.', 'Emissions and roadworthiness claims need source and owner review.'],
     },
   },
   'tire-repair': {
@@ -1162,13 +1106,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Sivuvauriota, runkovauriota tai tyhjänä ajettua rengasta ei pidä paikata ajoturvallisuuden kustannuksella.', 'Jos renkaan kunto ei täytä turvallista korjausta, suosittelemme vaihtoa.', 'Älä jatka ajoa nopeasti tyhjenevällä renkaalla.'],
       aftercareTitle: 'Paikkauksen jälkeen',
       aftercare: ['Saat tiedon siitä, mitä korjaustapaa käytettiin tai miksi paikkausta ei suositeltu.', 'Ilmanpaine ja vuoto tarkistetaan työn yhteydessä.', 'Jos rengas tarvitsee vaihtoa, ohjaamme sopivaan rengaspalveluun.'],
-      evidenceTitle: 'Nykyinen lähdepohja',
-      evidence: ['Ulkopuolisen ja sisäpuolisen paikkauksen hinnat tulevat palvelukatalogista.', 'Sivu käyttää turvallisuus ensin -rajausta eikä lupaa paikkausta kaikkiin vaurioihin.', 'Tarkat korjausstandardit ja prosessikuvat vaativat omistajan hyväksynnän.'],
-      reviewTitle: 'Sisällön tarkistus',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Lähde- ja päivityshuomiot',
-      sourceNotes: ['Päivitä, kun Mitran hyväksymät korjausrajat ja sisäinen/ulkoinen paikkauskäytäntö vahvistetaan.', 'Älä lisää tarkkoja standardiväitteitä ilman lähde- ja omistajatarkistusta.'],
     },
     en: {
       durationValue: 'Confirmed by damage location, tire condition and repair method.',
@@ -1180,13 +1117,6 @@ export const serviceSeoEvidenceByPageId: Partial<Record<ServiceSeoPageId, Record
       safetyLimitations: ['Sidewall damage, casing damage or a tire driven flat should not be repaired at the cost of driving safety.', 'If tire condition is not safe for repair, replacement is recommended.', 'Do not continue driving on a tire that loses pressure quickly.'],
       aftercareTitle: 'After repair',
       aftercare: ['You are told which repair method was used or why repair was not recommended.', 'Pressure and leakage are checked during the work.', 'If replacement is needed, we guide you to the relevant tire service.'],
-      evidenceTitle: 'Current evidence base',
-      evidence: ['External and internal repair prices come from the service catalog.', 'The page uses a safety-first limit and does not promise repair for every damage type.', 'Exact repair standards and process photos require owner approval.'],
-      reviewTitle: 'Content review',
-      reviewedBy: 'Business/service owner review required before growth-ready classification',
-      lastReviewed: '2026-06-22',
-      sourceNotesTitle: 'Source and update notes',
-      sourceNotes: ['Update when Mitra-approved repair limits and internal/external repair practice are confirmed.', 'Do not add exact standard claims without source and owner review.'],
     },
   },
 };

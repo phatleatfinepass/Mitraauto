@@ -543,8 +543,6 @@ function HomePage() {
 
       // Listen for auth state changes
       const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
-        
         if (session?.user) {
           setIsLoggedIn(true);
         } else {
@@ -903,7 +901,7 @@ function HomePage() {
           setSelectedProduct(detail);
         });
       } catch (error) {
-        console.error('Failed to load catalog detail from URL:', error);
+        console.error('Failed to load catalog detail from URL');
       }
     };
 
@@ -941,11 +939,6 @@ function HomePage() {
     };
   }, [updatePageFromPath]);
   
-  // Debug emergency modal state
-  React.useEffect(() => {
-    console.log('📱 Emergency Modal State Changed:', emergencyModalOpen);
-  }, [emergencyModalOpen]);
-
   const handleLogin = () => {
     setAuthView('login');
     setAuthModalOpen(true);
@@ -994,22 +987,18 @@ function HomePage() {
   };
 
   const handleLogout = async () => {
-    console.log('Logout initiated...');
-    
     try {
       // Logout from Supabase
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       
       if (error) {
-        console.error('Logout error:', error);
+        console.error('Logout error');
         try {
           await supabase.auth.signOut();
         } catch (fallbackError) {
-          console.error('Fallback logout error:', fallbackError);
+          console.error('Fallback logout error');
         }
       }
-      
-      console.log('Supabase signOut successful');
       
       // Force clear local state immediately
       setIsLoggedIn(false);
@@ -1023,9 +1012,8 @@ function HomePage() {
         window.history.pushState({}, '', '/');
       }
       
-      console.log('Logout complete');
     } catch (error) {
-      console.error('Failed to logout:', error);
+      console.error('Failed to logout');
       // Even if there's an error, clear the local state
       setIsLoggedIn(false);
     }
@@ -1162,11 +1150,7 @@ function HomePage() {
 
       {!isPwaRoute ? (
         <CartDrawer
-          onCheckout={() =>
-            startTransition(() => {
-              setCurrentPage('checkout');
-            })
-          }
+          onCheckout={() => navigate('/checkout')}
         />
       ) : null}
 
@@ -1396,10 +1380,7 @@ function HomePage() {
                   <button 
                     className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-white h-12 px-8 transition-all duration-200 cursor-pointer font-semibold"
                     onClick={() => {
-                      console.log('🚨 Emergency button clicked! Opening modal...');
-                      console.log('Current emergencyModalOpen state:', emergencyModalOpen);
                       setEmergencyModalOpen(true);
-                      console.log('setEmergencyModalOpen(true) called');
                     }}
                     data-testid="emergency-button"
                   >

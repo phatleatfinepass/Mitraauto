@@ -2,15 +2,15 @@ import type { TranslationDictionary } from '../types';
 
 export const commonTranslations = {
   // Common
-  'common.reviewsSubtitle': { fi: 'Katso mitä asiakkaamme sanovat palvelustamme', en: 'See what our customers say about our service' },
+  'common.reviewsSubtitle': { fi: 'Asiakaspalautteet julkaistaan vasta lähteen ja luvan varmistamisen jälkeen', en: 'Customer feedback is published only after source and permission are confirmed' },
   'common.stars': { fi: 'tähteä', en: 'stars' },
   'common.happyCustomers': { fi: 'Tyytyväistä asiakasta', en: 'Happy Customers' },
-  'common.ratingAria': { fi: '4.9 tähteä 5:stä', en: '4.9 out of 5 stars' },
-  'common.customerRating': { fi: 'Asiakasarvostelut', en: 'Customer Rating' },
-  'common.happyCustomersAria': { fi: '500+ tyytyväistä asiakasta', en: '500+ happy customers' },
-  'common.review.matti': { fi: 'Erittäin nopea ja ammattitaitoinen palvelu. Suosittelen lämpimästi!', en: 'Very fast and professional service. Highly recommended!' },
-  'common.review.anna': { fi: 'Rengashotelli toimii loistavasti. Ei tarvitse vaivata kotona.', en: 'Tire hotel works perfectly. No need to store at home.' },
-  'common.review.jukka': { fi: 'Helppo varata verkossa ja hinnat kilpailukykyiset.', en: 'Easy to book online and competitive prices.' },
+  'common.ratingAria': { fi: 'Arvostelut odottavat lähteen varmistusta', en: 'Reviews awaiting source verification' },
+  'common.customerRating': { fi: 'Asiakaspalaute', en: 'Customer Feedback' },
+  'common.happyCustomersAria': { fi: 'Asiakasmäärä vahvistetaan omistajan lähteestä ennen julkaisua', en: 'Customer count is confirmed from an owner source before publication' },
+  'common.review.matti': { fi: 'Asiakaspalautteet julkaistaan, kun lähde, lupa ja esitystapa on vahvistettu.', en: 'Customer feedback is published when source, permission and presentation are confirmed.' },
+  'common.review.anna': { fi: 'Emme näytä esimerkkipalautetta todellisena arvosteluna ilman hyväksyttyä lähdettä.', en: 'We do not show sample feedback as a real review without an approved source.' },
+  'common.review.jukka': { fi: 'Arvostelukäytäntö dokumentoidaan ennen julkaisua.', en: 'The review policy is documented before publication.' },
   'toast.paymentReceived': { fi: 'Maksu vastaanotettu.{{suffix}}', en: 'Payment received.{{suffix}}' },
   'toast.invoiceAlreadyPaid': { fi: 'Lasku on jo maksettu.{{suffix}}', en: 'Invoice already paid.{{suffix}}' },
   'toast.paymentIncomplete': { fi: 'Maksu ei valmistunut.{{suffix}}', en: 'Payment was not completed.{{suffix}}' },

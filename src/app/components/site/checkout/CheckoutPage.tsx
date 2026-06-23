@@ -12,15 +12,16 @@ import { ArrowLeft, Package, CreditCard, Truck, MapPin, Mail, Phone, User, Build
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '../../../utils/supabase/client';
-import { getProductCommerceSnapshot } from '../../../utils/productCommerce';
+import { PRODUCT_HOME_DELIVERY_FEE_INCL_VAT_EUR, getProductCommerceSnapshot } from '../../../utils/productCommerce';
 import { FINNISH_PHONE_PREFIX, hasFinnishPhoneValue, normalizeFinnishPhone, normalizeFinnishPhoneInput } from '../../../utils/phone';
 import { trackClarityEvent, upgradeClaritySession } from '../../../lib/clarity';
+import { publicSiteUrl } from '../../../config/runtime';
 
 const VAT_RATE = 0.255;
 const VAT_PERCENT = 25.5;
 const VAT_MULTIPLIER = 1 + VAT_RATE;
 const CHECKOUT_DRAFT_STORAGE_KEY = 'mitra-auto-checkout-draft';
-const HOME_DELIVERY_FEE_EUR = 50;
+const HOME_DELIVERY_FEE_EUR = PRODUCT_HOME_DELIVERY_FEE_INCL_VAT_EUR;
 const GARAGE_SHIPPING_ADDRESS = {
   streetAddress: 'Mitra Auto',
   postalCode: '00390',
@@ -75,7 +76,7 @@ function loadCheckoutDraft(): CheckoutFormData {
       acceptTerms: parsed.acceptTerms === true,
     };
   } catch (error) {
-    console.warn('Failed to restore checkout draft:', error);
+    console.warn('Failed to restore checkout draft');
     return defaultCheckoutFormData;
   }
 }
@@ -86,7 +87,7 @@ function saveCheckoutDraft(formData: CheckoutFormData) {
   try {
     window.sessionStorage.setItem(CHECKOUT_DRAFT_STORAGE_KEY, JSON.stringify(formData));
   } catch (error) {
-    console.warn('Failed to save checkout draft:', error);
+    console.warn('Failed to save checkout draft');
   }
 }
 
@@ -262,7 +263,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
       });
 
       const shippingCents = Math.round(shippingCost * 100);
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mitra-auto.fi';
       const shippingAddress = formData.shippingMethod === 'home'
         ? {
           streetAddress: formData.shippingAddress,
@@ -294,13 +294,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         },
         shipping_address: shippingAddress,
         billing_address: billingAddress,
-        success_url: `${origin}/checkout/success`,
-        cancel_url: `${origin}/checkout/cancel`,
+        success_url: `${publicSiteUrl}/checkout/success`,
+        cancel_url: `${publicSiteUrl}/checkout/cancel`,
         idempotency_key: crypto.randomUUID()
       };
-
-      // Debug log
-      console.log('Submitting Paytrail payload:', payload);
 
       // Call Supabase Edge Function to create Paytrail payment
       const supabase = getSupabaseClient();
@@ -312,12 +309,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
         }
       );
 
-      // Debug log
-      console.log('Paytrail response:', data, error);
-
       // Check for Supabase function error
       if (error) {
-        console.error('Payment creation error:', error);
         setIsProcessing(false);
         saveCheckoutDraft(formData);
         toast.error(checkoutText('error.paymentStartFailed'));
@@ -326,7 +319,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
 
       // Check for backend error response
       if (data && data.error) {
-        console.error('Backend error:', data);
         setIsProcessing(false);
         saveCheckoutDraft(formData);
         toast.error(`Error: ${data.message || checkoutText('error.paymentCreationFailed')}`);
@@ -335,20 +327,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onBack, onComplete }
 
       // Check for redirect_url
       if (!data || !data.redirect_url) {
-        console.error('Invalid payment response - no redirect_url:', data);
         setIsProcessing(false);
         saveCheckoutDraft(formData);
         toast.error(checkoutText('error.invalidServerResponse'));
         return;
       }
 
-      // Success - redirect to Paytrail
-      console.log('Payment initiated successfully, redirecting to:', data.redirect_url);
       saveCheckoutDraft(formData);
       window.location.href = data.redirect_url;
 
     } catch (error) {
-      console.error('Checkout error:', error);
       setIsProcessing(false);
       saveCheckoutDraft(formData);
 
